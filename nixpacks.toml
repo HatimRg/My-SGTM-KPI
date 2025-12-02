@@ -1,0 +1,12 @@
+# nixpacks.toml
+[phases.setup]
+nixPkgs = ["nodejs_20", "npm"]
+
+[phases.build]
+cmds = [
+  "cd frontend && npm install",
+  "cd frontend && npm run build"
+]
+
+[start]
+cmd = "cd backend && php artisan serve --host=0.0.0.0 --port=10000"
