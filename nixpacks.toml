@@ -5,6 +5,7 @@ nixPkgs = ["nodejs_20", "npm"]
 [phases.build]
 cmds = [
   "cd frontend && npm install",
+  "cd frontend && rm -f node_modules/@alloc/quick-lru/index.js || true",
   "cd frontend && npm run build"
 ]
 
