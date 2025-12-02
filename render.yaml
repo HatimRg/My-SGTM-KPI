@@ -5,8 +5,8 @@ services:
     env: docker
     repo: https://github.com/HatimRg/My-SGTM-KPI.git
     rootDir: backend
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    dockerfilePath: ../Dockerfile
+    dockerContext: ./backend
     envVars:
       - key: APP_ENV
         value: production
