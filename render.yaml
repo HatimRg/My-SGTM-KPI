@@ -1,11 +1,11 @@
 services:
-  # Backend PHP Service
+  # Backend PHP Sservices:
   - type: web
     name: mysafekpi-sgtm
     env: docker
     repo: https://github.com/HatimRg/My-SGTM-KPI.git
     rootDir: backend
-    dockerfilePath: ./Dockerfile
+ dockerfilePath: ./Dockerfile
     dockerContext: ./backend
     envVars:
       - key: APP_ENV
