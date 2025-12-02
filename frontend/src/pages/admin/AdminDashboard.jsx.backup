@@ -1,0 +1,486 @@
+import { useState, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
+import { dashboardService, exportService } from '../../services/api'
+import {
+  Users,
+  FolderKanban,
+  AlertTriangle,
+  GraduationCap,
+  ClipboardCheck,
+  TrendingUp,
+  TrendingDown,
+  Calendar,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  Shield,
+  Activity,
+  Target,
+  Leaf,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react'
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  ComposedChart,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar
+} from 'recharts'
+import toast from 'react-hot-toast'
+
+const COLORS = ['#dc2626', '#f59e0b', '#16a34a', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6']
+
+// HSE Themes
+const HSE_THEMES = [
+  {
+    id: 'safety',
+    name: 'Safety Performance',
+    icon: Shield,
+    color: 'red',
+    description: 'Accidents, incidents & safety rates'
+  },
+  {
+    id: 'training',
+    name: 'Training & Competence',
+    icon: GraduationCap,
+    color: 'blue',
+    description: 'Training hours, employees trained'
+  },
+  {
+    id: 'compliance',
+    name: 'Compliance & Audits',
+    icon: ClipboardCheck,
+    color: 'green',
+    description: 'Inspections, audits & compliance rates'
+  },
+  {
+    id: 'environmental',
+    name: 'Environmental Impact',
+    icon: Leaf,
+    color: 'emerald',
+    description: 'Resource consumption & waste'
+  },
+  {
+    id: 'overview',
+    name: 'Executive Overview',
+    icon: Activity,
+    color: 'purple',
+    description: 'Key metrics & trends'
+  }
+]
+
+export default function AdminDashboard() {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [year, setYear] = useState(new Date().getFullYear())
+  const [exporting, setExporting] = useState(false)
+  const [activeTheme, setActiveTheme] = useState('overview')
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [year])
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true)
+      const response = await dashboardService.getAdminDashboard(year)
+      setData(response.data.data)
+    } catch (error) {
+      toast.error('Failed to load dashboard data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleExport = async (type) => {
+    setExporting(true)
+    try {
+      const response = type === 'excel' 
+        ? await exportService.exportExcel({ year })
+        : await exportService.exportPdf({ year })
+      
+      const blob = new Blob([response.data], {
+        type: type === 'excel' 
+          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          : 'application/pdf'
+      })
+      
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `kpi_report_${year}.${type === 'excel' ? 'xlsx' : 'pdf'}`
+      a.click()
+      window.URL.revokeObjectURL(url)
+      toast.success(`Report exported successfully`)
+    } catch (error) {
+      toast.error('Failed to export report')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  // Weekly trends are now pre-formatted from backend
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-hse-primary" />
+      </div>
+    )
+  }
+
+  const stats = data?.stats || {}
+  const kpiSummary = data?.kpi_summary || {}
+  const weeklyTrends = data?.weekly_trends || []
+  const projectPerformance = data?.project_performance || []
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Admin Dashboard</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Overview of all HSE KPI metrics</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Year selector */}
+          <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2">
+            <Calendar className="w-4 h-4 text-gray-400" />
+            <select
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+              className="bg-transparent border-none focus:ring-0 text-sm font-medium dark:text-gray-200"
+            >
+              {[...Array(5)].map((_, i) => {
+                const y = new Date().getFullYear() - i
+                return <option key={y} value={y}>{y}</option>
+              })}
+            </select>
+          </div>
+          
+          {/* Export buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleExport('excel')}
+              disabled={exporting}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span className="hidden sm:inline">Excel</span>
+            </button>
+            <button
+              onClick={() => handleExport('pdf')}
+              disabled={exporting}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">PDF</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Total Projects"
+          value={stats.total_projects || 0}
+          subtitle={`${stats.active_projects || 0} active`}
+          icon={FolderKanban}
+          color="blue"
+        />
+        <StatCard
+          title="Total Users"
+          value={stats.total_users || 0}
+          subtitle={`${stats.active_users || 0} active`}
+          icon={Users}
+          color="green"
+        />
+        <StatCard
+          title="Pending Reports"
+          value={stats.pending_reports || 0}
+          subtitle="Awaiting approval"
+          icon={ClipboardCheck}
+          color="amber"
+        />
+        <StatCard
+          title="Total Reports"
+          value={stats.total_reports || 0}
+          subtitle={`In ${year}`}
+          icon={FileText}
+          color="purple"
+        />
+      </div>
+
+      {/* KPI Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <KpiCard
+          title="Total Accidents"
+          value={kpiSummary.total_accidents || 0}
+          icon={AlertTriangle}
+          color={kpiSummary.total_accidents > 0 ? 'red' : 'green'}
+          trend={kpiSummary.fatal_accidents > 0 ? `${kpiSummary.fatal_accidents} fatal` : 'No fatalities'}
+        />
+        <KpiCard
+          title="Trainings"
+          value={kpiSummary.total_trainings || 0}
+          icon={GraduationCap}
+          color="blue"
+          trend={`${kpiSummary.employees_trained || 0} trained`}
+        />
+        <KpiCard
+          title="Inspections"
+          value={kpiSummary.total_inspections || 0}
+          icon={ClipboardCheck}
+          color="green"
+        />
+        <KpiCard
+          title="Avg TF Rate"
+          value={Number(kpiSummary.avg_tf || 0).toFixed(2)}
+          icon={TrendingDown}
+          color="amber"
+          trend="Frequency Rate"
+        />
+        <KpiCard
+          title="Avg TG Rate"
+          value={Number(kpiSummary.avg_tg || 0).toFixed(2)}
+          icon={TrendingUp}
+          color="purple"
+          trend="Severity Rate"
+        />
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Weekly Trends Chart */}
+        <div className="card">
+          <div className="card-header">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Weekly KPI Trends</h3>
+          </div>
+          <div className="card-body">
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={weeklyTrends}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
+                  <XAxis dataKey="week_label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip 
+                    labelFormatter={(label) => `Week ${label.replace('S', '')}`}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="accidents"
+                    stroke="#dc2626"
+                    strokeWidth={2}
+                    dot={{ fill: '#dc2626', r: 3 }}
+                    name="Accidents"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="trainings"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={{ fill: '#3b82f6', r: 3 }}
+                    name="Trainings"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="inspections"
+                    stroke="#16a34a"
+                    strokeWidth={2}
+                    dot={{ fill: '#16a34a', r: 3 }}
+                    name="Inspections"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* TF/TG Rates Chart with Dual Y-Axis */}
+        <div className="card">
+          <div className="card-header">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">TF & TG Rates</h3>
+          </div>
+          <div className="card-body">
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={weeklyTrends}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
+                  <XAxis dataKey="week_label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                  <YAxis 
+                    yAxisId="left" 
+                    tick={{ fontSize: 12 }} 
+                    stroke="#f59e0b"
+                    label={{ value: 'TF Rate', angle: -90, position: 'insideLeft', style: { fill: '#f59e0b' } }}
+                  />
+                  <YAxis 
+                    yAxisId="right" 
+                    orientation="right" 
+                    tick={{ fontSize: 12 }} 
+                    stroke="#8b5cf6"
+                    label={{ value: 'TG Rate', angle: 90, position: 'insideRight', style: { fill: '#8b5cf6' } }}
+                  />
+                  <Tooltip 
+                    labelFormatter={(label) => `Week ${label.replace('S', '')}`}
+                    formatter={(value, name) => [Number(value).toFixed(4), name]}
+                  />
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="tf" fill="#f59e0b" name="TF Rate" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="right" dataKey="tg" fill="#8b5cf6" name="TG Rate" radius={[4, 4, 0, 0]} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Project Performance Table */}
+      <div className="card">
+        <div className="card-header flex items-center justify-between">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100">Project Performance</h3>
+          <Link to="/admin/projects" className="text-sm text-hse-primary hover:underline">
+            View all projects
+          </Link>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Project</th>
+                <th>Reports</th>
+                <th>Accidents</th>
+                <th>Trainings</th>
+                <th>Avg TF</th>
+                <th>Avg TG</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projectPerformance.slice(0, 5).map((project) => (
+                <tr key={project.id}>
+                  <td>
+                    <div>
+                      <p className="font-medium dark:text-gray-100">{project.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{project.code}</p>
+                    </div>
+                  </td>
+                  <td>{project.reports_count}</td>
+                  <td>
+                    <span className={project.total_accidents > 0 ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-green-600 dark:text-green-400'}>
+                      {project.total_accidents}
+                    </span>
+                  </td>
+                  <td>{project.total_trainings}</td>
+                  <td>{Number(project.avg_tf).toFixed(2)}</td>
+                  <td>{Number(project.avg_tg).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Recent Reports */}
+      <div className="card">
+        <div className="card-header">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100">Recent Submissions</h3>
+        </div>
+        <div className="divide-y divide-gray-100 dark:divide-gray-700">
+          {data?.recent_reports?.slice(0, 5).map((report) => (
+            <div key={report.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">
+                    {report.project?.name || 'Unknown Project'}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {report.report_month}/{report.report_year} • Submitted by {report.submitter?.name}
+                  </p>
+                </div>
+                <span className={`badge ${
+                  report.status === 'approved' ? 'badge-success' :
+                  report.status === 'submitted' ? 'badge-warning' :
+                  report.status === 'rejected' ? 'badge-danger' : 'badge-info'
+                }`}>
+                  {report.status}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function StatCard({ title, value, subtitle, icon: Icon, color }) {
+  const colors = {
+    blue: 'bg-blue-50 text-blue-600',
+    green: 'bg-green-50 text-green-600',
+    amber: 'bg-amber-50 text-amber-600',
+    purple: 'bg-purple-50 text-purple-600',
+    red: 'bg-red-50 text-red-600',
+  }
+
+  return (
+    <div className="stat-card">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{value}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{subtitle}</p>
+        </div>
+        <div className={`p-3 rounded-lg ${colors[color]}`}>
+          <Icon className="w-5 h-5" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function KpiCard({ title, value, icon: Icon, color, trend }) {
+  const colors = {
+    red: 'border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900/50',
+    green: 'border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/50',
+    blue: 'border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/50',
+    amber: 'border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/50',
+    purple: 'border-purple-200 bg-purple-50 dark:border-purple-700 dark:bg-purple-900/50',
+  }
+
+  const iconColors = {
+    red: 'text-red-600 dark:text-red-400',
+    green: 'text-green-600 dark:text-green-400',
+    blue: 'text-blue-600 dark:text-blue-400',
+    amber: 'text-amber-600 dark:text-amber-400',
+    purple: 'text-purple-600 dark:text-purple-400',
+  }
+
+  return (
+    <div className={`rounded-xl border-2 p-4 ${colors[color]}`}>
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className={`w-5 h-5 ${iconColors[color]}`} />
+        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{title}</span>
+      </div>
+      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
+      {trend && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{trend}</p>}
+    </div>
+  )
+}
