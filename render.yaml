@@ -1,22 +1,19 @@
 services:
   # Backend PHP Service
   - type: web
-    name: hse-kpi-backend
-    env: php
-    repo: https://github.com/YOUR_USERNAME/YOUR_REPO.git # <-- CHANGE THIS
-    rootDir: backend # <-- if your PHP files are in a subfolder, otherwise '.'
-    buildCommand: |
-      composer install --no-dev --optimize-autoloader
-    startCommand: |
-      # Use Apache for production
-      apache2-foreground
+    name: mysafekpi-sgtm
+    env: docker
+    repo: https://github.com/HatimRg/My-SGTM-KPI.git
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     envVars:
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
         value: false
       - key: DB_CONNECTION
-        value: pgsql # Render uses PostgreSQL. Change to 'mysql' if you use MySQL addon.
+        value: pgsql
       - key: DB_HOST
         fromDatabase:
           name: hse-kpi-db
@@ -38,7 +35,7 @@ services:
           name: hse-kpi-db
           property: password
       - key: CORS_ALLOWED_ORIGINS
-        value: https://hse-kpi-frontend.onrender.com # <-- Change after creating frontend service
+        value: https://hse-kpi-frontend.onrender.com
     disk:
       name: hse-kpi-disk
       mountPath: /var/www/html/storage
@@ -48,7 +45,7 @@ services:
   - type: web
     name: hse-kpi-frontend
     env: static
-    repo: https://github.com/YOUR_USERNAME/YOUR_REPO.git # <-- SAME REPO
+    repo: https://github.com/HatimRg/My-SGTM-KPI.git # <-- SAME REPO
     rootDir: frontend
     buildCommand: |
       npm install
