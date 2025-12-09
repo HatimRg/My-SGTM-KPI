@@ -6,10 +6,10 @@ use Monolog\Handler\SyslogUdpHandler;
 
 return [
     'default' => env('LOG_CHANNEL', 'stack'),
-    'deprecations' => [
-        'channel' => env('LOG_DEPRECATIONS_CHANNEL', 'null'),
-        'trace' => false,
-    ],
+    
+    // Deprecations logging - set to null to suppress PHP 8.x deprecation warnings
+    'deprecations' => null,
+    
     'channels' => [
         'stack' => [
             'driver' => 'stack',
@@ -33,6 +33,17 @@ return [
         ],
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
+        ],
+        'deprecations' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/deprecations.log'),
+            'level' => 'warning',
+        ],
+        'security' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/security.log'),
+            'level' => 'warning',
+            'days' => 30,
         ],
     ],
 ];

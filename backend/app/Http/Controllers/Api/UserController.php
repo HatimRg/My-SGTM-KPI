@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
@@ -72,7 +71,7 @@ class UserController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'password' => $request->password, // Will be hashed by model mutator
             'role' => $request->role,
             'phone' => $request->phone,
             'is_active' => $request->get('is_active', true),
@@ -117,7 +116,7 @@ class UserController extends Controller
         $data = $request->only(['name', 'email', 'role', 'phone', 'is_active']);
 
         if ($request->filled('password')) {
-            $data['password'] = Hash::make($request->password);
+            $data['password'] = $request->password; // Will be hashed by model mutator
         }
 
         $user->update($data);

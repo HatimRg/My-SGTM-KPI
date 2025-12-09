@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/authStore'
 import DatePicker from '../../components/ui/DatePicker'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import Select from '../../components/ui/Select'
+import AutocompleteInput from '../../components/ui/AutocompleteInput'
 import {
   Users,
   UserPlus,
@@ -31,6 +32,7 @@ export default function Workers() {
   const [workers, setWorkers] = useState([])
   const [projects, setProjects] = useState([])
   const [entreprises, setEntreprises] = useState([])
+  const [fonctions, setFonctions] = useState([])
   const [statistics, setStatistics] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -82,15 +84,17 @@ export default function Workers() {
   // Get user's accessible projects
   const fetchInitialData = async () => {
     try {
-      const [projectsRes, entreprisesRes, statsRes] = await Promise.all([
+      const [projectsRes, entreprisesRes, fonctionsRes, statsRes] = await Promise.all([
         projectService.getMyProjects ? projectService.getMyProjects() : projectService.getAll(),
         workerService.getEntreprises(),
+        workerService.getFonctions(),
         workerService.getStatistics(),
       ])
       // Filter projects user has access to
       const projectData = projectsRes.data.data || []
       setProjects(Array.isArray(projectData) ? projectData : (projectData.data || []))
       setEntreprises(entreprisesRes.data.data || [])
+      setFonctions(fonctionsRes.data.data || [])
       setStatistics(statsRes.data.data)
     } catch (error) {
       console.error('Failed to load initial data:', error)
@@ -589,11 +593,12 @@ export default function Workers() {
                 </div>
                 <div>
                   <label className="label">{t('workers.fonction')}</label>
-                  <input
-                    type="text"
+                  <AutocompleteInput
                     value={formData.fonction}
-                    onChange={(e) => setFormData({ ...formData, fonction: e.target.value })}
-                    className="input"
+                    onChange={(value) => setFormData({ ...formData, fonction: value })}
+                    suggestions={fonctions}
+                    placeholder={t('workers.fonctionPlaceholder') || 'Chef de chantier, Ouvrier...'}
+                    icon={<HardHat className="w-4 h-4" />}
                   />
                 </div>
               </div>
@@ -606,7 +611,20 @@ export default function Workers() {
                     onChange={(date) => setFormData({ ...formData, date_naissance: date })}
                     placeholder={t('workers.selectDate')}
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('workers.minAge')}</p>
+                  {formData.date_naissance && (() => {
+                    const birthDate = new Date(formData.date_naissance)
+                    const today = new Date()
+                    const age = today.getFullYear() - birthDate.getFullYear()
+                    const monthDiff = today.getMonth() - birthDate.getMonth()
+                    const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age
+                    const isUnder18 = actualAge < 18
+                    return isUnder18 ? (
+                      <p className="text-xs text-red-600 dark:text-red-400 font-semibold mt-1 flex items-center gap-1">
+                        <span className="inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                        {t('workers.minAge')}
+                      </p>
+                    ) : null
+                  })()}
                 </div>
                 <div>
                   <label className="label">{t('workers.dateEntree')}</label>
@@ -621,17 +639,14 @@ export default function Workers() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="label">{t('workers.entreprise')}</label>
-                  <Select
+                  <AutocompleteInput
                     value={formData.entreprise}
-                    onChange={(e) => setFormData({ ...formData, entreprise: e.target.value })}
-                  >
-                    <option value="">{t('common.select')}</option>
-                    {entreprises.map((entreprise) => (
-                      <option key={entreprise} value={entreprise}>
-                        {entreprise}
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={(value) => setFormData({ ...formData, entreprise: value })}
+                    suggestions={entreprises}
+                    placeholder={t('workers.entreprisePlaceholder') || 'SGTM, Sous-traitant...'}
+                    defaultValue="SGTM"
+                    icon={<Building2 className="w-4 h-4" />}
+                  />
                 </div>
                 <div>
                   <label className="label">{t('workers.projet')}</label>

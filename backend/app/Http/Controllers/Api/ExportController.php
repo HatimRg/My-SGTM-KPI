@@ -8,9 +8,11 @@ use App\Models\Project;
 use App\Models\User;
 use App\Exports\KpiReportsExport;
 use App\Exports\AdminReportExport;
+use App\Exports\HseWeeklyExport;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 
 class ExportController extends Controller
 {
@@ -218,5 +220,35 @@ class ExportController extends Controller
         $filename = 'project_' . $project->code . '_' . $year . '_report.pdf';
 
         return $pdf->download($filename);
+    }
+
+    /**
+     * Export HSE Weekly Report to Excel (11 sheets as per SGTM specification)
+     * Admin only
+     */
+    public function exportHseWeekly(Request $request)
+    {
+        $request->validate([
+            'project_id' => 'required|exists:projects,id',
+            'week' => 'required|integer|min:1|max:53',
+            'year' => 'required|integer|min:2020|max:2100',
+        ]);
+
+        $user = $request->user();
+
+        // Only admins can access this export
+        if (!$user->isAdmin()) {
+            return $this->error('Access denied. Admin role required.', 403);
+        }
+
+        $project = Project::findOrFail($request->project_id);
+        $week = (int) $request->week;
+        $year = (int) $request->year;
+
+        // Generate filename
+        $weekStart = Carbon::now()->setISODate($year, $week)->startOfWeek();
+        $filename = 'HSE_Report_' . $project->code . '_S' . str_pad($week, 2, '0', STR_PAD_LEFT) . '_' . $year . '.xlsx';
+
+        return Excel::download(new HseWeeklyExport($project, $week, $year), $filename);
     }
 }

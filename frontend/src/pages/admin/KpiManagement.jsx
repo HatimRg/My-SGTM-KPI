@@ -14,9 +14,11 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Loader2
+  Loader2,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react'
-import { kpiService, projectService } from '../../services/api'
+import { kpiService, projectService, exportService } from '../../services/api'
 import { useLanguage } from '../../i18n'
 import { Modal } from '../../components/ui'
 import DailyKpiPreview from '../../components/kpi/DailyKpiPreview'
@@ -34,6 +36,15 @@ export default function KpiManagement() {
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [actionLoading, setActionLoading] = useState(null)
+  
+  // Export modal state
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [exportLoading, setExportLoading] = useState(false)
+  const [exportParams, setExportParams] = useState({
+    project_id: '',
+    week: new Date().getWeek ? new Date().getWeek() : Math.ceil((new Date() - new Date(new Date().getFullYear(), 0, 1)) / 604800000),
+    year: new Date().getFullYear()
+  })
   
   const [filters, setFilters] = useState({
     status: '',
@@ -141,6 +152,54 @@ export default function KpiManagement() {
     setShowRejectModal(true)
   }
 
+  // HSE Weekly Export handler
+  const handleExportHseWeekly = async () => {
+    if (!exportParams.project_id) {
+      toast.error(t('hseExport.noProject'))
+      return
+    }
+    if (!exportParams.week || !exportParams.year) {
+      toast.error(t('hseExport.noWeek'))
+      return
+    }
+
+    try {
+      setExportLoading(true)
+      const response = await exportService.exportHseWeekly({
+        project_id: exportParams.project_id,
+        week: exportParams.week,
+        year: exportParams.year
+      })
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      const project = projects.find(p => p.id == exportParams.project_id)
+      const filename = `HSE_Report_${project?.code || 'project'}_S${String(exportParams.week).padStart(2, '0')}_${exportParams.year}.xlsx`
+      link.setAttribute('download', filename)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+      
+      toast.success(t('hseExport.success'))
+      setShowExportModal(false)
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error(error.response?.data?.message || t('hseExport.error'))
+    } finally {
+      setExportLoading(false)
+    }
+  }
+
+  // Generate week options (1-53)
+  const weekOptions = Array.from({ length: 53 }, (_, i) => i + 1)
+  
+  // Generate year options (current year -2 to +1)
+  const currentYear = new Date().getFullYear()
+  const yearOptions = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1]
+
   const getStatusBadge = (status) => {
     const styles = {
       draft: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200',
@@ -175,6 +234,13 @@ export default function KpiManagement() {
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">Approuver ou rejeter les rapports soumis</p>
         </div>
+        <button
+          onClick={() => setShowExportModal(true)}
+          className="btn-primary flex items-center gap-2"
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          {t('hseExport.exportButton')}
+        </button>
       </div>
 
       {/* Filters */}
@@ -681,6 +747,126 @@ export default function KpiManagement() {
               )}
             </div>
         )}
+      </Modal>
+
+      {/* HSE Weekly Export Modal */}
+      <Modal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        title={t('hseExport.title')}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <FileSpreadsheet className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            <div>
+              <p className="font-medium text-blue-900 dark:text-blue-100">{t('hseExport.exportButton')}</p>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                {t('hseExport.description')}
+              </p>
+            </div>
+          </div>
+
+          {/* Project Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('hseExport.selectProject')} *
+            </label>
+            <select
+              value={exportParams.project_id}
+              onChange={(e) => setExportParams({ ...exportParams, project_id: e.target.value })}
+              className="input w-full"
+            >
+              <option value="">{t('hseExport.selectProject')}</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name} ({project.code})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Week and Year Selection */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t('hseExport.week')} *
+              </label>
+              <select
+                value={exportParams.week}
+                onChange={(e) => setExportParams({ ...exportParams, week: parseInt(e.target.value) })}
+                className="input w-full"
+              >
+                {weekOptions.map((week) => (
+                  <option key={week} value={week}>
+                    {t('hseExport.week')} {week}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t('hseExport.year')} *
+              </label>
+              <select
+                value={exportParams.year}
+                onChange={(e) => setExportParams({ ...exportParams, year: parseInt(e.target.value) })}
+                className="input w-full"
+              >
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Info about sheets */}
+          <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+            <p className="font-medium mb-1">{t('hseExport.sheets.projectInfo')}:</p>
+            <div className="grid grid-cols-2 gap-1">
+              <span>• {t('hseExport.sheets.projectInfo')}</span>
+              <span>• {t('hseExport.sheets.hseReporting')}</span>
+              <span>• {t('hseExport.sheets.incidents')}</span>
+              <span>• {t('hseExport.sheets.deviationsSgtm')}</span>
+              <span>• {t('hseExport.sheets.deviationsSt')}</span>
+              <span>• {t('hseExport.sheets.categories')}</span>
+              <span>• {t('hseExport.sheets.certifications')}</span>
+              <span>• {t('hseExport.sheets.personnel')}</span>
+              <span>• {t('hseExport.sheets.training')}</span>
+              <span>• {t('hseExport.sheets.inspections')}</span>
+              <span>• {t('hseExport.sheets.workPermits')}</span>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-4 border-t dark:border-gray-700">
+            <button
+              onClick={() => setShowExportModal(false)}
+              className="btn-secondary flex-1"
+              disabled={exportLoading}
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              onClick={handleExportHseWeekly}
+              disabled={exportLoading || !exportParams.project_id}
+              className="btn-primary flex-1 flex items-center justify-center gap-2"
+            >
+              {exportLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {t('hseExport.exporting')}
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  {t('hseExport.exportButton')}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   )

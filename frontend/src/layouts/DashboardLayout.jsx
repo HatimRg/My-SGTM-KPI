@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import useThemeStore from '../stores/themeStore'
 import { useLanguage } from '../i18n'
@@ -46,20 +46,26 @@ export default function DashboardLayout() {
   const { isDark, toggleTheme } = useThemeStore()
   const { t } = useLanguage()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const isUserAdmin = isAdmin()
 
-  // Fetch notifications
+  // Fetch notifications (only when user is authenticated)
   useEffect(() => {
+    if (!user) return // Don't fetch if user is not logged in
+    
     const fetchNotifications = async () => {
       try {
         const countRes = await notificationService.getUnreadCount()
-        setUnreadCount(countRes.data.data.count)
+        setUnreadCount(countRes.data?.data?.count || 0)
         
         const notifRes = await notificationService.getAll({ per_page: 5 })
-        setNotifications(notifRes.data.data || [])
+        setNotifications(notifRes.data?.data || [])
       } catch (error) {
-        console.error('Error fetching notifications:', error)
+        // Silently handle auth errors (403/401) - user might be logging out
+        if (error.response?.status !== 403 && error.response?.status !== 401) {
+          console.error('Error fetching notifications:', error)
+        }
       }
     }
     fetchNotifications()
@@ -67,7 +73,7 @@ export default function DashboardLayout() {
     // Poll for new notifications every 30 seconds
     const interval = setInterval(fetchNotifications, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [user])
 
   const handleLogout = async () => {
     await logout()
@@ -165,7 +171,14 @@ export default function DashboardLayout() {
     { to: '/admin/users', icon: Users, label: t('users.title') },
     { to: '/admin/projects', icon: FolderKanban, label: t('projects.title') },
     { to: '/admin/kpi', icon: ClipboardCheck, label: t('kpi.title') },
-    { to: '/qualified-personnel', icon: HardHat, label: t('qualifiedPersonnel.navLabel') },
+    { to: '/admin/kpi-history', icon: History, label: t('kpi.history') },
+    { to: '/admin/training', icon: FileText, label: t('training.navLabel') },
+    { to: '/admin/awareness', icon: Megaphone, label: t('awareness.navLabel') },
+    { to: '/admin/sor', icon: AlertTriangle, label: t('sor.title') },
+    { to: '/admin/work-permits', icon: ClipboardList, label: t('workPermits.title') },
+    { to: '/admin/inspections', icon: ClipboardCheck, label: t('inspections.title') },
+    { to: '/admin/workers', icon: HardHat, label: t('workers.title') },
+    { to: '/admin/qualified-personnel', icon: HardHat, label: t('qualifiedPersonnel.navLabel') },
   ]
 
   const userNavItems = [
@@ -233,7 +246,10 @@ export default function DashboardLayout() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-3">
+            <div 
+              className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => navigate(isUserAdmin ? '/admin' : '/dashboard')}
+            >
               <img 
                 src={appLogo} 
                 alt="App Logo" 
@@ -256,7 +272,7 @@ export default function DashboardLayout() {
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-thin">
             <div className="mb-4">
               <span className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                {isUserAdmin ? t('dashboard.adminTitle') : t('nav.dashboard')}
+                {isUserAdmin ? 'ADMINISTRATION' : t('nav.dashboard')}
               </span>
             </div>
             
@@ -510,9 +526,11 @@ export default function DashboardLayout() {
           </div>
         </header>
 
-        {/* Page content */}
+        {/* Page content with animation */}
         <main className="p-4 sm:p-6 lg:p-8">
-          <Outlet />
+          <div key={location.pathname} className="animate-fade-in">
+            <Outlet />
+          </div>
         </main>
       </div>
 

@@ -459,6 +459,135 @@ class KpiReportController extends Controller
     }
 
     /**
+     * Get auto-populated data for KPI report from related sources
+     * Fetches data from SOR reports, trainings, awareness sessions, work permits, etc.
+     */
+    public function getAutoPopulatedData(Request $request)
+    {
+        $request->validate([
+            'project_id' => 'required|exists:projects,id',
+            'week' => 'required|integer|min:1|max:53',
+            'year' => 'required|integer|min:2020|max:2100',
+        ]);
+
+        $projectId = $request->project_id;
+        $week = $request->week;
+        $year = $request->year;
+
+        $dates = WeekHelper::getWeekDates($week, $year);
+        $startDate = $dates['start']->format('Y-m-d');
+        $endDate = $dates['end']->format('Y-m-d');
+
+        // Get SOR reports (deviations) for the week
+        $sorReports = \App\Models\SorReport::where('project_id', $projectId)
+            ->whereBetween('observation_date', [$startDate, $endDate])
+            ->get();
+
+        $deviationsCount = $sorReports->count();
+        $closedDeviations = $sorReports->where('status', 'closed')->count();
+
+        // Get trainings for the week
+        $trainings = \App\Models\Training::where('project_id', $projectId)
+            ->whereBetween('training_date', [$startDate, $endDate])
+            ->get();
+
+        $trainingHours = $trainings->sum('training_hours');
+        $employeesTrained = $trainings->sum('participants');
+        $trainingsCount = $trainings->count();
+
+        // Get awareness sessions (sensibilisation) for the week
+        $awarenessSessions = \App\Models\AwarenessSession::where('project_id', $projectId)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->get();
+
+        $sensibilisationCount = $awarenessSessions->count();
+        $sensibilisationHours = $awarenessSessions->sum('session_hours');
+
+        // Get work permits for the week
+        $workPermits = \App\Models\WorkPermit::where('project_id', $projectId)
+            ->where('week_number', $week)
+            ->where('year', $year)
+            ->count();
+
+        // Get inspections for the week
+        $inspections = \App\Models\Inspection::where('project_id', $projectId)
+            ->whereBetween('inspection_date', [$startDate, $endDate])
+            ->get();
+
+        $inspectionsCount = $inspections->count();
+
+        // Get workers count (effectif)
+        $workersCount = \App\Models\Worker::where('project_id', $projectId)
+            ->where('is_active', true)
+            ->count();
+
+        // Get daily snapshots if they exist
+        $dailySnapshots = DailyKpiSnapshot::where('project_id', $projectId)
+            ->whereBetween('entry_date', [$startDate, $endDate])
+            ->get();
+
+        // Sum up daily data if available
+        $dailyTotals = [
+            'effectif' => $dailySnapshots->sum('effectif') ?: $workersCount,
+            'induction' => $dailySnapshots->sum('induction') ?: 0,
+            'releve_ecarts' => $dailySnapshots->sum('releve_ecarts') ?: $deviationsCount,
+            'sensibilisation' => $dailySnapshots->sum('sensibilisation') ?: $sensibilisationCount,
+            'presquaccident' => $dailySnapshots->sum('presquaccident') ?: 0,
+            'premiers_soins' => $dailySnapshots->sum('premiers_soins') ?: 0,
+            'accidents' => $dailySnapshots->sum('accidents') ?: 0,
+            'jours_arret' => $dailySnapshots->sum('jours_arret') ?: 0,
+            'inspections' => $dailySnapshots->sum('inspections') ?: $inspectionsCount,
+            'heures_formation' => $dailySnapshots->sum('heures_formation') ?: $trainingHours,
+            'permis_travail' => $dailySnapshots->sum('permis_travail') ?: $workPermits,
+            'mesures_disciplinaires' => $dailySnapshots->sum('mesures_disciplinaires') ?: 0,
+            'conformite_hse' => $dailySnapshots->avg('conformite_hse') ?: 0,
+            'conformite_medicale' => $dailySnapshots->avg('conformite_medicale') ?: 0,
+            'consommation_eau' => $dailySnapshots->sum('consommation_eau') ?: 0,
+            'consommation_electricite' => $dailySnapshots->sum('consommation_electricite') ?: 0,
+            'heures_travaillees' => $dailySnapshots->sum('heures_travaillees') ?: 0,
+        ];
+
+        return $this->success([
+            'auto_populated' => true,
+            'week' => $week,
+            'year' => $year,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'data' => [
+                // Map to KPI report fields
+                'hours_worked' => $dailyTotals['effectif'],
+                'employees_trained' => $employeesTrained ?: $dailyTotals['induction'],
+                'unsafe_conditions_reported' => $dailyTotals['releve_ecarts'],
+                'toolbox_talks' => $dailyTotals['sensibilisation'],
+                'near_misses' => $dailyTotals['presquaccident'],
+                'first_aid_cases' => $dailyTotals['premiers_soins'],
+                'accidents' => $dailyTotals['accidents'],
+                'lost_workdays' => $dailyTotals['jours_arret'],
+                'inspections_completed' => $dailyTotals['inspections'],
+                'training_hours' => $dailyTotals['heures_formation'],
+                'work_permits' => $dailyTotals['permis_travail'],
+                'corrective_actions' => $dailyTotals['mesures_disciplinaires'],
+                'hse_compliance_rate' => round($dailyTotals['conformite_hse'], 2),
+                'medical_compliance_rate' => round($dailyTotals['conformite_medicale'], 2),
+                'water_consumption' => $dailyTotals['consommation_eau'],
+                'electricity_consumption' => $dailyTotals['consommation_electricite'],
+                'findings_open' => $deviationsCount - $closedDeviations,
+                'findings_closed' => $closedDeviations,
+                'trainings_conducted' => $trainingsCount,
+            ],
+            'sources' => [
+                'sor_reports' => $deviationsCount,
+                'trainings' => $trainingsCount,
+                'awareness_sessions' => $sensibilisationCount,
+                'work_permits' => $workPermits,
+                'inspections' => $inspectionsCount,
+                'workers' => $workersCount,
+                'daily_snapshots' => $dailySnapshots->count(),
+            ],
+        ]);
+    }
+
+    /**
      * Notify admins of report submission
      */
     private function notifyAdminsOfSubmission(KpiReport $report, Project $project)

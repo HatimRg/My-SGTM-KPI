@@ -327,4 +327,20 @@ class WorkerController extends Controller
 
         return $this->success($entreprises);
     }
+
+    /**
+     * Get unique fonctions (job titles) for autocomplete
+     */
+    public function fonctions(Request $request)
+    {
+        $this->checkAccess($request);
+
+        $fonctions = Worker::whereNotNull('fonction')
+            ->where('fonction', '!=', '')
+            ->distinct()
+            ->orderBy('fonction')
+            ->pluck('fonction');
+
+        return $this->success($fonctions);
+    }
 }

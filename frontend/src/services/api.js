@@ -3,6 +3,39 @@ import toast from 'react-hot-toast'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
+// Simple in-memory cache for GET requests
+const requestCache = new Map()
+const CACHE_TTL = 30000 // 30 seconds
+const pendingRequests = new Map()
+
+// Cache helper functions
+const getCacheKey = (url, params) => {
+  return `${url}:${JSON.stringify(params || {})}`
+}
+
+const getFromCache = (key) => {
+  const cached = requestCache.get(key)
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data
+  }
+  requestCache.delete(key)
+  return null
+}
+
+const setCache = (key, data) => {
+  requestCache.set(key, { data, timestamp: Date.now() })
+  // Limit cache size
+  if (requestCache.size > 100) {
+    const firstKey = requestCache.keys().next().value
+    requestCache.delete(firstKey)
+  }
+}
+
+// Clear cache on mutations
+export const clearApiCache = () => {
+  requestCache.clear()
+}
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -12,10 +45,11 @@ const api = axios.create({
   timeout: 30000,
 })
 
-// Request interceptor
+// Request interceptor with deduplication
 api.interceptors.request.use(
   (config) => {
-    // Token is already set in authStore when logging in
+    // Add request timestamp for performance tracking
+    config.metadata = { startTime: Date.now() }
     return config
   },
   (error) => {
@@ -99,9 +133,18 @@ export const awarenessService = {
 
 // Response interceptor
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Log slow requests in development
+    if (response.config.metadata) {
+      const duration = Date.now() - response.config.metadata.startTime
+      if (duration > 2000) {
+        console.warn(`Slow API request: ${response.config.url} took ${duration}ms`)
+      }
+    }
+    return response
+  },
   (error) => {
-    const { response } = error
+    const { response, config } = error
 
     if (response) {
       switch (response.status) {
@@ -120,11 +163,19 @@ api.interceptors.response.use(
           // Validation errors - handle in component
           break
         case 500:
+          console.error('Server error:', response.data)
           toast.error('Server error. Please try again later.')
+          break
+        case 502:
+        case 503:
+        case 504:
+          toast.error('Server is temporarily unavailable. Please try again.')
           break
         default:
           toast.error(response.data?.message || 'An error occurred')
       }
+    } else if (error.code === 'ECONNABORTED') {
+      toast.error('Request timed out. Please try again.')
     } else {
       toast.error('Network error. Please check your connection.')
     }
@@ -132,6 +183,35 @@ api.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+// Cached GET helper - deduplicates and caches requests
+export const cachedGet = async (url, params = {}, ttl = CACHE_TTL) => {
+  const cacheKey = getCacheKey(url, params)
+  
+  // Check cache first
+  const cached = getFromCache(cacheKey)
+  if (cached) {
+    return { data: cached, fromCache: true }
+  }
+  
+  // Check if request is already pending (deduplication)
+  if (pendingRequests.has(cacheKey)) {
+    return pendingRequests.get(cacheKey)
+  }
+  
+  // Make the request
+  const promise = api.get(url, { params }).then(response => {
+    setCache(cacheKey, response.data)
+    pendingRequests.delete(cacheKey)
+    return response
+  }).catch(error => {
+    pendingRequests.delete(cacheKey)
+    throw error
+  })
+  
+  pendingRequests.set(cacheKey, promise)
+  return promise
+}
 
 export default api
 
@@ -147,12 +227,14 @@ export const authService = {
 }
 
 export const dashboardService = {
-  getAdminDashboard: (year) => api.get('/dashboard/admin', { params: { year } }),
-  getUserDashboard: (year) => api.get('/dashboard/user', { params: { year } }),
-  getAccidentCharts: (params) => api.get('/dashboard/charts/accidents', { params }),
-  getTrainingCharts: (params) => api.get('/dashboard/charts/trainings', { params }),
-  getInspectionCharts: (params) => api.get('/dashboard/charts/inspections', { params }),
-  getRateCharts: (params) => api.get('/dashboard/charts/rates', { params }),
+  // Dashboard data is cached since it's expensive to compute and doesn't change often
+  getAdminDashboard: (year) => cachedGet('/dashboard/admin', { year }),
+  getUserDashboard: (year) => cachedGet('/dashboard/user', { year }),
+  // Charts are also cached
+  getAccidentCharts: (params) => cachedGet('/dashboard/charts/accidents', params),
+  getTrainingCharts: (params) => cachedGet('/dashboard/charts/trainings', params),
+  getInspectionCharts: (params) => cachedGet('/dashboard/charts/inspections', params),
+  getRateCharts: (params) => cachedGet('/dashboard/charts/rates', params),
 }
 
 export const userService = {
@@ -200,6 +282,7 @@ export const kpiService = {
   delete: (id) => api.delete(`/kpi-reports/${id}`),
   approve: (id) => api.post(`/kpi-reports/${id}/approve`),
   reject: (id, reason) => api.post(`/kpi-reports/${id}/reject`, { reason }),
+  getAutoPopulatedData: (params) => api.get('/kpi-reports/auto-populate', { params }),
 }
 
 export const notificationService = {
@@ -221,6 +304,7 @@ export const exportService = {
   exportAwareness: (params) => api.get('/awareness-sessions/export', { params, responseType: 'blob' }),
   exportTrainings: (params) => api.get('/trainings/export', { params, responseType: 'blob' }),
   exportKpiHistory: (params) => api.get('/kpi-reports/export', { params, responseType: 'blob' }),
+  exportHseWeekly: (params) => api.get('/export/hse-weekly', { params, responseType: 'blob' }),
 }
 
 export const sorService = {
@@ -324,6 +408,7 @@ export const workerService = {
   delete: (id) => api.delete(`/workers/${id}`),
   getStatistics: () => api.get('/workers/statistics'),
   getEntreprises: () => api.get('/workers/entreprises'),
+  getFonctions: () => api.get('/workers/fonctions'),
   downloadTemplate: () => api.get('/workers/template', { responseType: 'blob' }),
   export: (params) => api.get('/workers/export', { params, responseType: 'blob' }),
   import: (formData) => api.post('/workers/import', formData, {

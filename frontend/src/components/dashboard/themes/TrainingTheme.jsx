@@ -56,12 +56,23 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
   const t = useTranslation()
 
   // Training metrics from real data
-  const trainingMetrics = useMemo(() => ({
-    totalTrainings: trainingData?.total || kpiSummary?.total_trainings || 0,
-    employeesTrained: trainingData?.total_participants || kpiSummary?.employees_trained || 0,
-    trainingHours: trainingData?.total_hours || kpiSummary?.training_hours || 0,
-    completionRate: 95 // Fixed target rate
-  }), [kpiSummary, trainingData])
+  const trainingMetrics = useMemo(() => {
+    const totalTrainings = trainingData?.total || kpiSummary?.total_trainings || 0
+    const employeesTrained = trainingData?.total_participants || kpiSummary?.employees_trained || 0
+    const trainingHours = trainingData?.total_hours || kpiSummary?.training_hours || 0
+    const plannedTrainings = kpiSummary?.total_trainings_planned || 0
+
+    const completionRate = plannedTrainings > 0
+      ? Math.round((totalTrainings / plannedTrainings) * 100)
+      : null
+
+    return {
+      totalTrainings,
+      employeesTrained,
+      trainingHours,
+      completionRate,
+    }
+  }, [kpiSummary, trainingData])
 
   // Awareness metrics from real data
   const awarenessMetrics = useMemo(() => ({
@@ -166,7 +177,7 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
         />
         <MetricCard
           title={t('dashboard.training.completionRate')}
-          value={`${trainingMetrics.completionRate}%`}
+          value={trainingMetrics.completionRate !== null ? `${trainingMetrics.completionRate}%` : '—'}
           icon={CheckCircle}
           color="amber"
           trend={`${t('dashboard.training.target')}: 95%`}

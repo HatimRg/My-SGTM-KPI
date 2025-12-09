@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import useThemeStore from './stores/themeStore'
 import { Loader2 } from 'lucide-react'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // Layouts (kept eager as they are lightweight wrappers)
 import AuthLayout from './layouts/AuthLayout'
@@ -105,14 +106,15 @@ function App() {
   }, [initTheme])
 
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
-          <Loader2 className="w-8 h-8 animate-spin text-hse-primary" />
-        </div>
-      }
-    >
-      <Routes>
+    <ErrorBoundary>
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
+            <Loader2 className="w-8 h-8 animate-spin text-hse-primary" />
+          </div>
+        }
+      >
+        <Routes>
       {/* Auth Routes */}
       <Route element={<AuthLayout />}>
         <Route
@@ -146,6 +148,14 @@ function App() {
         <Route path="/admin/projects" element={<ProjectManagement />} />
         <Route path="/admin/projects/:id" element={<ProjectDetails />} />
         <Route path="/admin/kpi" element={<KpiManagement />} />
+        <Route path="/admin/kpi-history" element={<KpiHistory />} />
+        <Route path="/admin/training" element={<Training />} />
+        <Route path="/admin/awareness" element={<AwarenessSession />} />
+        <Route path="/admin/sor" element={<SorSubmission />} />
+        <Route path="/admin/work-permits" element={<WorkPermits />} />
+        <Route path="/admin/inspections" element={<Inspections />} />
+        <Route path="/admin/workers" element={<Workers />} />
+        <Route path="/admin/qualified-personnel" element={<QualifiedPersonnel />} />
         <Route path="/admin/profile" element={<Profile />} />
       </Route>
 
@@ -243,12 +253,13 @@ function App() {
       </Route>
 
       {/* Redirects */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      
-      {/* 404 */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-    </Suspense>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        
+        {/* 404 */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      </Suspense>
+    </ErrorBoundary>
   )
 }
 

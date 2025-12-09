@@ -14,11 +14,6 @@ import {
   Bar,
   LineChart,
   Line,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -54,16 +49,26 @@ const MetricCard = memo(function MetricCard({ title, value, icon: Icon, color, t
   )
 })
 
-const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends, projectPerformance }) {
+const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends, projectPerformance, inspectionData, sorData }) {
   const t = useTranslation()
 
   // Compliance metrics
-  const complianceMetrics = useMemo(() => ({
-    totalInspections: kpiSummary?.total_inspections || 0,
-    hseCompliance: Number(kpiSummary?.avg_hse_compliance || 0).toFixed(1),
-    medicalCompliance: kpiSummary?.medical_compliance || 85,
-    auditScore: kpiSummary?.audit_score || 88
-  }), [kpiSummary])
+  const complianceMetrics = useMemo(() => {
+    const totalInspections = kpiSummary?.total_inspections || 0
+    const hseCompliance = Number(kpiSummary?.avg_hse_compliance || 0).toFixed(1)
+    const medicalCompliance = Number(kpiSummary?.avg_medical_compliance || 0).toFixed(1)
+
+    const totalSor = sorData?.stats?.total || 0
+    const closedSor = sorData?.stats?.closed || 0
+    const auditScore = totalSor > 0 ? Math.round((closedSor / totalSor) * 100) : null
+
+    return {
+      totalInspections,
+      hseCompliance,
+      medicalCompliance,
+      auditScore,
+    }
+  }, [kpiSummary, sorData])
 
   // Compliance trends data
   const complianceTrends = useMemo(() => {
@@ -73,34 +78,16 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
     })) || []
   }, [weeklyTrends])
 
-  // Compliance radar data
-  const radarData = useMemo(() => [
-    { subject: 'HSE', value: Number(complianceMetrics.hseCompliance) || 0, fullMark: 100 },
-    { subject: 'Medical', value: complianceMetrics.medicalCompliance, fullMark: 100 },
-    { subject: 'Inspections', value: 90, fullMark: 100 },
-    { subject: 'Documentation', value: 88, fullMark: 100 },
-    { subject: 'Training', value: 92, fullMark: 100 },
-    { subject: 'Equipment', value: 85, fullMark: 100 }
-  ], [complianceMetrics])
-
+  
   // Audit findings (simulated)
   const auditFindings = useMemo(() => {
-    return weeklyTrends?.slice(0, 8).map((w, i) => ({
-      week: w.week_label,
-      critical: Math.floor(Math.random() * 2),
-      major: Math.floor(Math.random() * 4),
-      minor: Math.floor(Math.random() * 8) + 2
+    return sorData?.by_category?.map((item) => ({
+      category: item.label || item.category,
+      count: item.count || 0,
     })) || []
-  }, [weeklyTrends])
+  }, [sorData])
 
-  // Compliance by project
-  const complianceByProject = useMemo(() => {
-    return projectPerformance?.slice(0, 6).map(p => ({
-      name: p.name?.length > 12 ? p.name.substring(0, 12) + '...' : p.name,
-      compliance: Math.min(100, 70 + Math.floor(Math.random() * 30))
-    })) || []
-  }, [projectPerformance])
-
+  
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Compliance Metrics Grid */}
@@ -126,13 +113,15 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
           color="purple"
           trend={t('dashboard.compliance.healthChecks')}
         />
-        <MetricCard
-          title={t('dashboard.compliance.auditScore')}
-          value={`${complianceMetrics.auditScore}%`}
-          icon={FileCheck}
-          color="amber"
-          trend={t('dashboard.compliance.latestAudit')}
-        />
+        {complianceMetrics.auditScore !== null && (
+          <MetricCard
+            title={t('dashboard.compliance.auditScore')}
+            value={`${complianceMetrics.auditScore}%`}
+            icon={FileCheck}
+            color="amber"
+            trend={t('dashboard.compliance.latestAudit')}
+          />
+        )}
       </div>
 
       {/* Charts Grid */}
@@ -172,42 +161,7 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
           </div>
         </div>
 
-        {/* Compliance Radar */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.compliance.complianceRadar')}</h3>
-          </div>
-          <div className="card-body">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={radarData}>
-                  <PolarGrid stroke="#e5e7eb" className="dark:opacity-30" />
-                  <PolarAngleAxis 
-                    dataKey="subject" 
-                    tick={{ fill: '#6b7280', fontSize: 11 }} 
-                  />
-                  <PolarRadiusAxis 
-                    angle={90} 
-                    domain={[0, 100]} 
-                    tick={{ fill: '#9ca3af', fontSize: 9 }}
-                  />
-                  <Radar 
-                    name="Compliance" 
-                    dataKey="value" 
-                    stroke="#16a34a" 
-                    fill="#16a34a" 
-                    fillOpacity={0.5} 
-                  />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                    labelStyle={{ color: '#f3f4f6' }}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
+        
         {/* Audit Findings */}
         <div className="card">
           <div className="card-header">
@@ -218,51 +172,20 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={auditFindings}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
-                  <XAxis dataKey="week" tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="category" tick={{ fontSize: 11 }} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                     labelStyle={{ color: '#f3f4f6' }}
                   />
-                  <Legend />
-                  <Bar dataKey="critical" stackId="a" fill={COLORS.critical} name="Critical" />
-                  <Bar dataKey="major" stackId="a" fill={COLORS.major} name="Major" />
-                  <Bar dataKey="minor" stackId="a" fill={COLORS.minor} name="Minor" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill={COLORS.compliance} name={t('dashboard.compliance.findings')} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
         </div>
 
-        {/* Compliance by Project */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.compliance.complianceByProject')}</h3>
-          </div>
-          <div className="card-body">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={complianceByProject}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
-                  <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-45} textAnchor="end" height={60} />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                    labelStyle={{ color: '#f3f4f6' }}
-                    formatter={(value) => [`${value}%`, 'Compliance']}
-                  />
-                  <Bar 
-                    dataKey="compliance" 
-                    fill="#16a34a" 
-                    radius={[4, 4, 0, 0]}
-                    name="Compliance %"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-      </div>
+              </div>
     </div>
   )
 })

@@ -126,9 +126,9 @@ export default function AuthLayout() {
           </button>
         </div>
         
-        <div className="w-full max-w-md pt-12">
+        <main id="main-content" className="w-full max-w-md pt-12" aria-label={t('auth.login')}>
           <Outlet />
-        </div>
+        </main>
       </div>
     </div>
   )

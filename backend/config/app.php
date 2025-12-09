@@ -6,6 +6,7 @@ return [
     'debug' => (bool) env('APP_DEBUG', false),
     'url' => env('APP_URL', 'http://localhost'),
     'asset_url' => env('ASSET_URL'),
+    'force_https' => (bool) env('FORCE_HTTPS', false),
     'timezone' => 'UTC',
     'locale' => 'en',
     'fallback_locale' => 'en',

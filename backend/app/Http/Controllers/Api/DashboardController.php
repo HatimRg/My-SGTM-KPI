@@ -14,35 +14,39 @@ use App\Models\Inspection;
 use App\Helpers\WeekHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
     /**
      * Get public stats for login page (no auth required)
+     * Cached for 5 minutes to reduce database load
      */
     public function publicStats()
     {
         $year = date('Y');
         
-        // HSE Compliance from KPI reports
-        $hseCompliance = KpiReport::where('report_year', $year)
-            ->approved()
-            ->avg('hse_compliance_rate') ?? 0;
-        
-        // Total training hours from Training table
-        $trainingHours = Training::where('week_year', $year)->sum('training_hours') ?? 0;
-        
-        // Fatal accidents this year from KPI reports
-        $fatalAccidents = KpiReport::where('report_year', $year)
-            ->approved()
-            ->sum('accidents_fatal') ?? 0;
-        
-        return $this->success([
-            'hse_compliance' => round($hseCompliance, 1),
-            'training_hours' => (int) $trainingHours,
-            'fatal_accidents' => (int) $fatalAccidents,
-            'year' => $year,
-        ]);
+        return $this->success(Cache::remember('public_stats_' . $year, 300, function () use ($year) {
+            // HSE Compliance from KPI reports
+            $hseCompliance = KpiReport::where('report_year', $year)
+                ->approved()
+                ->avg('hse_compliance_rate') ?? 0;
+            
+            // Total training hours from Training table
+            $trainingHours = Training::where('week_year', $year)->sum('training_hours') ?? 0;
+            
+            // Fatal accidents this year from KPI reports
+            $fatalAccidents = KpiReport::where('report_year', $year)
+                ->approved()
+                ->sum('accidents_fatal') ?? 0;
+            
+            return [
+                'hse_compliance' => round($hseCompliance, 1),
+                'training_hours' => (int) $trainingHours,
+                'fatal_accidents' => (int) $fatalAccidents,
+                'year' => $year,
+            ];
+        }));
     }
 
     /**
@@ -68,7 +72,10 @@ class DashboardController extends Controller
             ->selectRaw('
                 SUM(accidents) as total_accidents,
                 SUM(accidents_fatal) as fatal_accidents,
+                SUM(accidents_serious) as serious_accidents,
+                SUM(accidents_minor) as minor_accidents,
                 SUM(trainings_conducted) as total_trainings,
+                SUM(trainings_planned) as total_trainings_planned,
                 SUM(employees_trained) as employees_trained,
                 SUM(inspections_completed) as total_inspections,
                 SUM(hours_worked) as total_hours,

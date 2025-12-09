@@ -124,7 +124,17 @@ class SorReport extends Model
     }
 
     // Accessors
-    protected $appends = ['photo_url', 'corrective_action_photo_url'];
+    protected $appends = ['photo_url', 'corrective_action_photo_url', 'closer_name', 'submitter_name'];
+
+    public function getCloserNameAttribute()
+    {
+        return $this->closer ? $this->closer->name : null;
+    }
+
+    public function getSubmitterNameAttribute()
+    {
+        return $this->submitter ? $this->submitter->name : null;
+    }
 
     public function getPhotoUrlAttribute()
     {

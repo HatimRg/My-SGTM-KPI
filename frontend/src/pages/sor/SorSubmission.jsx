@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLanguage } from '../../i18n'
 import { useAuthStore } from '../../store/authStore'
-import { sorService, projectService, exportService } from '../../services/api'
+import { sorService, projectService, exportService, workerService } from '../../services/api'
 import { Modal, DatePicker, TimePicker } from '../../components/ui'
+import AutocompleteInput from '../../components/ui/AutocompleteInput'
 import {
   AlertTriangle,
   Plus,
@@ -61,6 +62,7 @@ export default function SorSubmission() {
   const [reports, setReports] = useState([])
   const [projects, setProjects] = useState([])
   const [projectZones, setProjectZones] = useState([])
+  const [companies, setCompanies] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [editingReport, setEditingReport] = useState(null)
   const [viewingReport, setViewingReport] = useState(null)
@@ -132,9 +134,14 @@ export default function SorSubmission() {
 
   const fetchProjects = async () => {
     try {
-      const response = await projectService.getAll({ per_page: 100 })
-      const projectList = response.data.data || []
+      const [projectsRes, companiesRes] = await Promise.all([
+        projectService.getAll({ per_page: 100 }),
+        workerService.getEntreprises()
+      ])
+      
+      const projectList = projectsRes.data.data || []
       setProjects(projectList)
+      setCompanies(companiesRes.data.data || [])
       
       // Auto-select project if user has only one and fetch its zones
       if (projectList.length === 1) {
@@ -679,12 +686,13 @@ export default function SorSubmission() {
                 </div>
                 <div>
                   <label className="label">{t('sor.company')}</label>
-                  <input
-                    type="text"
+                  <AutocompleteInput
                     value={formData.company}
-                    onChange={(e) => handleInputChange('company', e.target.value)}
-                    className="input"
+                    onChange={(value) => handleInputChange('company', value)}
+                    suggestions={companies}
                     placeholder="SGTM, Sous-traitant..."
+                    defaultValue="SGTM"
+                    icon={<Building2 className="w-4 h-4" />}
                   />
                 </div>
               </div>
@@ -717,17 +725,13 @@ export default function SorSubmission() {
                     <MapPin className="w-4 h-4" />
                     {t('sor.zone')}
                   </label>
-                  <select
+                  <AutocompleteInput
                     value={formData.zone}
-                    onChange={(e) => handleInputChange('zone', e.target.value)}
-                    className="input"
-                    disabled={projectZones.length === 0}
-                  >
-                    <option value="">{t('common.select')}...</option>
-                    {projectZones.map((zone, index) => (
-                      <option key={index} value={zone}>{zone}</option>
-                    ))}
-                  </select>
+                    onChange={(value) => handleInputChange('zone', value)}
+                    suggestions={projectZones}
+                    placeholder={t('sor.zonePlaceholder') || 'Zone de travail...'}
+                    disabled={!formData.project_id}
+                  />
                 </div>
               </div>
 
@@ -905,7 +909,8 @@ export default function SorSubmission() {
                   <img 
                     src={viewingReport.photo_url.replace(/^https?:\/\/[^\/]+/, '')} 
                     alt="Non-conformity" 
-                    className="mt-2 rounded-lg max-h-64 object-contain border dark:border-gray-600"
+                    className="mt-2 rounded-lg max-h-64 object-contain border dark:border-gray-600 cursor-pointer hover:opacity-90"
+                    onClick={() => window.open(viewingReport.photo_url.replace(/^https?:\/\/[^\/]+/, ''), '_blank')}
                   />
                 </div>
               )}
@@ -926,13 +931,22 @@ export default function SorSubmission() {
                       {viewingReport.corrective_action_time && ` à ${viewingReport.corrective_action_time}`}
                     </p>
                   )}
+
+                  {viewingReport.closer_name && (
+                    <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                      {t('sor.closedBy')}: <span className="font-medium">{viewingReport.closer_name}</span>
+                    </p>
+                  )}
                   
                   {viewingReport.corrective_action_photo_url && (
-                    <img 
-                      src={viewingReport.corrective_action_photo_url.replace(/^https?:\/\/[^\/]+/, '')} 
-                      alt="Corrective action" 
-                      className="mt-3 rounded-lg max-h-48 object-contain border border-green-200 dark:border-green-700"
-                    />
+                    <div className="mt-3">
+                      <img 
+                        src={viewingReport.corrective_action_photo_url.replace(/^https?:\/\/[^\/]+/, '')} 
+                        alt="Corrective action" 
+                        className="rounded-lg max-h-48 object-contain border border-green-200 dark:border-green-700 cursor-pointer hover:opacity-90"
+                        onClick={() => window.open(viewingReport.corrective_action_photo_url.replace(/^https?:\/\/[^\/]+/, ''), '_blank')}
+                      />
+                    </div>
                   )}
                 </div>
               )}

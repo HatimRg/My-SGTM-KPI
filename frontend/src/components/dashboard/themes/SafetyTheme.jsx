@@ -74,17 +74,29 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
     })) || []
   }, [weeklyTrends])
 
-  // Accidents by severity (derived from total)
+  // Accidents by severity (prefer real serious/minor counts from KPI summary)
   const accidentsBySeverity = useMemo(() => {
     const total = safetyMetrics.totalAccidents
     const fatal = safetyMetrics.fatalAccidents
+    const serious = kpiSummary?.serious_accidents ?? null
+    const minor = kpiSummary?.minor_accidents ?? null
+
+    if (serious !== null && minor !== null) {
+      return [
+        { name: t('dashboard.safety.fatal'), value: fatal, color: COLORS.fatal },
+        { name: t('dashboard.safety.serious'), value: serious, color: COLORS.serious },
+        { name: t('dashboard.safety.minor'), value: minor, color: COLORS.minor }
+      ].filter(item => item.value > 0)
+    }
+
+    // Fallback: derive a simple split when detailed data is not available
     const remaining = Math.max(0, total - fatal)
     return [
       { name: t('dashboard.safety.fatal'), value: fatal, color: COLORS.fatal },
       { name: t('dashboard.safety.serious'), value: Math.floor(remaining * 0.3), color: COLORS.serious },
       { name: t('dashboard.safety.minor'), value: Math.ceil(remaining * 0.7), color: COLORS.minor }
     ].filter(item => item.value > 0)
-  }, [safetyMetrics, t])
+  }, [safetyMetrics, t, kpiSummary])
 
   // TF vs TG comparison
   const tfTgData = useMemo(() => {

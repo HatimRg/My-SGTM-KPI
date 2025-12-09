@@ -21,6 +21,7 @@ export default {
     all: 'Tous',
     none: 'Aucun',
     select: 'Sélectionner',
+    unselect: 'Désélectionner',
     submit: 'Soumettre',
     confirm: 'Confirmer',
     back: 'Retour',
@@ -89,6 +90,7 @@ export default {
     passwordRequired: 'Le mot de passe est requis',
     invalidCredentials: 'Identifiants incorrects',
     loginSuccess: 'Connexion réussie !',
+    redirecting: 'Redirection vers votre tableau de bord...',
     logoutSuccess: 'Déconnexion réussie',
     resetLinkSent: 'Lien de réinitialisation envoyé à votre email',
     passwordChanged: 'Mot de passe modifié avec succès',
@@ -96,6 +98,8 @@ export default {
     demoCredentials: 'Identifiants de démonstration',
     admin: 'Administrateur',
     user: 'Utilisateur',
+    showPassword: 'Afficher le mot de passe',
+    hidePassword: 'Masquer le mot de passe',
   },
 
   // Navigation
@@ -647,6 +651,8 @@ export default {
     cinInfo: 'Le CIN est l\'identifiant unique. Les doublons seront fusionnés.',
     selectDate: 'Sélectionner une date',
     minAge: 'Le travailleur doit avoir au moins 18 ans',
+    fonctionPlaceholder: 'Chef de chantier, Ouvrier...',
+    entreprisePlaceholder: 'SGTM, Sous-traitant...',
   },
 
   qualifiedPersonnel: {
@@ -888,6 +894,14 @@ export default {
       currentWeek: 'Semaine en cours',
     },
 
+    // Auto-populate
+    autoPopulate: 'Remplir automatiquement',
+    autoPopulateTitle: 'Remplissage automatique',
+    autoPopulateDesc: 'Remplir automatiquement le formulaire avec les données des écarts, formations, inspections, etc.',
+    autoPopulated: 'Données remplies',
+    noDataToPopulate: 'Aucune donnée trouvée pour cette période',
+    selectProjectAndWeek: 'Veuillez d\'abord sélectionner un projet et une semaine',
+
     // Weekly HSE Reporting
     weekly: {
       title: 'Reporting HSE Hebdomadaire',
@@ -1071,6 +1085,7 @@ export default {
     date: 'Date',
     time: 'Heure',
     zone: 'Zone',
+    zonePlaceholder: 'Zone de travail...',
     supervisor: 'Superviseur / Animateur',
     supervisorPlaceholder: 'Nom du superviseur ou animateur HSE',
     nonConformity: 'Non-Conformité',
@@ -1110,6 +1125,9 @@ export default {
     createClosedSuccess: 'Observation créée et clôturée',
     createPinnedSuccess: 'Observation créée et épinglée pour suivi',
     problemSummary: 'Résumé du problème',
+    closedBy: 'Clôturé par',
+    submittedBy: 'Soumis par',
+    clickToEnlarge: 'Cliquer pour agrandir',
   },
 
   // Roles
@@ -1118,5 +1136,35 @@ export default {
     responsable: 'Responsable HSE',
     user: 'Animateur HSE',
     supervisor: 'Superviseur HSE',
+  },
+
+  // HSE Weekly Export
+  hseExport: {
+    title: 'Export Hebdomadaire HSE',
+    description: 'Exporter le rapport hebdomadaire HSE complet vers Excel',
+    selectProject: 'Sélectionner un projet',
+    selectWeek: 'Sélectionner une semaine',
+    selectYear: 'Sélectionner une année',
+    week: 'Semaine',
+    year: 'Année',
+    exportButton: 'Exporter KPI Excel',
+    exporting: 'Exportation en cours...',
+    success: 'Export généré avec succès',
+    error: 'Erreur lors de l\'export',
+    noProject: 'Veuillez sélectionner un projet',
+    noWeek: 'Veuillez sélectionner une semaine et une année',
+    sheets: {
+      projectInfo: 'Informations Projet',
+      hseReporting: 'Reporting HSE',
+      incidents: 'Incidents & Accidents',
+      deviationsSgtm: 'Écarts SGTM',
+      deviationsSt: 'Écarts Sous-traitants',
+      categories: 'Catégories d\'écarts',
+      certifications: 'Habilitations',
+      personnel: 'Suivi Collaborateurs',
+      training: 'Formation & Sensibilisation',
+      inspections: 'Inspections',
+      workPermits: 'Permis de Travail',
+    },
   },
 }

@@ -44,20 +44,21 @@ class NotificationController extends Controller
      */
     public function unreadCount(Request $request)
     {
-        $query = Notification::where('user_id', $request->user()->id)->unread();
+        $userId = $request->user()->id;
+        $projectId = $request->project_id;
 
-        if ($request->has('project_id') && $request->project_id) {
-            $query->where('project_id', $request->project_id);
+        // Single optimized query to get both total count and counts by type
+        $query = Notification::where('user_id', $userId)
+            ->whereNull('read_at')
+            ->selectRaw('type, count(*) as count')
+            ->groupBy('type');
+
+        if ($projectId) {
+            $query->where('project_id', $projectId);
         }
 
-        $count = $query->count();
-
-        // Also get counts by type for badges
-        $byType = Notification::where('user_id', $request->user()->id)
-            ->unread()
-            ->selectRaw('type, count(*) as count')
-            ->groupBy('type')
-            ->pluck('count', 'type');
+        $byType = $query->pluck('count', 'type');
+        $count = $byType->sum();
 
         return $this->success([
             'count' => $count,

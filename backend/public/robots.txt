@@ -1,0 +1,6 @@
+User-agent: *
+Disallow:
+
+# HSE KPI Tracker - SGTM
+# Allow search engines to crawl the SPA entrypoint
+Sitemap: http://16.171.8.116:8000/sitemap.xml

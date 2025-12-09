@@ -21,4 +21,24 @@ export default defineConfig({
       '@': '/src',
     },
   },
+  build: {
+    // Optimize chunk splitting for faster initial load
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor chunks - loaded separately
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': ['lucide-react', 'react-hot-toast'],
+          'vendor-charts': ['recharts'],
+          'vendor-utils': ['axios', 'zustand', 'date-fns'],
+        },
+      },
+    },
+    // Increase chunk size warning limit
+    chunkSizeWarningLimit: 500,
+    // Use esbuild for minification (faster, built-in)
+    minify: 'esbuild',
+    // Target modern browsers for smaller output
+    target: 'es2020',
+  },
 })

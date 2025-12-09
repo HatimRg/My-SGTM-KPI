@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\WorkPermitController;
 use App\Http\Controllers\Api\InspectionController;
 use App\Http\Controllers\Api\WorkerController;
 use App\Http\Controllers\Api\WorkerTrainingController;
+use App\Http\Controllers\Api\SecurityController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -67,6 +68,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{user}/assign-projects', [UserController::class, 'assignProjects']);
     });
 
+    // Security monitoring (Admin only)
+    Route::middleware('admin')->prefix('security')->group(function () {
+        Route::get('/dashboard', [SecurityController::class, 'dashboard']);
+        Route::get('/logs', [SecurityController::class, 'logs']);
+        Route::post('/block-ip', [SecurityController::class, 'blockIp']);
+        Route::post('/unblock-ip', [SecurityController::class, 'unblockIp']);
+    });
+
     // Project management
     Route::prefix('projects')->group(function () {
         Route::get('/', [ProjectController::class, 'index']);
@@ -108,6 +117,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/statistics', [KpiReportController::class, 'statistics']);
         Route::get('/weeks', [KpiReportController::class, 'getWeeks']);
         Route::get('/week-dates', [KpiReportController::class, 'getWeekDates']);
+        Route::get('/auto-populate', [KpiReportController::class, 'getAutoPopulatedData']);
         Route::get('/{kpiReport}', [KpiReportController::class, 'show']);
         Route::put('/{kpiReport}', [KpiReportController::class, 'update']);
         Route::delete('/{kpiReport}', [KpiReportController::class, 'destroy']);
@@ -145,11 +155,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{notification}', [NotificationController::class, 'destroy']);
     });
 
-    // Export routes
-    Route::prefix('export')->group(function () {
+    // Export routes - with compression for large files
+    Route::prefix('export')->middleware('compress')->group(function () {
         Route::get('/excel', [ExportController::class, 'exportToExcel']);
         Route::get('/pdf', [ExportController::class, 'exportToPdf']);
         Route::get('/project/{project}', [ExportController::class, 'exportProjectReport']);
+        Route::get('/hse-weekly', [ExportController::class, 'exportHseWeekly'])->middleware('admin');
     });
 
     // SOR Reports (Non-Conformity & Observation Tracking)
@@ -217,6 +228,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [WorkerController::class, 'index']);
         Route::get('/statistics', [WorkerController::class, 'statistics']);
         Route::get('/entreprises', [WorkerController::class, 'entreprises']);
+        Route::get('/fonctions', [WorkerController::class, 'fonctions']);
         Route::get('/template', [WorkerController::class, 'template']);
         Route::get('/export', [WorkerController::class, 'export']);
         Route::post('/import', [WorkerController::class, 'import']);

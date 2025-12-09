@@ -21,6 +21,7 @@ export default {
     all: 'All',
     none: 'None',
     select: 'Select',
+    unselect: 'Unselect',
     submit: 'Submit',
     confirm: 'Confirm',
     back: 'Back',
@@ -89,6 +90,7 @@ export default {
     passwordRequired: 'Password is required',
     invalidCredentials: 'Invalid credentials',
     loginSuccess: 'Login successful!',
+    redirecting: 'Redirecting to your dashboard...',
     logoutSuccess: 'Logged out successfully',
     resetLinkSent: 'Password reset link sent to your email',
     passwordChanged: 'Password changed successfully',
@@ -96,6 +98,8 @@ export default {
     demoCredentials: 'Demo Credentials',
     admin: 'Admin',
     user: 'User',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
   },
 
   // Navigation
@@ -647,6 +651,8 @@ export default {
     cinInfo: 'CIN is the unique identifier. Duplicates will be merged.',
     selectDate: 'Select a date',
     minAge: 'Worker must be at least 18 years old',
+    fonctionPlaceholder: 'Site Manager, Worker...',
+    entreprisePlaceholder: 'SGTM, Contractor...',
   },
 
   qualifiedPersonnel: {
@@ -888,6 +894,14 @@ export default {
       currentWeek: 'Current week',
     },
 
+    // Auto-populate
+    autoPopulate: 'Auto-fill Data',
+    autoPopulateTitle: 'Auto-fill from Related Data',
+    autoPopulateDesc: 'Automatically fill the form with data from deviations, trainings, inspections, etc.',
+    autoPopulated: 'Data auto-filled',
+    noDataToPopulate: 'No related data found for this period',
+    selectProjectAndWeek: 'Please select a project and week first',
+
     // Weekly HSE Reporting
     weekly: {
       title: 'Weekly HSE Reporting',
@@ -1071,6 +1085,7 @@ export default {
     date: 'Date',
     time: 'Time',
     zone: 'Zone',
+    zonePlaceholder: 'Work area / location...',
     supervisor: 'Supervisor / HSE Officer',
     supervisorPlaceholder: 'Name of supervisor or HSE officer',
     nonConformity: 'Non-Conformity',
@@ -1110,6 +1125,9 @@ export default {
     createClosedSuccess: 'Observation created and closed',
     createPinnedSuccess: 'Observation created and pinned for follow-up',
     problemSummary: 'Problem Summary',
+    closedBy: 'Closed by',
+    submittedBy: 'Submitted by',
+    clickToEnlarge: 'Click to enlarge',
   },
 
   // Roles
@@ -1118,5 +1136,35 @@ export default {
     responsable: 'HSE Manager',
     user: 'HSE Officer',
     supervisor: 'HSE Supervisor',
+  },
+
+  // HSE Weekly Export
+  hseExport: {
+    title: 'HSE Weekly Export',
+    description: 'Export comprehensive HSE weekly report to Excel',
+    selectProject: 'Select Project',
+    selectWeek: 'Select Week',
+    selectYear: 'Select Year',
+    week: 'Week',
+    year: 'Year',
+    exportButton: 'Export KPI Excel',
+    exporting: 'Exporting...',
+    success: 'Export generated successfully',
+    error: 'Error during export',
+    noProject: 'Please select a project',
+    noWeek: 'Please select a week and year',
+    sheets: {
+      projectInfo: 'Project Information',
+      hseReporting: 'HSE Reporting',
+      incidents: 'Incidents & Accidents',
+      deviationsSgtm: 'SGTM Deviations',
+      deviationsSt: 'Subcontractor Deviations',
+      categories: 'Deviation Categories',
+      certifications: 'Certifications',
+      personnel: 'Personnel Tracking',
+      training: 'Training & Awareness',
+      inspections: 'Inspections',
+      workPermits: 'Work Permits',
+    },
   },
 }

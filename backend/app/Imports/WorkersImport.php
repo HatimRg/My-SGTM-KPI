@@ -30,24 +30,58 @@ class WorkersImport implements ToModel, WithHeadingRow, SkipsOnError, WithBatchI
         $this->defaultProjectId = $projectId;
     }
 
+    /**
+     * The heading row is row 3 in the export template (rows 1-2 are title/instructions).
+     */
+    public function headingRow(): int
+    {
+        return 3;
+    }
+
     public function model(array $row)
     {
+        // Log the row for debugging
+        Log::info('Processing row', ['row' => $row]);
+        
+        // Normalize keys to lowercase and handle various column name formats
+        $row = array_change_key_case($row, CASE_LOWER);
+        
+        // Map various possible column names
+        $cin = $this->getColumnValue($row, ['cin', 'cni', 'id', 'matricule', 'numero_cin']);
+        $nom = $this->getColumnValue($row, ['nom', 'name', 'last_name', 'lastname', 'family_name']);
+        $prenom = $this->getColumnValue($row, ['prenom', 'first_name', 'firstname', 'given_name']);
+        
         // Skip empty rows
-        if (empty($row['cin']) || empty($row['nom']) || empty($row['prenom'])) {
+        if (empty($cin) || empty($nom) || empty($prenom)) {
+            Log::info('Skipping row - missing required fields', [
+                'cin' => $cin, 
+                'nom' => $nom, 
+                'prenom' => $prenom
+            ]);
             return null;
         }
 
-        // Clean and prepare data
-        $cin = trim($row['cin']);
-        $nom = trim($row['nom']);
-        $prenom = trim($row['prenom']);
+        // Clean data
+        $cin = trim($cin);
+        $nom = trim($nom);
+        $prenom = trim($prenom);
 
-        // Parse dates
-        $dateNaissance = $this->parseDate($row['date_de_naissance'] ?? $row['date_naissance'] ?? null);
-        $dateEntree = $this->parseDate($row['date_dentree'] ?? $row['date_entree'] ?? null);
+        // Parse dates with flexible column names
+        $dateNaissance = $this->parseDate($this->getColumnValue($row, [
+            'date_de_naissance', 'date_naissance', 'datenaissance', 'birth_date', 'birthdate', 'dob'
+        ]));
+        $dateEntree = $this->parseDate($this->getColumnValue($row, [
+            'date_dentree', 'date_entree', 'dateentree', 'date_embauche', 'hire_date', 'start_date'
+        ]));
+
+        // Get other fields with flexible column names
+        $fonction = $this->getColumnValue($row, ['fonction', 'function', 'poste', 'position', 'job', 'role']);
+        $entreprise = $this->getColumnValue($row, ['entreprise', 'company', 'societe', 'société', 'employer']);
+        $projet = $this->getColumnValue($row, ['projet', 'project', 'chantier', 'site']);
+        $statut = $this->getColumnValue($row, ['statut', 'status', 'etat', 'état', 'active']);
 
         // Get project ID
-        $projectId = $this->getProjectId($row['projet'] ?? null);
+        $projectId = $this->getProjectId($projet);
 
         // Check if worker exists by CIN
         $existingWorker = Worker::where('cin', $cin)->first();
@@ -55,14 +89,14 @@ class WorkersImport implements ToModel, WithHeadingRow, SkipsOnError, WithBatchI
         $data = [
             'nom' => $nom,
             'prenom' => $prenom,
-            'fonction' => $row['fonction'] ?? null,
+            'fonction' => $fonction,
             'cin' => $cin,
             'date_naissance' => $dateNaissance,
-            'entreprise' => $row['entreprise'] ?? null,
+            'entreprise' => $entreprise,
             'project_id' => $projectId ?? $this->defaultProjectId,
             'date_entree' => $dateEntree,
             'updated_by' => $this->userId,
-            'is_active' => $this->parseStatus($row['statut'] ?? 'ACTIF'),
+            'is_active' => $this->parseStatus($statut ?? 'ACTIF'),
         ];
 
         if ($existingWorker) {
@@ -78,6 +112,38 @@ class WorkersImport implements ToModel, WithHeadingRow, SkipsOnError, WithBatchI
         return new Worker(array_merge($data, [
             'created_by' => $this->userId,
         ]));
+    }
+
+    /**
+     * Get column value from row using multiple possible column names
+     */
+    protected function getColumnValue(array $row, array $possibleNames)
+    {
+        foreach ($possibleNames as $name) {
+            // Try exact match
+            if (isset($row[$name]) && !empty($row[$name])) {
+                return $row[$name];
+            }
+            // Try with underscores replaced by spaces
+            $spaceName = str_replace('_', ' ', $name);
+            if (isset($row[$spaceName]) && !empty($row[$spaceName])) {
+                return $row[$spaceName];
+            }
+            // Try without accents
+            $noAccent = $this->removeAccents($name);
+            if (isset($row[$noAccent]) && !empty($row[$noAccent])) {
+                return $row[$noAccent];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Remove accents from string
+     */
+    protected function removeAccents(string $string): string
+    {
+        return iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $string) ?: $string;
     }
 
     /**

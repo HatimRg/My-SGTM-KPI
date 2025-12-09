@@ -266,7 +266,9 @@ export default function AdminDashboard() {
         <ComplianceTheme 
           kpiSummary={kpiSummary} 
           weeklyTrends={weeklyTrends} 
-          projectPerformance={projectPerformance} 
+          projectPerformance={projectPerformance}
+          inspectionData={data?.inspection_data}
+          sorData={sorData}
         />
       )}
       {activeTheme === 'environmental' && (

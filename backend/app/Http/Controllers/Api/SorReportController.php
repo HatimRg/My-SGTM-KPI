@@ -17,7 +17,7 @@ class SorReportController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $query = SorReport::with(['project', 'submitter']);
+        $query = SorReport::with(['project', 'submitter', 'closer']);
 
         // Filter by user's projects if not admin
         if (!$user->isAdmin()) {
@@ -64,7 +64,7 @@ class SorReportController extends Controller
     public function pinned(Request $request)
     {
         $user = $request->user();
-        $query = SorReport::with(['project', 'submitter'])
+        $query = SorReport::with(['project', 'submitter', 'closer'])
                           ->where('is_pinned', true);
 
         if (!$user->isAdmin()) {
