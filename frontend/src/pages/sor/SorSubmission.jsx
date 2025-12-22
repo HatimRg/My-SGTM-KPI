@@ -305,6 +305,10 @@ export default function SorSubmission() {
       photo: null,
       category: '',
       responsible_person: '',
+      corrective_action: '',
+      corrective_action_date: new Date().toISOString().split('T')[0],
+      corrective_action_time: '',
+      corrective_action_photo: null,
     })
     setPhotoPreview(null)
     setEditingReport(null)
@@ -508,9 +512,44 @@ export default function SorSubmission() {
       photo: null,
       category: report.category ?? '',
       responsible_person: report.responsible_person ?? '',
+      corrective_action: report.corrective_action ?? '',
+      corrective_action_date: report.corrective_action_date
+        ? report.corrective_action_date.split('T')[0]
+        : new Date().toISOString().split('T')[0],
+      corrective_action_time: report.corrective_action_time ?? '',
+      corrective_action_photo: null,
     })
     setEditingReport(report)
     setShowForm(true)
+  }
+
+  const handleProblemPhotoDrop = (e) => {
+    handlePhotoDrop(e)
+  }
+
+  const handleUnifiedCorrectivePhotoChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setFormData(prev => ({ ...prev, corrective_action_photo: file }))
+      const reader = new FileReader()
+      reader.onloadend = () => setCorrectivePhotoPreview(reader.result)
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleUnifiedCorrectivePhotoDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const file = e.dataTransfer?.files?.[0]
+    if (!file) return
+    if (!file.type?.startsWith('image/')) {
+      toast.error(t('errors.invalidFileType') || t('errors.somethingWentWrong'))
+      return
+    }
+    setFormData(prev => ({ ...prev, corrective_action_photo: file }))
+    const reader = new FileReader()
+    reader.onloadend = () => setCorrectivePhotoPreview(reader.result)
+    reader.readAsDataURL(file)
   }
 
   const handleMarkAsClosed = (report) => {
@@ -872,7 +911,7 @@ export default function SorSubmission() {
                 <label
                   className="flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 cursor-pointer hover:border-hse-primary hover:bg-hse-primary/5 transition-colors"
                   onDragOver={(e) => e.preventDefault()}
-                  onDrop={handlePhotoDrop}
+                  onDrop={handleProblemPhotoDrop}
                 >
                   <input
                     type="file"
@@ -921,6 +960,65 @@ export default function SorSubmission() {
                   placeholder={t('sor.responsiblePersonPlaceholder')}
                 />
               </div>
+
+              {/* Corrective Action (edit mode only) */}
+              {editingReport && (
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="label">{t('sor.correctiveDate')}</label>
+                      <DatePicker
+                        value={formData.corrective_action_date}
+                        onChange={(val) => handleInputChange('corrective_action_date', val)}
+                      />
+                    </div>
+                    <div>
+                      <label className="label">{t('sor.correctiveTime')}</label>
+                      <TimePicker
+                        value={formData.corrective_action_time}
+                        onChange={(val) => handleInputChange('corrective_action_time', val)}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="label">{t('sor.correctiveAction')}</label>
+                    <textarea
+                      value={formData.corrective_action}
+                      onChange={(e) => handleInputChange('corrective_action', e.target.value)}
+                      className="input min-h-[80px]"
+                      placeholder={t('sor.correctiveActionPlaceholder')}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="label">{t('sor.correctivePhoto')}</label>
+                    <label
+                      className="flex items-center justify-center border-2 border-dashed border-green-200 dark:border-green-800 rounded-lg p-3 cursor-pointer hover:border-hse-primary transition-colors bg-white/60 dark:bg-gray-900/20"
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={handleUnifiedCorrectivePhotoDrop}
+                    >
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleUnifiedCorrectivePhotoChange}
+                        className="hidden"
+                      />
+                      {correctivePhotoPreview ? (
+                        <div className="flex items-center gap-3">
+                          <img src={correctivePhotoPreview} alt="Preview" className="w-12 h-12 object-cover rounded" />
+                          <span className="text-sm text-gray-600 dark:text-gray-400">{t('sor.changePhoto')}</span>
+                        </div>
+                      ) : (
+                        <>
+                          <Camera className="w-5 h-5 text-gray-400 mr-2" />
+                          <span className="text-sm text-gray-500 dark:text-gray-400">{t('sor.uploadPhoto')}</span>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                </div>
+              )}
 
               {/* Submit */}
               <div className="flex justify-end gap-3 pt-4 border-t">
@@ -1065,7 +1163,7 @@ export default function SorSubmission() {
                 </button>
                 {viewingReport.status === 'closed' && viewingReport.corrective_action && (
                   <button
-                    onClick={() => { openCorrectiveModal(viewingReport); setViewingReport(null) }}
+                    onClick={() => { handleEdit(viewingReport); setViewingReport(null) }}
                     className="btn btn-outline"
                   >
                     {t('sor.editCorrective')}

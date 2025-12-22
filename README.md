@@ -52,4 +52,4 @@
  Optional external URL check:
  
  - `set EXTERNAL_URL=http://your-ip:8000/`
- - Run `check-status.bat`
+ - Run `check-status.bat`"# MysafeKPI-SGTM" 

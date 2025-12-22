@@ -437,13 +437,16 @@ class SorReportController extends Controller
             'responsible_person' => 'nullable|string|max:255',
             'deadline' => 'nullable|date',
             'corrective_action' => 'nullable|string',
+            'corrective_action_date' => 'nullable|date',
+            'corrective_action_time' => 'nullable|string|max:10',
+            'corrective_action_photo' => 'nullable|image|max:5120',
             'status' => 'nullable|in:open,in_progress,closed',
             'notes' => 'nullable|string',
         ]);
 
         // Filter out null values so we don't overwrite existing data
         $validated = array_filter($validated, fn($value) => $value !== null);
-        unset($validated['photo']);
+        unset($validated['photo'], $validated['corrective_action_photo']);
 
         // Handle photo upload with custom naming
         if ($request->hasFile('photo')) {
@@ -464,6 +467,24 @@ class SorReportController extends Controller
             // Store in public/sor-photos directory
             $path = $photo->storeAs('sor-photos', $filename, 'public');
             $validated['photo_path'] = $path;
+        }
+
+        // Handle corrective action photo upload
+        if ($request->hasFile('corrective_action_photo')) {
+            // Delete old corrective action photo
+            if ($sorReport->corrective_action_photo_path) {
+                Storage::disk('public')->delete($sorReport->corrective_action_photo_path);
+            }
+
+            $photo = $request->file('corrective_action_photo');
+            $extension = $photo->getClientOriginalExtension();
+            $project = $sorReport->project;
+            $projectCode = $project ? preg_replace('/[^a-zA-Z0-9]/', '_', $project->code ?? $project->name) : 'unknown';
+            $date = date('Ymd_His');
+
+            $filename = "SOR_{$sorReport->id}_{$projectCode}_corrective_{$date}.{$extension}";
+            $path = $photo->storeAs('sor-photos', $filename, 'public');
+            $validated['corrective_action_photo_path'] = $path;
         }
 
         // Handle status change to closed
