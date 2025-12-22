@@ -1,0 +1,533 @@
+import axios from 'axios'
+import toast from 'react-hot-toast'
+
+const API_BASE_URL = '/api'
+
+// Simple in-memory cache for GET requests
+const requestCache = new Map()
+const CACHE_TTL = 30000 // 30 seconds
+const pendingRequests = new Map()
+
+// Cache helper functions
+const getCacheKey = (url, params) => {
+  return `${url}:${JSON.stringify(params || {})}`
+}
+
+const getFromCache = (key, ttl) => {
+  const cached = requestCache.get(key)
+  const effectiveTtl = ttl ?? cached?.ttl ?? CACHE_TTL
+  if (cached && Date.now() - cached.timestamp < effectiveTtl) {
+    return cached.data
+  }
+  requestCache.delete(key)
+  return null
+}
+
+const setCache = (key, data, ttl) => {
+  requestCache.set(key, { data, ttl, timestamp: Date.now() })
+  // Limit cache size
+  if (requestCache.size > 100) {
+    const firstKey = requestCache.keys().next().value
+    requestCache.delete(firstKey)
+  }
+}
+
+// Clear cache on mutations
+export const clearApiCache = () => {
+  requestCache.clear()
+}
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+  timeout: 30000,
+})
+
+const makeRequestId = () => {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID()
+    }
+  } catch {
+    // ignore
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+const isSensitiveUrl = (url) => {
+  const u = String(url || '')
+  return (
+    u.includes('/auth/login') ||
+    u.includes('/auth/reset-password') ||
+    u.includes('/auth/forgot-password') ||
+    u.includes('/auth/change-password')
+  )
+}
+
+// Request interceptor with deduplication
+api.interceptors.request.use(
+  (config) => {
+    // Add request timestamp for performance tracking
+    config.metadata = { startTime: Date.now(), requestId: makeRequestId() }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  },
+)
+
+export const trainingService = {
+  getAll: (params) => api.get('/trainings', { params }),
+  getById: (id) => api.get(`/trainings/${id}`),
+  getPhoto: (id) => api.get(`/trainings/${id}/photo`, { responseType: 'blob' }),
+  create: (data) => {
+    const formData = new FormData()
+    Object.keys(data).forEach((key) => {
+      const value = data[key]
+      if (value !== null && value !== undefined && value !== '') {
+        if (typeof value === 'boolean') {
+          formData.append(key, value ? '1' : '0')
+        } else {
+          formData.append(key, value)
+        }
+      }
+    })
+    return api.post('/trainings', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  update: (id, data) => {
+    const formData = new FormData()
+    formData.append('_method', 'PUT')
+    Object.keys(data).forEach(key => {
+      const value = data[key]
+      if (value !== null && value !== undefined && value !== '') {
+        formData.append(key, value)
+      }
+    })
+    return api.post(`/trainings/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  delete: (id) => api.delete(`/trainings/${id}`),
+}
+
+export const workerTrainingService = {
+  getAll: (params) => api.get('/worker-trainings', { params }),
+  getOtherLabels: (params) => api.get('/worker-trainings/other-labels', { params }),
+  getById: (id) => api.get(`/worker-trainings/${id}`),
+  create: (data) => {
+    const formData = new FormData()
+    Object.keys(data).forEach((key) => {
+      const value = data[key]
+      if (value !== null && value !== undefined && value !== '') {
+        formData.append(key, value)
+      }
+    })
+    return api.post('/worker-trainings', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  update: (id, data) => {
+    const formData = new FormData()
+    formData.append('_method', 'PUT')
+    Object.keys(data).forEach((key) => {
+      const value = data[key]
+      if (value !== null && value !== undefined && value !== '') {
+        formData.append(key, value)
+      }
+    })
+    return api.post(`/worker-trainings/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  delete: (id) => api.delete(`/worker-trainings/${id}`),
+}
+
+export const awarenessService = {
+  getAll: (params) => api.get('/awareness-sessions', { params }),
+  getById: (id) => api.get(`/awareness-sessions/${id}`),
+  create: (data) => api.post('/awareness-sessions', data),
+  update: (id, data) => api.put(`/awareness-sessions/${id}`, data),
+  delete: (id) => api.delete(`/awareness-sessions/${id}`),
+}
+
+// Response interceptor
+api.interceptors.response.use(
+  (response) => {
+    // Log slow requests in development
+    if (response.config.metadata) {
+      const duration = Date.now() - response.config.metadata.startTime
+      if (duration > 2000) {
+        console.warn(`Slow API request: ${response.config.url} took ${duration}ms`)
+      }
+    }
+    return response
+  },
+  (error) => {
+    const { response, config } = error
+
+    try {
+      const method = String(config?.method || 'GET').toUpperCase()
+      const url = String(config?.url || '')
+      const requestId = config?.metadata?.requestId
+      const status = response?.status
+
+      const requestDetails = {
+        requestId,
+        method,
+        url,
+        params: config?.params,
+      }
+
+      if (!isSensitiveUrl(url)) {
+        requestDetails.data = config?.data
+      }
+
+      const responseDetails = response
+        ? {
+            status: response.status,
+            statusText: response.statusText,
+            data: response.data,
+          }
+        : null
+
+      console.groupCollapsed(`[API] ${method} ${url} -> ${status ?? 'NO_RESPONSE'}`)
+      console.log('request', requestDetails)
+      if (responseDetails) console.log('response', responseDetails)
+      console.error(error)
+      console.groupEnd()
+    } catch (e) {
+      console.error('[API] Failed to log error', e)
+    }
+
+    if (response) {
+      switch (response.status) {
+        case 401:
+          // Unauthorized - redirect to login
+          localStorage.removeItem('hse-auth-storage')
+          window.location.href = '/login'
+          break
+        case 403:
+          toast.error('Access denied. You do not have permission to perform this action.')
+          break
+        case 404:
+          toast.error('Resource not found.')
+          break
+        case 422:
+          // Validation errors - handle in component
+          break
+        case 500:
+          console.error('Server error:', response.data)
+          toast.error('Server error. Please try again later.')
+          break
+        case 502:
+        case 503:
+        case 504:
+          toast.error('Server is temporarily unavailable. Please try again.')
+          break
+        default:
+          toast.error(response.data?.message || 'An error occurred')
+      }
+    } else if (error.code === 'ECONNABORTED') {
+      toast.error('Request timed out. Please try again.')
+    } else {
+      toast.error('Network error. Please check your connection.')
+    }
+
+    return Promise.reject(error)
+  }
+)
+
+// Cached GET helper - deduplicates and caches requests
+export const cachedGet = async (url, params = {}, ttl = CACHE_TTL) => {
+  const cacheKey = getCacheKey(url, params)
+  
+  // Check cache first
+  const cached = getFromCache(cacheKey, ttl)
+  if (cached) {
+    return { data: cached, fromCache: true }
+  }
+  
+  // Check if request is already pending (deduplication)
+  if (pendingRequests.has(cacheKey)) {
+    return pendingRequests.get(cacheKey)
+  }
+  
+  // Make the request
+  const promise = api.get(url, { params }).then(response => {
+    setCache(cacheKey, response.data, ttl)
+    pendingRequests.delete(cacheKey)
+    return response
+  }).catch(error => {
+    pendingRequests.delete(cacheKey)
+    throw error
+  })
+  
+  pendingRequests.set(cacheKey, promise)
+  return promise
+}
+
+export default api
+
+// API Service functions
+export const authService = {
+  login: (email, password) => api.post('/auth/login', { email, password }),
+  logout: () => api.post('/auth/logout'),
+  me: () => api.get('/auth/me'),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (data) => api.post('/auth/reset-password', data),
+  updateProfile: (data) => api.put('/auth/profile', data),
+  changePassword: (data) => api.post('/auth/change-password', data),
+}
+
+export const dashboardService = {
+  // Dashboard data is cached since it's expensive to compute and doesn't change often
+  getAdminDashboard: (params) => cachedGet('/dashboard/admin', params),
+  getUserDashboard: (params) => {
+    const normalized = typeof params === 'number' ? { year: params } : (params || {})
+    return cachedGet('/dashboard/user', normalized)
+  },
+  // Charts are also cached
+  getAccidentCharts: (params) => cachedGet('/dashboard/charts/accidents', params),
+  getTrainingCharts: (params) => cachedGet('/dashboard/charts/trainings', params),
+  getInspectionCharts: (params) => cachedGet('/dashboard/charts/inspections', params),
+  getSorCharts: (params) => cachedGet('/dashboard/charts/sor', params),
+  getRateCharts: (params) => cachedGet('/dashboard/charts/rates', params),
+}
+
+export const userService = {
+  getAll: (params) => api.get('/users', { params }),
+  getById: (id) => api.get(`/users/${id}`),
+  create: (data) => api.post('/users', data),
+  update: (id, data) => api.put(`/users/${id}`, data),
+  delete: (id) => api.delete(`/users/${id}`),
+  toggleStatus: (id) => api.post(`/users/${id}/toggle-status`),
+  assignProjects: (id, projectIds) => api.post(`/users/${id}/assign-projects`, { project_ids: projectIds }),
+  getStatistics: () => api.get('/users/statistics'),
+  downloadTemplate: () => api.get('/users/template', { responseType: 'blob' }),
+  bulkImport: (formData) => api.post('/users/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+}
+
+export const projectService = {
+  getAll: (params) => api.get('/projects', { params }),
+  getAllList: async (params = {}) => {
+    const perPage = params.per_page ?? 200
+    let page = 1
+    const all = []
+
+    while (true) {
+      const res = await cachedGet('/projects', { ...params, page, per_page: perPage }, 60000)
+      const items = res.data?.data ?? []
+      if (Array.isArray(items)) {
+        all.push(...items)
+      }
+
+      const meta = res.data?.meta
+      if (!meta || page >= meta.last_page) break
+      page += 1
+    }
+
+    return all
+  },
+  getById: (id) => api.get(`/projects/${id}`),
+  create: (data) => api.post('/projects', data),
+  update: (id, data) => api.put(`/projects/${id}`, data),
+  delete: (id) => api.delete(`/projects/${id}`),
+  getStatistics: () => api.get('/projects/statistics'),
+  getKpiTrends: (id, months) => api.get(`/projects/${id}/kpi-trends`, { params: { months } }),
+  getPoles: () => cachedGet('/projects/poles', {}, 300000),
+  downloadTemplate: () => api.get('/projects/template', { responseType: 'blob' }),
+  bulkImport: (formData) => api.post('/projects/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  // Team management
+  getTeam: (id) => api.get(`/projects/${id}/team`),
+  getAvailableOfficers: (id) => api.get(`/projects/${id}/team/available`),
+  addTeamMember: (projectId, userId) => api.post(`/projects/${projectId}/team`, { user_id: userId }),
+  addTeamMembers: (projectId, userIds) => api.post(`/projects/${projectId}/team/bulk`, { user_ids: userIds }),
+  downloadTeamTemplate: (projectId) => api.get(`/projects/${projectId}/team/template`, { responseType: 'blob' }),
+  importTeam: (projectId, formData) => api.post(`/projects/${projectId}/team/import`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  removeTeamMember: (projectId, userId) => api.delete(`/projects/${projectId}/team/${userId}`),
+  // User management (by Responsable)
+  getMembers: (projectId) => api.get(`/projects/${projectId}/members`),
+  createMember: (projectId, data) => api.post(`/projects/${projectId}/members/create`, data),
+  updateMember: (projectId, userId, data) => api.put(`/projects/${projectId}/members/${userId}`, data),
+  removeMember: (projectId, userId) => api.delete(`/projects/${projectId}/members/${userId}`),
+  // Zones management
+  getZones: (projectId) => api.get(`/projects/${projectId}/zones`),
+  updateZones: (projectId, zones) => api.put(`/projects/${projectId}/zones`, { zones }),
+  addZone: (projectId, zone) => api.post(`/projects/${projectId}/zones/add`, { zone }),
+  removeZone: (projectId, zone) => api.post(`/projects/${projectId}/zones/remove`, { zone }),
+}
+
+export const kpiService = {
+  getAll: (params) => api.get('/kpi-reports', { params }),
+  getById: (id) => api.get(`/kpi-reports/${id}`),
+  create: (data) => api.post('/kpi-reports', data),
+  update: (id, data) => api.put(`/kpi-reports/${id}`, data),
+  delete: (id) => api.delete(`/kpi-reports/${id}`),
+  approve: (id) => api.post(`/kpi-reports/${id}/approve`),
+  reject: (id, reason) => api.post(`/kpi-reports/${id}/reject`, { reason }),
+  getAutoPopulatedData: (params) => api.get('/kpi-reports/auto-populate', { params }),
+}
+
+export const notificationService = {
+  getAll: (params) => api.get('/notifications', { params }),
+  getUnreadCount: (params) => api.get('/notifications/unread-count', { params }),
+  markAsRead: (id) => api.post(`/notifications/${id}/mark-read`),
+  markAllAsRead: (params) => api.post('/notifications/mark-all-read', params),
+  delete: (id) => api.delete(`/notifications/${id}`),
+  deleteRead: () => api.post('/notifications/delete-read'),
+  send: (data) => api.post('/notifications/send', data),
+}
+
+export const exportService = {
+  exportExcel: (params) => api.get('/export/excel', { params, responseType: 'blob' }),
+  exportPdf: (params) => api.get('/export/pdf', { params, responseType: 'blob' }),
+  exportProjectReport: (projectId, params) => api.get(`/export/project/${projectId}`, { params, responseType: 'blob' }),
+  exportInspections: (params) => api.get('/inspections/export', { params, responseType: 'blob' }),
+  exportDeviations: (params) => api.get('/sor-reports/export', { params, responseType: 'blob' }),
+  exportAwareness: (params) => api.get('/awareness-sessions/export', { params, responseType: 'blob' }),
+  exportTrainings: (params) => api.get('/trainings/export', { params, responseType: 'blob' }),
+  exportKpiHistory: (params) => api.get('/kpi-reports/export', { params, responseType: 'blob' }),
+  exportHseWeekly: (params) => api.get('/export/hse-weekly', { params, responseType: 'blob' }),
+}
+
+export const sorService = {
+  getAll: (params) => api.get('/sor-reports', { params }),
+  getById: (id) => api.get(`/sor-reports/${id}`),
+  getPinned: () => api.get('/sor-reports/pinned'),
+  create: (data) => {
+    const formData = new FormData()
+    Object.keys(data).forEach(key => {
+      const value = data[key]
+      if (value !== null && value !== undefined && value !== '') {
+        // Convert booleans to "1"/"0" for Laravel validation
+        if (typeof value === 'boolean') {
+          formData.append(key, value ? '1' : '0')
+        } else {
+          formData.append(key, value)
+        }
+      }
+    })
+    return api.post('/sor-reports', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  update: (id, data) => {
+    const formData = new FormData()
+    formData.append('_method', 'PUT')
+    Object.keys(data).forEach(key => {
+      const value = data[key]
+      if (value !== null && value !== undefined && value !== '') {
+        formData.append(key, value)
+      }
+    })
+    return api.post(`/sor-reports/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  submitCorrectiveAction: (id, data) => {
+    const formData = new FormData()
+    Object.keys(data).forEach(key => {
+      if (data[key] !== null && data[key] !== undefined && data[key] !== '') {
+        formData.append(key, data[key])
+      }
+    })
+    return api.post(`/sor-reports/${id}/corrective-action`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  delete: (id) => api.delete(`/sor-reports/${id}`),
+  getCategories: () => api.get('/sor-reports/categories'),
+  getStatistics: (params) => api.get('/sor-reports/statistics', { params }),
+}
+
+export const workPermitService = {
+  getAll: (params) => api.get('/work-permits', { params }),
+  getById: (id) => api.get(`/work-permits/${id}`),
+  create: (data) => api.post('/work-permits', data),
+  update: (id, data) => api.put(`/work-permits/${id}`, data),
+  delete: (id) => api.delete(`/work-permits/${id}`),
+  restore: (id) => api.post(`/work-permits/${id}/restore`),
+  getWeekInfo: (params) => api.get('/work-permits/week-info', { params }),
+  getWeekPermits: (params) => api.get('/work-permits/week-permits', { params }),
+  copyFromPrevious: (data) => api.post('/work-permits/copy-from-previous', data),
+  reinitializeNumbers: (data) => api.post('/work-permits/reinitialize-numbers', data),
+  launchWeek: (data) => api.post('/work-permits/launch-week', data),
+  export: (params) => api.get('/work-permits/export', { params, responseType: 'blob' }),
+  // Archive queries
+  getArchived: (params) => api.get('/work-permits', { params: { ...params, only_archived: true } }),
+}
+
+export const dailyKpiService = {
+  getAll: (params) => api.get('/daily-kpi', { params }),
+  getById: (id) => api.get(`/daily-kpi/${id}`),
+  create: (data) => api.post('/daily-kpi', data),
+  update: (id, data) => api.put(`/daily-kpi/${id}`, data),
+  delete: (id) => api.delete(`/daily-kpi/${id}`),
+  getWeekDates: (params) => api.get('/daily-kpi/week-dates', { params }),
+  getWeekAggregates: (params) => api.get('/daily-kpi/week-aggregates', { params }),
+  getAutoFillValues: (params) => api.get('/daily-kpi/auto-fill', { params }),
+  downloadTemplate: (params) => api.get('/daily-kpi/download-template', { params, responseType: 'blob' }),
+  parseTemplate: (formData) => api.post('/daily-kpi/parse-template', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  bulkSave: (data) => api.post('/daily-kpi/bulk-save', data),
+}
+
+export const inspectionService = {
+  getAll: (params) => api.get('/inspections', { params }),
+  getById: (id) => api.get(`/inspections/${id}`),
+  create: (data) => api.post('/inspections', data),
+  update: (id, data) => api.put(`/inspections/${id}`, data),
+  delete: (id) => api.delete(`/inspections/${id}`),
+  getStatistics: (params) => api.get('/inspections/statistics', { params }),
+  getWeekCount: (params) => api.get('/inspections/week-count', { params }),
+}
+
+export const workerService = {
+  getAll: (params) => api.get('/workers', { params }),
+  getById: (id) => api.get(`/workers/${id}`),
+  create: (data) => api.post('/workers', data),
+  update: (id, data) => api.put(`/workers/${id}`, data),
+  delete: (id) => api.delete(`/workers/${id}`),
+  getStatistics: () => api.get('/workers/statistics'),
+  getEntreprises: () => api.get('/workers/entreprises'),
+  getFonctions: () => api.get('/workers/fonctions'),
+  downloadTemplate: () => api.get('/workers/template', { responseType: 'blob' }),
+  export: (params) => api.get('/workers/export', { params, responseType: 'blob' }),
+  import: (formData) => api.post('/workers/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  bulkDeactivate: (workerIds) => api.post('/workers/bulk-deactivate', { worker_ids: workerIds }),
+  bulkActivate: (workerIds) => api.post('/workers/bulk-activate', { worker_ids: workerIds }),
+}
+
+export const subcontractorOpeningsService = {
+  getAll: (params) => api.get('/subcontractor-openings', { params }),
+  getById: (id) => api.get(`/subcontractor-openings/${id}`),
+  create: (data) => api.post('/subcontractor-openings', data),
+  update: (id, data) => api.put(`/subcontractor-openings/${id}`, data),
+  delete: (id) => api.delete(`/subcontractor-openings/${id}`),
+  uploadDocument: (openingId, data) => {
+    const formData = new FormData()
+    Object.keys(data).forEach((key) => {
+      const value = data[key]
+      if (value !== null && value !== undefined && value !== '') {
+        formData.append(key, value)
+      }
+    })
+    return api.post(`/subcontractor-openings/${openingId}/documents`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+}

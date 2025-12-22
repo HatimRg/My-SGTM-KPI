@@ -1,0 +1,113 @@
+import { Link } from 'react-router-dom'
+import { Home, ArrowLeft, Search, HardHat, Construction, AlertTriangle } from 'lucide-react'
+import { useLanguage } from '../../i18n'
+
+export default function NotFound() {
+  const { t, language } = useLanguage()
+  
+  const title = language === 'fr' ? 'Page Non Trouvée' : 'Page Not Found'
+  const subtitle = language === 'fr' ? 'Erreur 404' : 'Error 404'
+  const description = language === 'fr'
+    ? 'La page que vous recherchez n\'existe pas ou a été déplacée.'
+    : 'The page you\'re looking for doesn\'t exist or has been moved.'
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-gray-900 dark:to-gray-950 flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Subtle grid pattern */}
+      <div 
+        className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}
+      />
+      
+      {/* Ambient glow */}
+      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-amber-500/5 dark:bg-amber-500/10 rounded-full blur-[100px]" />
+      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-orange-500/5 dark:bg-orange-500/10 rounded-full blur-[100px]" />
+      
+      <div className="relative z-10 text-center max-w-lg mx-auto">
+        {/* Icon Section */}
+        <div className="relative mb-8">
+          {/* Main icon container */}
+          <div className="relative inline-flex items-center justify-center">
+            {/* Outer ring */}
+            <div className="absolute w-40 h-40 rounded-full border-2 border-dashed border-amber-300/50 dark:border-amber-600/30 animate-[spin_20s_linear_infinite]" />
+            
+            {/* Inner ring */}
+            <div className="absolute w-32 h-32 rounded-full border border-amber-200/50 dark:border-amber-700/30" />
+            
+            {/* Icon background */}
+            <div className="relative w-28 h-28 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 dark:from-amber-500 dark:to-orange-600 shadow-2xl shadow-amber-500/25 dark:shadow-amber-500/20 flex items-center justify-center transform rotate-3 hover:rotate-0 transition-transform duration-500">
+              {/* Search icon with question mark */}
+              <div className="relative">
+                <Search className="w-12 h-12 text-white/90" strokeWidth={2.5} />
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-white dark:bg-gray-900 rounded-full flex items-center justify-center shadow-lg">
+                  <span className="text-amber-600 dark:text-amber-400 font-bold text-xs">?</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Floating elements */}
+            <div className="absolute -top-2 -right-4 w-8 h-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg flex items-center justify-center animate-bounce" style={{ animationDuration: '3s' }}>
+              <HardHat className="w-4 h-4 text-amber-500" />
+            </div>
+            <div className="absolute -bottom-2 -left-4 w-8 h-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg flex items-center justify-center animate-bounce" style={{ animationDuration: '3s', animationDelay: '1s' }}>
+              <Construction className="w-4 h-4 text-orange-500" />
+            </div>
+          </div>
+        </div>
+        
+        {/* Error Code */}
+        <div className="mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-100 dark:bg-amber-900/40 rounded-full mb-4">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 tracking-wide uppercase">{subtitle}</span>
+          </div>
+          
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
+            {title}
+          </h1>
+          
+          <p className="text-gray-600 dark:text-gray-400 text-lg leading-relaxed max-w-md mx-auto">
+            {description}
+          </p>
+        </div>
+        
+        {/* Hazard Stripes Divider */}
+        <div className="my-8 h-2 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800">
+          <div 
+            className="h-full w-full"
+            style={{
+              background: 'repeating-linear-gradient(45deg, #f59e0b, #f59e0b 10px, #1f2937 10px, #1f2937 20px)',
+            }}
+          />
+        </div>
+        
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button
+            onClick={() => window.history.back()}
+            className="group w-full sm:w-auto px-6 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl font-medium text-gray-700 dark:text-gray-200 hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            {t('errors.goBack')}
+          </button>
+          <Link
+            to="/"
+            className="group w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 rounded-xl font-medium text-white shadow-lg shadow-amber-500/25 hover:shadow-xl hover:shadow-amber-500/30 transition-all duration-200 flex items-center justify-center gap-2"
+          >
+            <Home className="w-4 h-4" />
+            {t('errors.goHome')}
+          </Link>
+        </div>
+        
+        {/* Footer */}
+        <p className="mt-12 text-sm text-gray-400 dark:text-gray-600">
+          {language === 'fr' 
+            ? 'Si le problème persiste, contactez l\'administrateur.' 
+            : 'If the problem persists, contact your administrator.'}
+        </p>
+      </div>
+    </div>
+  )
+}

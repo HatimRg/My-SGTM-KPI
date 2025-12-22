@@ -1,0 +1,348 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Inspection;
+use App\Models\Project;
+use Illuminate\Http\Request;
+use Carbon\Carbon;
+use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithTitle;
+
+class InspectionController extends Controller
+{
+    /**
+     * Get all inspections with filters
+     */
+    public function index(Request $request)
+    {
+        $user = $request->user();
+        
+        $query = Inspection::with(['project:id,name,code', 'creator:id,name']);
+
+        // Filter by project
+        if ($request->project_id) {
+            $query->where('project_id', $request->project_id);
+        } else if (!$user->isAdmin()) {
+            // Non-admins can only see inspections for their projects
+            $projectIds = $user->projects()->pluck('projects.id');
+            $query->whereIn('project_id', $projectIds);
+        }
+
+        // Filter by week
+        if ($request->week_number && $request->year) {
+            $query->forWeek($request->week_number, $request->year);
+        }
+
+        // Filter by status
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+
+        // Filter by nature
+        if ($request->nature) {
+            $query->where('nature', $request->nature);
+        }
+
+        // Filter by type
+        if ($request->type) {
+            $query->where('type', $request->type);
+        }
+
+        $inspections = $query->orderBy('inspection_date', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->paginate($request->per_page ?? 50);
+
+        return $this->success($inspections);
+    }
+
+    public function export(Request $request)
+    {
+        $request->validate([
+            'project_id' => 'required|exists:projects,id',
+            'status' => 'nullable|in:open,closed',
+            'nature' => 'nullable|string',
+            'type' => 'nullable|in:internal,external',
+        ]);
+
+        $user = $request->user();
+        $projectId = (int) $request->project_id;
+
+        if (!$user->isAdmin()) {
+            $projectIds = $user->projects()->pluck('projects.id')->toArray();
+            if (!in_array($projectId, $projectIds)) {
+                return $this->error('Access denied', 403);
+            }
+        }
+
+        $project = Project::findOrFail($projectId);
+
+        $query = Inspection::query()
+            ->where('project_id', $projectId)
+            ->orderBy('inspection_date', 'desc')
+            ->orderBy('created_at', 'desc');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('nature')) {
+            $query->where('nature', $request->nature);
+        }
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        $inspections = $query->get();
+
+        $rows = $inspections->map(function (Inspection $i) {
+            return [
+                $i->id,
+                optional($i->inspection_date)->format('Y-m-d'),
+                $i->nature,
+                $i->type,
+                $i->location,
+                optional($i->start_date)->format('Y-m-d'),
+                optional($i->end_date)->format('Y-m-d'),
+                $i->zone,
+                $i->inspector,
+                $i->enterprise,
+                $i->status,
+                $i->notes,
+            ];
+        })->toArray();
+
+        $export = new class($rows) implements FromArray, WithHeadings, WithTitle {
+            private array $rows;
+            public function __construct(array $rows)
+            {
+                $this->rows = $rows;
+            }
+            public function array(): array
+            {
+                return $this->rows;
+            }
+            public function headings(): array
+            {
+                return [
+                    'ID',
+                    'inspection_date',
+                    'nature',
+                    'type',
+                    'location',
+                    'start_date',
+                    'end_date',
+                    'zone',
+                    'inspector',
+                    'enterprise',
+                    'status',
+                    'notes',
+                ];
+            }
+            public function title(): string
+            {
+                return 'Inspections';
+            }
+        };
+
+        $filename = 'Inspections_' . ($project->code ?? $project->id) . '_' . date('Y-m-d_His') . '.xlsx';
+
+        return Excel::download($export, $filename);
+    }
+
+    /**
+     * Store a new inspection
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'project_id' => 'required|exists:projects,id',
+            'inspection_date' => 'required|date',
+            'nature' => 'required|string',
+            'nature_other' => 'nullable|string|required_if:nature,other',
+            'type' => 'required|in:internal,external',
+            'location' => 'nullable|string|max:255',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'zone' => 'nullable|string|max:255',
+            'inspector' => 'required|string|max:255',
+            'enterprise' => 'nullable|string|max:255',
+            'status' => 'required|in:open,closed',
+            'notes' => 'nullable|string',
+        ]);
+
+        $user = $request->user();
+
+        // Check if user has access to this project
+        if (!$user->isAdmin()) {
+            $hasAccess = $user->projects()->where('projects.id', $request->project_id)->exists();
+            if (!$hasAccess) {
+                return $this->error('Access denied', 403);
+            }
+        }
+
+        // Calculate week info from inspection date
+        $weekInfo = Inspection::calculateWeekFromDate($request->inspection_date);
+
+        $inspection = Inspection::create([
+            'project_id' => $request->project_id,
+            'created_by' => $user->id,
+            'inspection_date' => $request->inspection_date,
+            'nature' => $request->nature,
+            'nature_other' => $request->nature === 'other' ? $request->nature_other : null,
+            'type' => $request->type,
+            'location' => $request->location,
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+            'zone' => $request->zone,
+            'inspector' => $request->inspector,
+            'enterprise' => $request->enterprise,
+            'status' => $request->status,
+            'week_number' => $weekInfo['week_number'],
+            'week_year' => $weekInfo['week_year'],
+            'notes' => $request->notes,
+        ]);
+
+        return $this->success(
+            $inspection->load(['project:id,name,code', 'creator:id,name']),
+            'Inspection created successfully',
+            201
+        );
+    }
+
+    /**
+     * Get a specific inspection
+     */
+    public function show(Inspection $inspection)
+    {
+        return $this->success(
+            $inspection->load(['project:id,name,code', 'creator:id,name'])
+        );
+    }
+
+    /**
+     * Update an inspection
+     */
+    public function update(Request $request, Inspection $inspection)
+    {
+        $request->validate([
+            'project_id' => 'sometimes|exists:projects,id',
+            'inspection_date' => 'sometimes|date',
+            'nature' => 'sometimes|string',
+            'nature_other' => 'nullable|string',
+            'type' => 'sometimes|in:internal,external',
+            'location' => 'nullable|string|max:255',
+            'start_date' => 'sometimes|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'zone' => 'nullable|string|max:255',
+            'inspector' => 'sometimes|string|max:255',
+            'enterprise' => 'nullable|string|max:255',
+            'status' => 'sometimes|in:open,closed',
+            'notes' => 'nullable|string',
+        ]);
+
+        $user = $request->user();
+
+        // Check access
+        if (!$user->isAdmin() && $inspection->created_by !== $user->id) {
+            return $this->error('Access denied', 403);
+        }
+
+        $data = $request->only([
+            'project_id', 'inspection_date', 'nature', 'nature_other',
+            'type', 'location', 'start_date', 'end_date', 'zone',
+            'inspector', 'enterprise', 'status', 'notes'
+        ]);
+
+        // Recalculate week if inspection_date changed
+        if ($request->has('inspection_date')) {
+            $weekInfo = Inspection::calculateWeekFromDate($request->inspection_date);
+            $data['week_number'] = $weekInfo['week_number'];
+            $data['week_year'] = $weekInfo['week_year'];
+        }
+
+        // Handle nature_other
+        if (isset($data['nature']) && $data['nature'] !== 'other') {
+            $data['nature_other'] = null;
+        }
+
+        $inspection->update($data);
+
+        return $this->success(
+            $inspection->fresh()->load(['project:id,name,code', 'creator:id,name']),
+            'Inspection updated successfully'
+        );
+    }
+
+    /**
+     * Delete an inspection
+     */
+    public function destroy(Request $request, Inspection $inspection)
+    {
+        $user = $request->user();
+
+        // Check access
+        if (!$user->isAdmin() && $inspection->created_by !== $user->id) {
+            return $this->error('Access denied', 403);
+        }
+
+        $inspection->delete();
+
+        return $this->success(null, 'Inspection deleted successfully');
+    }
+
+    /**
+     * Get inspection statistics for KPI
+     */
+    public function statistics(Request $request)
+    {
+        $user = $request->user();
+        $year = $request->year ?? date('Y');
+
+        $query = Inspection::where('week_year', $year);
+
+        // Filter by project if specified
+        if ($request->project_id) {
+            $query->where('project_id', $request->project_id);
+        } else if (!$user->isAdmin()) {
+            $projectIds = $user->projects()->pluck('projects.id');
+            $query->whereIn('project_id', $projectIds);
+        }
+
+        $stats = [
+            'total' => (clone $query)->count(),
+            'open' => (clone $query)->open()->count(),
+            'closed' => (clone $query)->closed()->count(),
+            'internal' => (clone $query)->where('type', 'internal')->count(),
+            'external' => (clone $query)->where('type', 'external')->count(),
+            'by_nature' => (clone $query)
+                ->selectRaw('nature, COUNT(*) as count')
+                ->groupBy('nature')
+                ->pluck('count', 'nature'),
+        ];
+
+        return $this->success($stats);
+    }
+
+    /**
+     * Get inspection count for a specific week (for KPI auto-fill)
+     */
+    public function weekCount(Request $request)
+    {
+        $request->validate([
+            'project_id' => 'required|exists:projects,id',
+            'week_number' => 'required|integer',
+            'year' => 'required|integer',
+        ]);
+
+        $count = Inspection::where('project_id', $request->project_id)
+            ->forWeek($request->week_number, $request->year)
+            ->count();
+
+        return $this->success(['count' => $count]);
+    }
+}

@@ -1,0 +1,15 @@
+[build]
+# Use Nixpacks and build from the backend directory
+builder = "NIXPACKS"
+baseDir = "backend"
+buildCommand = "composer install --no-dev --optimize-autoloader"
+
+[deploy]
+# Start Laravel using PHP's built-in web server from the backend dir
+startCommand = "php -S 0.0.0.0:8080 -t public"
+
+# Optional but recommended settings
+numReplicas = 1
+healthcheckPath = "/"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
