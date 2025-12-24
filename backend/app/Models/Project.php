@@ -88,15 +88,36 @@ class Project extends Model
         return $query->where('status', self::STATUS_ACTIVE);
     }
 
-    public function scopeForUser($query, User $user)
+    public function scopeAssignedTo($query, User $user)
     {
-        if ($user->isAdmin()) {
-            return $query;
-        }
-        
         return $query->whereHas('users', function ($q) use ($user) {
             $q->where('users.id', $user->id);
         });
+    }
+
+    public function scopeVisibleTo($query, User $user)
+    {
+        $scope = $user->getProjectScopeType();
+
+        if ($scope === 'all') {
+            return $query;
+        }
+
+        if ($scope === 'pole') {
+            $pole = $user->pole;
+            if ($pole === null || $pole === '') {
+                return $query->whereRaw('1 = 0');
+            }
+            return $query->where('pole', $pole);
+        }
+
+        // assigned
+        return $query->assignedTo($user);
+    }
+
+    public function scopeForUser($query, User $user)
+    {
+        return $query->visibleTo($user);
     }
 
     // Accessors

@@ -21,6 +21,9 @@ class UserController extends Controller
     {
         $query = User::query()->with('projects');
 
+        // Hide dev users from normal admin views/statistics
+        $query->where('role', '!=', User::ROLE_DEV);
+
         // Search filter
         if ($search = $request->get('search')) {
             $query->where(function ($q) use ($search) {
@@ -72,7 +75,8 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
-            'role' => 'required|in:admin,responsable,sor,supervisor,animateur,hr,user',
+            'role' => 'required|in:admin,hse_manager,responsable,supervisor,hr,user,dev,pole_director,works_director,hse_director,hr_director',
+            'pole' => 'nullable|string|max:255|required_if:role,pole_director',
             'phone' => 'nullable|string|max:20',
             'is_active' => 'boolean',
             'project_ids' => 'nullable|array',
@@ -84,12 +88,13 @@ class UserController extends Controller
             'email' => $request->email,
             'password' => $request->password, // Will be hashed by model mutator
             'role' => $request->role,
+            'pole' => $request->role === User::ROLE_POLE_DIRECTOR ? $request->pole : null,
             'phone' => $request->phone,
             'is_active' => $request->get('is_active', true),
         ]);
 
         // Assign projects if provided
-        if ($request->has('project_ids')) {
+        if ($request->has('project_ids') && $request->role !== User::ROLE_POLE_DIRECTOR) {
             $user->projects()->sync($request->project_ids);
         }
 
@@ -117,14 +122,19 @@ class UserController extends Controller
             'name' => 'sometimes|string|max:255',
             'email' => ['sometimes', 'email', Rule::unique('users')->ignore($user->id)],
             'password' => 'nullable|string|min:8',
-            'role' => 'sometimes|in:admin,responsable,sor,supervisor,animateur,hr,user',
+            'role' => 'sometimes|in:admin,hse_manager,responsable,supervisor,hr,user,dev,pole_director,works_director,hse_director,hr_director',
+            'pole' => 'nullable|string|max:255|required_if:role,pole_director',
             'phone' => 'nullable|string|max:20',
             'is_active' => 'boolean',
             'project_ids' => 'nullable|array',
             'project_ids.*' => 'exists:projects,id',
         ]);
 
-        $data = $request->only(['name', 'email', 'role', 'phone', 'is_active']);
+        $data = $request->only(['name', 'email', 'role', 'phone', 'is_active', 'pole']);
+
+        if ($request->has('role') && $request->role !== User::ROLE_POLE_DIRECTOR) {
+            $data['pole'] = null;
+        }
 
         if ($request->filled('password')) {
             $data['password'] = $request->password; // Will be hashed by model mutator
@@ -134,7 +144,12 @@ class UserController extends Controller
 
         // Update project assignments if provided
         if ($request->has('project_ids')) {
-            $user->projects()->sync($request->project_ids);
+            $roleAfterUpdate = $request->has('role') ? $request->role : $user->role;
+            if ($roleAfterUpdate === User::ROLE_POLE_DIRECTOR) {
+                $user->projects()->detach();
+            } else {
+                $user->projects()->sync($request->project_ids);
+            }
         }
 
         $user->load('projects');
@@ -176,6 +191,10 @@ class UserController extends Controller
      */
     public function assignProjects(Request $request, User $user)
     {
+        if ($user->role === User::ROLE_POLE_DIRECTOR) {
+            return $this->error('Pole Director users are scoped by pole and cannot be assigned individual projects.', 422);
+        }
+
         $request->validate([
             'project_ids' => 'required|array',
             'project_ids.*' => 'exists:projects,id',
@@ -193,11 +212,12 @@ class UserController extends Controller
     public function statistics()
     {
         $stats = [
-            'total' => User::count(),
-            'admins' => User::admins()->count(),
-            'responsables' => User::responsables()->count(),
-            'active' => User::active()->count(),
-            'inactive' => User::where('is_active', false)->count(),
+            'total' => User::where('role', '!=', User::ROLE_DEV)->count(),
+            'admins' => User::where('role', '!=', User::ROLE_DEV)->admins()->count(),
+            'hse_managers' => User::where('role', '!=', User::ROLE_DEV)->hseManagers()->count(),
+            'responsables' => User::where('role', '!=', User::ROLE_DEV)->responsables()->count(),
+            'active' => User::where('role', '!=', User::ROLE_DEV)->active()->count(),
+            'inactive' => User::where('role', '!=', User::ROLE_DEV)->where('is_active', false)->count(),
         ];
 
         return $this->success($stats);
@@ -206,11 +226,27 @@ class UserController extends Controller
     public function downloadTemplate(Request $request)
     {
         try {
+            $user = $request->user();
+
             if (!class_exists(\ZipArchive::class) || !extension_loaded('zip')) {
                 return $this->error('XLSX export requires PHP zip extension (ZipArchive). Please enable/install php-zip on the server.', 422);
             }
             $filename = 'SGTM-Users-Template.xlsx';
-            return Excel::download(new UsersTemplateExport(), $filename);
+
+            $allRoles = array_keys((array) config('roles.roles', []));
+            $roleOptions = $allRoles;
+
+            // Keep dev role hidden from non-dev users
+            if (!$user || !$user->isDev()) {
+                $roleOptions = array_values(array_filter($roleOptions, fn ($r) => $r !== User::ROLE_DEV));
+            }
+
+            // Keep admin role hidden from non-admin users (directors are admin-like but not admin)
+            if (!$user || $user->role !== User::ROLE_ADMIN) {
+                $roleOptions = array_values(array_filter($roleOptions, fn ($r) => $r !== User::ROLE_ADMIN));
+            }
+
+            return Excel::download(new UsersTemplateExport(200, $roleOptions), $filename);
         } catch (\Throwable $e) {
             Log::error('Users template generation failed', [
                 'error' => $e->getMessage(),

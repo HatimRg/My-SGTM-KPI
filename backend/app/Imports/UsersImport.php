@@ -48,7 +48,7 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
             }
             $this->seenEmails[$email] = true;
 
-            $allowedRoles = ['admin', 'responsable', 'sor', 'supervisor', 'animateur', 'hr', 'user'];
+            $allowedRoles = ['admin', 'hse_manager', 'responsable', 'supervisor', 'hr', 'user', 'dev', 'pole_director', 'works_director', 'hse_director', 'hr_director'];
             if (!in_array($role, $allowedRoles, true)) {
                 $this->rowErrors[] = ['email' => $email, 'error' => 'Invalid role'];
                 return null;

@@ -3,6 +3,7 @@ import { projectService, workPermitService } from '../../services/api'
 import { useAuthStore } from '../../store/authStore'
 import { useLanguage } from '../../i18n'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import Modal from '../../components/ui/Modal'
 import DatePicker from '../../components/ui/DatePicker'
 import Select from '../../components/ui/Select'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
@@ -762,23 +763,13 @@ export default function WorkPermits() {
       )}
 
       {/* Create/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between z-[200]">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {editingPermit ? t('workPermits.editPermit') : t('workPermits.newPermit')}
-              </h3>
-              <button
-                onClick={() => setShowModal(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4">
-              <div className="space-y-4">
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingPermit ? t('workPermits.editPermit') : t('workPermits.newPermit')}
+        size="lg"
+      >
+            <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Permit Types */}
                 <div>
                   <label className="label">{t('workPermits.permitTypes')}</label>
@@ -891,33 +882,30 @@ export default function WorkPermits() {
                     className="input"
                   />
                 </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="btn-outline"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  {saving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  {editingPermit ? t('common.update') : t('common.save')}
+                </button>
               </div>
             </form>
-
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="btn-outline"
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={saving}
-                className="btn-primary flex items-center gap-2"
-              >
-                {saving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4" />
-                )}
-                {editingPermit ? t('common.update') : t('common.save')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       <ConfirmDialog
         isOpen={!!confirmPermit}

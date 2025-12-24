@@ -321,7 +321,8 @@ export const projectService = {
     let page = 1
     const all = []
 
-    while (true) {
+    let hasMore = true
+    while (hasMore) {
       const res = await cachedGet('/projects', { ...params, page, per_page: perPage }, 60000)
       const items = res.data?.data ?? []
       if (Array.isArray(items)) {
@@ -329,8 +330,8 @@ export const projectService = {
       }
 
       const meta = res.data?.meta
-      if (!meta || page >= meta.last_page) break
-      page += 1
+      hasMore = !!meta && page < meta.last_page
+      if (hasMore) page += 1
     }
 
     return all
@@ -341,7 +342,7 @@ export const projectService = {
   delete: (id) => api.delete(`/projects/${id}`),
   getStatistics: () => api.get('/projects/statistics'),
   getKpiTrends: (id, months) => api.get(`/projects/${id}/kpi-trends`, { params: { months } }),
-  getPoles: () => cachedGet('/projects/poles', {}, 300000),
+  getPoles: (params) => cachedGet('/projects/poles', params ?? {}, 300000),
   downloadTemplate: () => api.get('/projects/template', { responseType: 'blob' }),
   bulkImport: (formData) => api.post('/projects/import', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }

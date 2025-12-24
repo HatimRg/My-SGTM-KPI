@@ -23,9 +23,11 @@ class ProjectController extends Controller
         $user = $request->user();
         $query = Project::query()->with(['users', 'creator']);
 
-        // For non-admin users, only show assigned projects
-        if (!$user->isAdmin()) {
-            $query->forUser($user);
+        $scope = $request->get('scope');
+        if ($scope === 'assigned') {
+            $query->assignedTo($user);
+        } elseif (!$user->hasGlobalProjectScope()) {
+            $query->visibleTo($user);
         }
 
         // Search filter
@@ -70,8 +72,12 @@ class ProjectController extends Controller
     {
         $user = $request->user();
         $query = Project::query();
-        if ($user && !$user->isAdmin()) {
-            $query->forUser($user);
+        $scope = $request->get('scope');
+
+        if ($scope === 'assigned') {
+            $query->assignedTo($user);
+        } elseif (!$user->hasGlobalProjectScope()) {
+            $query->visibleTo($user);
         }
 
         $values = $query
@@ -195,8 +201,7 @@ class ProjectController extends Controller
     {
         $user = $request->user();
 
-        // Check access for non-admin users
-        if (!$user->isAdmin() && !$project->users->contains($user->id)) {
+        if (!$user->canAccessProject($project)) {
             return $this->error('Access denied', 403);
         }
 
@@ -280,8 +285,11 @@ class ProjectController extends Controller
         $user = $request->user();
         $query = Project::query();
 
-        if (!$user->isAdmin()) {
-            $query->forUser($user);
+        $scope = $request->get('scope');
+        if ($scope === 'assigned') {
+            $query->assignedTo($user);
+        } elseif (!$user->hasGlobalProjectScope()) {
+            $query->visibleTo($user);
         }
 
         $stats = [
@@ -300,6 +308,14 @@ class ProjectController extends Controller
      */
     public function kpiTrends(Request $request, Project $project)
     {
+        $user = $request->user();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+        if (!$user->canAccessProject($project)) {
+            return $this->error('Access denied', 403);
+        }
+
         $months = $request->get('months', 12);
         
         $reports = $project->kpiReports()
@@ -318,6 +334,14 @@ class ProjectController extends Controller
      */
     public function getZones(Project $project)
     {
+        $user = request()->user();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+        if (!$user->canAccessProject($project)) {
+            return $this->error('Access denied', 403);
+        }
+
         return $this->success([
             'zones' => $project->zones ?? []
         ]);
@@ -329,14 +353,17 @@ class ProjectController extends Controller
     public function updateZones(Request $request, Project $project)
     {
         $user = $request->user();
+
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
         
         // Check if user is admin or responsable for this project
-        if (!$user->isAdmin() && !$user->isResponsable()) {
+        if (!$user->isAdminLike() && !$user->isResponsable()) {
             return $this->error('Unauthorized', 403);
         }
 
-        // For responsables, check if they are assigned to this project
-        if ($user->isResponsable() && !$project->users()->where('users.id', $user->id)->exists()) {
+        if (!$user->canAccessProject($project)) {
             return $this->error('You are not assigned to this project', 403);
         }
 
@@ -362,12 +389,16 @@ class ProjectController extends Controller
     public function addZone(Request $request, Project $project)
     {
         $user = $request->user();
+
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
         
-        if (!$user->isAdmin() && !$user->isResponsable()) {
+        if (!$user->isAdminLike() && !$user->isResponsable()) {
             return $this->error('Unauthorized', 403);
         }
 
-        if ($user->isResponsable() && !$project->users()->where('users.id', $user->id)->exists()) {
+        if (!$user->canAccessProject($project)) {
             return $this->error('You are not assigned to this project', 403);
         }
 
@@ -395,12 +426,16 @@ class ProjectController extends Controller
     public function removeZone(Request $request, Project $project)
     {
         $user = $request->user();
+
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
         
-        if (!$user->isAdmin() && !$user->isResponsable()) {
+        if (!$user->isAdminLike() && !$user->isResponsable()) {
             return $this->error('Unauthorized', 403);
         }
 
-        if ($user->isResponsable() && !$project->users()->where('users.id', $user->id)->exists()) {
+        if (!$user->canAccessProject($project)) {
             return $this->error('You are not assigned to this project', 403);
         }
 

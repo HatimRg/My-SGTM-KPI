@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
+import { useDevStore, DEV_PROJECT_SCOPE } from '../store/devStore'
 import useThemeStore from '../stores/themeStore'
 import { useLanguage } from '../i18n'
 import { notificationService } from '../services/api'
@@ -40,16 +41,23 @@ export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false)
+  const [devToolsOpen, setDevToolsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifications, setNotifications] = useState([])
 
   const { user, logout, isAdmin } = useAuthStore()
+  const { simulatedRole, setSimulatedRole, clearSimulatedRole, projectScope, setProjectScope } = useDevStore()
   const { isDark, toggleTheme } = useThemeStore()
   const { t } = useLanguage()
   const navigate = useNavigate()
   const location = useLocation()
 
   const isUserAdmin = isAdmin()
+
+  const isDev = user?.role === 'dev'
+  const effectiveRole = isDev && simulatedRole ? simulatedRole : user?.role
+  const adminLikeRoles = ['admin', 'pole_director', 'works_director', 'hse_director', 'hr_director']
+  const isUserAdminLike = isUserAdmin || (user?.role === 'dev' && !simulatedRole) || adminLikeRoles.includes(effectiveRole)
 
   // Fetch notifications (only when user is authenticated)
   useEffect(() => {
@@ -131,14 +139,14 @@ export default function DashboardLayout() {
       case 'kpi_approved':
       case 'kpi_rejected':
       case 'kpi_submitted':
-        navigate(isUserAdmin ? '/admin/kpi' : '/kpi/history')
+        navigate(isUserAdminLike ? '/admin/kpi' : '/kpi/history')
         break
       case 'project_assigned':
-        navigate(isUserAdmin ? '/admin/projects' : '/my-projects')
+        navigate(isUserAdminLike ? '/admin/projects' : '/my-projects')
         break
       case 'sor_submitted':
       case 'sor_corrected':
-        navigate(isHseOfficer || isAnimateur ? '/sor' : '/user/sor')
+        navigate(isHseOfficer ? '/sor' : '/user/sor')
         break
       case 'training_submitted':
         navigate('/training')
@@ -161,11 +169,11 @@ export default function DashboardLayout() {
     }
   }
 
-  const isHseOfficer = user?.role === 'user'
-  const isAnimateur = user?.role === 'animateur'
-  const isSupervisor = user?.role === 'supervisor'
-  const isResponsable = user?.role === 'responsable'
-  const isHR = user?.role === 'hr'
+  const isHseOfficer = effectiveRole === 'user'
+  const isSupervisor = effectiveRole === 'supervisor'
+  const isResponsable = effectiveRole === 'responsable'
+  const isHseManager = effectiveRole === 'hse_manager'
+  const isHR = effectiveRole === 'hr'
 
   const adminNavItems = [
     { to: '/admin', icon: LayoutDashboard, label: t('nav.dashboard') },
@@ -181,6 +189,26 @@ export default function DashboardLayout() {
     { to: '/admin/workers', icon: HardHat, label: t('workers.title') },
     { to: '/admin/qualified-personnel', icon: HardHat, label: t('qualifiedPersonnel.navLabel') },
     { to: '/admin/subcontractors', icon: Building2, label: t('subcontractors.title') },
+  ]
+
+  const directorNavItems = [
+    { to: '/admin', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { to: '/admin/kpi', icon: ClipboardCheck, label: t('kpi.title') },
+    { to: '/admin/kpi-history', icon: History, label: t('kpi.history') },
+    { to: '/admin/training', icon: FileText, label: t('training.navLabel') },
+    { to: '/admin/awareness', icon: Megaphone, label: t('awareness.navLabel') },
+    { to: '/admin/sor', icon: AlertTriangle, label: t('sor.title') },
+    { to: '/admin/work-permits', icon: ClipboardList, label: t('workPermits.title') },
+    { to: '/admin/inspections', icon: ClipboardCheck, label: t('inspections.title') },
+    { to: '/admin/workers', icon: HardHat, label: t('workers.title') },
+    { to: '/admin/qualified-personnel', icon: HardHat, label: t('qualifiedPersonnel.navLabel') },
+    { to: '/admin/subcontractors', icon: Building2, label: t('subcontractors.title') },
+  ]
+
+  const hrDirectorNavItems = [
+    { to: '/admin', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { to: '/admin/workers', icon: HardHat, label: t('workers.title') },
+    { to: '/admin/qualified-personnel', icon: HardHat, label: t('qualifiedPersonnel.navLabel') },
   ]
 
   const userNavItems = [
@@ -221,10 +249,16 @@ export default function DashboardLayout() {
   ]
 
   const getNavItems = () => {
-    if (isUserAdmin) return adminNavItems
-    if (isHseOfficer || isAnimateur) return hseOfficerNavItems
-    if (isSupervisor) return supervisorNavItems
-    if (isHR) return hrNavItems
+    if (effectiveRole === 'admin') return adminNavItems
+    if (effectiveRole === 'pole_director') return directorNavItems
+    if (effectiveRole === 'works_director') return directorNavItems
+    if (effectiveRole === 'hse_director') return directorNavItems
+    if (effectiveRole === 'hr_director') return hrDirectorNavItems
+    if (effectiveRole === 'user') return hseOfficerNavItems
+    if (effectiveRole === 'supervisor') return supervisorNavItems
+    if (effectiveRole === 'hr') return hrNavItems
+    if (effectiveRole === 'dev') return userNavItems
+    if (effectiveRole === 'hse_manager' || effectiveRole === 'responsable') return userNavItems
     return userNavItems
   }
 
@@ -251,7 +285,7 @@ export default function DashboardLayout() {
           <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-700">
             <div 
               className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => navigate(isUserAdmin ? '/admin' : '/dashboard')}
+              onClick={() => navigate(isUserAdminLike ? '/admin' : '/dashboard')}
             >
               <img 
                 src={appLogo} 
@@ -275,7 +309,7 @@ export default function DashboardLayout() {
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-thin">
             <div className="mb-4">
               <span className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                {isUserAdmin ? t('nav.administration') : t('nav.dashboard')}
+                {isUserAdminLike ? t('nav.administration') : t('nav.dashboard')}
               </span>
             </div>
             
@@ -298,7 +332,7 @@ export default function DashboardLayout() {
           {/* Role label */}
           <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-700">
             <span className="text-xs text-gray-400">
-              {t(`roles.${user?.role}`) ?? user?.role}
+              {t(`roles.${effectiveRole}`) ?? effectiveRole}
             </span>
           </div>
 
@@ -337,6 +371,81 @@ export default function DashboardLayout() {
             {/* Right side */}
             <div className="flex items-center gap-2">
 
+              {/* Dev Tools */}
+              {isDev && (
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setDevToolsOpen(!devToolsOpen)
+                      setNotificationDropdownOpen(false)
+                      setProfileDropdownOpen(false)
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    title="Dev Tools"
+                  >
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Dev</span>
+                    <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                  </button>
+
+                  {devToolsOpen && (
+                    <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 animate-fade-in z-50">
+                      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Dev Tools</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Simulate role & project scope</p>
+                      </div>
+
+                      <div className="px-4 py-3 space-y-3">
+                        <div>
+                          <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Simulated role</label>
+                          <select
+                            value={simulatedRole ?? ''}
+                            onChange={(e) => setSimulatedRole(e.target.value || null)}
+                            className="mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm"
+                          >
+                            <option value="">(none)</option>
+                            <option value="admin">admin</option>
+                            <option value="hse_manager">hse_manager</option>
+                            <option value="responsable">responsable</option>
+                            <option value="supervisor">supervisor</option>
+                            <option value="user">user</option>
+                            <option value="hr">hr</option>
+                            <option value="pole_director">pole_director</option>
+                            <option value="works_director">works_director</option>
+                            <option value="hse_director">hse_director</option>
+                            <option value="hr_director">hr_director</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Project scope</label>
+                          <select
+                            value={projectScope}
+                            onChange={(e) => setProjectScope(e.target.value)}
+                            className="mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm"
+                          >
+                            <option value={DEV_PROJECT_SCOPE.ALL}>{t('common.allProjects')}</option>
+                            <option value={DEV_PROJECT_SCOPE.ASSIGNED}>Assigned only</option>
+                          </select>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-1">
+                          <button
+                            onClick={() => {
+                              clearSimulatedRole()
+                              setProjectScope(DEV_PROJECT_SCOPE.ALL)
+                              setDevToolsOpen(false)
+                            }}
+                            className="text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          >
+                            Reset
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Language Switcher */}
               <LanguageSwitcher variant="compact" />
 
@@ -359,6 +468,7 @@ export default function DashboardLayout() {
                   onClick={() => {
                     setNotificationDropdownOpen(!notificationDropdownOpen)
                     setProfileDropdownOpen(false)
+                    setDevToolsOpen(false)
                   }}
                   className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
@@ -458,6 +568,7 @@ export default function DashboardLayout() {
                   onClick={() => {
                     setProfileDropdownOpen(!profileDropdownOpen)
                     setNotificationDropdownOpen(false)
+                    setDevToolsOpen(false)
                   }}
                   className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
@@ -481,7 +592,7 @@ export default function DashboardLayout() {
                     </div>
                     <div className="py-1">
                       <NavLink
-                        to={isUserAdmin ? '/admin/profile' : '/profile'}
+                        to={isUserAdminLike ? '/admin/profile' : '/profile'}
                         className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                         onClick={() => setProfileDropdownOpen(false)}
                       >
@@ -489,7 +600,7 @@ export default function DashboardLayout() {
                         {t('nav.profile')}
                       </NavLink>
                       <NavLink
-                        to={isUserAdmin ? '/admin/profile' : '/profile'}
+                        to={isUserAdminLike ? '/admin/profile' : '/profile'}
                         className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                         onClick={() => setProfileDropdownOpen(false)}
                       >
@@ -522,12 +633,13 @@ export default function DashboardLayout() {
       </div>
 
       {/* Click outside to close dropdowns */}
-      {(profileDropdownOpen || notificationDropdownOpen) && (
+      {(profileDropdownOpen || notificationDropdownOpen || devToolsOpen) && (
         <div
           className="fixed inset-0 z-20"
           onClick={() => {
             setProfileDropdownOpen(false)
             setNotificationDropdownOpen(false)
+            setDevToolsOpen(false)
           }}
         />
       )}

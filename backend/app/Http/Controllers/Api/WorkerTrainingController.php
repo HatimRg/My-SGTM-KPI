@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\WorkerTraining;
+use App\Models\Project;
+use App\Models\Worker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -26,24 +28,26 @@ class WorkerTrainingController extends Controller
 
         $query = WorkerTraining::with(['worker.project']);
 
-        if ($request->boolean('for_my_projects') && !$user->isAdmin()) {
-            $projectIds = array_unique(array_merge(
-                $user->projects()->pluck('projects.id')->toArray(),
-                $user->teamProjects()->pluck('projects.id')->toArray()
-            ));
-
-            if (!empty($projectIds)) {
-                $query->whereHas('worker', function ($q) use ($projectIds) {
-                    $q->whereIn('project_id', $projectIds);
-                });
-            } else {
+        $visibleProjectIds = $user->visibleProjectIds();
+        if ($visibleProjectIds !== null) {
+            if (count($visibleProjectIds) === 0) {
                 $empty = $query->whereRaw('1 = 0')->paginate($request->get('per_page', 25));
                 return $this->paginated($empty);
             }
+
+            $query->whereHas('worker', function ($q) use ($visibleProjectIds) {
+                $q->whereIn('project_id', $visibleProjectIds);
+            });
         }
 
         if ($request->filled('project_id')) {
             $projectId = $request->get('project_id');
+
+            $project = Project::findOrFail($projectId);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'Access denied');
+            }
+
             $query->whereHas('worker', function ($q) use ($projectId) {
                 $q->where('project_id', $projectId);
             });
@@ -102,23 +106,25 @@ class WorkerTrainingController extends Controller
             ->whereNotNull('training_label')
             ->where('training_label', '!=', '');
 
-        if ($request->boolean('for_my_projects') && !$user->isAdmin()) {
-            $projectIds = array_unique(array_merge(
-                $user->projects()->pluck('projects.id')->toArray(),
-                $user->teamProjects()->pluck('projects.id')->toArray()
-            ));
-
-            if (!empty($projectIds)) {
-                $query->whereHas('worker', function ($q) use ($projectIds) {
-                    $q->whereIn('project_id', $projectIds);
-                });
-            } else {
+        $visibleProjectIds = $user->visibleProjectIds();
+        if ($visibleProjectIds !== null) {
+            if (count($visibleProjectIds) === 0) {
                 return $this->success([]);
             }
+
+            $query->whereHas('worker', function ($q) use ($visibleProjectIds) {
+                $q->whereIn('project_id', $visibleProjectIds);
+            });
         }
 
         if ($request->filled('project_id')) {
             $projectId = $request->get('project_id');
+
+            $project = Project::findOrFail($projectId);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'Access denied');
+            }
+
             $query->whereHas('worker', function ($q) use ($projectId) {
                 $q->where('project_id', $projectId);
             });
@@ -152,6 +158,16 @@ class WorkerTrainingController extends Controller
             return $this->error('Training label is required when type is other', 422);
         }
 
+        $worker = Worker::findOrFail($validated['worker_id']);
+        if ($worker->project_id) {
+            $project = Project::findOrFail($worker->project_id);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'Access denied');
+            }
+        } elseif (!$user->hasGlobalProjectScope()) {
+            abort(403, 'Access denied');
+        }
+
         $data = $validated;
 
         if ($request->hasFile('certificate')) {
@@ -171,16 +187,36 @@ class WorkerTrainingController extends Controller
 
     public function show(Request $request, WorkerTraining $workerTraining)
     {
-        $this->checkAccess($request);
+        $user = $this->checkAccess($request);
 
         $workerTraining->load(['worker.project']);
+        $worker = $workerTraining->worker;
+        if ($worker && $worker->project_id) {
+            $project = Project::findOrFail($worker->project_id);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'Access denied');
+            }
+        } elseif (!$user->hasGlobalProjectScope()) {
+            abort(403, 'Access denied');
+        }
 
         return $this->success($workerTraining);
     }
 
     public function update(Request $request, WorkerTraining $workerTraining)
     {
-        $this->checkAccess($request);
+        $user = $this->checkAccess($request);
+
+        $workerTraining->load(['worker']);
+        $worker = $workerTraining->worker;
+        if ($worker && $worker->project_id) {
+            $project = Project::findOrFail($worker->project_id);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'Access denied');
+            }
+        } elseif (!$user->hasGlobalProjectScope()) {
+            abort(403, 'Access denied');
+        }
 
         $validated = $request->validate([
             'training_type' => 'sometimes|string|max:100',
@@ -214,7 +250,18 @@ class WorkerTrainingController extends Controller
 
     public function destroy(Request $request, WorkerTraining $workerTraining)
     {
-        $this->checkAccess($request);
+        $user = $this->checkAccess($request);
+
+        $workerTraining->load(['worker']);
+        $worker = $workerTraining->worker;
+        if ($worker && $worker->project_id) {
+            $project = Project::findOrFail($worker->project_id);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'Access denied');
+            }
+        } elseif (!$user->hasGlobalProjectScope()) {
+            abort(403, 'Access denied');
+        }
 
         if ($workerTraining->certificate_path) {
             Storage::disk('public')->delete($workerTraining->certificate_path);

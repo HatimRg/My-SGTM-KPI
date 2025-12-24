@@ -18,6 +18,7 @@ class User extends Authenticatable
         'cin',
         'password',
         'role',
+        'pole',
         'phone',
         'avatar',
         'project_list_preference',
@@ -54,29 +55,120 @@ class User extends Authenticatable
 
     // Role constants
     const ROLE_ADMIN = 'admin';
+    const ROLE_HSE_MANAGER = 'hse_manager';
     const ROLE_RESPONSABLE = 'responsable';
     const ROLE_USER = 'user';
     const ROLE_SUPERVISOR = 'supervisor';
-    const ROLE_ANIMATEUR = 'animateur';
     const ROLE_HR = 'hr';
+    const ROLE_DEV = 'dev';
+
+    const ROLE_POLE_DIRECTOR = 'pole_director';
+    const ROLE_WORKS_DIRECTOR = 'works_director';
+    const ROLE_HSE_DIRECTOR = 'hse_director';
+    const ROLE_HR_DIRECTOR = 'hr_director';
 
     // Roles that responsable can create
-    const RESPONSABLE_CREATABLE_ROLES = [
+    const HSE_MANAGER_CREATABLE_ROLES = [
         self::ROLE_RESPONSABLE,
         self::ROLE_SUPERVISOR,
-        self::ROLE_ANIMATEUR,
+    ];
+
+    const RESPONSABLE_CREATABLE_ROLES = [
+        self::ROLE_SUPERVISOR,
     ];
 
     // Roles that can access workers management
     const WORKERS_ACCESS_ROLES = [
+        self::ROLE_HSE_MANAGER,
         self::ROLE_RESPONSABLE,
         self::ROLE_SUPERVISOR,
         self::ROLE_HR,
+        self::ROLE_POLE_DIRECTOR,
+        self::ROLE_WORKS_DIRECTOR,
+        self::ROLE_HSE_DIRECTOR,
+        self::ROLE_HR_DIRECTOR,
     ];
 
     public function isAdmin(): bool
     {
-        return $this->role === self::ROLE_ADMIN;
+        return $this->role === self::ROLE_ADMIN || $this->role === self::ROLE_DEV;
+    }
+
+    public function isAdminLike(): bool
+    {
+        $role = (string) $this->role;
+        $roles = config('roles.roles', []);
+        if (isset($roles[$role]) && array_key_exists('admin_routes', $roles[$role])) {
+            return (bool) $roles[$role]['admin_routes'];
+        }
+        return $this->isAdmin();
+    }
+
+    public function isPoleDirector(): bool
+    {
+        return $this->role === self::ROLE_POLE_DIRECTOR;
+    }
+
+    public function isWorksDirector(): bool
+    {
+        return $this->role === self::ROLE_WORKS_DIRECTOR;
+    }
+
+    public function getProjectScopeType(): string
+    {
+        $role = (string) $this->role;
+        $roles = config('roles.roles', []);
+        $scope = $roles[$role]['project_scope'] ?? null;
+        return is_string($scope) && $scope !== '' ? $scope : ($this->isAdmin() ? 'all' : 'assigned');
+    }
+
+    public function hasGlobalProjectScope(): bool
+    {
+        return $this->getProjectScopeType() === 'all';
+    }
+
+    public function visibleProjectIds()
+    {
+        $scope = $this->getProjectScopeType();
+        if ($scope === 'all') {
+            return null;
+        }
+
+        if ($scope === 'pole') {
+            $pole = $this->pole;
+            if ($pole === null || $pole === '') {
+                return [];
+            }
+
+            return \App\Models\Project::query()
+                ->where('pole', $pole)
+                ->pluck('id');
+        }
+
+        // assigned
+        return $this->projects()->pluck('projects.id');
+    }
+
+    public function canAccessProject(Project $project): bool
+    {
+        if ($this->hasGlobalProjectScope()) {
+            return true;
+        }
+
+        return \App\Models\Project::query()
+            ->visibleTo($this)
+            ->whereKey($project->id)
+            ->exists();
+    }
+
+    public function isDev(): bool
+    {
+        return $this->role === self::ROLE_DEV;
+    }
+
+    public function isHseManager(): bool
+    {
+        return $this->role === self::ROLE_HSE_MANAGER;
     }
 
     public function isResponsable(): bool
@@ -92,11 +184,6 @@ class User extends Authenticatable
     public function isSupervisor(): bool
     {
         return $this->role === self::ROLE_SUPERVISOR;
-    }
-
-    public function isAnimateur(): bool
-    {
-        return $this->role === self::ROLE_ANIMATEUR;
     }
 
     public function isHR(): bool
@@ -125,7 +212,7 @@ class User extends Authenticatable
      */
     public function canAccessWorkPermits(): bool
     {
-        return $this->isResponsable() || $this->isSupervisor();
+        return $this->isAdminLike() || $this->isHseManager() || $this->isResponsable() || $this->isSupervisor();
     }
 
     // Relationships
@@ -177,6 +264,11 @@ class User extends Authenticatable
         return $query->where('role', self::ROLE_RESPONSABLE);
     }
 
+    public function scopeHseManagers($query)
+    {
+        return $query->where('role', self::ROLE_HSE_MANAGER);
+    }
+
     public function scopeHseOfficers($query)
     {
         return $query->where('role', self::ROLE_USER);
@@ -187,9 +279,9 @@ class User extends Authenticatable
         return $query->where('role', self::ROLE_SUPERVISOR);
     }
 
-    public function scopeAnimateurs($query)
+    public function scopeCreatableByHseManager($query)
     {
-        return $query->where('role', self::ROLE_ANIMATEUR);
+        return $query->whereIn('role', self::HSE_MANAGER_CREATABLE_ROLES);
     }
 
     public function scopeCreatableByResponsable($query)

@@ -489,7 +489,7 @@ export default function AdminDashboard() {
             onChange={(e) => setFocusPole(e.target.value)}
             className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm w-full sm:w-auto"
           >
-            <option value="">All Poles</option>
+            <option value="">{t('common.allPoles')}</option>
             {poles.map((p) => (
               <option key={p} value={p}>
                 {p}

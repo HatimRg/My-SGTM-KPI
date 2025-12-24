@@ -41,6 +41,7 @@ export default {
     info: 'Information',
     step: 'Step',
     allProjects: 'All projects',
+    allPoles: 'All poles',
     reset: 'Reset',
     update: 'Update',
     saving: 'Saving...',
@@ -850,11 +851,16 @@ export default {
     allRoles: 'All Roles',
     roles: {
       admin: 'Administrator',
-      responsable: 'HSE Manager',
+      hse_manager: 'HSE Manager',
+      responsable: 'HSE Responsible',
       user: 'HSE Officer',
       supervisor: 'HSE Supervisor',
-      animateur: 'Animator',
       hr: 'Human Resources',
+      dev: 'Developer',
+      pole_director: 'Pole Director',
+      works_director: 'Works Director',
+      hse_director: 'HSE Director',
+      hr_director: 'HR Director',
     },
     table: {
       user: 'User',
@@ -875,6 +881,8 @@ export default {
       password: 'Password',
       passwordHint: 'leave blank to keep current',
       role: 'Role',
+      pole: 'Pole',
+      selectPole: 'Select pole',
       phone: 'Phone',
       assignProjects: 'Assign to Projects',
     },
@@ -1291,9 +1299,16 @@ export default {
   // Roles
   roles: {
     admin: 'Administrator',
-    responsable: 'HSE Manager',
+    hse_manager: 'HSE Manager',
+    responsable: 'HSE Responsible',
     user: 'HSE Officer',
     supervisor: 'HSE Supervisor',
+    hr: 'Human Resources',
+    dev: 'Developer',
+    pole_director: 'Pole Director',
+    works_director: 'Works Director',
+    hse_director: 'HSE Director',
+    hr_director: 'HR Director',
   },
 
   // HSE Weekly Export

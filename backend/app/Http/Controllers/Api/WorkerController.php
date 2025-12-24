@@ -33,11 +33,16 @@ class WorkerController extends Controller
      */
     public function index(Request $request)
     {
-        $this->checkAccess($request);
+        $user = $this->checkAccess($request);
 
         $query = Worker::with(['project:id,name,code', 'creator:id,name'])
             ->orderBy('nom')
             ->orderBy('prenom');
+
+        $visibleProjectIds = $user->visibleProjectIds();
+        if ($visibleProjectIds !== null) {
+            $query->whereIn('project_id', $visibleProjectIds);
+        }
 
         // Apply filters
         if ($request->filled('search')) {
@@ -89,7 +94,14 @@ class WorkerController extends Controller
      */
     public function show(Request $request, Worker $worker)
     {
-        $this->checkAccess($request);
+        $user = $this->checkAccess($request);
+
+        if ($worker->project_id) {
+            $project = Project::findOrFail($worker->project_id);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'Access denied');
+            }
+        }
 
         $worker->load(['project:id,name,code', 'creator:id,name', 'updater:id,name']);
 
@@ -116,6 +128,13 @@ class WorkerController extends Controller
         ], [
             'date_naissance.before_or_equal' => 'Le travailleur doit avoir au moins 18 ans / Worker must be at least 18 years old',
         ]);
+
+        if (!empty($validated['project_id'])) {
+            $project = Project::findOrFail($validated['project_id']);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'You do not have access to this project');
+            }
+        }
 
         // Check if CIN exists and merge
         $existingWorker = Worker::where('cin', $validated['cin'])->first();
@@ -152,6 +171,13 @@ class WorkerController extends Controller
     {
         $user = $this->checkAccess($request);
 
+        if ($worker->project_id) {
+            $project = Project::findOrFail($worker->project_id);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'Access denied');
+            }
+        }
+
         $validated = $request->validate([
             'nom' => 'sometimes|string|max:255',
             'prenom' => 'sometimes|string|max:255',
@@ -166,6 +192,13 @@ class WorkerController extends Controller
             'date_naissance.before_or_equal' => 'Le travailleur doit avoir au moins 18 ans / Worker must be at least 18 years old',
         ]);
 
+        if (array_key_exists('project_id', $validated) && !empty($validated['project_id'])) {
+            $project = Project::findOrFail($validated['project_id']);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'You do not have access to this project');
+            }
+        }
+
         $worker->update(array_merge($validated, ['updated_by' => $user->id]));
         $worker->load(['project:id,name,code']);
 
@@ -178,6 +211,13 @@ class WorkerController extends Controller
     public function destroy(Request $request, Worker $worker)
     {
         $user = $this->checkAccess($request);
+
+        if ($worker->project_id) {
+            $project = Project::findOrFail($worker->project_id);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'Access denied');
+            }
+        }
 
         // Don't actually delete, just deactivate
         $worker->update([
@@ -199,6 +239,17 @@ class WorkerController extends Controller
             'worker_ids' => 'required|array|min:1',
             'worker_ids.*' => 'exists:workers,id',
         ]);
+
+        $visibleProjectIds = $user->visibleProjectIds();
+        if ($visibleProjectIds !== null) {
+            $outsideCount = Worker::whereIn('id', $validated['worker_ids'])
+                ->whereNotNull('project_id')
+                ->whereNotIn('project_id', $visibleProjectIds)
+                ->count();
+            if ($outsideCount > 0) {
+                abort(403, 'Access denied');
+            }
+        }
 
         $count = Worker::whereIn('id', $validated['worker_ids'])
             ->update([
@@ -223,6 +274,17 @@ class WorkerController extends Controller
             'worker_ids' => 'required|array|min:1',
             'worker_ids.*' => 'exists:workers,id',
         ]);
+
+        $visibleProjectIds = $user->visibleProjectIds();
+        if ($visibleProjectIds !== null) {
+            $outsideCount = Worker::whereIn('id', $validated['worker_ids'])
+                ->whereNotNull('project_id')
+                ->whereNotIn('project_id', $visibleProjectIds)
+                ->count();
+            if ($outsideCount > 0) {
+                abort(403, 'Access denied');
+            }
+        }
 
         $count = Worker::whereIn('id', $validated['worker_ids'])
             ->update([
@@ -262,8 +324,23 @@ class WorkerController extends Controller
             'project_id' => 'nullable|exists:projects,id',
         ]);
 
+        if ($request->filled('project_id')) {
+            $project = Project::findOrFail($request->project_id);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'You do not have access to this project');
+            }
+        }
+
         try {
-            $import = new WorkersImport($user->id, $request->project_id);
+            $allowedProjectIds = $user->visibleProjectIds();
+            $allowNoProject = $user->hasGlobalProjectScope();
+
+            $import = new WorkersImport(
+                $user->id,
+                $request->project_id,
+                $allowedProjectIds,
+                $allowNoProject
+            );
             Excel::import($import, $request->file('file'));
 
             return $this->success([
@@ -281,7 +358,7 @@ class WorkerController extends Controller
      */
     public function export(Request $request)
     {
-        $this->checkAccess($request);
+        $user = $this->checkAccess($request);
 
         $filters = $request->only(['project_id', 'entreprise', 'fonction', 'is_active', 'search']);
 
@@ -292,6 +369,10 @@ class WorkerController extends Controller
         $filterLabels = [];
 
         if (!empty($filters['project_id'])) {
+            $project = Project::findOrFail($filters['project_id']);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'You do not have access to this project');
+            }
             $projectName = Project::where('id', $filters['project_id'])->value('name');
             if (!empty($projectName)) {
                 $filterLabels[] = $projectName;
@@ -330,6 +411,16 @@ class WorkerController extends Controller
         // Prefer XLSX when ZipArchive is available, but ALWAYS fall back to CSV to avoid hard 500s.
         // Use Excel::raw() (in-memory) instead of Excel::download() to ensure any exception is catchable
         // and to avoid filesystem/temporary-file streaming issues during response sending.
+        $visibleProjectIds = $user->visibleProjectIds();
+        if ($visibleProjectIds !== null) {
+            if ($visibleProjectIds instanceof \Illuminate\Support\Collection) {
+                $visibleProjectIds = $visibleProjectIds->all();
+            } elseif ($visibleProjectIds instanceof \Traversable) {
+                $visibleProjectIds = iterator_to_array($visibleProjectIds);
+            }
+            $filters['visible_project_ids'] = $visibleProjectIds;
+        }
+
         if ($isZipAvailable) {
             try {
                 if (ob_get_length() > 0) {
@@ -372,6 +463,13 @@ class WorkerController extends Controller
                 $query = Worker::with('project:id,name,code')
                     ->orderBy('nom')
                     ->orderBy('prenom');
+
+                if (array_key_exists('visible_project_ids', $filters) && is_array($filters['visible_project_ids'])) {
+                    if (count($filters['visible_project_ids']) === 0) {
+                        return;
+                    }
+                    $query->whereIn('project_id', $filters['visible_project_ids']);
+                }
 
                 if (!empty($filters['search'])) {
                     $query->search($filters['search']);
@@ -432,15 +530,12 @@ class WorkerController extends Controller
         // Get user's related projects for dropdown
         $projects = [];
         
-        if ($user->isAdmin()) {
-            // Admin sees all projects
+        if ($user->hasGlobalProjectScope()) {
+            // Global scope sees all projects
             $projects = \App\Models\Project::orderBy('name')->pluck('name')->toArray();
         } else {
-            // Get projects user is assigned to or manages
-            $userProjects = $user->projects()->orderBy('name')->pluck('name')->toArray();
-            $teamProjects = $user->teamProjects()->orderBy('name')->pluck('name')->toArray();
-            $projects = array_unique(array_merge($userProjects, $teamProjects));
-            sort($projects);
+            // Directors and scoped roles: only visible projects
+            $projects = \App\Models\Project::query()->visibleTo($user)->orderBy('name')->pluck('name')->toArray();
         }
 
         return Excel::download(
@@ -454,21 +549,42 @@ class WorkerController extends Controller
      */
     public function statistics(Request $request)
     {
-        $this->checkAccess($request);
+        $user = $this->checkAccess($request);
+
+        $visibleProjectIds = $user->visibleProjectIds();
+        $base = Worker::query();
+        if ($visibleProjectIds !== null) {
+            $base->whereIn('project_id', $visibleProjectIds);
+        }
 
         $stats = [
-            'total' => Worker::count(),
-            'active' => Worker::active()->count(),
-            'inactive' => Worker::inactive()->count(),
-            'hse_team' => Worker::active()
+            'total' => (clone $base)->count(),
+            'active' => (clone $base)->where('is_active', true)->count(),
+            'inactive' => (clone $base)->where('is_active', false)->count(),
+            'hse_team' => (clone $base)->where('is_active', true)
                 ->whereRaw('LOWER(fonction) LIKE ?', ['%hse%'])
                 ->count(),
-            'by_project' => Worker::active()
+            'induction_hse' => (clone $base)->where('is_active', true)
+                ->whereHas('trainings', function ($q) {
+                    $q->where('training_type', 'induction_hse');
+                })
+                ->count(),
+            'travail_en_hauteur' => (clone $base)->where('is_active', true)
+                ->whereHas('trainings', function ($q) {
+                    $q->where('training_type', 'travail_en_hauteur');
+                })
+                ->count(),
+            'aptitude_physique' => (clone $base)->where('is_active', true)
+                ->whereHas('trainings', function ($q) {
+                    $q->where('training_type', 'aptitude_physique');
+                })
+                ->count(),
+            'by_project' => (clone $base)->where('is_active', true)
                 ->select('project_id', DB::raw('count(*) as count'))
                 ->groupBy('project_id')
                 ->with('project:id,name,code')
                 ->get(),
-            'by_entreprise' => Worker::active()
+            'by_entreprise' => (clone $base)->where('is_active', true)
                 ->select('entreprise', DB::raw('count(*) as count'))
                 ->whereNotNull('entreprise')
                 ->groupBy('entreprise')
@@ -485,15 +601,18 @@ class WorkerController extends Controller
      */
     public function entreprises(Request $request)
     {
-        $this->checkAccess($request);
+        $user = $this->checkAccess($request);
 
-        $entreprises = Worker::whereNotNull('entreprise')
+        $query = Worker::whereNotNull('entreprise')
             ->where('entreprise', '!=', '')
+            ->when($user->visibleProjectIds() !== null, function ($q) use ($user) {
+                $q->whereIn('project_id', $user->visibleProjectIds());
+            })
             ->distinct()
             ->orderBy('entreprise')
             ->pluck('entreprise');
 
-        return $this->success($entreprises);
+        return $this->success($query);
     }
 
     /**
@@ -501,14 +620,17 @@ class WorkerController extends Controller
      */
     public function fonctions(Request $request)
     {
-        $this->checkAccess($request);
+        $user = $this->checkAccess($request);
 
-        $fonctions = Worker::whereNotNull('fonction')
+        $query = Worker::whereNotNull('fonction')
             ->where('fonction', '!=', '')
+            ->when($user->visibleProjectIds() !== null, function ($q) use ($user) {
+                $q->whereIn('project_id', $user->visibleProjectIds());
+            })
             ->distinct()
             ->orderBy('fonction')
             ->pluck('fonction');
 
-        return $this->success($fonctions);
+        return $this->success($query);
     }
 }

@@ -34,6 +34,7 @@ import {
 import toast from 'react-hot-toast'
 import { getCurrentWeek } from '../../utils/weekHelper'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
+import { useDevStore, DEV_PROJECT_SCOPE } from '../../store/devStore'
 
 export default function UserDashboard() {
   const [data, setData] = useState(null)
@@ -44,17 +45,22 @@ export default function UserDashboard() {
   const [poles, setPoles] = useState([])
   const [selectedWeekDetails, setSelectedWeekDetails] = useState(null)
   const { user } = useAuthStore()
+  const { projectScope } = useDevStore()
   const { t } = useLanguage()
   const weekScrollRef = useRef(null)
 
   useEffect(() => {
     fetchDashboardData()
-  }, [year, selectedProject, selectedPole])
+  }, [year, selectedProject, selectedPole, projectScope])
 
   useEffect(() => {
     const fetchPoles = async () => {
       try {
-        const res = await projectService.getPoles()
+        const params = {}
+        if (user?.role === 'dev' && projectScope === DEV_PROJECT_SCOPE.ASSIGNED) {
+          params.scope = 'assigned'
+        }
+        const res = await projectService.getPoles(params)
         const values = res.data?.data?.poles ?? res.data?.poles ?? []
         setPoles(Array.isArray(values) ? values : [])
       } catch (e) {
@@ -62,7 +68,7 @@ export default function UserDashboard() {
       }
     }
     fetchPoles()
-  }, [])
+  }, [user?.role, projectScope])
 
   // Scroll to current week when data loads
   useEffect(() => {
@@ -80,6 +86,9 @@ export default function UserDashboard() {
       const params = { year }
       if (selectedPole) params.pole = selectedPole
       if (selectedProject !== 'all') params.project_id = selectedProject
+      if (user?.role === 'dev' && projectScope === DEV_PROJECT_SCOPE.ASSIGNED) {
+        params.scope = 'assigned'
+      }
       const response = await dashboardService.getUserDashboard(params)
       setData(response.data.data)
     } catch (error) {
@@ -158,7 +167,7 @@ export default function UserDashboard() {
                 }}
                 className="bg-transparent border-none focus:ring-0 text-sm font-medium dark:text-gray-200"
               >
-                <option value="">All Poles</option>
+                <option value="">{t('common.allPoles')}</option>
                 {poles.map((p) => (
                   <option key={p} value={p}>
                     {p}

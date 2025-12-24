@@ -179,9 +179,8 @@ describe('AdminDashboard', () => {
     })
 
     // Check KPI cards are rendered
-    expect(screen.getByText('Total Accidents')).toBeInTheDocument()
-    // 'Trainings' appears in both KPI card and table header
-    expect(screen.getAllByText('Trainings').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Total Accidents').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Total Trainings').length).toBeGreaterThan(0)
   })
 
   it('should render project performance table', async () => {

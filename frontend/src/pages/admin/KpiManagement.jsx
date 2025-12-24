@@ -342,7 +342,7 @@ export default function KpiManagement() {
             onChange={(e) => setFilters({ ...filters, pole: e.target.value, project_id: '' })}
             className="input"
           >
-            <option value="">All Poles</option>
+            <option value="">{t('common.allPoles')}</option>
             {poles.map((p) => (
               <option key={p} value={p}>
                 {p}

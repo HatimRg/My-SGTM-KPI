@@ -4,6 +4,7 @@ import { useLanguage } from '../../i18n'
 import { useAuthStore } from '../../store/authStore'
 import DatePicker from '../../components/ui/DatePicker'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import Modal from '../../components/ui/Modal'
 import Select from '../../components/ui/Select'
 import AutocompleteInput from '../../components/ui/AutocompleteInput'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
@@ -20,6 +21,7 @@ import {
   Building2,
   CreditCard,
   HardHat,
+  CheckCircle,
   Trash2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -178,6 +180,10 @@ export default function Workers() {
   const hseTeamCount = statistics?.hse_team ?? workers.filter(w => 
     w.fonction?.toLowerCase().includes('hse')
   ).length
+
+  const inductionHseCount = statistics?.induction_hse ?? 0
+  const workAtHeightCount = statistics?.travail_en_hauteur ?? 0
+  const physicalAptitudeCount = statistics?.aptitude_physique ?? 0
 
   const handleOpenModal = (worker = null) => {
     if (worker) {
@@ -454,7 +460,8 @@ export default function Workers() {
 
       {/* Statistics */}
       {statistics && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="card p-3 flex items-center gap-3">
             <div className="p-2.5 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
               <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -471,6 +478,39 @@ export default function Workers() {
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">{t('workers.hseTeam')}</p>
               <p className="text-xl font-bold text-gray-900 dark:text-white">{hseTeamCount}</p>
+            </div>
+          </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="card p-3 flex items-center gap-3">
+              <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
+                <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Induction HSE</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">{inductionHseCount}</p>
+              </div>
+            </div>
+
+            <div className="card p-3 flex items-center gap-3">
+              <div className="p-2.5 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
+                <HardHat className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Work at height</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">{workAtHeightCount}</p>
+              </div>
+            </div>
+
+            <div className="card p-3 flex items-center gap-3">
+              <div className="p-2.5 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
+                <Users className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Physical aptitude</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">{physicalAptitudeCount}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -499,7 +539,7 @@ export default function Workers() {
               }}
               className="py-1.5 text-sm"
             >
-              <option value="">All Poles</option>
+              <option value="">{t('common.allPoles')}</option>
               {poles.map((p) => (
                 <option key={p} value={p}>
                   {p}
@@ -661,19 +701,13 @@ export default function Workers() {
       </div>
 
       {/* Create/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 z-[200] p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {editingWorker ? t('workers.editWorker') : t('workers.newWorker')}
-              </h3>
-              <button onClick={handleCloseModal} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-4 space-y-4">
+      <Modal
+        isOpen={showModal}
+        onClose={handleCloseModal}
+        title={editingWorker ? t('workers.editWorker') : t('workers.newWorker')}
+        size="lg"
+      >
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="label">{t('workers.nom')} *</label>
@@ -820,86 +854,86 @@ export default function Workers() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Import Modal */}
-      {showImportModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between z-[200]">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {t('workers.importTitle')}
-              </h3>
-              <button onClick={() => setShowImportModal(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <Modal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        title={t('workers.importTitle')}
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {t('workers.importHelp')}
+          </p>
 
-            <div className="p-4 space-y-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t('workers.importHelp')}
-              </p>
+          <button
+            onClick={handleDownloadTemplate}
+            className="w-full btn-outline flex items-center justify-center gap-2"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            {t('workers.downloadTemplate')}
+          </button>
 
-              <button
-                onClick={handleDownloadTemplate}
-                className="w-full btn-outline flex items-center justify-center gap-2"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                {t('workers.downloadTemplate')}
-              </button>
-
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={(e) => setImportFile(e.target.files[0])}
-                  className="hidden"
-                />
-                {importFile ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <FileSpreadsheet className="w-5 h-5 text-green-500" />
-                    <span className="text-sm font-medium">{importFile.name}</span>
-                    <button
-                      onClick={() => setImportFile(null)}
-                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-hse-primary hover:underline"
-                  >
-                    {t('workers.selectFile')}
-                  </button>
-                )}
-              </div>
-
-              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-sm text-amber-700 dark:text-amber-300">
-                <p>{t('workers.cinInfo')}</p>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
-                <button type="button" onClick={() => setShowImportModal(false)} className="btn-outline">
-                  {t('common.cancel')}
-                </button>
+          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={(e) => setImportFile(e.target.files[0])}
+              className="hidden"
+            />
+            {importFile ? (
+              <div className="flex items-center justify-center gap-2">
+                <FileSpreadsheet className="w-5 h-5 text-green-500" />
+                <span className="text-sm font-medium">{importFile.name}</span>
                 <button
-                  onClick={handleImport}
-                  disabled={!importFile ? true : importing}
-                  className="btn-primary flex items-center gap-2"
+                  type="button"
+                  onClick={() => setImportFile(null)}
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                 >
-                  {importing && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {t('workers.import')}
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-            </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-hse-primary hover:underline"
+              >
+                {t('workers.selectFile')}
+              </button>
+            )}
+          </div>
+
+          <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-sm text-amber-700 dark:text-amber-300">
+            <p>{t('workers.cinInfo')}</p>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
+            <button
+              type="button"
+              onClick={() => {
+                setShowImportModal(false)
+                setImportFile(null)
+              }}
+              className="btn-outline"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={handleImport}
+              disabled={!importFile || importing}
+              className="btn-primary flex items-center gap-2"
+            >
+              {importing && <Loader2 className="w-4 h-4 animate-spin" />}
+              {t('workers.import')}
+            </button>
           </div>
         </div>
-      )}
+      </Modal>
       <ConfirmDialog
         isOpen={!!confirmWorker}
         title={t('common.confirm')}

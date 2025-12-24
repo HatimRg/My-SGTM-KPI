@@ -20,7 +20,7 @@ class WorkPermitController extends Controller
         $user = $request->user();
         
         // Check permission
-        if (!$user->isAdmin() && !$user->canAccessWorkPermits()) {
+        if (!$user->isAdminLike() && !$user->canAccessWorkPermits()) {
             return $this->error('Access denied', 403);
         }
 
@@ -35,11 +35,22 @@ class WorkPermitController extends Controller
 
         // Filter by project
         if ($request->project_id) {
-            $query->where('project_id', $request->project_id);
-        } else if (!$user->isAdmin()) {
-            // Non-admins can only see permits for their projects
-            $projectIds = $user->projects()->pluck('projects.id');
-            $query->whereIn('project_id', $projectIds);
+            $projectId = (int) $request->project_id;
+            if (!$user->hasGlobalProjectScope()) {
+                $allowed = Project::query()->visibleTo($user)->whereKey($projectId)->exists();
+                if (!$allowed) {
+                    return $this->error('Access denied', 403);
+                }
+            }
+            $query->where('project_id', $projectId);
+        } else if (!$user->hasGlobalProjectScope()) {
+            $projectIds = $user->visibleProjectIds();
+            if (is_iterable($projectIds) && count($projectIds) === 0) {
+                return $this->success($query->whereRaw('1 = 0')->paginate($request->per_page ?? 50));
+            }
+            if ($projectIds !== null) {
+                $query->whereIn('project_id', $projectIds);
+            }
         }
 
         // Filter by week
@@ -68,7 +79,7 @@ class WorkPermitController extends Controller
     {
         $user = $request->user();
         
-        if (!$user->isAdmin() && !$user->canAccessWorkPermits()) {
+        if (!$user->isAdminLike() && !$user->canAccessWorkPermits()) {
             return $this->error('Access denied', 403);
         }
 
@@ -81,6 +92,13 @@ class WorkPermitController extends Controller
         $projectId = $request->project_id;
         $weekNumber = $request->week_number;
         $year = $request->year;
+
+        if (!$user->hasGlobalProjectScope()) {
+            $allowed = Project::query()->visibleTo($user)->whereKey((int) $projectId)->exists();
+            if (!$allowed) {
+                return $this->error('Access denied', 403);
+            }
+        }
 
         // Get current week's permits
         $currentWeekPermits = WorkPermit::with(['project:id,name,code', 'creator:id,name'])
@@ -158,7 +176,7 @@ class WorkPermitController extends Controller
     {
         $user = $request->user();
         
-        if (!$user->isAdmin() && !$user->canAccessWorkPermits()) {
+        if (!$user->isAdminLike() && !$user->canAccessWorkPermits()) {
             return $this->error('Access denied', 403);
         }
 
@@ -187,8 +205,8 @@ class WorkPermitController extends Controller
         ]);
 
         // Check if user has access to this project
-        if (!$user->isAdmin()) {
-            $hasAccess = $user->projects()->where('projects.id', $request->project_id)->exists();
+        if (!$user->hasGlobalProjectScope()) {
+            $hasAccess = Project::query()->visibleTo($user)->whereKey((int) $request->project_id)->exists();
             if (!$hasAccess) {
                 return $this->error('You do not have access to this project', 403);
             }
@@ -257,13 +275,13 @@ class WorkPermitController extends Controller
     {
         $user = $request->user();
         
-        if (!$user->isAdmin() && !$user->canAccessWorkPermits()) {
+        if (!$user->isAdminLike() && !$user->canAccessWorkPermits()) {
             return $this->error('Access denied', 403);
         }
 
         // Check project access
-        if (!$user->isAdmin()) {
-            $hasAccess = $user->projects()->where('projects.id', $workPermit->project_id)->exists();
+        if (!$user->hasGlobalProjectScope()) {
+            $hasAccess = Project::query()->visibleTo($user)->whereKey((int) $workPermit->project_id)->exists();
             if (!$hasAccess) {
                 return $this->error('Access denied', 403);
             }
@@ -281,13 +299,13 @@ class WorkPermitController extends Controller
     {
         $user = $request->user();
         
-        if (!$user->isAdmin() && !$user->canAccessWorkPermits()) {
+        if (!$user->isAdminLike() && !$user->canAccessWorkPermits()) {
             return $this->error('Access denied', 403);
         }
 
         // Check project access
-        if (!$user->isAdmin()) {
-            $hasAccess = $user->projects()->where('projects.id', $workPermit->project_id)->exists();
+        if (!$user->hasGlobalProjectScope()) {
+            $hasAccess = Project::query()->visibleTo($user)->whereKey((int) $workPermit->project_id)->exists();
             if (!$hasAccess) {
                 return $this->error('Access denied', 403);
             }
@@ -349,13 +367,13 @@ class WorkPermitController extends Controller
     {
         $user = $request->user();
         
-        if (!$user->isAdmin() && !$user->canAccessWorkPermits()) {
+        if (!$user->isAdminLike() && !$user->canAccessWorkPermits()) {
             return $this->error('Access denied', 403);
         }
 
         // Check project access
-        if (!$user->isAdmin()) {
-            $hasAccess = $user->projects()->where('projects.id', $workPermit->project_id)->exists();
+        if (!$user->hasGlobalProjectScope()) {
+            $hasAccess = Project::query()->visibleTo($user)->whereKey((int) $workPermit->project_id)->exists();
             if (!$hasAccess) {
                 return $this->error('Access denied', 403);
             }
@@ -379,15 +397,15 @@ class WorkPermitController extends Controller
     {
         $user = $request->user();
         
-        if (!$user->isAdmin() && !$user->canAccessWorkPermits()) {
+        if (!$user->isAdminLike() && !$user->canAccessWorkPermits()) {
             return $this->error('Access denied', 403);
         }
 
         $workPermit = WorkPermit::onlyTrashed()->findOrFail($id);
 
         // Check project access
-        if (!$user->isAdmin()) {
-            $hasAccess = $user->projects()->where('projects.id', $workPermit->project_id)->exists();
+        if (!$user->hasGlobalProjectScope()) {
+            $hasAccess = Project::query()->visibleTo($user)->whereKey((int) $workPermit->project_id)->exists();
             if (!$hasAccess) {
                 return $this->error('Access denied', 403);
             }
@@ -407,7 +425,7 @@ class WorkPermitController extends Controller
         try {
             $user = $request->user();
             
-            if (!$user->isAdmin() && !$user->canAccessWorkPermits()) {
+            if (!$user->isAdminLike() && !$user->canAccessWorkPermits()) {
                 return $this->error('Access denied', 403);
             }
 
@@ -496,7 +514,7 @@ class WorkPermitController extends Controller
     {
         $user = $request->user();
         
-        if (!$user->isAdmin() && !$user->canAccessWorkPermits()) {
+        if (!$user->isAdminLike() && !$user->canAccessWorkPermits()) {
             return $this->error('Access denied', 403);
         }
 
@@ -507,8 +525,8 @@ class WorkPermitController extends Controller
         ]);
 
         // Check project access
-        if (!$user->isAdmin()) {
-            $hasAccess = $user->projects()->where('projects.id', $request->project_id)->exists();
+        if (!$user->hasGlobalProjectScope()) {
+            $hasAccess = Project::query()->visibleTo($user)->whereKey((int) $request->project_id)->exists();
             if (!$hasAccess) {
                 return $this->error('Access denied', 403);
             }
@@ -532,7 +550,7 @@ class WorkPermitController extends Controller
     {
         $user = $request->user();
         
-        if (!$user->isAdmin() && !$user->canAccessWorkPermits()) {
+        if (!$user->isAdminLike() && !$user->canAccessWorkPermits()) {
             return $this->error('Access denied', 403);
         }
 
@@ -584,13 +602,13 @@ class WorkPermitController extends Controller
         $user = $request->user();
         
         // Check permission
-        if (!$user->isAdmin() && !$user->canAccessWorkPermits()) {
+        if (!$user->isAdminLike() && !$user->canAccessWorkPermits()) {
             return $this->error('Access denied', 403);
         }
 
         // Non-admins can only export permits for their projects
-        if (!$user->isAdmin()) {
-            $hasAccess = $user->projects()->where('projects.id', $request->project_id)->exists();
+        if (!$user->hasGlobalProjectScope()) {
+            $hasAccess = Project::query()->visibleTo($user)->whereKey((int) $request->project_id)->exists();
             if (!$hasAccess) {
                 return $this->error('Access denied', 403);
             }

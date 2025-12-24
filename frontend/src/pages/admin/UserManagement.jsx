@@ -41,7 +41,8 @@ export default function UserManagement() {
     name: '',
     email: '',
     password: '',
-    role: 'responsable',
+    role: 'hse_manager',
+    pole: '',
     phone: '',
     project_ids: []
   })
@@ -180,8 +181,9 @@ export default function UserManagement() {
         email: user.email,
         password: '',
         role: user.role,
+        pole: user.pole ?? '',
         phone: user.phone ?? '',
-        project_ids: user.projects?.map(p => p.id) ?? []
+        project_ids: user.role === 'pole_director' ? [] : (user.projects?.map(p => p.id) ?? [])
       })
     } else {
       setEditingUser(null)
@@ -189,7 +191,8 @@ export default function UserManagement() {
         name: '',
         email: '',
         password: '',
-        role: 'responsable',
+        role: 'hse_manager',
+        pole: '',
         phone: '',
         project_ids: []
       })
@@ -388,7 +391,7 @@ export default function UserManagement() {
               }}
               className="w-full sm:w-40"
             >
-              <option value="">All Poles</option>
+              <option value="">{t('common.allPoles')}</option>
               {poles.map((p) => (
                 <option key={p} value={p}>
                   {p}
@@ -400,7 +403,7 @@ export default function UserManagement() {
               onChange={(e) => setProjectFilter(e.target.value)}
               className="w-full sm:w-44"
             >
-              <option value="">All Projects</option>
+              <option value="">{t('common.allProjects')}</option>
               {(poleFilter ? sortedProjects.filter((p) => p?.pole === poleFilter) : sortedProjects).map((project) => (
                 <option key={project.id} value={project.id}>
                   {getProjectLabel(project)}
@@ -414,10 +417,14 @@ export default function UserManagement() {
             >
               <option value="">{t('users.allRoles')}</option>
               <option value="admin">{t('users.roles.admin')}</option>
+              <option value="pole_director">{t('users.roles.pole_director')}</option>
+              <option value="works_director">{t('users.roles.works_director')}</option>
+              <option value="hse_director">{t('users.roles.hse_director')}</option>
+              <option value="hr_director">{t('users.roles.hr_director')}</option>
+              <option value="hse_manager">{t('users.roles.hse_manager')}</option>
               <option value="responsable">{t('users.roles.responsable')}</option>
               <option value="supervisor">{t('users.roles.supervisor')}</option>
               <option value="user">{t('users.roles.user')}</option>
-              <option value="animateur">{t('users.roles.animateur')}</option>
               <option value="hr">{t('users.roles.hr')}</option>
             </Select>
           </div>
@@ -669,14 +676,26 @@ export default function UserManagement() {
               <label className="label">{t('users.form.role')}</label>
               <Select
                 value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                onChange={(e) => {
+                  const nextRole = e.target.value
+                  setFormData((prev) => ({
+                    ...prev,
+                    role: nextRole,
+                    pole: nextRole === 'pole_director' ? prev.pole : '',
+                    project_ids: nextRole === 'pole_director' ? [] : prev.project_ids,
+                  }))
+                }}
               >
+                <option value="hse_manager">{t('users.roles.hse_manager')}</option>
                 <option value="responsable">{t('users.roles.responsable')}</option>
                 <option value="supervisor">{t('users.roles.supervisor')}</option>
                 <option value="user">{t('users.roles.user')}</option>
-                <option value="animateur">{t('users.roles.animateur')}</option>
                 <option value="hr">{t('users.roles.hr')}</option>
                 <option value="admin">{t('users.roles.admin')}</option>
+                <option value="pole_director">{t('users.roles.pole_director')}</option>
+                <option value="works_director">{t('users.roles.works_director')}</option>
+                <option value="hse_director">{t('users.roles.hse_director')}</option>
+                <option value="hr_director">{t('users.roles.hr_director')}</option>
               </Select>
             </div>
             <div>
@@ -690,25 +709,45 @@ export default function UserManagement() {
             </div>
           </div>
 
-          <div>
-            <label className="label">{t('users.form.assignProjects')}</label>
-            <div className="max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg p-2 space-y-1 bg-white dark:bg-gray-700">
-              {sortedProjects.map((project) => (
-                <label
-                  key={project.id}
-                  className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-600 rounded cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={formData.project_ids.includes(project.id)}
-                    onChange={() => handleProjectToggle(project.id)}
-                    className="w-4 h-4 text-hse-primary border-gray-300 dark:border-gray-500 rounded focus:ring-hse-primary"
-                  />
-                  <span className="text-sm text-gray-900 dark:text-gray-100">{getProjectLabel(project)}</span>
-                </label>
-              ))}
+          {formData.role === 'pole_director' && (
+            <div>
+              <label className="label">{t('users.form.pole')}</label>
+              <Select
+                value={formData.pole}
+                onChange={(e) => setFormData({ ...formData, pole: e.target.value })}
+                required
+              >
+                <option value="">{t('users.form.selectPole')}</option>
+                {poles.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </Select>
             </div>
-          </div>
+          )}
+
+          {formData.role !== 'pole_director' && (
+            <div>
+              <label className="label">{t('users.form.assignProjects')}</label>
+              <div className="max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg p-2 space-y-1 bg-white dark:bg-gray-700">
+                {sortedProjects.map((project) => (
+                  <label
+                    key={project.id}
+                    className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-600 rounded cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.project_ids.includes(project.id)}
+                      onChange={() => handleProjectToggle(project.id)}
+                      className="w-4 h-4 text-hse-primary border-gray-300 dark:border-gray-500 rounded focus:ring-hse-primary"
+                    />
+                    <span className="text-sm text-gray-900 dark:text-gray-100">{getProjectLabel(project)}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4">
             <button type="button" onClick={closeModal} className="btn-secondary w-full sm:w-auto">

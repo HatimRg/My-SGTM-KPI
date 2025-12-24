@@ -43,6 +43,7 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
+                'pole' => $user->pole,
                 'avatar' => $user->avatar,
                 'project_list_preference' => $user->project_list_preference ?? 'code',
             ],
@@ -59,7 +60,7 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:admin,responsable',
+            'role' => 'required|in:admin,hse_manager,responsable,supervisor,hr,user',
             'phone' => 'nullable|string|max:20',
         ]);
 
@@ -98,6 +99,7 @@ class AuthController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->role,
+            'pole' => $user->pole,
             'phone' => $user->phone,
             'avatar' => $user->avatar,
             'project_list_preference' => $user->project_list_preference ?? 'code',
@@ -131,6 +133,7 @@ class AuthController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->role,
+            'pole' => $user->pole,
             'phone' => $user->phone,
             'avatar' => $user->avatar,
             'project_list_preference' => $user->project_list_preference ?? 'code',

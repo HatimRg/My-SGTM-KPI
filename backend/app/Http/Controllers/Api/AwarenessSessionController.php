@@ -18,9 +18,11 @@ class AwarenessSessionController extends Controller
         $query = AwarenessSession::with(['project', 'submitter']);
 
         // Filter by user's projects if not admin
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects()->pluck('projects.id');
-            $query->whereIn('project_id', $projectIds);
+        if (!$user->hasGlobalProjectScope()) {
+            $projectIds = $user->visibleProjectIds();
+            if ($projectIds !== null) {
+                $query->whereIn('project_id', $projectIds);
+            }
         }
 
         // Apply filters
@@ -90,11 +92,9 @@ class AwarenessSessionController extends Controller
         $user = request()->user();
 
         // Check access
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects()->pluck('projects.id')->toArray();
-            if (!in_array($awarenessSession->project_id, $projectIds)) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
+        $project = \App\Models\Project::findOrFail($awarenessSession->project_id);
+        if (!$user->canAccessProject($project)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
 
         return response()->json([
@@ -109,8 +109,13 @@ class AwarenessSessionController extends Controller
     {
         $user = $request->user();
 
+        $project = \App\Models\Project::findOrFail($awarenessSession->project_id);
+        if (!$user->canAccessProject($project)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         // Check access
-        if (!$user->isAdmin() && $awarenessSession->submitted_by !== $user->id) {
+        if (!$user->isAdminLike() && $awarenessSession->submitted_by !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -141,8 +146,13 @@ class AwarenessSessionController extends Controller
     {
         $user = request()->user();
 
+        $project = \App\Models\Project::findOrFail($awarenessSession->project_id);
+        if (!$user->canAccessProject($project)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         // Only admin or submitter can delete
-        if (!$user->isAdmin() && $awarenessSession->submitted_by !== $user->id) {
+        if (!$user->isAdminLike() && $awarenessSession->submitted_by !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -161,9 +171,11 @@ class AwarenessSessionController extends Controller
         $user = $request->user();
         $query = AwarenessSession::query();
 
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects()->pluck('projects.id');
-            $query->whereIn('project_id', $projectIds);
+        if (!$user->hasGlobalProjectScope()) {
+            $projectIds = $user->visibleProjectIds();
+            if ($projectIds !== null) {
+                $query->whereIn('project_id', $projectIds);
+            }
         }
 
         if ($request->has('project_id') && $request->project_id) {

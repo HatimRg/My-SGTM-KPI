@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { projectService } from '../../services/api'
 import { useLanguage } from '../../i18n'
 import { useAuthStore } from '../../store/authStore'
+import { useDevStore, DEV_PROJECT_SCOPE } from '../../store/devStore'
 import ZonesManager from '../../components/zones/ZonesManager'
 import {
   FolderKanban,
@@ -20,6 +21,7 @@ import toast from 'react-hot-toast'
 export default function MyProjects({ showKpiButton = true }) {
   const { t, language } = useLanguage()
   const { user } = useAuthStore()
+  const { projectScope } = useDevStore()
   const location = useLocation()
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
@@ -40,12 +42,16 @@ export default function MyProjects({ showKpiButton = true }) {
 
   useEffect(() => {
     fetchProjects()
-  }, [])
+  }, [projectScope])
 
   const fetchProjects = async () => {
     try {
       setLoading(true)
-      const response = await projectService.getAll({ per_page: 50 })
+      const params = { per_page: 50 }
+      if (user?.role === 'dev' && projectScope === DEV_PROJECT_SCOPE.ASSIGNED) {
+        params.scope = 'assigned'
+      }
+      const response = await projectService.getAll(params)
       setProjects(response.data.data || [])
     } catch (error) {
       toast.error('Failed to load projects')

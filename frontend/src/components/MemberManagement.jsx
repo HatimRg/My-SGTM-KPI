@@ -21,11 +21,16 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const CREATABLE_ROLES = ['responsable', 'supervisor', 'animateur']
-
 export default function MemberManagement({ projectId, projectName }) {
   const { t } = useLanguage()
   const { user: currentUser } = useAuthStore()
+
+  const creatableRoles =
+    currentUser?.role === 'hse_manager'
+      ? ['responsable', 'supervisor']
+      : currentUser?.role === 'responsable'
+        ? ['supervisor']
+        : ['supervisor']
   
   // Combined members list
   const [allMembers, setAllMembers] = useState([])
@@ -57,7 +62,7 @@ export default function MemberManagement({ projectId, projectName }) {
     name: '',
     email: '',
     cin: '',
-    role: 'animateur',
+    role: 'supervisor',
     phone: '',
     password: '',
   })
@@ -193,7 +198,7 @@ export default function MemberManagement({ projectId, projectName }) {
         name: '',
         email: '',
         cin: '',
-        role: 'animateur',
+        role: creatableRoles[0] ?? 'supervisor',
         phone: '',
         password: '',
       })
@@ -213,7 +218,7 @@ export default function MemberManagement({ projectId, projectName }) {
   const handleCloseCreateModal = () => {
     setShowCreateModal(false)
     setEditingMember(null)
-    setFormData({ name: '', email: '', cin: '', role: 'animateur', phone: '', password: '' })
+    setFormData({ name: '', email: '', cin: '', role: creatableRoles[0] ?? 'supervisor', phone: '', password: '' })
   }
 
   const handleSubmitCreate = async (e) => {
@@ -311,7 +316,6 @@ export default function MemberManagement({ projectId, projectName }) {
     switch (role) {
       case 'responsable': return 'badge-success'
       case 'supervisor': return 'badge-info'
-      case 'animateur': return 'badge-warning'
       case 'user': return 'badge-secondary'
       default: return 'badge-secondary'
     }
@@ -606,7 +610,7 @@ export default function MemberManagement({ projectId, projectName }) {
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   required
                 >
-                  {CREATABLE_ROLES.map(role => (
+                  {creatableRoles.map(role => (
                     <option key={role} value={role}>{t(`users.roles.${role}`)}</option>
                   ))}
                 </Select>

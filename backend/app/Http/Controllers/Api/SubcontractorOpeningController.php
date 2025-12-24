@@ -45,7 +45,7 @@ class SubcontractorOpeningController extends Controller
             abort(401);
         }
 
-        if ($user->isAdmin()) {
+        if ($user->isAdminLike()) {
             return;
         }
 
@@ -53,7 +53,7 @@ class SubcontractorOpeningController extends Controller
             abort(403, 'Access denied');
         }
 
-        if (!$project->users()->where('users.id', $user->id)->exists()) {
+        if (!$user->canAccessProject($project)) {
             abort(403, 'You are not assigned to this project');
         }
     }
@@ -144,9 +144,9 @@ class SubcontractorOpeningController extends Controller
             $query->where('project_id', $projectId);
         } else {
             // Without project filter, restrict to user's projects (unless admin)
-            if (!$user->isAdmin()) {
-                $projectIds = $user->projects()->pluck('projects.id')->toArray();
-                if (empty($projectIds)) {
+            $projectIds = $user->visibleProjectIds();
+            if ($projectIds !== null) {
+                if (count($projectIds) === 0) {
                     return $this->success([]);
                 }
                 $query->whereIn('project_id', $projectIds);

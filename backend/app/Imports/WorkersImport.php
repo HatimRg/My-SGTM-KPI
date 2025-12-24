@@ -25,11 +25,22 @@ class WorkersImport implements ToModel, WithHeadingRow, SkipsOnError, WithBatchI
     protected $errors = [];
     protected $projectCache = [];
     protected $seenCins = [];
+    protected $allowedProjectIds;
+    protected $allowNoProject;
 
-    public function __construct(int $userId, ?int $projectId = null)
+    public function __construct(int $userId, ?int $projectId = null, $allowedProjectIds = null, bool $allowNoProject = true)
     {
         $this->userId = $userId;
         $this->defaultProjectId = $projectId;
+
+        if ($allowedProjectIds instanceof \Illuminate\Support\Collection) {
+            $allowedProjectIds = $allowedProjectIds->all();
+        } elseif ($allowedProjectIds instanceof \Traversable) {
+            $allowedProjectIds = iterator_to_array($allowedProjectIds);
+        }
+
+        $this->allowedProjectIds = is_array($allowedProjectIds) ? $allowedProjectIds : null;
+        $this->allowNoProject = $allowNoProject;
     }
 
     /**
@@ -86,6 +97,14 @@ class WorkersImport implements ToModel, WithHeadingRow, SkipsOnError, WithBatchI
 
             // Get project ID
             $projectId = $this->getProjectId($projet);
+
+            if ($projectId === null && $this->defaultProjectId === null && !$this->allowNoProject) {
+                $this->errors[] = [
+                    'cin' => $cin,
+                    'error' => 'Project is required for your access scope',
+                ];
+                return null;
+            }
 
             // Check if worker exists by CIN
             $existingWorker = Worker::where('cin', $cin)->first();
@@ -228,10 +247,20 @@ class WorkersImport implements ToModel, WithHeadingRow, SkipsOnError, WithBatchI
             return $this->projectCache[$projectName];
         }
 
-        // Search by name or code
-        $project = Project::where('name', 'like', "%{$projectName}%")
-            ->orWhere('code', $projectName)
-            ->first();
+        // Search by name or code (restricted to allowed projects when provided)
+        $query = Project::query();
+        if (is_array($this->allowedProjectIds)) {
+            if (count($this->allowedProjectIds) === 0) {
+                $this->projectCache[$projectName] = null;
+                return null;
+            }
+            $query->whereIn('id', $this->allowedProjectIds);
+        }
+
+        $project = $query->where(function ($q) use ($projectName) {
+            $q->where('name', 'like', "%{$projectName}%")
+                ->orWhere('code', $projectName);
+        })->first();
 
         $projectId = $project ? $project->id : null;
         $this->projectCache[$projectName] = $projectId;

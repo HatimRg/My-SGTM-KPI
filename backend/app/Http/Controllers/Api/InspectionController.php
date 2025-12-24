@@ -3,14 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Exports\InspectionsExport;
 use App\Models\Inspection;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
-use Maatwebsite\Excel\Concerns\FromArray;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithTitle;
 
 class InspectionController extends Controller
 {
@@ -25,11 +23,22 @@ class InspectionController extends Controller
 
         // Filter by project
         if ($request->project_id) {
-            $query->where('project_id', $request->project_id);
-        } else if (!$user->isAdmin()) {
-            // Non-admins can only see inspections for their projects
-            $projectIds = $user->projects()->pluck('projects.id');
-            $query->whereIn('project_id', $projectIds);
+            $projectId = (int) $request->project_id;
+            if (!$user->hasGlobalProjectScope()) {
+                $allowed = Project::query()->visibleTo($user)->whereKey($projectId)->exists();
+                if (!$allowed) {
+                    return $this->error('Access denied', 403);
+                }
+            }
+            $query->where('project_id', $projectId);
+        } else if (!$user->hasGlobalProjectScope()) {
+            $projectIds = $user->visibleProjectIds();
+            if (is_iterable($projectIds) && count($projectIds) === 0) {
+                return $this->success($query->whereRaw('1 = 0')->paginate($request->per_page ?? 50));
+            }
+            if ($projectIds !== null) {
+                $query->whereIn('project_id', $projectIds);
+            }
         }
 
         // Filter by week
@@ -71,87 +80,25 @@ class InspectionController extends Controller
         $user = $request->user();
         $projectId = (int) $request->project_id;
 
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects()->pluck('projects.id')->toArray();
-            if (!in_array($projectId, $projectIds)) {
+        if (!$user->hasGlobalProjectScope()) {
+            $allowed = Project::query()->visibleTo($user)->whereKey($projectId)->exists();
+            if (!$allowed) {
                 return $this->error('Access denied', 403);
             }
         }
 
         $project = Project::findOrFail($projectId);
 
-        $query = Inspection::query()
-            ->where('project_id', $projectId)
-            ->orderBy('inspection_date', 'desc')
-            ->orderBy('created_at', 'desc');
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('nature')) {
-            $query->where('nature', $request->nature);
-        }
-
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
-        }
-
-        $inspections = $query->get();
-
-        $rows = $inspections->map(function (Inspection $i) {
-            return [
-                $i->id,
-                optional($i->inspection_date)->format('Y-m-d'),
-                $i->nature,
-                $i->type,
-                $i->location,
-                optional($i->start_date)->format('Y-m-d'),
-                optional($i->end_date)->format('Y-m-d'),
-                $i->zone,
-                $i->inspector,
-                $i->enterprise,
-                $i->status,
-                $i->notes,
-            ];
-        })->toArray();
-
-        $export = new class($rows) implements FromArray, WithHeadings, WithTitle {
-            private array $rows;
-            public function __construct(array $rows)
-            {
-                $this->rows = $rows;
-            }
-            public function array(): array
-            {
-                return $this->rows;
-            }
-            public function headings(): array
-            {
-                return [
-                    'ID',
-                    'inspection_date',
-                    'nature',
-                    'type',
-                    'location',
-                    'start_date',
-                    'end_date',
-                    'zone',
-                    'inspector',
-                    'enterprise',
-                    'status',
-                    'notes',
-                ];
-            }
-            public function title(): string
-            {
-                return 'Inspections';
-            }
-        };
+        $filters = [
+            'project_id' => $projectId,
+            'status' => $request->get('status'),
+            'nature' => $request->get('nature'),
+            'type' => $request->get('type'),
+        ];
 
         $filename = 'Inspections_' . ($project->code ?? $project->id) . '_' . date('Y-m-d_His') . '.xlsx';
 
-        return Excel::download($export, $filename);
+        return Excel::download(new InspectionsExport($filters), $filename);
     }
 
     /**
@@ -178,8 +125,8 @@ class InspectionController extends Controller
         $user = $request->user();
 
         // Check if user has access to this project
-        if (!$user->isAdmin()) {
-            $hasAccess = $user->projects()->where('projects.id', $request->project_id)->exists();
+        if (!$user->hasGlobalProjectScope()) {
+            $hasAccess = Project::query()->visibleTo($user)->whereKey((int) $request->project_id)->exists();
             if (!$hasAccess) {
                 return $this->error('Access denied', 403);
             }
@@ -247,8 +194,13 @@ class InspectionController extends Controller
 
         $user = $request->user();
 
+        $project = Project::findOrFail($inspection->project_id);
+        if (!$user->canAccessProject($project)) {
+            return $this->error('Access denied', 403);
+        }
+
         // Check access
-        if (!$user->isAdmin() && $inspection->created_by !== $user->id) {
+        if (!$user->isAdminLike() && $inspection->created_by !== $user->id) {
             return $this->error('Access denied', 403);
         }
 
@@ -285,8 +237,13 @@ class InspectionController extends Controller
     {
         $user = $request->user();
 
+        $project = Project::findOrFail($inspection->project_id);
+        if (!$user->canAccessProject($project)) {
+            return $this->error('Access denied', 403);
+        }
+
         // Check access
-        if (!$user->isAdmin() && $inspection->created_by !== $user->id) {
+        if (!$user->isAdminLike() && $inspection->created_by !== $user->id) {
             return $this->error('Access denied', 403);
         }
 
@@ -307,10 +264,29 @@ class InspectionController extends Controller
 
         // Filter by project if specified
         if ($request->project_id) {
-            $query->where('project_id', $request->project_id);
-        } else if (!$user->isAdmin()) {
-            $projectIds = $user->projects()->pluck('projects.id');
-            $query->whereIn('project_id', $projectIds);
+            $projectId = (int) $request->project_id;
+            if (!$user->hasGlobalProjectScope()) {
+                $allowed = Project::query()->visibleTo($user)->whereKey($projectId)->exists();
+                if (!$allowed) {
+                    return $this->error('Access denied', 403);
+                }
+            }
+            $query->where('project_id', $projectId);
+        } else if (!$user->hasGlobalProjectScope()) {
+            $projectIds = $user->visibleProjectIds();
+            if (is_iterable($projectIds) && count($projectIds) === 0) {
+                return $this->success($stats = [
+                    'total' => 0,
+                    'open' => 0,
+                    'closed' => 0,
+                    'internal' => 0,
+                    'external' => 0,
+                    'by_nature' => collect(),
+                ]);
+            }
+            if ($projectIds !== null) {
+                $query->whereIn('project_id', $projectIds);
+            }
         }
 
         $stats = [

@@ -25,6 +25,22 @@ class WorkersExport implements FromCollection, WithHeadings, WithMapping, WithSt
             ->orderBy('nom')
             ->orderBy('prenom');
 
+        if (array_key_exists('visible_project_ids', $this->filters)) {
+            $visibleProjectIds = $this->filters['visible_project_ids'];
+            if ($visibleProjectIds instanceof \Illuminate\Support\Collection) {
+                $visibleProjectIds = $visibleProjectIds->all();
+            } elseif ($visibleProjectIds instanceof \Traversable) {
+                $visibleProjectIds = iterator_to_array($visibleProjectIds);
+            }
+
+            if (is_array($visibleProjectIds)) {
+                if (count($visibleProjectIds) === 0) {
+                    return collect();
+                }
+                $query->whereIn('project_id', $visibleProjectIds);
+            }
+        }
+
         if (!empty($this->filters['search'])) {
             $query->search($this->filters['search']);
         }

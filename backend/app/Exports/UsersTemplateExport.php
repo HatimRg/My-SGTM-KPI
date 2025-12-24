@@ -17,10 +17,12 @@ use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 class UsersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, WithEvents
 {
     protected int $dataRows;
+    protected array $roleOptions;
 
-    public function __construct(int $dataRows = 200)
+    public function __construct(int $dataRows = 200, array $roleOptions = [])
     {
         $this->dataRows = $dataRows;
+        $this->roleOptions = $roleOptions;
     }
 
     public function title(): string
@@ -49,9 +51,10 @@ class UsersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, Wi
     public function registerEvents(): array
     {
         $dataRows = $this->dataRows;
+        $roleOptions = $this->roleOptions;
 
         return [
-            AfterSheet::class => function (AfterSheet $event) use ($dataRows) {
+            AfterSheet::class => function (AfterSheet $event) use ($dataRows, $roleOptions) {
                 $sheet = $event->sheet->getDelegate();
 
                 $primaryOrange = 'F97316';
@@ -133,7 +136,10 @@ class UsersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, Wi
                     $roleValidation->setErrorStyle(DataValidation::STYLE_STOP);
                     $roleValidation->setAllowBlank(false);
                     $roleValidation->setShowDropDown(true);
-                    $roleValidation->setFormula1('"admin,responsable,supervisor,animateur,hr,user,sor"');
+                    $rolesCsv = !empty($roleOptions)
+                        ? implode(',', $roleOptions)
+                        : 'admin,hse_manager,responsable,supervisor,hr,user,dev,pole_director,works_director,hse_director,hr_director';
+                    $roleValidation->setFormula1('"' . $rolesCsv . '"');
 
                     $activeValidation = $sheet->getCell("F{$row}")->getDataValidation();
                     $activeValidation->setType(DataValidation::TYPE_LIST);

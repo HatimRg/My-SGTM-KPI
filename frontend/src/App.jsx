@@ -1,6 +1,7 @@
 import { useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
+import { useDevStore } from './store/devStore'
 import useThemeStore from './stores/themeStore'
 import { Loader2 } from 'lucide-react'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -45,31 +46,42 @@ const SubcontractorOpeningDetails = lazy(() => import('./pages/shared/Subcontrac
 // Protected Route Component
 const ProtectedRoute = ({ children, adminOnly = false, allowedRoles = [] }) => {
   const { isAuthenticated, user } = useAuthStore()
+  const { simulatedRole } = useDevStore()
+
+  const adminLikeRoles = ['admin', 'pole_director', 'works_director', 'hse_director', 'hr_director']
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
 
-  const role = user?.role
+  const actualRole = user?.role
+  const role = actualRole === 'dev' && simulatedRole ? simulatedRole : actualRole
 
-  // Admin has access to all authenticated routes
-  if (role === 'admin') {
+  // Admin-like roles have access to all authenticated routes
+  if (adminLikeRoles.includes(role)) {
     return children
   }
 
-  if (adminOnly && role !== 'admin') {
+  // Dev can access all authenticated routes when not simulating a role
+  if (actualRole === 'dev' && !simulatedRole) {
+    return children
+  }
+
+  if (adminOnly && !adminLikeRoles.includes(role)) {
     return <Navigate to="/dashboard" replace />
   }
 
   // Check if user's role is allowed for this route
   if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
     // Redirect based on user's actual role
-    if (role === 'user' || role === 'animateur') {
+    if (role === 'user') {
       return <Navigate to="/sor" replace />
     } else if (role === 'supervisor') {
       return <Navigate to="/supervisor" replace />
     } else if (role === 'hr') {
       return <Navigate to="/hr" replace />
+    } else if (adminLikeRoles.includes(role)) {
+      return <Navigate to="/admin" replace />
     } else {
       return <Navigate to="/dashboard" replace />
     }
@@ -81,12 +93,18 @@ const ProtectedRoute = ({ children, adminOnly = false, allowedRoles = [] }) => {
 // Guest Route Component (redirect if already logged in)
 const GuestRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuthStore()
+  const { simulatedRole } = useDevStore()
+
+  const adminLikeRoles = ['admin', 'pole_director', 'works_director', 'hse_director', 'hr_director']
 
   if (isAuthenticated) {
-    const role = user?.role
-    if (role === 'admin') {
+    const actualRole = user?.role
+    const role = actualRole === 'dev' && simulatedRole ? simulatedRole : actualRole
+    if (adminLikeRoles.includes(role)) {
       return <Navigate to="/admin" replace />
-    } else if (role === 'user' || role === 'animateur') {
+    } else if (actualRole === 'dev' && !simulatedRole) {
+      return <Navigate to="/admin" replace />
+    } else if (role === 'user') {
       return <Navigate to="/sor" replace />
     } else if (role === 'supervisor') {
       return <Navigate to="/supervisor" replace />
@@ -179,10 +197,10 @@ function App() {
         <Route path="/admin/profile" element={<Profile />} />
       </Route>
 
-      {/* HSE Officer / Animateur Routes */}
+      {/* HSE Officer Routes */}
       <Route
         element={
-          <ProtectedRoute allowedRoles={['user', 'animateur']}>
+          <ProtectedRoute allowedRoles={['user']}>
             <DashboardLayout />
           </ProtectedRoute>
         }
@@ -216,7 +234,7 @@ function App() {
       {/* User Routes (Responsable HSE) */}
       <Route
         element={
-          <ProtectedRoute allowedRoles={['responsable']}>
+          <ProtectedRoute allowedRoles={['hse_manager', 'responsable']}>
             <DashboardLayout />
           </ProtectedRoute>
         }
@@ -255,7 +273,7 @@ function App() {
       {/* Qualified Personnel (Worker Trainings) - Responsable, Supervisor, HR, Admin */}
       <Route
         element={
-          <ProtectedRoute allowedRoles={['responsable', 'supervisor', 'hr']}>
+          <ProtectedRoute allowedRoles={['hse_manager', 'responsable', 'supervisor', 'hr']}>
             <DashboardLayout />
           </ProtectedRoute>
         }

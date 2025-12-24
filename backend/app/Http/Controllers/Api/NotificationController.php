@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Notification;
+use App\Models\Project;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 
@@ -15,6 +16,9 @@ class NotificationController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
         
         $query = Notification::with('project')
             ->where('user_id', $user->id);
@@ -26,6 +30,10 @@ class NotificationController extends Controller
 
         // Filter by project
         if ($request->has('project_id') && $request->project_id) {
+            $project = Project::findOrFail((int) $request->project_id);
+            if (!$user->canAccessProject($project)) {
+                return $this->error('Access denied', 403);
+            }
             $query->where('project_id', $request->project_id);
         }
 
@@ -44,7 +52,12 @@ class NotificationController extends Controller
      */
     public function unreadCount(Request $request)
     {
-        $userId = $request->user()->id;
+        $user = $request->user();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
+        $userId = $user->id;
         $projectId = $request->project_id;
 
         // Single optimized query to get both total count and counts by type
@@ -54,6 +67,10 @@ class NotificationController extends Controller
             ->groupBy('type');
 
         if ($projectId) {
+            $project = Project::findOrFail((int) $projectId);
+            if (!$user->canAccessProject($project)) {
+                return $this->error('Access denied', 403);
+            }
             $query->where('project_id', $projectId);
         }
 
@@ -85,9 +102,18 @@ class NotificationController extends Controller
      */
     public function markAllAsRead(Request $request)
     {
-        $query = Notification::where('user_id', $request->user()->id)->unread();
+        $user = $request->user();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
+        $query = Notification::where('user_id', $user->id)->unread();
 
         if ($request->has('project_id') && $request->project_id) {
+            $project = Project::findOrFail((int) $request->project_id);
+            if (!$user->canAccessProject($project)) {
+                return $this->error('Access denied', 403);
+            }
             $query->where('project_id', $request->project_id);
         }
 
@@ -115,9 +141,22 @@ class NotificationController extends Controller
      */
     public function deleteRead(Request $request)
     {
-        Notification::where('user_id', $request->user()->id)
-            ->read()
-            ->delete();
+        $user = $request->user();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
+        $query = Notification::where('user_id', $user->id)->read();
+
+        if ($request->has('project_id') && $request->project_id) {
+            $project = Project::findOrFail((int) $request->project_id);
+            if (!$user->canAccessProject($project)) {
+                return $this->error('Access denied', 403);
+            }
+            $query->where('project_id', $request->project_id);
+        }
+
+        $query->delete();
 
         return $this->success(null, 'Read notifications deleted');
     }
@@ -128,7 +167,11 @@ class NotificationController extends Controller
     public function send(Request $request)
     {
         $user = $request->user();
-        if (!$user->isAdmin()) {
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
+        if (!$user->isAdminLike()) {
             return $this->error('Unauthorized', 403);
         }
 
@@ -143,11 +186,21 @@ class NotificationController extends Controller
 
         $type = $validated['type'] ?? Notification::TYPE_INFO;
 
+        if (!$user->hasGlobalProjectScope() && in_array($validated['target'], ['all', 'user'], true)) {
+            return $this->error('Access denied', 403);
+        }
+
         if ($validated['target'] === 'user') {
             $targetUser = \App\Models\User::find($validated['user_id']);
             NotificationService::sendToUser($targetUser, $type, $validated['title'], $validated['message']);
         } elseif ($validated['target'] === 'project') {
             $project = \App\Models\Project::find($validated['project_id']);
+            if (!$project) {
+                return $this->error('Project not found', 404);
+            }
+            if (!$user->canAccessProject($project)) {
+                return $this->error('Access denied', 403);
+            }
             NotificationService::sendToProject($project, $type, $validated['title'], $validated['message']);
         } else {
             NotificationService::broadcast($type, $validated['title'], $validated['message']);

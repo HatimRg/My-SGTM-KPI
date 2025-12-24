@@ -55,6 +55,7 @@ class DashboardController extends Controller
      */
     public function adminDashboard(Request $request)
     {
+        $user = $request->user();
         $year = (int) $request->get('year', date('Y'));
         $projectId = $request->get('project_id');
         $pole = $request->get('pole');
@@ -63,16 +64,18 @@ class DashboardController extends Controller
 
         $projectIdsForPole = null;
         if ($pole !== null && $pole !== '') {
-            $projectIdsForPole = Project::query()->where('pole', $pole)->pluck('id');
+            $projectIdsForPole = Project::query()->visibleTo($user)->where('pole', $pole)->pluck('id');
+        } else {
+            $projectIdsForPole = $user->visibleProjectIds();
         }
 
-        $projectsBase = Project::query();
+        $projectsBase = Project::query()->visibleTo($user);
         if ($pole !== null && $pole !== '') {
             $projectsBase->where('pole', $pole);
         }
 
         $totalReportsQuery = KpiReport::query()->where('report_year', $year);
-        if ($projectIdsForPole) {
+        if ($projectIdsForPole !== null) {
             $totalReportsQuery->whereIn('project_id', $projectIdsForPole);
         }
         if ($projectId) {
@@ -82,18 +85,29 @@ class DashboardController extends Controller
             $totalReportsQuery->where('week_number', $week);
         }
 
+        $pendingReportsQuery = KpiReport::submitted();
+        if ($projectIdsForPole !== null) {
+            $pendingReportsQuery->whereIn('project_id', $projectIdsForPole);
+        }
+        if ($projectId) {
+            $pendingReportsQuery->where('project_id', $projectId);
+        }
+        if ($week && $week >= 1 && $week <= 52) {
+            $pendingReportsQuery->where('week_number', $week);
+        }
+
         // Overall statistics
         $stats = [
             'total_projects' => (clone $projectsBase)->count(),
             'active_projects' => (clone $projectsBase)->where('status', Project::STATUS_ACTIVE)->count(),
             'total_users' => User::count(),
             'active_users' => User::active()->count(),
-            'pending_reports' => KpiReport::submitted()->count(),
+            'pending_reports' => (clone $pendingReportsQuery)->count(),
             'total_reports' => (clone $totalReportsQuery)->count(),
         ];
 
         $kpiQuery = KpiReport::where('report_year', $year)->approved();
-        if ($projectIdsForPole) {
+        if ($projectIdsForPole !== null) {
             $kpiQuery->whereIn('project_id', $projectIdsForPole);
         }
         if ($projectId) {
@@ -137,7 +151,7 @@ class DashboardController extends Controller
             ->approved()
             ->whereNotNull('week_number')
             ;
-        if ($projectIdsForPole) {
+        if ($projectIdsForPole !== null) {
             $weeklyTrendsQuery->whereIn('project_id', $projectIdsForPole);
         }
         if ($projectId) {
@@ -206,7 +220,7 @@ class DashboardController extends Controller
             ')
             ->where('report_year', $year)
             ->approved();
-        if ($projectIdsForPole) {
+        if ($projectIdsForPole !== null) {
             $projectKpiMetricsQuery->whereIn('project_id', $projectIdsForPole);
         }
         if ($projectId) {
@@ -221,7 +235,7 @@ class DashboardController extends Controller
             ->keyBy('project_id');
 
         $projectTrainingCountsQuery = Training::query()->where('week_year', $year);
-        if ($projectIdsForPole) {
+        if ($projectIdsForPole !== null) {
             $projectTrainingCountsQuery->whereIn('project_id', $projectIdsForPole);
         }
         if ($projectId) {
@@ -237,6 +251,7 @@ class DashboardController extends Controller
             ->keyBy('project_id');
 
         $projectPerformance = Project::active()
+            ->visibleTo($user)
             ->when($pole !== null && $pole !== '', function ($q) use ($pole) {
                 $q->where('pole', $pole);
             })
@@ -268,6 +283,7 @@ class DashboardController extends Controller
 
         // Weekly submission status for all active projects
         $allProjectsForStatus = Project::active()
+            ->visibleTo($user)
             ->when($pole !== null && $pole !== '', function ($q) use ($pole) {
                 $q->where('pole', $pole);
             })
@@ -276,17 +292,22 @@ class DashboardController extends Controller
         $weeklyStatus = $this->buildWeeklySubmissionStatus($allProjectsForStatus, (int) $year);
 
         // Recent activity (exclude draft reports for admin view)
-        $recentReports = KpiReport::with(['project', 'submitter'])
+        $recentReportsQuery = KpiReport::with(['project', 'submitter'])
             ->where('status', '!=', KpiReport::STATUS_DRAFT)
-            ->latest()
-            ->limit(10)
-            ->get();
+            ->latest();
+        if ($projectIdsForPole !== null) {
+            $recentReportsQuery->whereIn('project_id', $projectIdsForPole);
+        }
+        if ($projectId) {
+            $recentReportsQuery->where('project_id', $projectId);
+        }
+        $recentReports = $recentReportsQuery->limit(10)->get();
 
         // ==========================================
         // REAL DATA FROM TRAININGS TABLE
         // ==========================================
         $trainingQuery = Training::where('week_year', $year);
-        if ($projectIdsForPole) {
+        if ($projectIdsForPole !== null) {
             $trainingQuery->whereIn('project_id', $projectIdsForPole);
         }
         if ($projectId) {
@@ -341,6 +362,9 @@ class DashboardController extends Controller
         // REAL DATA FROM AWARENESS SESSIONS TABLE
         // ==========================================
         $awarenessQuery = AwarenessSession::where('week_year', $year);
+        if ($projectIdsForPole !== null) {
+            $awarenessQuery->whereIn('project_id', $projectIdsForPole);
+        }
         if ($projectId) {
             $awarenessQuery->where('project_id', $projectId);
         }
@@ -385,6 +409,9 @@ class DashboardController extends Controller
         $week1Start = WeekHelper::getWeek1Start($year)->startOfDay();
         $yearEnd = $week1Start->copy()->addDays(52 * 7 - 1)->endOfDay();
         $sorQuery = SorReport::query()->whereBetween('observation_date', [$week1Start, $yearEnd]);
+        if ($projectIdsForPole !== null) {
+            $sorQuery->whereIn('project_id', $projectIdsForPole);
+        }
         if ($projectId) {
             $sorQuery->where('project_id', $projectId);
         }
@@ -432,6 +459,9 @@ class DashboardController extends Controller
         // REAL DATA FROM WORK PERMITS TABLE (filtered)
         // ==========================================
         $permitQuery = WorkPermit::where('year', $year);
+        if ($projectIdsForPole !== null) {
+            $permitQuery->whereIn('project_id', $projectIdsForPole);
+        }
         if ($projectId) {
             $permitQuery->where('project_id', $projectId);
         }
@@ -476,7 +506,7 @@ class DashboardController extends Controller
         // REAL DATA FROM INSPECTIONS TABLE (filtered)
         // ==========================================
         $inspectionQuery = Inspection::where('week_year', $year);
-        if ($projectIdsForPole) {
+        if ($projectIdsForPole !== null) {
             $inspectionQuery->whereIn('project_id', $projectIdsForPole);
         }
         if ($projectId) {
@@ -579,9 +609,16 @@ class DashboardController extends Controller
         $pole = $request->get('pole');
         $week = $request->get('week');
         $week = $week !== null ? (int) $week : null;
-        $projectsQuery = $user->projects()->with(['kpiReports' => function ($q) use ($year) {
-            $q->where('report_year', $year);
-        }]);
+
+        $scope = $request->get('scope');
+        $projectsQuery = ($user && $user->isDev() && $scope !== 'assigned')
+            ? Project::query()->with(['kpiReports' => function ($q) use ($year) {
+                $q->where('report_year', $year);
+            }])
+            : Project::query()->visibleTo($user)->with(['kpiReports' => function ($q) use ($year) {
+                $q->where('report_year', $year);
+            }]);
+
         if ($pole !== null && $pole !== '') {
             $projectsQuery->where('pole', $pole);
         }
@@ -774,8 +811,8 @@ class DashboardController extends Controller
         
         $query = KpiReport::where('report_year', $year)->approved();
         
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects->pluck('id');
+        $projectIds = $user->visibleProjectIds();
+        if ($projectIds !== null) {
             $query->whereIn('project_id', $projectIds);
         }
 
@@ -811,8 +848,8 @@ class DashboardController extends Controller
         
         $query = KpiReport::where('report_year', $year)->approved();
         
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects->pluck('id');
+        $projectIds = $user->visibleProjectIds();
+        if ($projectIds !== null) {
             $query->whereIn('project_id', $projectIds);
         }
 
@@ -843,8 +880,8 @@ class DashboardController extends Controller
 
         $query = SorReport::query()->whereBetween('observation_date', [$week1Start, $yearEnd]);
 
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects->pluck('id');
+        $projectIds = $user->visibleProjectIds();
+        if ($projectIds !== null) {
             $query->whereIn('project_id', $projectIds);
         }
 
@@ -985,8 +1022,8 @@ class DashboardController extends Controller
         
         $query = KpiReport::where('report_year', $year)->approved();
         
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects->pluck('id');
+        $projectIds = $user->visibleProjectIds();
+        if ($projectIds !== null) {
             $query->whereIn('project_id', $projectIds);
         }
 
@@ -1014,8 +1051,8 @@ class DashboardController extends Controller
         
         $query = KpiReport::where('report_year', $year)->approved();
         
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects->pluck('id');
+        $projectIds = $user->visibleProjectIds();
+        if ($projectIds !== null) {
             $query->whereIn('project_id', $projectIds);
         }
 

@@ -23,15 +23,14 @@ class KpiReportController extends Controller
         $user = $request->user();
         $query = KpiReport::query()->with(['project', 'submitter', 'approver']);
 
-        // For non-admin users, only show reports from assigned projects
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects->pluck('id');
+        $projectIds = $user->visibleProjectIds();
+        if ($projectIds !== null) {
             $query->whereIn('project_id', $projectIds);
-        } else {
-            // For admins, hide draft reports by default unless a specific status filter is applied
-            if (!$request->filled('status')) {
-                $query->where('status', '!=', KpiReport::STATUS_DRAFT);
-            }
+        }
+
+        // For admin-like users, hide draft reports by default unless a specific status filter is applied
+        if ($user->isAdminLike() && !$request->filled('status')) {
+            $query->where('status', '!=', KpiReport::STATUS_DRAFT);
         }
 
         // Project filter
@@ -136,7 +135,7 @@ class KpiReportController extends Controller
 
         // Check if user has access to this project
         $project = Project::findOrFail($request->project_id);
-        if (!$user->isAdmin() && !$project->users->contains($user->id)) {
+        if (!$user->canAccessProject($project)) {
             return $this->error('You do not have access to this project', 403);
         }
 
@@ -227,11 +226,12 @@ class KpiReportController extends Controller
         $user = $request->user();
 
         // Check access
-        if (!$user->isAdmin()) {
-            $project = $kpiReport->project;
-            if (!$project->users->contains($user->id)) {
-                return $this->error('Access denied', 403);
-            }
+        $project = $kpiReport->project;
+        if (!$project) {
+            $project = Project::findOrFail($kpiReport->project_id);
+        }
+        if (!$user->canAccessProject($project)) {
+            return $this->error('Access denied', 403);
         }
 
         $kpiReport->load(['project', 'submitter', 'approver']);
@@ -260,8 +260,16 @@ class KpiReportController extends Controller
         $user = $request->user();
 
         // Only allow editing of draft/rejected reports or if admin
-        if (!$user->isAdmin() && !in_array($kpiReport->status, ['draft', 'rejected'])) {
+        if (!$user->isAdminLike() && !in_array($kpiReport->status, ['draft', 'rejected'])) {
             return $this->error('Cannot edit an approved or submitted report', 403);
+        }
+
+        $project = $kpiReport->project;
+        if (!$project) {
+            $project = Project::findOrFail($kpiReport->project_id);
+        }
+        if (!$user->canAccessProject($project)) {
+            return $this->error('Access denied', 403);
         }
 
         $request->validate([
@@ -312,8 +320,16 @@ class KpiReportController extends Controller
         $user = $request->user();
 
         // Only allow deletion of draft reports or if admin
-        if (!$user->isAdmin() && $kpiReport->status !== 'draft') {
+        if (!$user->isAdminLike() && $kpiReport->status !== 'draft') {
             return $this->error('Cannot delete a submitted or approved report', 403);
+        }
+
+        $project = $kpiReport->project;
+        if (!$project) {
+            $project = Project::findOrFail($kpiReport->project_id);
+        }
+        if (!$user->canAccessProject($project)) {
+            return $this->error('Access denied', 403);
         }
 
         $kpiReport->delete();
@@ -386,8 +402,8 @@ class KpiReportController extends Controller
         $user = $request->user();
         $query = KpiReport::query()->approved();
 
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects->pluck('id');
+        $projectIds = $user->visibleProjectIds();
+        if ($projectIds !== null) {
             $query->whereIn('project_id', $projectIds);
         }
 
@@ -482,7 +498,7 @@ class KpiReportController extends Controller
         $year = $request->year;
 
         $project = Project::findOrFail($projectId);
-        if (!$user->isAdmin() && !$project->users->contains($user->id)) {
+        if (!$user->canAccessProject($project)) {
             return $this->error('You do not have access to this project', 403);
         }
 

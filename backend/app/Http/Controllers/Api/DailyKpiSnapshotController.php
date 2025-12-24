@@ -26,9 +26,11 @@ class DailyKpiSnapshotController extends Controller
         $query = DailyKpiSnapshot::with(['project', 'submitter']);
 
         // Restrict to user's projects if not admin
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects()->pluck('projects.id');
-            $query->whereIn('project_id', $projectIds);
+        if (!$user->hasGlobalProjectScope()) {
+            $projectIds = $user->visibleProjectIds();
+            if ($projectIds !== null) {
+                $query->whereIn('project_id', $projectIds);
+            }
         }
 
         if ($projectId = $request->get('project_id')) {
@@ -65,7 +67,7 @@ class DailyKpiSnapshotController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->isAdmin() && !$user->isResponsable()) {
+        if (!$user->isAdminLike() && !$user->isResponsable()) {
             return $this->error('Only admins and responsables can manage daily KPI entries', 403);
         }
 
@@ -97,7 +99,7 @@ class DailyKpiSnapshotController extends Controller
         ]);
 
         $project = Project::findOrFail($validated['project_id']);
-        if (!$user->isAdmin() && !$project->users->contains($user->id)) {
+        if (!$user->canAccessProject($project)) {
             return $this->error('You do not have access to this project', 403);
         }
 
@@ -149,11 +151,9 @@ class DailyKpiSnapshotController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects()->pluck('projects.id')->toArray();
-            if (!in_array($dailyKpiSnapshot->project_id, $projectIds)) {
-                return $this->error('Access denied', 403);
-            }
+        $project = Project::findOrFail($dailyKpiSnapshot->project_id);
+        if (!$user->canAccessProject($project)) {
+            return $this->error('Access denied', 403);
         }
 
         $dailyKpiSnapshot->load(['project', 'submitter']);
@@ -168,12 +168,17 @@ class DailyKpiSnapshotController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->isAdmin() && !$user->isResponsable()) {
+        if (!$user->isAdminLike() && !$user->isResponsable()) {
             return $this->error('Only admins and responsables can manage daily KPI entries', 403);
         }
 
-        if (!$user->isAdmin() && $dailyKpiSnapshot->submitted_by !== $user->id) {
+        if (!$user->isAdminLike() && $dailyKpiSnapshot->submitted_by !== $user->id) {
             return $this->error('You can only edit your own daily KPI entries', 403);
+        }
+
+        $project = Project::findOrFail($dailyKpiSnapshot->project_id);
+        if (!$user->canAccessProject($project)) {
+            return $this->error('Access denied', 403);
         }
 
         $validated = $request->validate([
@@ -211,12 +216,17 @@ class DailyKpiSnapshotController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->isAdmin() && !$user->isResponsable()) {
+        if (!$user->isAdminLike() && !$user->isResponsable()) {
             return $this->error('Only admins and responsables can delete daily KPI entries', 403);
         }
 
-        if (!$user->isAdmin() && $dailyKpiSnapshot->submitted_by !== $user->id) {
+        if (!$user->isAdminLike() && $dailyKpiSnapshot->submitted_by !== $user->id) {
             return $this->error('You can only delete your own daily KPI entries', 403);
+        }
+
+        $project = Project::findOrFail($dailyKpiSnapshot->project_id);
+        if (!$user->canAccessProject($project)) {
+            return $this->error('Access denied', 403);
         }
 
         $dailyKpiSnapshot->delete();
@@ -235,7 +245,15 @@ class DailyKpiSnapshotController extends Controller
             'year' => 'required|integer|min:2020|max:2100',
         ]);
 
+        $user = $request->user();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
         $project = Project::findOrFail($request->project_id);
+        if (!$user->canAccessProject($project)) {
+            return $this->error('Access denied', 403);
+        }
         $projectId = $project->id;
         $weekNumber = (int) $request->week_number;
         $year = (int) $request->year;
@@ -318,8 +336,16 @@ class DailyKpiSnapshotController extends Controller
         ]);
 
         $user = $request->user();
-        if (!$user->isAdmin() && !$user->isResponsable()) {
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+        if (!$user->isAdminLike() && !$user->isResponsable()) {
             return $this->error('Only admins and responsables can upload KPI data', 403);
+        }
+
+        $project = Project::findOrFail($request->project_id);
+        if (!$user->canAccessProject($project)) {
+            return $this->error('You do not have access to this project', 403);
         }
 
         try {
@@ -344,7 +370,10 @@ class DailyKpiSnapshotController extends Controller
     public function bulkSave(Request $request)
     {
         $user = $request->user();
-        if (!$user->isAdmin() && !$user->isResponsable()) {
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+        if (!$user->isAdminLike() && !$user->isResponsable()) {
             return $this->error('Only admins and responsables can save KPI data', 403);
         }
 
@@ -357,7 +386,7 @@ class DailyKpiSnapshotController extends Controller
         ]);
 
         $project = Project::findOrFail($request->project_id);
-        if (!$user->isAdmin() && !$project->users->contains($user->id)) {
+        if (!$user->canAccessProject($project)) {
             return $this->error('You do not have access to this project', 403);
         }
 
@@ -403,7 +432,6 @@ class DailyKpiSnapshotController extends Controller
         }
 
         // Calculate aggregates from saved entries
-        $kpiAggregates = DailyKpiSnapshot::aggregateForWeek(
             $request->project_id,
             (int) $request->week_number,
             (int) $request->year
@@ -535,6 +563,16 @@ class DailyKpiSnapshotController extends Controller
             'week_number' => 'required|integer|min:1|max:52',
             'year' => 'required|integer|min:2020|max:2100',
         ]);
+
+        $user = $request->user();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
+        $project = Project::findOrFail($request->project_id);
+        if (!$user->canAccessProject($project)) {
+            return $this->error('You do not have access to this project', 403);
+        }
 
         $projectId = $request->project_id;
         $weekNumber = (int) $request->week_number;

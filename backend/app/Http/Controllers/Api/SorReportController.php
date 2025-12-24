@@ -3,15 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Exports\DeviationsExport;
 use App\Models\SorReport;
 use App\Models\Project;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
-use Maatwebsite\Excel\Concerns\FromArray;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithTitle;
 
 class SorReportController extends Controller
 {
@@ -23,9 +21,8 @@ class SorReportController extends Controller
         $user = $request->user();
         $query = SorReport::with(['project', 'submitter', 'closer']);
 
-        // Filter by user's projects if not admin
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects()->pluck('projects.id');
+        $projectIds = $user->visibleProjectIds();
+        if ($projectIds !== null) {
             $query->whereIn('project_id', $projectIds);
         }
 
@@ -75,8 +72,8 @@ class SorReportController extends Controller
         $user = $request->user();
         $query = SorReport::with(['project', 'submitter', 'closer']);
 
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects()->pluck('projects.id');
+        $projectIds = $user->visibleProjectIds();
+        if ($projectIds !== null) {
             $query->whereIn('project_id', $projectIds);
         }
 
@@ -100,84 +97,26 @@ class SorReportController extends Controller
             $query->whereDate('observation_date', '<=', $request->to_date);
         }
 
-        $reports = $query->orderBy('observation_date', 'desc')->get();
-
-        $rows = $reports->map(function (SorReport $r) {
-            return [
-                $r->id,
-                $r->project?->name,
-                $r->company,
-                optional($r->observation_date)->format('Y-m-d'),
-                $r->observation_time,
-                $r->zone,
-                $r->supervisor,
-                $r->category,
-                $r->non_conformity,
-                $r->responsible_person,
-                optional($r->deadline)->format('Y-m-d'),
-                $r->corrective_action,
-                optional($r->corrective_action_date)->format('Y-m-d'),
-                $r->corrective_action_time,
-                $r->status,
-                $r->is_pinned ? 1 : 0,
-                $r->submitter_name,
-                $r->closer_name,
-            ];
-        })->toArray();
-
-        $export = new class($rows) implements FromArray, WithHeadings, WithTitle {
-            private array $rows;
-            public function __construct(array $rows)
-            {
-                $this->rows = $rows;
-            }
-            public function array(): array
-            {
-                return $this->rows;
-            }
-            public function headings(): array
-            {
-                return [
-                    'ID',
-                    'project',
-                    'company',
-                    'observation_date',
-                    'observation_time',
-                    'zone',
-                    'supervisor',
-                    'category',
-                    'non_conformity',
-                    'responsible_person',
-                    'deadline',
-                    'corrective_action',
-                    'corrective_action_date',
-                    'corrective_action_time',
-                    'status',
-                    'is_pinned',
-                    'submitted_by',
-                    'closed_by',
-                ];
-            }
-            public function title(): string
-            {
-                return 'Deviations';
-            }
-        };
+        $filters = [
+            'project_id' => $request->get('project_id'),
+            'status' => $request->get('status'),
+            'category' => $request->get('category'),
+            'from_date' => $request->get('from_date'),
+            'to_date' => $request->get('to_date'),
+        ];
 
         $filename = 'deviations_' . date('Y-m-d_His') . '.xlsx';
 
-        return Excel::download($export, $filename);
+        return Excel::download(new DeviationsExport($filters), $filename);
     }
 
     public function viewPhoto(Request $request, SorReport $sorReport)
     {
         $user = $request->user();
 
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects()->pluck('projects.id')->toArray();
-            if (!in_array((int) $sorReport->project_id, $projectIds)) {
-                abort(403, 'Access denied');
-            }
+        $project = Project::findOrFail($sorReport->project_id);
+        if (!$user->canAccessProject($project)) {
+            abort(403, 'Access denied');
         }
 
         if (!$sorReport->photo_path || !Storage::disk('public')->exists($sorReport->photo_path)) {
@@ -207,11 +146,9 @@ class SorReportController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects()->pluck('projects.id')->toArray();
-            if (!in_array((int) $sorReport->project_id, $projectIds)) {
-                abort(403, 'Access denied');
-            }
+        $project = Project::findOrFail($sorReport->project_id);
+        if (!$user->canAccessProject($project)) {
+            abort(403, 'Access denied');
         }
 
         if (!$sorReport->corrective_action_photo_path || !Storage::disk('public')->exists($sorReport->corrective_action_photo_path)) {
@@ -246,8 +183,8 @@ class SorReportController extends Controller
         $query = SorReport::with(['project', 'submitter', 'closer'])
                           ->where('is_pinned', true);
 
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects()->pluck('projects.id');
+        $projectIds = $user->visibleProjectIds();
+        if ($projectIds !== null) {
             $query->whereIn('project_id', $projectIds);
         }
 
@@ -289,6 +226,12 @@ class SorReportController extends Controller
             
             'notes' => 'nullable|string',
         ]);
+
+        $user = $request->user();
+        $project = Project::findOrFail($validated['project_id']);
+        if (!$user->canAccessProject($project)) {
+            abort(403, 'Access denied');
+        }
 
         $validated['submitted_by'] = $request->user()->id;
         $submitCorrectiveAction = $request->boolean('submit_corrective_action');
@@ -356,11 +299,9 @@ class SorReportController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects()->pluck('projects.id')->toArray();
-            if (!in_array((int) $sorReport->project_id, $projectIds)) {
-                abort(403, 'Access denied');
-            }
+        $project = Project::findOrFail($sorReport->project_id);
+        if (!$user->canAccessProject($project)) {
+            abort(403, 'Access denied');
         }
 
         $validated = $request->validate([
@@ -414,6 +355,12 @@ class SorReportController extends Controller
      */
     public function show(SorReport $sorReport)
     {
+        $user = request()->user();
+        $project = Project::findOrFail($sorReport->project_id);
+        if (!$user->canAccessProject($project)) {
+            abort(403, 'Access denied');
+        }
+
         return response()->json([
             'data' => $sorReport->load(['project', 'submitter', 'closer'])
         ]);
@@ -424,6 +371,12 @@ class SorReportController extends Controller
      */
     public function update(Request $request, SorReport $sorReport)
     {
+        $user = $request->user();
+        $project = Project::findOrFail($sorReport->project_id);
+        if (!$user->canAccessProject($project)) {
+            abort(403, 'Access denied');
+        }
+
         $validated = $request->validate([
             'project_id' => 'nullable|exists:projects,id',
             'company' => 'nullable|string|max:255',
@@ -506,6 +459,12 @@ class SorReportController extends Controller
      */
     public function destroy(SorReport $sorReport)
     {
+        $user = request()->user();
+        $project = Project::findOrFail($sorReport->project_id);
+        if (!$user->canAccessProject($project)) {
+            abort(403, 'Access denied');
+        }
+
         // Delete photo if exists
         if ($sorReport->photo_path) {
             Storage::disk('public')->delete($sorReport->photo_path);
@@ -536,8 +495,8 @@ class SorReportController extends Controller
         $user = $request->user();
         $query = SorReport::query();
 
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects()->pluck('projects.id');
+        $projectIds = $user->visibleProjectIds();
+        if ($projectIds !== null) {
             $query->whereIn('project_id', $projectIds);
         }
 

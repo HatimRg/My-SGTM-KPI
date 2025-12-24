@@ -221,12 +221,12 @@ export default function KpiHistory() {
       {/* Filters */}
       <div className="card p-4">
         <div className="flex flex-col sm:flex-row flex-wrap gap-4">
-          <div className="w-44">
+          <div className="w-full sm:w-44">
             <Select
               value={filters.pole}
               onChange={(e) => setFilters({ ...filters, pole: e.target.value, project_id: '' })}
             >
-              <option value="">All Poles</option>
+              <option value="">{t('common.allPoles')}</option>
               {poles.map((p) => (
                 <option key={p} value={p}>
                   {p}
@@ -234,12 +234,12 @@ export default function KpiHistory() {
               ))}
             </Select>
           </div>
-          <div className="flex-1 min-w-[180px]">
+          <div className="w-full sm:flex-1 sm:min-w-[180px]">
             <Select
               value={filters.project_id}
               onChange={(e) => setFilters({ ...filters, project_id: e.target.value })}
             >
-              <option value="">All Projects</option>
+              <option value="">{t('common.allProjects')}</option>
               {visibleProjects.map((project) => (
                 <option key={project.id} value={project.id}>
                   {getProjectLabel(project)}
@@ -247,19 +247,19 @@ export default function KpiHistory() {
               ))}
             </Select>
           </div>
-          <div className="w-40">
+          <div className="w-full sm:w-40">
             <Select
               value={filters.status}
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
             >
-              <option value="">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="submitted">Submitted</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
+              <option value="">{t('common.all')}</option>
+              <option value="draft">{t('kpi.status.draft')}</option>
+              <option value="submitted">{t('kpi.status.submitted')}</option>
+              <option value="approved">{t('kpi.status.approved')}</option>
+              <option value="rejected">{t('kpi.status.rejected')}</option>
             </Select>
           </div>
-          <div className="w-32">
+          <div className="w-full sm:w-32">
             <Select
               value={filters.year}
               onChange={(e) => setFilters({ ...filters, year: e.target.value })}
@@ -270,14 +270,14 @@ export default function KpiHistory() {
               })}
             </Select>
           </div>
-          <div className="w-40">
+          <div className="w-full sm:w-40">
             <DatePicker
               value={filterFromDate}
               onChange={(val) => setFilterFromDate(val)}
               placeholder="From date"
             />
           </div>
-          <div className="w-40">
+          <div className="w-full sm:w-40">
             <DatePicker
               value={filterToDate}
               onChange={(val) => setFilterToDate(val)}
@@ -288,7 +288,7 @@ export default function KpiHistory() {
             type="button"
             onClick={handleExportKpiHistory}
             disabled={exporting || filteredReports.length === 0}
-            className="btn-secondary flex items-center gap-2 text-sm"
+            className="btn-secondary flex items-center justify-center gap-2 text-sm w-full sm:w-auto"
           >
             <FileSpreadsheet className="w-4 h-4" />
             <span>{t('dashboard.exportExcel')}</span>

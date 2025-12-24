@@ -27,19 +27,39 @@ class ExportController extends Controller
         ]);
 
         $user = $request->user();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
         $year = $request->get('year', date('Y'));
-        
-        // Access control - only admins get multi-sheet export
+
+        // Access control - only true admins/dev get multi-sheet export
+        // (AdminReportExport includes wide-scope sheets and is not project-scoped).
         if (!$user->isAdmin()) {
-            // For regular users, use simple export
-            $projectIds = $user->projects->pluck('id');
+            // For scoped users (including directors), use simple export scoped to visible projects
+            $projectIds = $user->visibleProjectIds();
             $query = KpiReport::query()
                 ->with(['project', 'submitter'])
-                ->whereIn('project_id', $projectIds)
                 ->where('report_year', $year)
                 ->approved()
                 ->orderBy('week_number', 'desc');
-            
+
+            if ($projectIds !== null) {
+                if (count($projectIds) === 0) {
+                    $reports = collect();
+                    $filename = 'kpi_reports_' . $year . '_' . date('Y-m-d_His') . '.xlsx';
+                    return Excel::download(new KpiReportsExport($reports), $filename);
+                }
+                $query->whereIn('project_id', $projectIds);
+            }
+
+            if ($request->filled('project_id')) {
+                $project = Project::findOrFail((int) $request->get('project_id'));
+                if (!$user->canAccessProject($project)) {
+                    return $this->error('Access denied', 403);
+                }
+                $query->where('project_id', $project->id);
+            }
+
             $reports = $query->get();
             $filename = 'kpi_reports_' . $year . '_' . date('Y-m-d_His') . '.xlsx';
             return Excel::download(new KpiReportsExport($reports), $filename);
@@ -66,21 +86,30 @@ class ExportController extends Controller
         ]);
 
         $user = $request->user();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
         $year = $request->get('year', date('Y'));
         $project = null;
 
         $query = KpiReport::query()->with(['project', 'submitter']);
 
         // Access control
-        if (!$user->isAdmin()) {
-            $projectIds = $user->projects->pluck('id');
+        $projectIds = $user->visibleProjectIds();
+        if ($projectIds !== null) {
+            if (count($projectIds) === 0) {
+                return $this->error('Access denied', 403);
+            }
             $query->whereIn('project_id', $projectIds);
         }
 
         // Apply filters
         if ($projectId = $request->get('project_id')) {
-            $query->where('project_id', $projectId);
-            $project = Project::find($projectId);
+            $project = Project::findOrFail((int) $projectId);
+            if (!$user->canAccessProject($project)) {
+                return $this->error('Access denied', 403);
+            }
+            $query->where('project_id', $project->id);
         }
         
         $query->where('report_year', $year);
@@ -181,9 +210,12 @@ class ExportController extends Controller
     public function exportProjectReport(Request $request, Project $project)
     {
         $user = $request->user();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
 
         // Access control
-        if (!$user->isAdmin() && !$project->users->contains($user->id)) {
+        if (!$user || !$user->canAccessProject($project)) {
             return $this->error('Access denied', 403);
         }
 
@@ -236,12 +268,14 @@ class ExportController extends Controller
 
         $user = $request->user();
 
-        // Only admins can access this export
-        if (!$user->isAdmin()) {
-            return $this->error('Access denied. Admin role required.', 403);
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
         }
 
         $project = Project::findOrFail($request->project_id);
+        if (!$user->isAdminLike() || !$user->canAccessProject($project)) {
+            return $this->error('Access denied', 403);
+        }
         $week = (int) $request->week;
         $year = (int) $request->year;
 

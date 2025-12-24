@@ -23,7 +23,7 @@ class ProjectTeamController extends Controller
         $user = $request->user();
 
         // Check if user has access to this project
-        if (!$user->isAdmin() && !$project->users->contains($user->id)) {
+        if (!$user->canAccessProject($project)) {
             return $this->error('Access denied', 403);
         }
 
@@ -53,7 +53,7 @@ class ProjectTeamController extends Controller
         $user = $request->user();
 
         // Only HSE Managers assigned to project or admins can view available officers
-        if (!$user->isAdmin() && !$project->users->contains($user->id)) {
+        if (!$user->canAccessProject($project)) {
             return $this->error('Access denied', 403);
         }
 
@@ -78,13 +78,14 @@ class ProjectTeamController extends Controller
         $user = $request->user();
 
         // Only HSE Managers assigned to project or admins can add team members
-        if (!$user->isAdmin()) {
-            if (!$user->isResponsable()) {
+        if (!$user->hasGlobalProjectScope() && !$user->isAdminLike()) {
+            if (!$user->isHseManager() && !$user->isResponsable()) {
                 return $this->error('Only HSE Managers can manage team members', 403);
             }
-            if (!$project->users->contains($user->id)) {
-                return $this->error('You are not assigned to this project', 403);
-            }
+        }
+
+        if (!$user->canAccessProject($project)) {
+            return $this->error('You are not assigned to this project', 403);
         }
 
         $request->validate([
@@ -138,13 +139,14 @@ class ProjectTeamController extends Controller
         $user = $request->user();
 
         // Only HSE Managers assigned to project or admins can remove team members
-        if (!$user->isAdmin()) {
-            if (!$user->isResponsable()) {
+        if (!$user->hasGlobalProjectScope() && !$user->isAdminLike()) {
+            if (!$user->isHseManager() && !$user->isResponsable()) {
                 return $this->error('Only HSE Managers can manage team members', 403);
             }
-            if (!$project->users->contains($user->id)) {
-                return $this->error('You are not assigned to this project', 403);
-            }
+        }
+
+        if (!$user->canAccessProject($project)) {
+            return $this->error('You are not assigned to this project', 403);
         }
 
         // Check if user is in team
@@ -176,13 +178,14 @@ class ProjectTeamController extends Controller
         $user = $request->user();
 
         // Only HSE Managers assigned to project or admins can add team members
-        if (!$user->isAdmin()) {
-            if (!$user->isResponsable()) {
+        if (!$user->hasGlobalProjectScope() && !$user->isAdminLike()) {
+            if (!$user->isHseManager() && !$user->isResponsable()) {
                 return $this->error('Only HSE Managers can manage team members', 403);
             }
-            if (!$project->users->contains($user->id)) {
-                return $this->error('You are not assigned to this project', 403);
-            }
+        }
+
+        if (!$user->canAccessProject($project)) {
+            return $this->error('You are not assigned to this project', 403);
         }
 
         $request->validate([
@@ -228,13 +231,14 @@ class ProjectTeamController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->isAdmin()) {
-            if (!$user->isResponsable()) {
+        if (!$user->hasGlobalProjectScope() && !$user->isAdminLike()) {
+            if (!$user->isHseManager() && !$user->isResponsable()) {
                 return $this->error('Only HSE Managers can manage team members', 403);
             }
-            if (!$project->users->contains($user->id)) {
-                return $this->error('You are not assigned to this project', 403);
-            }
+        }
+
+        if (!$user->canAccessProject($project)) {
+            return $this->error('You are not assigned to this project', 403);
         }
 
         try {
@@ -258,13 +262,18 @@ class ProjectTeamController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->isAdmin()) {
-            if (!$user->isResponsable()) {
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
+        if (!$user->isAdminLike()) {
+            if (!$user->isHseManager() && !$user->isResponsable()) {
                 return $this->error('Only HSE Managers can manage team members', 403);
             }
-            if (!$project->users->contains($user->id)) {
-                return $this->error('You are not assigned to this project', 403);
-            }
+        }
+
+        if (!$user->canAccessProject($project)) {
+            return $this->error('You are not assigned to this project', 403);
         }
 
         @ini_set('max_execution_time', '300');
@@ -308,11 +317,16 @@ class ProjectTeamController extends Controller
     {
         $user = $request->user();
 
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
         // Only responsables assigned to project can create users
-        if (!$user->isResponsable()) {
+        if (!$user->isAdminLike() && !$user->isHseManager() && !$user->isResponsable()) {
             return $this->error('Only HSE Managers can create users', 403);
         }
-        if (!$project->users->contains($user->id)) {
+
+        if (!$user->canAccessProject($project)) {
             return $this->error('You are not assigned to this project', 403);
         }
 
@@ -320,10 +334,17 @@ class ProjectTeamController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'cin' => 'required|string|max:50',
-            'role' => 'required|in:responsable,supervisor,animateur',
+            'role' => 'required|in:responsable,supervisor',
             'phone' => 'nullable|string|max:20',
             'password' => 'nullable|string|min:8',
         ]);
+
+        // Role creation rules:
+        // - HSE Manager can create Responsable and Supervisor
+        // - Responsable can ONLY create Supervisor
+        if ($user->isResponsable() && $request->role !== User::ROLE_SUPERVISOR) {
+            return $this->error('Responsable can only create supervisors', 403);
+        }
 
         // Check if CIN already exists
         $existingUser = User::where('cin', $request->cin)->first();
@@ -402,16 +423,21 @@ class ProjectTeamController extends Controller
     {
         $user = $request->user();
 
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
         // Only responsables assigned to project can view
-        if (!$user->isResponsable() && !$user->isAdmin()) {
+        if (!$user->isHseManager() && !$user->isResponsable() && !$user->isAdminLike()) {
             return $this->error('Access denied', 403);
         }
-        if (!$user->isAdmin() && !$project->users->contains($user->id)) {
+
+        if (!$user->canAccessProject($project)) {
             return $this->error('Access denied', 403);
         }
 
         $members = $project->users()
-            ->whereIn('role', User::RESPONSABLE_CREATABLE_ROLES)
+            ->whereIn('role', $user->isHseManager() ? User::HSE_MANAGER_CREATABLE_ROLES : User::RESPONSABLE_CREATABLE_ROLES)
             ->get()
             ->map(function ($member) {
                 return [
@@ -437,14 +463,19 @@ class ProjectTeamController extends Controller
     {
         $user = $request->user();
 
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
         // Only responsables assigned to project or admins
-        if (!$user->isAdmin()) {
-            if (!$user->isResponsable()) {
+        if (!$user->isAdminLike()) {
+            if (!$user->isHseManager() && !$user->isResponsable()) {
                 return $this->error('Only HSE Managers can manage users', 403);
             }
-            if (!$project->users->contains($user->id)) {
-                return $this->error('You are not assigned to this project', 403);
-            }
+        }
+
+        if (!$user->canAccessProject($project)) {
+            return $this->error('You are not assigned to this project', 403);
         }
 
         // Check if user is in project
@@ -489,14 +520,19 @@ class ProjectTeamController extends Controller
     {
         $user = $request->user();
 
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
         // Only responsables assigned to project or admins
-        if (!$user->isAdmin()) {
-            if (!$user->isResponsable()) {
+        if (!$user->isAdminLike()) {
+            if (!$user->isHseManager() && !$user->isResponsable()) {
                 return $this->error('Only HSE Managers can manage users', 403);
             }
-            if (!$project->users->contains($user->id)) {
-                return $this->error('You are not assigned to this project', 403);
-            }
+        }
+
+        if (!$user->canAccessProject($project)) {
+            return $this->error('You are not assigned to this project', 403);
         }
 
         // Check if user is in project
@@ -508,10 +544,14 @@ class ProjectTeamController extends Controller
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|max:255|unique:users,email,' . $member->id,
             'cin' => 'sometimes|string|max:50|unique:users,cin,' . $member->id,
-            'role' => 'sometimes|in:responsable,supervisor,animateur',
+            'role' => 'sometimes|in:responsable,supervisor',
             'phone' => 'nullable|string|max:20',
             'password' => 'nullable|string|min:8',
         ]);
+
+        if ($user->isResponsable() && $request->filled('role') && $request->role !== User::ROLE_SUPERVISOR) {
+            return $this->error('Responsable can only create supervisors', 403);
+        }
 
         $data = $request->only(['name', 'email', 'cin', 'role', 'phone']);
 

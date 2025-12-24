@@ -3,7 +3,7 @@ import { useLanguage } from '../../i18n'
 import { useAuthStore } from '../../store/authStore'
 import api, { sorService, projectService, exportService, workerService } from '../../services/api'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
-import { Modal, DatePicker, TimePicker } from '../../components/ui'
+import { DatePicker, TimePicker, Modal } from '../../components/ui'
 import AutocompleteInput from '../../components/ui/AutocompleteInput'
 import {
   AlertTriangle,
@@ -104,6 +104,10 @@ export default function SorSubmission() {
     photo: null,
     category: '',
     responsible_person: '',
+    corrective_action: '',
+    corrective_action_date: '',
+    corrective_action_time: '',
+    corrective_action_photo: null,
   })
 
   const [photoPreview, setPhotoPreview] = useState(null)
@@ -306,11 +310,12 @@ export default function SorSubmission() {
       category: '',
       responsible_person: '',
       corrective_action: '',
-      corrective_action_date: new Date().toISOString().split('T')[0],
+      corrective_action_date: '',
       corrective_action_time: '',
       corrective_action_photo: null,
     })
     setPhotoPreview(null)
+    setCorrectivePhotoPreview(null)
     setEditingReport(null)
   }
 
@@ -515,10 +520,11 @@ export default function SorSubmission() {
       corrective_action: report.corrective_action ?? '',
       corrective_action_date: report.corrective_action_date
         ? report.corrective_action_date.split('T')[0]
-        : new Date().toISOString().split('T')[0],
+        : '',
       corrective_action_time: report.corrective_action_time ?? '',
       corrective_action_photo: null,
     })
+    setCorrectivePhotoPreview(null)
     setEditingReport(report)
     setShowForm(true)
   }
@@ -795,19 +801,16 @@ export default function SorSubmission() {
       </div>
 
       {/* Form Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 z-[200] bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold dark:text-gray-100">
-                {editingReport ? t('sor.editReport') : t('sor.newReport')}
-              </h2>
-              <button onClick={() => { setShowForm(false); resetForm() }} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full dark:text-gray-300">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitProblem} className="p-6 space-y-6">
+      <Modal
+        isOpen={showForm}
+        onClose={() => {
+          setShowForm(false)
+          resetForm()
+        }}
+        title={editingReport ? t('sor.editReport') : t('sor.newReport')}
+        size="xl"
+      >
+            <form onSubmit={handleSubmitProblem} className="space-y-6">
               {/* Project & Company */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -1048,144 +1051,141 @@ export default function SorSubmission() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* View Modal */}
-      {viewingReport && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 z-[200] bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold dark:text-gray-100">{t('sor.viewReport')}</h2>
-              <button onClick={() => setViewingReport(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full dark:text-gray-300">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <Modal
+        isOpen={!!viewingReport}
+        onClose={() => setViewingReport(null)}
+        title={t('sor.viewReport')}
+        size="lg"
+      >
+            {viewingReport && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">{t('sor.status.label')}</span>
+                  {getStatusBadge(viewingReport.status)}
+                </div>
 
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500 dark:text-gray-400">{t('sor.status.label')}</span>
-                {getStatusBadge(viewingReport.status)}
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.project')}</span>
+                    <p className="font-medium dark:text-gray-100">{viewingReport.project?.name}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.company')}</span>
+                    <p className="font-medium dark:text-gray-100">{viewingReport.company ?? ''}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.date')}</span>
+                    <p className="font-medium dark:text-gray-100">{new Date(viewingReport.observation_date).toLocaleDateString('fr-FR')}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.time')}</span>
+                    <p className="font-medium dark:text-gray-100">{viewingReport.observation_time ?? ''}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.zone')}</span>
+                    <p className="font-medium dark:text-gray-100">{viewingReport.zone ?? ''}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.supervisor')}</span>
+                    <p className="font-medium dark:text-gray-100">{viewingReport.supervisor ?? ''}</p>
+                  </div>
+                </div>
 
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.project')}</span>
-                  <p className="font-medium dark:text-gray-100">{viewingReport.project?.name}</p>
+                  <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.category')}</span>
+                  <p className="font-medium dark:text-gray-100">{CATEGORIES[viewingReport.category] ?? viewingReport.category}</p>
                 </div>
+
                 <div>
-                  <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.company')}</span>
-                  <p className="font-medium dark:text-gray-100">{viewingReport.company ?? ''}</p>
+                  <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.nonConformity')}</span>
+                  <p className="font-medium bg-gray-50 dark:bg-gray-700 dark:text-gray-100 p-3 rounded-lg">{viewingReport.non_conformity}</p>
                 </div>
+
+                {viewProblemPhotoUrl && (
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.photo')}</span>
+                    <img
+                      src={viewProblemPhotoUrl}
+                      alt="Non-conformity"
+                      className="mt-2 rounded-lg max-h-64 object-contain border dark:border-gray-600 cursor-pointer hover:opacity-90"
+                      onClick={() => window.open(viewProblemPhotoUrl, '_blank')}
+                    />
+                  </div>
+                )}
+
                 <div>
-                  <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.date')}</span>
-                  <p className="font-medium dark:text-gray-100">{new Date(viewingReport.observation_date).toLocaleDateString('fr-FR')}</p>
+                  <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.responsiblePerson')}</span>
+                  <p className="font-medium dark:text-gray-100">{viewingReport.responsible_person ?? ''}</p>
                 </div>
-                <div>
-                  <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.time')}</span>
-                  <p className="font-medium dark:text-gray-100">{viewingReport.observation_time ?? ''}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.zone')}</span>
-                  <p className="font-medium dark:text-gray-100">{viewingReport.zone ?? ''}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.supervisor')}</span>
-                  <p className="font-medium dark:text-gray-100">{viewingReport.supervisor ?? ''}</p>
-                </div>
-              </div>
 
-              <div>
-                <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.category')}</span>
-                <p className="font-medium dark:text-gray-100">{CATEGORIES[viewingReport.category] ?? viewingReport.category}</p>
-              </div>
+                {viewingReport.corrective_action && (
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                    <span className="text-green-700 dark:text-green-400 text-sm font-medium">{t('sor.correctiveAction')}</span>
+                    <p className="font-medium text-green-800 dark:text-green-200 mt-1">{viewingReport.corrective_action}</p>
 
-              <div>
-                <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.nonConformity')}</span>
-                <p className="font-medium bg-gray-50 dark:bg-gray-700 dark:text-gray-100 p-3 rounded-lg">{viewingReport.non_conformity}</p>
-              </div>
+                    {viewingReport.corrective_action_date && (
+                      <p className="text-sm text-green-600 dark:text-green-400 mt-2">
+                        {t('sor.correctiveDate')}: {new Date(viewingReport.corrective_action_date).toLocaleDateString('fr-FR')}
+                        {viewingReport.corrective_action_time && ` à ${viewingReport.corrective_action_time}`}
+                      </p>
+                    )}
 
-              {viewProblemPhotoUrl && (
-                <div>
-                  <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.photo')}</span>
-                  <img 
-                    src={viewProblemPhotoUrl} 
-                    alt="Non-conformity" 
-                    className="mt-2 rounded-lg max-h-64 object-contain border dark:border-gray-600 cursor-pointer hover:opacity-90"
-                    onClick={() => window.open(viewProblemPhotoUrl, '_blank')}
-                  />
-                </div>
-              )}
+                    {viewingReport.closer_name && (
+                      <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                        {t('sor.closedBy')}: <span className="font-medium">{viewingReport.closer_name}</span>
+                      </p>
+                    )}
 
-              <div>
-                <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.responsiblePerson')}</span>
-                <p className="font-medium dark:text-gray-100">{viewingReport.responsible_person ?? ''}</p>
-              </div>
+                    {viewCorrectivePhotoUrl && (
+                      <div className="mt-3">
+                        <img
+                          src={viewCorrectivePhotoUrl}
+                          alt="Corrective action"
+                          className="rounded-lg max-h-48 object-contain border border-green-200 dark:border-green-700 cursor-pointer hover:opacity-90"
+                          onClick={() => window.open(viewCorrectivePhotoUrl, '_blank')}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
 
-              {viewingReport.corrective_action && (
-                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                  <span className="text-green-700 dark:text-green-400 text-sm font-medium">{t('sor.correctiveAction')}</span>
-                  <p className="font-medium text-green-800 dark:text-green-200 mt-1">{viewingReport.corrective_action}</p>
-                  
-                  {viewingReport.corrective_action_date && (
-                    <p className="text-sm text-green-600 dark:text-green-400 mt-2">
-                      {t('sor.correctiveDate')}: {new Date(viewingReport.corrective_action_date).toLocaleDateString('fr-FR')}
-                      {viewingReport.corrective_action_time && ` à ${viewingReport.corrective_action_time}`}
-                    </p>
-                  )}
-
-                  {viewingReport.closer_name && (
-                    <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                      {t('sor.closedBy')}: <span className="font-medium">{viewingReport.closer_name}</span>
-                    </p>
-                  )}
-                  
-                  {viewCorrectivePhotoUrl && (
-                    <div className="mt-3">
-                      <img 
-                        src={viewCorrectivePhotoUrl} 
-                        alt="Corrective action" 
-                        className="rounded-lg max-h-48 object-contain border border-green-200 dark:border-green-700 cursor-pointer hover:opacity-90"
-                        onClick={() => window.open(viewCorrectivePhotoUrl, '_blank')}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
-                <button
-                  onClick={() => setViewingReport(null)}
-                  className="btn btn-outline"
-                >
-                  {t('common.close')}
-                </button>
-                {viewingReport.status === 'closed' && viewingReport.corrective_action && (
+                <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
                   <button
-                    onClick={() => { handleEdit(viewingReport); setViewingReport(null) }}
+                    onClick={() => setViewingReport(null)}
                     className="btn btn-outline"
                   >
-                    {t('sor.editCorrective')}
+                    {t('common.close')}
                   </button>
-                )}
-                <button
-                  onClick={() => { handleEdit(viewingReport); setViewingReport(null) }}
-                  className="btn btn-primary"
-                >
-                  {t('common.edit')}
-                </button>
+                  {viewingReport.status === 'closed' && viewingReport.corrective_action && (
+                    <button
+                      onClick={() => { handleEdit(viewingReport); setViewingReport(null) }}
+                      className="btn btn-outline"
+                    >
+                      {t('sor.editCorrective')}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { handleEdit(viewingReport); setViewingReport(null) }}
+                    className="btn btn-primary"
+                  >
+                    {t('common.edit')}
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            )}
+      </Modal>
 
       {/* Corrective Action Prompt Modal */}
-      {showCorrectivePrompt && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg">
-            <div className="p-6">
+      <Modal
+        isOpen={showCorrectivePrompt}
+        onClose={() => { setShowCorrectivePrompt(false); resetCorrectiveData(); resetForm() }}
+        title={t('sor.correctivePromptTitle')}
+        size="md"
+      >
+            <div className="space-y-6">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
                   <ClipboardCheck className="w-8 h-8 text-amber-600 dark:text-amber-400" />
@@ -1275,33 +1275,29 @@ export default function SorSubmission() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Corrective Action Modal for Pinned Reports */}
-      {showCorrectiveModal && pendingReport && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg">
-            <div className="sticky top-0 z-[200] bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold dark:text-gray-100">{t('sor.addCorrectiveTitle')}</h2>
-              <button onClick={() => { setShowCorrectiveModal(false); resetCorrectiveData(); setPendingReport(null) }} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full dark:text-gray-300">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <Modal
+        isOpen={showCorrectiveModal && !!pendingReport}
+        onClose={() => { setShowCorrectiveModal(false); resetCorrectiveData(); setPendingReport(null) }}
+        title={t('sor.addCorrectiveTitle')}
+        size="md"
+      >
+            {pendingReport && (
+              <>
+                {/* Problem Summary */}
+                <div className="p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <h4 className="font-medium text-sm text-gray-500 dark:text-gray-400 mb-2">{t('sor.problemSummary')}</h4>
+                  <div className="space-y-1">
+                    <p className="text-sm dark:text-gray-300"><span className="font-medium">{t('sor.project')}:</span> {pendingReport.project?.name}</p>
+                    <p className="text-sm dark:text-gray-300"><span className="font-medium">{t('sor.date')}:</span> {new Date(pendingReport.observation_date).toLocaleDateString('fr-FR')}</p>
+                    <p className="text-sm dark:text-gray-300"><span className="font-medium">{t('sor.category')}:</span> {CATEGORIES[pendingReport.category] || pendingReport.category}</p>
+                    <p className="text-sm text-gray-700 dark:text-gray-400 mt-2">{pendingReport.non_conformity}</p>
+                  </div>
+                </div>
 
-            {/* Problem Summary */}
-            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700">
-              <h4 className="font-medium text-sm text-gray-500 dark:text-gray-400 mb-2">{t('sor.problemSummary')}</h4>
-              <div className="space-y-1">
-                <p className="text-sm dark:text-gray-300"><span className="font-medium">{t('sor.project')}:</span> {pendingReport.project?.name}</p>
-                <p className="text-sm dark:text-gray-300"><span className="font-medium">{t('sor.date')}:</span> {new Date(pendingReport.observation_date).toLocaleDateString('fr-FR')}</p>
-                <p className="text-sm dark:text-gray-300"><span className="font-medium">{t('sor.category')}:</span> {CATEGORIES[pendingReport.category] || pendingReport.category}</p>
-                <p className="text-sm text-gray-700 dark:text-gray-400 mt-2">{pendingReport.non_conformity}</p>
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmitCorrectiveAction} className="p-6 space-y-4">
+                <form onSubmit={handleSubmitCorrectiveAction} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">{t('sor.correctiveDate')}</label>
@@ -1382,9 +1378,9 @@ export default function SorSubmission() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+              </>
+            )}
+      </Modal>
     </div>
   )
 }

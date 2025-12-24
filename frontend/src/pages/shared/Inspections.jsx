@@ -3,6 +3,7 @@ import { projectService, inspectionService, exportService } from '../../services
 import { useAuthStore } from '../../store/authStore'
 import { useLanguage } from '../../i18n'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import Modal from '../../components/ui/Modal'
 import DatePicker from '../../components/ui/DatePicker'
 import Select from '../../components/ui/Select'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
@@ -104,10 +105,8 @@ export default function Inspections() {
   }, [showModal])
 
   useEffect(() => {
-    if (selectedProject) {
-      fetchInspections()
-      fetchProjectZones(selectedProject.id)
-    }
+    fetchInspections()
+    if (selectedProject) fetchProjectZones(selectedProject.id)
   }, [selectedProject, filterStatus, filterNature])
 
   const fetchProjects = async () => {
@@ -115,10 +114,6 @@ export default function Inspections() {
       const response = await projectService.getAll({ per_page: 100 })
       const projectList = response.data.data ?? []
       setProjects(projectList)
-      
-      if (projectList.length === 1) {
-        setSelectedProject(projectList[0])
-      }
     } catch (error) {
       console.error('Error fetching projects:', error)
     } finally {
@@ -127,14 +122,12 @@ export default function Inspections() {
   }
 
   const fetchInspections = async () => {
-    if (!selectedProject) return
-    
     setLoading(true)
     try {
       const params = {
-        project_id: selectedProject.id,
         per_page: 100,
       }
+      if (selectedProject) params.project_id = selectedProject.id
       if (filterStatus) params.status = filterStatus
       if (filterNature) params.nature = filterNature
       
@@ -244,11 +237,20 @@ export default function Inspections() {
   }
 
   const handleProjectChange = (projectId) => {
+    if (!projectId) {
+      setSelectedProject(null)
+      setProjectZones([])
+      setFormData(prev => ({ ...prev, project_id: '', zone: '' }))
+      return
+    }
+
     const project = projects.find(p => p.id === parseInt(projectId))
-    setSelectedProject(project)
+    setSelectedProject(project ?? null)
     setFormData(prev => ({ ...prev, project_id: projectId, zone: '' }))
     if (project) {
       fetchProjectZones(project.id)
+    } else {
+      setProjectZones([])
     }
   }
 
@@ -303,7 +305,7 @@ export default function Inspections() {
     }
   }
 
-  if (loading && !selectedProject) {
+  if (loading && inspections.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-hse-primary" />
@@ -341,7 +343,7 @@ export default function Inspections() {
               value={selectedProject?.id ?? ''}
               onChange={(e) => handleProjectChange(e.target.value)}
             >
-              <option value="">{t('inspections.selectProject')}</option>
+              <option value="">{t('common.allProjects')}</option>
               {sortedProjects.map(project => (
                 <option key={project.id} value={project.id}>
                   {getProjectLabel(project)}
@@ -409,36 +411,35 @@ export default function Inspections() {
       </div>
 
       {/* Inspections List */}
-      {selectedProject ? (
-        <div className="card">
-          <div className="card-header flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-              {t('inspections.listTitle')} ({filteredInspections.length})
-            </h3>
-            <button
-              type="button"
-              onClick={handleExportInspections}
-              disabled={exporting || filteredInspections.length === 0}
-              className="btn-secondary flex items-center gap-2 text-sm"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>{t('dashboard.exportExcel')}</span>
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            {loading ? (
-              <div className="flex items-center justify-center h-32">
-                <Loader2 className="w-6 h-6 animate-spin text-hse-primary" />
-              </div>
-            ) : filteredInspections.length > 0 ? (
-              <>
-                {/* Mobile cards */}
-                <div className="space-y-3 md:hidden">
-                  {filteredInspections.map(inspection => (
-                    <div
-                      key={inspection.id}
-                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800"
-                    >
+      <div className="card">
+        <div className="card-header flex items-center justify-between">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+            {t('inspections.listTitle')} ({filteredInspections.length})
+          </h3>
+          <button
+            type="button"
+            onClick={handleExportInspections}
+            disabled={!selectedProject || exporting || filteredInspections.length === 0}
+            className="btn-secondary flex items-center gap-2 text-sm"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>{t('dashboard.exportExcel')}</span>
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="w-6 h-6 animate-spin text-hse-primary" />
+            </div>
+          ) : filteredInspections.length > 0 ? (
+            <>
+              {/* Mobile cards */}
+              <div className="space-y-3 md:hidden">
+                {filteredInspections.map(inspection => (
+                  <div
+                    key={inspection.id}
+                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800"
+                  >
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -489,10 +490,10 @@ export default function Inspections() {
                         >
                           {t('common.delete')}
                         </button>
-                      </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
+              </div>
 
                 {/* Desktop table */}
                 <div className="hidden md:block">
@@ -569,27 +570,16 @@ export default function Inspections() {
             )}
           </div>
         </div>
-      ) : (
-        <div className="card p-12 text-center text-gray-500 dark:text-gray-400">
-          <ClipboardCheck className="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <p>{t('inspections.selectProjectFirst')}</p>
-        </div>
-      )}
+
 
       {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 z-[200] bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold dark:text-gray-100">
-                {editingInspection ? t('inspections.editInspection') : t('inspections.newInspection')}
-              </h2>
-              <button onClick={handleCloseModal} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+      <Modal
+        isOpen={showModal}
+        onClose={handleCloseModal}
+        title={editingInspection ? t('inspections.editInspection') : t('inspections.newInspection')}
+        size="lg"
+      >
+            <form onSubmit={handleSubmit} className="space-y-4">
               {/* Project & Date */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -805,9 +795,7 @@ export default function Inspections() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       <ConfirmDialog
         isOpen={!!confirmInspection}

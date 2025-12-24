@@ -396,7 +396,7 @@ export default function ProjectManagement() {
               onChange={(e) => setPoleFilter(e.target.value)}
               className="w-full sm:w-40"
             >
-              <option value="">All Poles</option>
+              <option value="">{t('common.allPoles')}</option>
               {poleSuggestions.map((p) => (
                 <option key={p} value={p}>{p}</option>
               ))}
