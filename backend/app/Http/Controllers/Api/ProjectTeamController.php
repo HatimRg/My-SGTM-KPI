@@ -8,6 +8,7 @@ use App\Imports\ProjectTeamImport;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Support\PasswordPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -330,20 +331,21 @@ class ProjectTeamController extends Controller
             return $this->error('You are not assigned to this project', 403);
         }
 
+        $allowedRoles = $user->isAdminLike()
+            ? [User::ROLE_RESPONSABLE, User::ROLE_SUPERVISOR, User::ROLE_USER]
+            : ($user->isHseManager() ? User::HSE_MANAGER_CREATABLE_ROLES : User::RESPONSABLE_CREATABLE_ROLES);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'cin' => 'required|string|max:50',
-            'role' => 'required|in:responsable,supervisor',
+            'role' => 'required|in:responsable,supervisor,user',
             'phone' => 'nullable|string|max:20',
-            'password' => 'nullable|string|min:8',
+            'password' => PasswordPolicy::rulesForRole($request->input('role'), false, false),
         ]);
 
-        // Role creation rules:
-        // - HSE Manager can create Responsable and Supervisor
-        // - Responsable can ONLY create Supervisor
-        if ($user->isResponsable() && $request->role !== User::ROLE_SUPERVISOR) {
-            return $this->error('Responsable can only create supervisors', 403);
+        if (!in_array($request->role, $allowedRoles, true)) {
+            return $this->error('Access denied', 403);
         }
 
         // Check if CIN already exists
@@ -391,14 +393,16 @@ class ProjectTeamController extends Controller
             return $this->error('A user with this email already exists', 422);
         }
 
-        // Create new user (allow custom password, fallback to default if not provided)
-        $password = $request->filled('password') ? $request->password : 'password123';
+        if (!$request->filled('password')) {
+            return $this->error('Password required for new user', 422);
+        }
 
         $newUser = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'cin' => $request->cin,
-            'password' => $password,
+            'password' => $request->password,
+            'must_change_password' => true,
             'role' => $request->role,
             'phone' => $request->phone,
             'is_active' => true,
@@ -540,23 +544,28 @@ class ProjectTeamController extends Controller
             return $this->error('This user is not assigned to this project', 404);
         }
 
+        $allowedRoles = $user->isAdminLike()
+            ? [User::ROLE_RESPONSABLE, User::ROLE_SUPERVISOR, User::ROLE_USER]
+            : ($user->isHseManager() ? User::HSE_MANAGER_CREATABLE_ROLES : User::RESPONSABLE_CREATABLE_ROLES);
+
         $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|max:255|unique:users,email,' . $member->id,
             'cin' => 'sometimes|string|max:50|unique:users,cin,' . $member->id,
-            'role' => 'sometimes|in:responsable,supervisor',
+            'role' => 'sometimes|in:responsable,supervisor,user',
             'phone' => 'nullable|string|max:20',
-            'password' => 'nullable|string|min:8',
+            'password' => PasswordPolicy::rulesForRole($request->has('role') ? $request->input('role') : $member->role, false, false),
         ]);
 
-        if ($user->isResponsable() && $request->filled('role') && $request->role !== User::ROLE_SUPERVISOR) {
-            return $this->error('Responsable can only create supervisors', 403);
+        if ($request->filled('role') && !in_array($request->role, $allowedRoles, true)) {
+            return $this->error('Access denied', 403);
         }
 
         $data = $request->only(['name', 'email', 'cin', 'role', 'phone']);
 
         if ($request->filled('password')) {
             $data['password'] = $request->password;
+            $data['must_change_password'] = true;
         }
 
         $member->update($data);

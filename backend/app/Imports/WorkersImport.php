@@ -58,9 +58,11 @@ class WorkersImport implements ToModel, WithHeadingRow, SkipsOnError, WithBatchI
             $row = array_change_key_case($row, CASE_LOWER);
         
             // Map various possible column names
-            $cin = $this->getColumnValue($row, ['cin', 'cni', 'id', 'matricule', 'numero_cin']);
+            $cin = $this->getColumnValue($row, ['cin', 'cni', 'matricule', 'numero_cin', 'id']);
             $nom = $this->getColumnValue($row, ['nom', 'name', 'last_name', 'lastname', 'family_name']);
             $prenom = $this->getColumnValue($row, ['prenom', 'first_name', 'firstname', 'given_name']);
+
+            $cin = $this->normalizeCin($cin);
         
             // Skip empty rows
             if (empty($cin) || empty($nom) || empty($prenom)) {
@@ -229,6 +231,40 @@ class WorkersImport implements ToModel, WithHeadingRow, SkipsOnError, WithBatchI
         $inactiveValues = ['INACTIF', 'INACTIVE', 'NO', 'NON', '0', 'FALSE', 'N'];
         
         return !in_array($value, $inactiveValues);
+    }
+
+    protected function normalizeCin($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_string($value)) {
+            $value = trim($value);
+            if ($value === '') {
+                return null;
+            }
+
+            if (preg_match('/^[0-9]+\.0+$/', $value)) {
+                $value = preg_replace('/\.0+$/', '', $value);
+            }
+
+            if (stripos($value, 'e') !== false && is_numeric($value)) {
+                $value = sprintf('%.0f', (float) $value);
+            }
+
+            return trim($value);
+        }
+
+        if (is_int($value)) {
+            return (string) $value;
+        }
+
+        if (is_float($value)) {
+            return sprintf('%.0f', $value);
+        }
+
+        return trim((string) $value);
     }
 
     /**

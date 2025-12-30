@@ -147,6 +147,84 @@ export const workerTrainingService = {
   delete: (id) => api.delete(`/worker-trainings/${id}`),
 }
 
+export const workerQualificationService = {
+  getAll: (params) => api.get('/worker-qualifications', { params }),
+  getById: (id) => api.get(`/worker-qualifications/${id}`),
+  create: (data) => {
+    const formData = new FormData()
+    Object.keys(data).forEach((key) => {
+      const value = data[key]
+      if (value !== null && value !== undefined && value !== '') {
+        formData.append(key, value)
+      }
+    })
+    return api.post('/worker-qualifications', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  update: (id, data) => {
+    const formData = new FormData()
+    formData.append('_method', 'PUT')
+    Object.keys(data).forEach((key) => {
+      const value = data[key]
+      if (value !== null && value !== undefined && value !== '') {
+        formData.append(key, value)
+      }
+    })
+    return api.post(`/worker-qualifications/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  delete: (id) => api.delete(`/worker-qualifications/${id}`),
+}
+
+export const workerMedicalAptitudeService = {
+  getAll: (params) => api.get('/worker-medical-aptitudes', { params }),
+  getById: (id) => api.get(`/worker-medical-aptitudes/${id}`),
+  create: (data) => {
+    const formData = new FormData()
+    Object.keys(data).forEach((key) => {
+      const value = data[key]
+      if (value !== null && value !== undefined && value !== '') {
+        if (key === 'able_to' && Array.isArray(value)) {
+          value.forEach((v) => {
+            if (v !== null && v !== undefined && String(v).trim() !== '') {
+              formData.append('able_to[]', v)
+            }
+          })
+          return
+        }
+        formData.append(key, value)
+      }
+    })
+    return api.post('/worker-medical-aptitudes', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  update: (id, data) => {
+    const formData = new FormData()
+    formData.append('_method', 'PUT')
+    Object.keys(data).forEach((key) => {
+      const value = data[key]
+      if (value !== null && value !== undefined && value !== '') {
+        if (key === 'able_to' && Array.isArray(value)) {
+          value.forEach((v) => {
+            if (v !== null && v !== undefined && String(v).trim() !== '') {
+              formData.append('able_to[]', v)
+            }
+          })
+          return
+        }
+        formData.append(key, value)
+      }
+    })
+    return api.post(`/worker-medical-aptitudes/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  delete: (id) => api.delete(`/worker-medical-aptitudes/${id}`),
+}
+
 export const awarenessService = {
   getAll: (params) => api.get('/awareness-sessions', { params }),
   getById: (id) => api.get(`/awareness-sessions/${id}`),
@@ -161,7 +239,8 @@ api.interceptors.response.use(
     // Log slow requests in development
     if (response.config.metadata) {
       const duration = Date.now() - response.config.metadata.startTime
-      if (duration > 2000) {
+      const isDev = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) || process.env.NODE_ENV !== 'production'
+      if (isDev && duration > 2000) {
         console.warn(`Slow API request: ${response.config.url} took ${duration}ms`)
       }
     }
@@ -369,6 +448,55 @@ export const projectService = {
   removeZone: (projectId, zone) => api.post(`/projects/${projectId}/zones/remove`, { zone }),
 }
 
+export const heavyMachineryService = {
+  getDocumentKeys: () => api.get('/heavy-machinery/document-keys'),
+  getMachineTypes: () => api.get('/heavy-machinery/machine-types'),
+  downloadMachinesTemplate: () => api.get('/heavy-machinery/machines/template', { responseType: 'blob' }),
+  importMachines: (formData) => api.post('/heavy-machinery/machines/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+
+  getMachines: (params) => api.get('/heavy-machinery/machines', { params }),
+  getMachine: (id) => api.get(`/heavy-machinery/machines/${id}`),
+  createMachine: (formData) => api.post('/heavy-machinery/machines', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  updateMachine: (id, data) => api.put(`/heavy-machinery/machines/${id}`, data),
+  deleteMachine: (id) => api.delete(`/heavy-machinery/machines/${id}`),
+
+  transferMachine: (id, projectId) => api.post(`/heavy-machinery/machines/${id}/transfer`, { project_id: projectId }),
+  uploadMachineImage: (id, formData) => api.post(`/heavy-machinery/machines/${id}/image`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+
+  upsertDocument: (machineId, formData) => api.post(`/heavy-machinery/machines/${machineId}/documents`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  updateDocument: (machineId, documentId, formData) => {
+    if (formData instanceof FormData) {
+      formData.append('_method', 'PUT')
+    }
+    return api.post(
+      `/heavy-machinery/machines/${machineId}/documents/${documentId}`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    )
+  },
+  deleteDocument: (machineId, documentId) => api.delete(`/heavy-machinery/machines/${machineId}/documents/${documentId}`),
+
+  upsertInspection: (machineId, formData) => api.post(`/heavy-machinery/machines/${machineId}/inspections`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  deleteInspection: (machineId, inspectionId) => api.delete(`/heavy-machinery/machines/${machineId}/inspections/${inspectionId}`),
+
+  searchWorkers: (params) => api.get('/heavy-machinery/workers/search', { params }),
+  addOperator: (machineId, workerId) => api.post(`/heavy-machinery/machines/${machineId}/operators`, { worker_id: workerId }),
+  removeOperator: (machineId, workerId) => api.delete(`/heavy-machinery/machines/${machineId}/operators/${workerId}`),
+
+  globalSearch: (query) => api.get('/heavy-machinery/global-search', { params: { query } }),
+  expiredDocumentation: (params) => api.get('/heavy-machinery/reports/expired-documentation', { params }),
+}
+
 export const kpiService = {
   getAll: (params) => api.get('/kpi-reports', { params }),
   getById: (id) => api.get(`/kpi-reports/${id}`),
@@ -382,7 +510,7 @@ export const kpiService = {
 
 export const notificationService = {
   getAll: (params) => api.get('/notifications', { params }),
-  getUnreadCount: (params) => api.get('/notifications/unread-count', { params }),
+  getUnreadCount: (params) => cachedGet('/notifications/unread-count', params ?? {}, 15000),
   markAsRead: (id) => api.post(`/notifications/${id}/mark-read`),
   markAllAsRead: (params) => api.post('/notifications/mark-all-read', params),
   delete: (id) => api.delete(`/notifications/${id}`),
@@ -495,13 +623,20 @@ export const inspectionService = {
   getWeekCount: (params) => api.get('/inspections/week-count', { params }),
 }
 
+export const regulatoryWatchService = {
+  getAll: (params) => api.get('/regulatory-watch', { params }),
+  getLatest: (params) => api.get('/regulatory-watch/latest', { params }),
+  getById: (id) => api.get(`/regulatory-watch/${id}`),
+  submit: (data) => api.post('/regulatory-watch', data),
+}
+
 export const workerService = {
   getAll: (params) => api.get('/workers', { params }),
   getById: (id) => api.get(`/workers/${id}`),
   create: (data) => api.post('/workers', data),
   update: (id, data) => api.put(`/workers/${id}`, data),
   delete: (id) => api.delete(`/workers/${id}`),
-  getStatistics: () => api.get('/workers/statistics'),
+  getStatistics: (params) => api.get('/workers/statistics', { params }),
   getEntreprises: () => api.get('/workers/entreprises'),
   getFonctions: () => api.get('/workers/fonctions'),
   downloadTemplate: () => api.get('/workers/template', { responseType: 'blob' }),
@@ -511,6 +646,18 @@ export const workerService = {
   }),
   bulkDeactivate: (workerIds) => api.post('/workers/bulk-deactivate', { worker_ids: workerIds }),
   bulkActivate: (workerIds) => api.post('/workers/bulk-activate', { worker_ids: workerIds }),
+}
+
+export const ppeService = {
+  getItems: (params) => api.get('/ppe/items', { params }),
+  upsertItem: (data) => api.post('/ppe/items', data),
+  deleteItem: (id) => api.delete(`/ppe/items/${id}`),
+
+  restock: (data) => api.post('/ppe/restock', data),
+
+  issueToWorker: (data) => api.post('/ppe/issue', data),
+  getIssues: (params) => api.get('/ppe/issues', { params }),
+  getWorkerIssues: (workerId) => api.get(`/ppe/workers/${workerId}/issues`),
 }
 
 export const subcontractorOpeningsService = {

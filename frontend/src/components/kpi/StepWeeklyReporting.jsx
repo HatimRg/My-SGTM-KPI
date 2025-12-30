@@ -25,7 +25,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
         </div>
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('kpi.weekly.title')}</h2>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">REPORTING HSE</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">{t('kpi.weekly.subtitle')}</p>
         </div>
       </div>
 

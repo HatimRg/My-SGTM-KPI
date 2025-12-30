@@ -44,6 +44,8 @@ class Notification extends Model
     const TYPE_WORKER_TRAINING_EXPIRING = 'worker_training_expiring';
     const TYPE_WORKER_TRAINING_EXPIRED = 'worker_training_expired';
 
+    const TYPE_PPE_LOW_STOCK = 'ppe_low_stock';
+
     // Relationships
     public function user()
     {

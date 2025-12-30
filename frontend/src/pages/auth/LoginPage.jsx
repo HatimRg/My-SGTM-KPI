@@ -46,9 +46,14 @@ export default function LoginPage() {
       
       // Wait for animation then redirect
       setTimeout(() => {
+        if (result.user?.must_change_password) {
+          navigate('/force-change-password')
+          return
+        }
+
         // Redirect based on role
         const role = result.user.role
-        if (role === 'admin') {
+        if (['admin', 'pole_director', 'works_director', 'hse_director', 'hr_director'].includes(role)) {
           navigate('/admin')
         } else if (role === 'user' || role === 'animateur') {
           navigate('/sor')
@@ -78,7 +83,7 @@ export default function LoginPage() {
         <div className="inline-flex items-center justify-center gap-6">
           <img 
             src={appLogo} 
-            alt="App Logo" 
+            alt={t('auth.appLogoAlt')}
             width={112}
             height={112}
             loading="eager"
@@ -89,7 +94,7 @@ export default function LoginPage() {
           <span className="text-3xl text-gray-300 font-light">/</span>
           <img 
             src={sgtmLogo} 
-            alt="SGTM Logo" 
+            alt={t('auth.companyLogoAlt')}
             width={112}
             height={112}
             loading="eager"
@@ -128,7 +133,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className={`input pl-10 border-gray-300 dark:border-gray-600 transition-all duration-200 focus:ring-2 focus:ring-hse-primary/20 focus:border-hse-primary ${errors.email ? 'input-error border-red-500' : ''}`}
-                placeholder="you@example.com"
+                placeholder={t('auth.emailPlaceholder')}
                 autoComplete="email"
                 disabled={isAnimating}
               />

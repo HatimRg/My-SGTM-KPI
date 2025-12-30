@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useAuthStore } from '../../store/authStore'
 import { useLanguage } from '../../i18n'
 import useThemeStore from '../../stores/themeStore'
+import PasswordStrength, { checkPasswordAgainstPolicy, getPasswordPolicy } from '../../components/ui/PasswordStrength'
 import {
   User,
   Mail,
@@ -19,8 +20,10 @@ import toast from 'react-hot-toast'
 
 export default function Profile() {
   const { user, updateProfile, changePassword } = useAuthStore()
-  const { language, setLanguage, languages } = useLanguage()
+  const { t, language, setLanguage, languages } = useLanguage()
   const { isDark, toggleTheme } = useThemeStore()
+
+  const passwordPolicy = useMemo(() => getPasswordPolicy(user?.role), [user?.role])
   
   const [profileData, setProfileData] = useState({
     name: user?.name ?? '',
@@ -53,9 +56,9 @@ export default function Profile() {
     
     try {
       await updateProfile(profileData)
-      toast.success('Profile updated successfully')
+      toast.success(t('profile.profileUpdated'))
     } catch (error) {
-      toast.error(error.response?.data?.message ?? 'Failed to update profile')
+      toast.error(error.response?.data?.message ?? t('errors.failedToSave'))
     } finally {
       setSavingProfile(false)
     }
@@ -65,9 +68,9 @@ export default function Profile() {
     setSavingPreferences(true)
     try {
       await updateProfile(preferencesData)
-      toast.success('Preferences updated successfully')
+      toast.success(t('profile.preferencesUpdated'))
     } catch (error) {
-      toast.error(error.response?.data?.message ?? 'Failed to update preferences')
+      toast.error(error.response?.data?.message ?? t('errors.failedToSave'))
     } finally {
       setSavingPreferences(false)
     }
@@ -77,12 +80,12 @@ export default function Profile() {
     e.preventDefault()
     
     if (passwordData.password !== passwordData.password_confirmation) {
-      toast.error('Passwords do not match')
+      toast.error(t('profile.passwordMismatch'))
       return
     }
-    
-    if (passwordData.password.length < 8) {
-      toast.error('Password must be at least 8 characters')
+
+    if (!checkPasswordAgainstPolicy(passwordData.password, passwordPolicy).ok) {
+      toast.error(t('auth.passwordPolicy.invalid'))
       return
     }
     
@@ -94,14 +97,14 @@ export default function Profile() {
         passwordData.password,
         passwordData.password_confirmation
       )
-      toast.success('Password changed successfully')
+      toast.success(t('success.passwordChanged'))
       setPasswordData({
         current_password: '',
         password: '',
         password_confirmation: ''
       })
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to change password')
+      toast.error(error.response?.data?.message || t('errors.failedToSave'))
     } finally {
       setSavingPassword(false)
     }
@@ -111,14 +114,14 @@ export default function Profile() {
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Profile Settings</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">Manage your account settings and preferences</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('profile.title')}</h1>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">{t('profile.subtitle')}</p>
       </div>
 
       {/* Profile Info Card */}
       <div className="card">
         <div className="card-header">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100">Profile Information</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('profile.personalInfo')}</h3>
         </div>
         <form onSubmit={handleProfileSubmit} className="p-6 space-y-6">
           {/* Avatar Section */}
@@ -139,7 +142,7 @@ export default function Profile() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="label">Full Name</label>
+              <label className="label">{t('users.form.fullName')}</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -153,7 +156,7 @@ export default function Profile() {
             </div>
             
             <div>
-              <label className="label">Email Address</label>
+              <label className="label">{t('users.form.email')}</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -163,11 +166,11 @@ export default function Profile() {
                   disabled
                 />
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Email cannot be changed</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('profile.emailReadOnly')}</p>
             </div>
             
             <div>
-              <label className="label">Phone Number</label>
+              <label className="label">{t('users.form.phone')}</label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -181,7 +184,7 @@ export default function Profile() {
             </div>
             
             <div>
-              <label className="label">Role</label>
+              <label className="label">{t('users.form.role')}</label>
               <div className="relative">
                 <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -199,12 +202,12 @@ export default function Profile() {
               {savingProfile ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
+                  {t('common.saving')}
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
                   <Save className="w-4 h-4" />
-                  Save Changes
+                  {t('profile.updateProfile')}
                 </span>
               )}
             </button>
@@ -215,11 +218,11 @@ export default function Profile() {
       {/* Change Password Card */}
       <div className="card">
         <div className="card-header">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100">Change Password</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('profile.changePassword')}</h3>
         </div>
         <form onSubmit={handlePasswordSubmit} className="p-6 space-y-4">
           <div>
-            <label className="label">Current Password</label>
+            <label className="label">{t('auth.currentPassword')}</label>
             <div className="relative">
               <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
@@ -245,7 +248,7 @@ export default function Profile() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="label">New Password</label>
+              <label className="label">{t('auth.newPassword')}</label>
               <div className="relative">
                 <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -254,7 +257,7 @@ export default function Profile() {
                   onChange={(e) => setPasswordData({ ...passwordData, password: e.target.value })}
                   className="input pl-10 pr-10"
                   required
-                  minLength={8}
+                  minLength={passwordPolicy.minLength}
                 />
                 <button
                   type="button"
@@ -271,7 +274,7 @@ export default function Profile() {
             </div>
             
             <div>
-              <label className="label">Confirm New Password</label>
+              <label className="label">{t('auth.confirmPassword')}</label>
               <div className="relative">
                 <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -280,7 +283,7 @@ export default function Profile() {
                   onChange={(e) => setPasswordData({ ...passwordData, password_confirmation: e.target.value })}
                   className="input pl-10 pr-10"
                   required
-                  minLength={8}
+                  minLength={passwordPolicy.minLength}
                 />
                 <button
                   type="button"
@@ -297,21 +300,23 @@ export default function Profile() {
             </div>
           </div>
 
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Password must be at least 8 characters long
-          </p>
+          <PasswordStrength password={passwordData.password} role={user?.role} />
 
           <div className="flex justify-end">
-            <button type="submit" disabled={savingPassword} className="btn-primary">
+            <button
+              type="submit"
+              disabled={savingPassword}
+              className="btn-primary"
+            >
               {savingPassword ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Changing...
+                  {t('common.saving')}
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
                   <Key className="w-4 h-4" />
-                  Change Password
+                  {t('profile.changePassword')}
                 </span>
               )}
             </button>
@@ -321,10 +326,10 @@ export default function Profile() {
 
       {/* Preferences */}
       <div className="card p-6">
-        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Preferences</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('profile.preferencesTitle')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="label">Language</label>
+            <label className="label">{t('profile.language')}</label>
             <select
               className="input"
               value={language}
@@ -338,25 +343,25 @@ export default function Profile() {
             </select>
           </div>
           <div>
-            <label className="label">Project list preference</label>
+            <label className="label">{t('profile.projectListPreference')}</label>
             <select
               className="input"
               value={preferencesData.project_list_preference}
               onChange={(e) => setPreferencesData({ ...preferencesData, project_list_preference: e.target.value })}
             >
-              <option value="code">By code</option>
-              <option value="name">By name</option>
+              <option value="code">{t('profile.projectListByCode')}</option>
+              <option value="name">{t('profile.projectListByName')}</option>
             </select>
           </div>
           <div>
-            <label className="label">Theme</label>
+            <label className="label">{t('profile.theme')}</label>
             <button
               type="button"
               onClick={toggleTheme}
               className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
             >
               <span className="text-sm text-gray-700 dark:text-gray-200">
-                {isDark ? 'Dark mode' : 'Light mode'}
+                {isDark ? t('common.darkMode') : t('common.lightMode')}
               </span>
               <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
                 {isDark ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
@@ -370,12 +375,12 @@ export default function Profile() {
             {savingPreferences ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Saving...
+                {t('common.saving')}
               </span>
             ) : (
               <span className="flex items-center gap-2">
                 <Save className="w-4 h-4" />
-                Save Preferences
+                {t('profile.savePreferences')}
               </span>
             )}
           </button>

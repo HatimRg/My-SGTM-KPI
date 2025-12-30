@@ -13,6 +13,7 @@ import DashboardLayout from './layouts/DashboardLayout'
 // Auth Pages (lazy-loaded)
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'))
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'))
+const ForceChangePasswordPage = lazy(() => import('./pages/auth/ForceChangePasswordPage'))
 
 // Admin Pages (lazy-loaded)
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
@@ -38,15 +39,24 @@ const AwarenessSession = lazy(() => import('./pages/shared/AwarenessSession'))
 const WorkPermits = lazy(() => import('./pages/shared/WorkPermits'))
 const Inspections = lazy(() => import('./pages/shared/Inspections'))
 const Workers = lazy(() => import('./pages/shared/Workers'))
+const PpeManagement = lazy(() => import('./pages/shared/PpeManagement'))
 const Notifications = lazy(() => import('./pages/shared/Notifications'))
-const QualifiedPersonnel = lazy(() => import('./pages/shared/QualifiedPersonnel'))
 const SubcontractorOpenings = lazy(() => import('./pages/shared/SubcontractorOpenings'))
 const SubcontractorOpeningDetails = lazy(() => import('./pages/shared/SubcontractorOpeningDetails'))
+const VeilleReglementaireHistory = lazy(() => import('./pages/shared/VeilleReglementaireHistory'))
+const VeilleReglementaireDetails = lazy(() => import('./pages/shared/VeilleReglementaireDetails'))
+const VeilleReglementaireForm = lazy(() => import('./pages/shared/VeilleReglementaireForm'))
+
+// Heavy Machinery Tracking (lazy-loaded)
+const HeavyMachineryViewMachines = lazy(() => import('./pages/shared/heavyMachinery/ViewMachines'))
+const HeavyMachineryGlobalSearch = lazy(() => import('./pages/shared/heavyMachinery/GlobalSearch'))
+const HeavyMachineryExpiredDocumentation = lazy(() => import('./pages/shared/heavyMachinery/ExpiredDocumentation'))
 
 // Protected Route Component
-const ProtectedRoute = ({ children, adminOnly = false, allowedRoles = [] }) => {
+const ProtectedRoute = ({ children, adminOnly = false, allowedRoles = [], enforceAllowedRoles = false }) => {
   const { isAuthenticated, user } = useAuthStore()
   const { simulatedRole } = useDevStore()
+  const location = useLocation()
 
   const adminLikeRoles = ['admin', 'pole_director', 'works_director', 'hse_director', 'hr_director']
 
@@ -54,11 +64,15 @@ const ProtectedRoute = ({ children, adminOnly = false, allowedRoles = [] }) => {
     return <Navigate to="/login" replace />
   }
 
+  if (user?.must_change_password && location.pathname !== '/force-change-password') {
+    return <Navigate to="/force-change-password" replace />
+  }
+
   const actualRole = user?.role
   const role = actualRole === 'dev' && simulatedRole ? simulatedRole : actualRole
 
-  // Admin-like roles have access to all authenticated routes
-  if (adminLikeRoles.includes(role)) {
+  // Admin-like roles have access to all authenticated routes (unless this route explicitly enforces allowedRoles)
+  if (adminLikeRoles.includes(role) && !enforceAllowedRoles) {
     return children
   }
 
@@ -90,6 +104,13 @@ const ProtectedRoute = ({ children, adminOnly = false, allowedRoles = [] }) => {
   return children
 }
 
+const QualifiedPersonnelRedirect = ({ basePath }) => {
+  const location = useLocation()
+
+  // Preserve deep-link query params like ?worker_id=... when migrating legacy routes.
+  return <Navigate to={`${basePath}${location.search || ''}`} replace />
+}
+
 // Guest Route Component (redirect if already logged in)
 const GuestRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuthStore()
@@ -98,6 +119,9 @@ const GuestRoute = ({ children }) => {
   const adminLikeRoles = ['admin', 'pole_director', 'works_director', 'hse_director', 'hr_director']
 
   if (isAuthenticated) {
+    if (user?.must_change_password) {
+      return <Navigate to="/force-change-password" replace />
+    }
     const actualRole = user?.role
     const role = actualRole === 'dev' && simulatedRole ? simulatedRole : actualRole
     if (adminLikeRoles.includes(role)) {
@@ -169,9 +193,28 @@ function App() {
             </GuestRoute>
           }
         />
+
+        <Route
+          path="/force-change-password"
+          element={
+            <ProtectedRoute>
+              <ForceChangePasswordPage />
+            </ProtectedRoute>
+          }
+        />
       </Route>
 
       {/* Admin Routes */}
+      <Route
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'pole_director', 'works_director', 'hse_director', 'hr_director', 'hse_manager']}>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/admin" element={<AdminDashboard />} />
+      </Route>
+
       <Route
         element={
           <ProtectedRoute adminOnly>
@@ -179,7 +222,6 @@ function App() {
           </ProtectedRoute>
         }
       >
-        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/users" element={<UserManagement />} />
         <Route path="/admin/projects" element={<ProjectManagement />} />
         <Route path="/admin/projects/:id" element={<ProjectDetails />} />
@@ -190,8 +232,20 @@ function App() {
         <Route path="/admin/sor" element={<SorSubmission />} />
         <Route path="/admin/work-permits" element={<WorkPermits />} />
         <Route path="/admin/inspections" element={<Inspections />} />
+        <Route path="/admin/regulatory-watch" element={<VeilleReglementaireHistory />} />
+        <Route path="/admin/regulatory-watch/new" element={<VeilleReglementaireForm mode="new" />} />
+        <Route
+          path="/admin/regulatory-watch/:id"
+          element={
+            <ProtectedRoute allowedRoles={['hse_director', 'hse_manager', 'responsable']} enforceAllowedRoles>
+              <VeilleReglementaireDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/admin/regulatory-watch/:id/resubmit" element={<VeilleReglementaireForm mode="resubmit" />} />
         <Route path="/admin/workers" element={<Workers />} />
-        <Route path="/admin/qualified-personnel" element={<QualifiedPersonnel />} />
+        <Route path="/admin/ppe" element={<PpeManagement />} />
+        <Route path="/admin/qualified-personnel" element={<QualifiedPersonnelRedirect basePath="/admin/workers" />} />
         <Route path="/admin/subcontractors" element={<SubcontractorOpenings />} />
         <Route path="/admin/subcontractors/openings/:id" element={<SubcontractorOpeningDetails />} />
         <Route path="/admin/profile" element={<Profile />} />
@@ -227,7 +281,19 @@ function App() {
         <Route path="/supervisor/training" element={<Training />} />
         <Route path="/supervisor/work-permits" element={<WorkPermits />} />
         <Route path="/supervisor/inspections" element={<Inspections />} />
+        <Route path="/supervisor/regulatory-watch" element={<VeilleReglementaireHistory />} />
+        <Route path="/supervisor/regulatory-watch/new" element={<VeilleReglementaireForm mode="new" />} />
+        <Route
+          path="/supervisor/regulatory-watch/:id"
+          element={
+            <ProtectedRoute allowedRoles={['hse_director', 'hse_manager', 'responsable']} enforceAllowedRoles>
+              <VeilleReglementaireDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/supervisor/regulatory-watch/:id/resubmit" element={<VeilleReglementaireForm mode="resubmit" />} />
         <Route path="/supervisor/workers" element={<Workers />} />
+        <Route path="/supervisor/ppe" element={<PpeManagement />} />
         <Route path="/supervisor/profile" element={<Profile />} />
       </Route>
 
@@ -251,7 +317,19 @@ function App() {
         <Route path="/user/sor" element={<SorSubmission />} />
         <Route path="/work-permits" element={<WorkPermits />} />
         <Route path="/inspections" element={<Inspections />} />
+        <Route path="/regulatory-watch" element={<VeilleReglementaireHistory />} />
+        <Route path="/regulatory-watch/new" element={<VeilleReglementaireForm mode="new" />} />
+        <Route
+          path="/regulatory-watch/:id"
+          element={
+            <ProtectedRoute allowedRoles={['hse_director', 'hse_manager', 'responsable']} enforceAllowedRoles>
+              <VeilleReglementaireDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/regulatory-watch/:id/resubmit" element={<VeilleReglementaireForm mode="resubmit" />} />
         <Route path="/workers" element={<Workers />} />
+        <Route path="/ppe" element={<PpeManagement />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/subcontractors" element={<SubcontractorOpenings />} />
         <Route path="/subcontractors/openings/:id" element={<SubcontractorOpeningDetails />} />
@@ -267,10 +345,11 @@ function App() {
       >
         <Route path="/hr" element={<Workers />} />
         <Route path="/hr/workers" element={<Workers />} />
+        <Route path="/hr/ppe" element={<PpeManagement />} />
         <Route path="/hr/profile" element={<Profile />} />
       </Route>
 
-      {/* Qualified Personnel (Worker Trainings) - Responsable, Supervisor, HR, Admin */}
+      {/* Legacy Qualified Personnel (Worker Trainings) - migrated to Workers */}
       <Route
         element={
           <ProtectedRoute allowedRoles={['hse_manager', 'responsable', 'supervisor', 'hr']}>
@@ -278,7 +357,7 @@ function App() {
           </ProtectedRoute>
         }
       >
-        <Route path="/qualified-personnel" element={<QualifiedPersonnel />} />
+        <Route path="/qualified-personnel" element={<QualifiedPersonnelRedirect basePath="/workers" />} />
       </Route>
 
       {/* Notifications - available for all authenticated roles */}
@@ -290,6 +369,19 @@ function App() {
         }
       >
         <Route path="/notifications" element={<Notifications />} />
+      </Route>
+
+      {/* Heavy Machinery Tracking - available for all authenticated roles except HR and HR Director */}
+      <Route
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'dev', 'hse_manager', 'responsable', 'supervisor', 'user', 'pole_director', 'works_director', 'hse_director']}>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/heavy-machinery/view-machines" element={<HeavyMachineryViewMachines />} />
+        <Route path="/heavy-machinery/global-search" element={<HeavyMachineryGlobalSearch />} />
+        <Route path="/heavy-machinery/expired-documentation" element={<HeavyMachineryExpiredDocumentation />} />
       </Route>
 
       {/* Fallback Routes */}

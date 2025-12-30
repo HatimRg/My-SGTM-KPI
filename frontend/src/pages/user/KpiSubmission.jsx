@@ -225,7 +225,7 @@ export default function KpiSubmission() {
         
         // Only prevent editing for approved or currently submitted reports
         if (report.status === 'approved' || report.status === 'submitted') {
-          toast.error('Ce rapport ne peut plus être modifié')
+          toast.error(t('kpi.submissionPage.cannotEditReport'))
           navigate('/dashboard')
           return
         }
@@ -286,7 +286,7 @@ export default function KpiSubmission() {
         })
       } catch (error) {
         console.error('Failed to load report:', error)
-        toast.error('Erreur lors du chargement du rapport')
+        toast.error(t('kpi.submissionPage.loadReportFailed'))
         navigate('/dashboard')
       } finally {
         setLoading(false)
@@ -436,7 +436,7 @@ export default function KpiSubmission() {
       return
     }
     if (currentStep === 0 && !formData.week_number) {
-      toast.error('Veuillez sélectionner une semaine')
+      toast.error(t('kpi.submissionPage.selectWeekRequired'))
       return
     }
     

@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\Project;
 use App\Models\User;
+use App\Support\PasswordPolicy;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -33,6 +34,7 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
             $email = $this->getColumnValue($row, ['email']);
             $name = $this->getColumnValue($row, ['nom', 'name']);
             $role = $this->getColumnValue($row, ['role']);
+            $pole = $this->emptyToNull($this->getColumnValue($row, ['pole']));
 
             if (empty($email) || empty($name) || empty($role)) {
                 return null;
@@ -40,7 +42,17 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
 
             $email = strtolower(trim((string) $email));
             $name = trim((string) $name);
-            $role = trim((string) $role);
+            $role = $this->normalizeRole($role);
+
+            if ($role === User::ROLE_POLE_DIRECTOR) {
+                $pole = $pole !== null ? trim((string) $pole) : null;
+                if ($pole === null || $pole === '') {
+                    $this->rowErrors[] = ['email' => $email, 'error' => 'POLE required for Directeur de pôle'];
+                    return null;
+                }
+            } else {
+                $pole = null;
+            }
 
             if (isset($this->seenEmails[$email])) {
                 $this->rowErrors[] = ['email' => $email, 'error' => 'Duplicate EMAIL in import file'];
@@ -56,7 +68,7 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
 
             $phone = $this->emptyToNull($this->getColumnValue($row, ['telephone', 'phone']));
             $isActiveRaw = $this->getColumnValue($row, ['actif', 'is_active', 'active']);
-            $isActive = $isActiveRaw === null || $isActiveRaw === '' ? true : (in_array((string) $isActiveRaw, ['1', 'true', 'TRUE', 'yes', 'YES'], true));
+            $isActive = $this->parseActive($isActiveRaw);
 
             $password = $this->getColumnValue($row, ['mot_de_passe', 'password']);
             $password = $password !== null ? (string) $password : null;
@@ -65,9 +77,14 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
                 $password = null;
             }
 
+            if ($password !== null && !PasswordPolicy::isValidForRole($password, $role)) {
+                $this->rowErrors[] = ['email' => $email, 'error' => 'Password does not meet complexity requirements for role'];
+                return null;
+            }
+
             $projectCodesRaw = $this->getColumnValue($row, ['project_codes', 'projects', 'projets', 'project_codes ']);
             $projectIds = [];
-            if ($projectCodesRaw) {
+            if ($projectCodesRaw && $role !== User::ROLE_POLE_DIRECTOR) {
                 $codes = array_filter(array_map('trim', preg_split('/[,;]+/', (string) $projectCodesRaw)));
                 if (!empty($codes)) {
                     $projects = Project::whereIn('code', $codes)->pluck('id', 'code');
@@ -87,15 +104,19 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
                 $data = [
                     'name' => $name,
                     'role' => $role,
+                    'pole' => $pole,
                     'phone' => $phone,
                     'is_active' => $isActive,
                 ];
                 if ($password) {
                     $data['password'] = $password;
+                    $data['must_change_password'] = true;
                 }
                 $existing->update($data);
 
-                if (!empty($projectIds)) {
+                if ($role === User::ROLE_POLE_DIRECTOR) {
+                    $existing->projects()->detach();
+                } elseif (!empty($projectIds)) {
                     $existing->projects()->syncWithoutDetaching($projectIds);
                 }
 
@@ -110,7 +131,9 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
                     'name' => $name,
                     'email' => $email,
                     'password' => $password,
+                    'must_change_password' => true,
                     'role' => $role,
+                    'pole' => $pole,
                     'phone' => $phone,
                     'is_active' => $isActive,
                 ]);
@@ -151,6 +174,64 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
         }
         $v = trim((string) $value);
         return $v === '' ? null : $v;
+    }
+
+    protected function normalizeString($value): string
+    {
+        $str = trim((string) $value);
+        $str = preg_replace('/\s+/', ' ', $str);
+        $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $str);
+        if (is_string($ascii) && $ascii !== '') {
+            $str = $ascii;
+        }
+        return strtolower($str);
+    }
+
+    protected function normalizeRole($value): string
+    {
+        $raw = trim((string) $value);
+        $rawLower = strtolower($raw);
+
+        $allowedRoles = ['admin', 'hse_manager', 'responsable', 'supervisor', 'hr', 'user', 'dev', 'pole_director', 'works_director', 'hse_director', 'hr_director'];
+        if (in_array($rawLower, $allowedRoles, true)) {
+            return $rawLower;
+        }
+
+        $key = $this->normalizeString($raw);
+        $map = [
+            'administrateur' => 'admin',
+            'manager hse' => 'hse_manager',
+            'responsable hse' => 'responsable',
+            'superviseur hse' => 'supervisor',
+            'animateur hse' => 'user',
+            'responsable administratif' => 'hr',
+            'developpeur' => 'dev',
+            'directeur de pole' => 'pole_director',
+            'directeur pole' => 'pole_director',
+            'directeur pôle' => 'pole_director',
+            'directeur travaux' => 'works_director',
+            'directeur hse' => 'hse_director',
+            'directeur rh' => 'hr_director',
+        ];
+
+        return $map[$key] ?? $rawLower;
+    }
+
+    protected function parseActive($value): bool
+    {
+        if ($value === null || $value === '') {
+            return true;
+        }
+
+        $key = $this->normalizeString($value);
+        if (in_array($key, ['inactif', 'inactive', '0', 'false', 'non', 'no'], true)) {
+            return false;
+        }
+        if (in_array($key, ['actif', 'active', '1', 'true', 'oui', 'yes'], true)) {
+            return true;
+        }
+
+        return true;
     }
 
     public function chunkSize(): int

@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom'
 import { projectService, userService } from '../../services/api'
 import { Modal, DatePicker, ConfirmDialog, Select } from '../../components/ui'
 import AutocompleteInput from '../../components/ui/AutocompleteInput'
+import { useLanguage } from '../../i18n'
+import { useAuthStore } from '../../store/authStore'
+import ZonesManager from '../../components/zones/ZonesManager'
 import {
   FolderKanban,
   Plus,
@@ -16,15 +19,27 @@ import {
   MapPin,
   Calendar,
   Users,
-  Eye
+  Eye,
+  Settings2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function ProjectManagement() {
+  const { t } = useLanguage()
+  const { user } = useAuthStore()
+  const canManageZones =
+    user?.role === 'admin' ||
+    user?.role === 'responsable' ||
+    user?.role === 'hse_manager' ||
+    user?.role === 'works_director' ||
+    user?.role === 'hse_director' ||
+    user?.role === 'hr_director' ||
+    user?.role === 'pole_director'
   const [projects, setProjects] = useState([])
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [poleFilter, setPoleFilter] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
@@ -35,6 +50,8 @@ export default function ProjectManagement() {
   const [bulkUploading, setBulkUploading] = useState(false)
   const bulkRef = useRef(null)
   const bulkInputRef = useRef(null)
+  const [zonesModalOpen, setZonesModalOpen] = useState(false)
+  const [selectedProjectForZones, setSelectedProjectForZones] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -52,9 +69,19 @@ export default function ProjectManagement() {
   const [confirmProject, setConfirmProject] = useState(null)
 
   useEffect(() => {
-    fetchProjects()
+    const id = setTimeout(() => {
+      setDebouncedSearch(search.trim())
+    }, 350)
+    return () => clearTimeout(id)
+  }, [search])
+
+  useEffect(() => {
+    fetchProjects(1, debouncedSearch)
+  }, [debouncedSearch, statusFilter, poleFilter])
+
+  useEffect(() => {
     fetchUsers()
-  }, [search, statusFilter, poleFilter])
+  }, [])
 
   useEffect(() => {
     fetchPoleSuggestions()
@@ -78,6 +105,11 @@ export default function ProjectManagement() {
     } catch (e) {
       setPoleSuggestions([])
     }
+  }
+
+  const openZonesManager = (project) => {
+    setSelectedProjectForZones(project)
+    setZonesModalOpen(true)
   }
 
   const extractFilename = (contentDisposition) => {
@@ -104,13 +136,13 @@ export default function ProjectManagement() {
       const filename = extractFilename(res.headers?.['content-disposition']) ?? 'SGTM-Projects-Template.xlsx'
       downloadBlob(res.data, filename)
     } catch (e) {
-      toast.error('Failed to download template')
+      toast.error(t('projects.bulk.downloadTemplateFailed'))
     }
   }
 
   const handleBulkImport = async () => {
     if (!bulkFile) {
-      toast.error('Please choose a file')
+      toast.error(t('projects.bulk.chooseFile'))
       return
     }
 
@@ -123,27 +155,27 @@ export default function ProjectManagement() {
       const imported = payload.imported ?? 0
       const updated = payload.updated ?? 0
       const errors = payload.errors ?? []
-      toast.success(`Imported: ${imported} / Updated: ${updated}`)
+      toast.success(t('projects.bulk.importSummary', { imported, updated }))
       if (errors.length > 0) {
-        toast.error(`${errors.length} row(s) had issues`)
+        toast.error(t('projects.bulk.importIssues', { count: errors.length }))
       }
       setBulkFile(null)
       setBulkOpen(false)
       fetchProjects()
       fetchPoleSuggestions()
     } catch (e) {
-      toast.error(e.response?.data?.message ?? 'Failed to import projects')
+      toast.error(e.response?.data?.message ?? t('projects.bulk.importFailed'))
     } finally {
       setBulkUploading(false)
     }
   }
 
-  const fetchProjects = async (page = 1) => {
+  const fetchProjects = async (page = 1, searchOverride = search) => {
     try {
       setLoading(true)
       const response = await projectService.getAll({
         page,
-        search,
+        search: searchOverride,
         status: statusFilter,
         pole: poleFilter ? poleFilter : undefined,
         per_page: 10
@@ -151,7 +183,7 @@ export default function ProjectManagement() {
       setProjects(response.data.data ?? [])
       setPagination(response.data.meta ?? { current_page: 1, last_page: 1 })
     } catch (error) {
-      toast.error('Failed to load projects')
+      toast.error(t('errors.failedToLoad'))
     } finally {
       setLoading(false)
     }
@@ -205,23 +237,71 @@ export default function ProjectManagement() {
     setEditingProject(null)
   }
 
+  const buildProjectPayload = (data) => {
+    const normalizedUserIds = Array.isArray(data.user_ids)
+      ? data.user_ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+      : []
+
+    const payload = {
+      ...data,
+      name: (data.name ?? '').trim(),
+      code: (data.code ?? '').trim(),
+      start_date: data.start_date ? data.start_date : null,
+      end_date: data.end_date ? data.end_date : null,
+      status: data.status ? data.status : 'active',
+      pole: (data.pole ?? '').trim() || null,
+      client_name: (data.client_name ?? '').trim() || null,
+      location: (data.location ?? '').trim() || null,
+      description: (data.description ?? '').trim() || null,
+      user_ids: normalizedUserIds,
+    }
+
+    return payload
+  }
+
+  const getErrorMessage = (error) => {
+    const responseData = error?.response?.data
+
+    const candidates = [
+      responseData?.errors,
+      responseData?.data?.errors,
+      responseData?.error?.errors,
+    ]
+
+    for (const errors of candidates) {
+      if (errors && typeof errors === 'object') {
+        const keys = Object.keys(errors)
+        if (keys.length > 0) {
+          const firstKey = keys[0]
+          const firstValue = errors[firstKey]
+          const firstMessage = Array.isArray(firstValue) ? firstValue[0] : firstValue
+          if (typeof firstMessage === 'string' && firstMessage.trim() !== '') return firstMessage
+        }
+      }
+    }
+
+    const message = responseData?.message ?? responseData?.data?.message
+    if (typeof message === 'string' && message.trim() !== '') return message
+    return t('errors.failedToSave')
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)
 
     try {
+      const payload = buildProjectPayload(formData)
       if (editingProject) {
-        await projectService.update(editingProject.id, formData)
-        toast.success('Project updated successfully')
+        await projectService.update(editingProject.id, payload)
+        toast.success(t('projects.projectUpdated'))
       } else {
-        await projectService.create(formData)
-        toast.success('Project created successfully')
+        await projectService.create(payload)
+        toast.success(t('projects.projectCreated'))
       }
       closeModal()
       fetchProjects()
     } catch (error) {
-      const message = error.response?.data?.message ?? 'Failed to save project'
-      toast.error(message)
+      toast.error(getErrorMessage(error))
     } finally {
       setSaving(false)
     }
@@ -236,10 +316,10 @@ export default function ProjectManagement() {
 
     try {
       await projectService.delete(confirmProject.id)
-      toast.success('Project deleted successfully')
+      toast.success(t('projects.projectDeleted'))
       fetchProjects()
     } catch (error) {
-      toast.error(error.response?.data?.message ?? 'Failed to delete project')
+      toast.error(error.response?.data?.message ?? t('errors.failedToDelete'))
     } finally {
       setConfirmProject(null)
     }
@@ -494,6 +574,16 @@ export default function ProjectManagement() {
                     >
                       <Eye className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                     </Link>
+                    {canManageZones && (
+                      <button
+                        type="button"
+                        onClick={() => openZonesManager(project)}
+                        className="p-2 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg"
+                        title={t('projects.manageZones')}
+                      >
+                        <Settings2 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      </button>
+                    )}
                     <button
                       onClick={() => openModal(project)}
                       className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
@@ -685,18 +775,24 @@ export default function ProjectManagement() {
 
       <ConfirmDialog
         isOpen={!!confirmProject}
-        title="Confirm deletion"
-        message={
-          confirmProject
-            ? `Are you sure you want to delete ${confirmProject.name}?`
-            : ''
-        }
+        title="Confirm"
+        message={confirmProject ? `Are you sure you want to delete ${confirmProject.name}?` : ''}
         confirmLabel="Delete"
         cancelLabel="Cancel"
         variant="danger"
         onConfirm={confirmDeleteProject}
         onCancel={() => setConfirmProject(null)}
       />
+
+      <ZonesManager
+        projectId={selectedProjectForZones?.id}
+        projectName={selectedProjectForZones?.name}
+        isOpen={zonesModalOpen}
+        onClose={() => {
+          setZonesModalOpen(false)
+          setSelectedProjectForZones(null)
+        }}
+      />
     </div>
   )
-}
+ }

@@ -29,7 +29,14 @@ export default function MyProjects({ showKpiButton = true }) {
   const [selectedProject, setSelectedProject] = useState(null)
   
   // Check if user is responsable (HSE Manager)
-  const isResponsable = user?.role === 'responsable' || user?.role === 'admin'
+  const isResponsable =
+    user?.role === 'responsable' ||
+    user?.role === 'hse_manager' ||
+    user?.role === 'admin' ||
+    user?.role === 'works_director' ||
+    user?.role === 'hse_director' ||
+    user?.role === 'hr_director' ||
+    user?.role === 'pole_director'
   
   // Determine base path based on current route (for SOR users vs regular users)
   const isSorRoute = location.pathname.startsWith('/sor')

@@ -432,6 +432,7 @@ class DailyKpiSnapshotController extends Controller
         }
 
         // Calculate aggregates from saved entries
+        $kpiAggregates = DailyKpiSnapshot::aggregateForWeek(
             $request->project_id,
             (int) $request->week_number,
             (int) $request->year

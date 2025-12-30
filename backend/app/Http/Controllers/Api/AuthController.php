@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\PasswordPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -46,6 +47,7 @@ class AuthController extends Controller
                 'pole' => $user->pole,
                 'avatar' => $user->avatar,
                 'project_list_preference' => $user->project_list_preference ?? 'code',
+                'must_change_password' => (bool) $user->must_change_password,
             ],
             'token' => $token,
         ], 'Login successful');
@@ -56,11 +58,12 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
+        $role = $request->input('role');
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:admin,hse_manager,responsable,supervisor,hr,user',
+            'password' => PasswordPolicy::rulesForRole($role, true, true),
+            'role' => 'required|in:admin,hse_manager,responsable,supervisor,hr,user,dev,pole_director,works_director,hse_director,hr_director',
             'phone' => 'nullable|string|max:20',
         ]);
 
@@ -68,6 +71,7 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => $request->password,
+            'must_change_password' => true,
             'role' => $request->role,
             'phone' => $request->phone,
             'is_active' => true,
@@ -103,6 +107,7 @@ class AuthController extends Controller
             'phone' => $user->phone,
             'avatar' => $user->avatar,
             'project_list_preference' => $user->project_list_preference ?? 'code',
+            'must_change_password' => (bool) $user->must_change_password,
             'is_active' => $user->is_active,
             'projects' => $user->projects,
             'created_at' => $user->created_at,
@@ -137,6 +142,7 @@ class AuthController extends Controller
             'phone' => $user->phone,
             'avatar' => $user->avatar,
             'project_list_preference' => $user->project_list_preference ?? 'code',
+            'must_change_password' => (bool) $user->must_change_password,
             'is_active' => $user->is_active,
             'projects' => $user->projects,
             'created_at' => $user->created_at,
@@ -148,12 +154,11 @@ class AuthController extends Controller
      */
     public function changePassword(Request $request)
     {
+        $user = $request->user();
         $request->validate([
             'current_password' => 'required|string',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => PasswordPolicy::rulesForRole($user?->role, true, true),
         ]);
-
-        $user = $request->user();
 
         if (!Hash::check($request->current_password, $user->password)) {
             return $this->error('Current password is incorrect', 422);
@@ -161,6 +166,7 @@ class AuthController extends Controller
 
         $user->update([
             'password' => $request->password,
+            'must_change_password' => false,
         ]);
 
         return $this->success(null, 'Password changed successfully');
@@ -202,11 +208,17 @@ class AuthController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
+        $role = User::where('email', $request->email)->value('role');
+        $request->validate([
+            'password' => PasswordPolicy::rulesForRole($role, true, true),
+        ]);
+
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function ($user, $password) {
                 $user->update([
                     'password' => $password,
+                    'must_change_password' => false,
                 ]);
             }
         );

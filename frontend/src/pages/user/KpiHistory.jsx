@@ -94,7 +94,7 @@ export default function KpiHistory() {
       setReports(response.data.data || [])
       setPagination(response.data.meta || { current_page: 1, last_page: 1 })
     } catch (error) {
-      toast.error('Failed to load reports')
+      toast.error(t('kpi.historyPage.loadFailed'))
     } finally {
       setLoading(false)
     }
@@ -120,7 +120,7 @@ export default function KpiHistory() {
 
   const handleDelete = (report) => {
     if (report.status !== 'draft') {
-      toast.error('Only draft reports can be deleted')
+      toast.error(t('kpi.historyPage.onlyDraftDeletable'))
       return
     }
     setConfirmReport(report)
@@ -131,16 +131,24 @@ export default function KpiHistory() {
 
     try {
       await kpiService.delete(confirmReport.id)
-      toast.success('Report deleted successfully')
+      toast.success(t('kpi.historyPage.deleteSuccess'))
       fetchReports()
     } catch (error) {
-      toast.error('Failed to delete report')
+      toast.error(t('errors.failedToDelete'))
     } finally {
       setConfirmReport(null)
     }
   }
 
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const formatPeriod = (report) => {
+    if (report?.week_number) {
+      return t('dashboard.weekLabel', { week: report.week_number, year: report.report_year })
+    }
+    if (report?.report_month && report?.report_year) {
+      return `${report.report_month}/${report.report_year}`
+    }
+    return ''
+  }
 
   const statusIcons = {
     draft: <FileText className="w-4 h-4 text-gray-500" />,
@@ -201,7 +209,7 @@ export default function KpiHistory() {
       window.URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Error exporting KPI history:', error)
-      toast.error('Failed to export reports')
+      toast.error(t('kpi.historyPage.exportFailed'))
     } finally {
       setExporting(false)
     }
@@ -215,7 +223,7 @@ export default function KpiHistory() {
           {t('nav.dashboard')} / {t('kpi.history')}
         </div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('kpi.history')}</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">View and manage your submitted KPI reports</p>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">{t('kpi.historyPage.subtitle')}</p>
       </div>
 
       {/* Filters */}
@@ -345,7 +353,7 @@ export default function KpiHistory() {
                       <div className="mt-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
                         <Calendar className="w-3 h-3 text-gray-400" />
                         <span>
-                          {monthNames[report.report_month - 1]} {report.report_year}
+                          {formatPeriod(report)}
                         </span>
                       </div>
                     </div>
@@ -407,7 +415,7 @@ export default function KpiHistory() {
                 <thead>
                   <tr>
                     <th>Project</th>
-                    <th>Period</th>
+                    <th>Week / Year</th>
                     <th>Accidents</th>
                     <th>Trainings</th>
                     <th>Inspections</th>
@@ -427,7 +435,7 @@ export default function KpiHistory() {
                       <td>
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-gray-400" />
-                          <span>{monthNames[report.report_month - 1]} {report.report_year}</span>
+                          <span>{formatPeriod(report)}</span>
                         </div>
                       </td>
                       <td>
@@ -518,7 +526,7 @@ export default function KpiHistory() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {monthNames[selectedReport.report_month - 1]} {selectedReport.report_year}
+                {formatPeriod(selectedReport)}
               </p>
               <span className={`badge ${statusColors[selectedReport.status]}`}>
                 {selectedReport.status}

@@ -10,7 +10,7 @@ import LanguageSwitcher from '../components/LanguageSwitcher'
 import api from '../services/api'
 
 export default function AuthLayout() {
-  const { t, language } = useLanguage()
+  const { t } = useLanguage()
   const { isDark, toggleTheme } = useThemeStore()
   const [stats, setStats] = useState({
     hse_compliance: 0,
@@ -72,15 +72,6 @@ export default function AuthLayout() {
     }
     fetchStats()
   }, [])
-  
-  // Bilingual tagline
-  const tagline = language === 'fr' 
-    ? { line1: 'Surveiller. Suivre.', line2: 'Améliorer la Sécurité.' }
-    : { line1: 'Monitor. Track.', line2: 'Improve Safety.' }
-  
-  const description = language === 'fr'
-    ? 'Système complet de suivi des KPI HSE pour gérer les indicateurs de santé, sécurité et environnement sur tous vos projets.'
-    : 'Comprehensive HSE KPI tracking system for managing health, safety, and environmental metrics across all your projects.'
 
   return (
     <div className="min-h-screen flex">
@@ -99,13 +90,13 @@ export default function AuthLayout() {
             <div className="flex items-center gap-6">
               <img 
                 src={appLogo} 
-                alt="App Logo" 
+                alt={t('auth.appLogoAlt')}
                 className="w-24 h-24 object-contain"
               />
               <span className="text-4xl text-white/40 font-light">/</span>
               <img 
                 src={sgtmLogo} 
-                alt="SGTM Logo" 
+                alt={t('auth.companyLogoAlt')}
                 className="w-24 h-24 object-contain"
               />
             </div>
@@ -114,26 +105,26 @@ export default function AuthLayout() {
           <div className="space-y-8">
             <div>
               <h2 className="text-4xl font-bold leading-tight">
-                {tagline.line1}<br />
-                {tagline.line2}
+                {t('auth.tagline.line1')}<br />
+                {t('auth.tagline.line2')}
               </h2>
               <p className="mt-4 text-lg text-white/80 max-w-md">
-                {description}
+                {t('auth.description')}
               </p>
             </div>
             
             <div className="grid grid-cols-3 gap-6">
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
                 <div className="text-3xl font-bold">{stats.hse_compliance != null ? `${stats.hse_compliance}%` : ''}</div>
-                <div className="text-sm text-white/70">{language === 'fr' ? 'Conformité HSE' : 'HSE Compliance'}</div>
+                <div className="text-sm text-white/70">{t('auth.publicStats.hseCompliance')}</div>
               </div>
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
                 <div className="text-3xl font-bold">{stats.training_hours != null ? stats.training_hours.toLocaleString() : ''}</div>
-                <div className="text-sm text-white/70">{language === 'fr' ? 'Heures Formation' : 'Training Hours'}</div>
+                <div className="text-sm text-white/70">{t('auth.publicStats.trainingHours')}</div>
               </div>
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
                 <div className="text-3xl font-bold">{stats.fatal_accidents}</div>
-                <div className="text-sm text-white/70">{language === 'fr' ? `Accidents Mortels ${stats.year}` : `Fatal Accidents ${stats.year}`}</div>
+                <div className="text-sm text-white/70">{t('auth.publicStats.fatalAccidents', { year: stats.year })}</div>
               </div>
             </div>
           </div>
@@ -156,7 +147,7 @@ export default function AuthLayout() {
           <button
             onClick={toggleTheme}
             className="p-2 rounded-lg bg-white dark:bg-gray-800 shadow-md hover:shadow-lg transition-all border border-gray-200 dark:border-gray-700"
-            title={isDark ? 'Light Mode' : 'Dark Mode'}
+            title={isDark ? t('common.lightMode') : t('common.darkMode')}
           >
             {isDark ? (
               <Sun className="w-5 h-5 text-yellow-500" />

@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(DevUserSeeder::class);
+        $this->call(MachineDocumentKeySeeder::class);
 
         // Create Admin User
         $admin = User::where('email', 'admin@test.com')->first();

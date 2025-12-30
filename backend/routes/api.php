@@ -16,9 +16,16 @@ use App\Http\Controllers\Api\WorkPermitController;
 use App\Http\Controllers\Api\InspectionController;
 use App\Http\Controllers\Api\WorkerController;
 use App\Http\Controllers\Api\WorkerTrainingController;
+use App\Http\Controllers\Api\WorkerQualificationController;
+use App\Http\Controllers\Api\WorkerMedicalAptitudeController;
+use App\Http\Controllers\Api\PpeController;
+use App\Http\Controllers\Api\RegulatoryWatchController;
 use App\Http\Controllers\Api\SubcontractorOpeningController;
 use App\Http\Controllers\Api\SecurityController;
 use App\Http\Controllers\Api\BootstrapController;
+use App\Http\Controllers\Api\HeavyMachineryController;
+use App\Http\Controllers\Api\HeavyMachineryMachineController;
+use App\Http\Controllers\Api\HeavyMachineryReportController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -42,6 +49,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::pattern('project', '[0-9]+');
     Route::pattern('teamMember', '[0-9]+');
+    Route::pattern('submission', '[0-9]+');
     
     // Auth routes
     Route::prefix('auth')->group(function () {
@@ -59,7 +67,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Dashboard routes
     Route::prefix('dashboard')->group(function () {
-        Route::get('/admin', [DashboardController::class, 'adminDashboard'])->middleware('admin');
+        Route::get('/admin', [DashboardController::class, 'adminDashboard'])->middleware(['cache.api:2']);
         Route::get('/user', [DashboardController::class, 'userDashboard']);
         Route::get('/charts/accidents', [DashboardController::class, 'accidentCharts']);
         Route::get('/charts/trainings', [DashboardController::class, 'trainingCharts']);
@@ -264,6 +272,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/bulk-deactivate', [WorkerController::class, 'bulkDeactivate']);
         Route::post('/bulk-activate', [WorkerController::class, 'bulkActivate']);
         Route::post('/', [WorkerController::class, 'store']);
+        Route::get('/{worker}/image', [WorkerController::class, 'viewImage']);
+        Route::post('/{worker}/image', [WorkerController::class, 'uploadImage']);
         Route::get('/{worker}', [WorkerController::class, 'show']);
         Route::put('/{worker}', [WorkerController::class, 'update']);
         Route::delete('/{worker}', [WorkerController::class, 'destroy']);
@@ -279,6 +289,43 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{workerTraining}', [WorkerTrainingController::class, 'destroy']);
     });
 
+    Route::prefix('worker-qualifications')->group(function () {
+        Route::get('/', [WorkerQualificationController::class, 'index']);
+        Route::post('/', [WorkerQualificationController::class, 'store']);
+        Route::get('/{workerQualification}', [WorkerQualificationController::class, 'show']);
+        Route::put('/{workerQualification}', [WorkerQualificationController::class, 'update']);
+        Route::delete('/{workerQualification}', [WorkerQualificationController::class, 'destroy']);
+    });
+
+    Route::prefix('worker-medical-aptitudes')->group(function () {
+        Route::get('/', [WorkerMedicalAptitudeController::class, 'index']);
+        Route::post('/', [WorkerMedicalAptitudeController::class, 'store']);
+        Route::get('/{workerMedicalAptitude}', [WorkerMedicalAptitudeController::class, 'show']);
+        Route::put('/{workerMedicalAptitude}', [WorkerMedicalAptitudeController::class, 'update']);
+        Route::delete('/{workerMedicalAptitude}', [WorkerMedicalAptitudeController::class, 'destroy']);
+    });
+
+    // PPE / EPI Management (same access rules as Workers)
+    Route::prefix('ppe')->group(function () {
+        Route::get('/items', [PpeController::class, 'items']);
+        Route::post('/items', [PpeController::class, 'upsertItem']);
+        Route::delete('/items/{item}', [PpeController::class, 'deleteItem']);
+
+        Route::post('/issue', [PpeController::class, 'issueToWorker']);
+        Route::get('/issues', [PpeController::class, 'issues']);
+        Route::get('/workers/{worker}/issues', [PpeController::class, 'workerIssues']);
+
+        Route::post('/restock', [PpeController::class, 'restock']);
+    });
+
+    // Veille réglementaire (Regulatory watch checklists)
+    Route::prefix('regulatory-watch')->group(function () {
+        Route::get('/', [RegulatoryWatchController::class, 'index']);
+        Route::get('/latest', [RegulatoryWatchController::class, 'latest']);
+        Route::get('/{submission}', [RegulatoryWatchController::class, 'show']);
+        Route::post('/', [RegulatoryWatchController::class, 'store']);
+    });
+
     // Subcontractor Site Openings (Ouverture de chantier) (Responsable and Admin)
     Route::prefix('subcontractor-openings')->group(function () {
         Route::get('/', [SubcontractorOpeningController::class, 'index']);
@@ -289,5 +336,43 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{subcontractorOpening}/documents', [SubcontractorOpeningController::class, 'uploadDocument']);
         Route::get('/{subcontractorOpening}/documents/{document}/view', [SubcontractorOpeningController::class, 'viewDocument']);
         Route::get('/{subcontractorOpening}/documents/{document}/download', [SubcontractorOpeningController::class, 'downloadDocument']);
+    });
+
+    Route::middleware('heavy_machinery_access')->prefix('heavy-machinery')->group(function () {
+        Route::get('/ping', [HeavyMachineryController::class, 'ping']);
+        Route::get('/document-keys', [HeavyMachineryController::class, 'documentKeys']);
+        Route::get('/machine-types', [HeavyMachineryController::class, 'machineTypes']);
+
+        Route::get('/machines', [HeavyMachineryMachineController::class, 'index']);
+        Route::get('/machines/template', [HeavyMachineryMachineController::class, 'downloadTemplate']);
+        Route::post('/machines/import', [HeavyMachineryMachineController::class, 'bulkImport']);
+        Route::post('/machines', [HeavyMachineryMachineController::class, 'store']);
+        Route::get('/machines/{machine}', [HeavyMachineryMachineController::class, 'show']);
+        Route::get('/machines/{machine}/image', [HeavyMachineryMachineController::class, 'viewImage']);
+        Route::put('/machines/{machine}', [HeavyMachineryMachineController::class, 'update']);
+        Route::delete('/machines/{machine}', [HeavyMachineryMachineController::class, 'destroy']);
+        Route::post('/machines/{machine}/transfer', [HeavyMachineryMachineController::class, 'transfer']);
+        Route::post('/machines/{machine}/image', [HeavyMachineryMachineController::class, 'uploadImage']);
+
+        Route::post('/machines/{machine}/documents', [HeavyMachineryMachineController::class, 'upsertDocument']);
+        Route::put('/machines/{machine}/documents/{machineDocument}', [HeavyMachineryMachineController::class, 'updateDocument']);
+        Route::delete('/machines/{machine}/documents/{machineDocument}', [HeavyMachineryMachineController::class, 'deleteDocument']);
+        Route::get('/machines/{machine}/documents/{machineDocument}/view', [HeavyMachineryMachineController::class, 'viewDocument']);
+        Route::get('/machines/{machine}/documents/{machineDocument}/download', [HeavyMachineryMachineController::class, 'downloadDocument']);
+
+        Route::post('/machines/{machine}/inspections', [HeavyMachineryMachineController::class, 'upsertInspection']);
+        Route::delete('/machines/{machine}/inspections/{machineInspection}', [HeavyMachineryMachineController::class, 'deleteInspection']);
+        Route::get('/machines/{machine}/inspections/{machineInspection}/view', [HeavyMachineryMachineController::class, 'viewInspection']);
+        Route::get('/machines/{machine}/inspections/{machineInspection}/download', [HeavyMachineryMachineController::class, 'downloadInspection']);
+
+        Route::get('/workers/search', [HeavyMachineryMachineController::class, 'searchWorkers']);
+        Route::post('/machines/{machine}/operators', [HeavyMachineryMachineController::class, 'addOperator']);
+        Route::delete('/machines/{machine}/operators/{worker}', [HeavyMachineryMachineController::class, 'removeOperator']);
+
+        Route::get('/global-search', [HeavyMachineryMachineController::class, 'globalSearch']);
+        Route::get('/global/machines/{machine}/documents/{machineDocument}/view', [HeavyMachineryMachineController::class, 'globalViewDocument']);
+        Route::get('/global/machines/{machine}/documents/{machineDocument}/download', [HeavyMachineryMachineController::class, 'globalDownloadDocument']);
+
+        Route::get('/reports/expired-documentation', [HeavyMachineryReportController::class, 'expiredDocumentation']);
     });
 });

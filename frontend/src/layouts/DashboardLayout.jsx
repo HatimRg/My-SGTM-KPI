@@ -22,18 +22,22 @@ import {
   PlusCircle,
   ClipboardCheck,
   ClipboardList,
+  FileSearch,
   AlertTriangle,
   Sun,
   Moon,
   CheckCircle,
   XCircle,
   BookOpen,
+  GraduationCap,
   Clock,
   HardHat,
   Megaphone,
   FolderPlus,
   ExternalLink,
-  Building2
+  Building2,
+  Truck,
+  Shield,
 } from 'lucide-react'
 import appLogo from '../App_Logo.png'
 
@@ -58,18 +62,17 @@ export default function DashboardLayout() {
   const effectiveRole = isDev && simulatedRole ? simulatedRole : user?.role
   const adminLikeRoles = ['admin', 'pole_director', 'works_director', 'hse_director', 'hr_director']
   const isUserAdminLike = isUserAdmin || (user?.role === 'dev' && !simulatedRole) || adminLikeRoles.includes(effectiveRole)
+  const isAdminArea = location.pathname.startsWith('/admin')
+  const isAdminDashboardOnly = effectiveRole === 'hse_manager' && isAdminArea
 
   // Fetch notifications (only when user is authenticated)
   useEffect(() => {
     if (!user) return // Don't fetch if user is not logged in
-    
-    const fetchNotifications = async () => {
+
+    const fetchUnreadCount = async () => {
       try {
         const countRes = await notificationService.getUnreadCount()
         setUnreadCount(countRes.data?.data?.count ?? 0)
-        
-        const notifRes = await notificationService.getAll({ per_page: 5 })
-        setNotifications(notifRes.data?.data ?? [])
       } catch (error) {
         // Silently handle auth errors (403/401) - user might be logging out
         if (error.response?.status !== 403 && error.response?.status !== 401) {
@@ -77,12 +80,34 @@ export default function DashboardLayout() {
         }
       }
     }
-    fetchNotifications()
-    
-    // Poll for new notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000)
+
+    fetchUnreadCount()
+
+    // Poll unread count every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000)
     return () => clearInterval(interval)
   }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    if (!notificationDropdownOpen) return
+
+    const fetchNotificationsList = async () => {
+      try {
+        const notifRes = await notificationService.getAll({ per_page: 5 })
+        setNotifications(notifRes.data?.data ?? [])
+
+        const countRes = await notificationService.getUnreadCount()
+        setUnreadCount(countRes.data?.data?.count ?? 0)
+      } catch (error) {
+        if (error.response?.status !== 403 && error.response?.status !== 401) {
+          console.error('Error fetching notifications:', error)
+        }
+      }
+    }
+
+    fetchNotificationsList()
+  }, [notificationDropdownOpen, user])
 
   const handleLogout = async () => {
     await logout()
@@ -174,6 +199,7 @@ export default function DashboardLayout() {
   const isResponsable = effectiveRole === 'responsable'
   const isHseManager = effectiveRole === 'hse_manager'
   const isHR = effectiveRole === 'hr'
+  const isHrDirector = effectiveRole === 'hr_director'
 
   const adminNavItems = [
     { to: '/admin', icon: LayoutDashboard, label: t('nav.dashboard') },
@@ -181,13 +207,14 @@ export default function DashboardLayout() {
     { to: '/admin/projects', icon: FolderKanban, label: t('projects.title') },
     { to: '/admin/kpi', icon: ClipboardCheck, label: t('kpi.title') },
     { to: '/admin/kpi-history', icon: History, label: t('kpi.history') },
-    { to: '/admin/training', icon: FileText, label: t('training.navLabel') },
-    { to: '/admin/awareness', icon: Megaphone, label: t('awareness.navLabel') },
+    { to: '/admin/training', icon: GraduationCap, label: t('training.navLabel') },
+    { to: '/admin/awareness', icon: Users, label: t('awareness.navLabel') },
     { to: '/admin/sor', icon: AlertTriangle, label: t('sor.title') },
     { to: '/admin/work-permits', icon: ClipboardList, label: t('workPermits.title') },
-    { to: '/admin/inspections', icon: ClipboardCheck, label: t('inspections.title') },
+    { to: '/admin/inspections', icon: FileSearch, label: t('inspections.title') },
+    { to: '/admin/regulatory-watch', icon: FileText, label: t('regulatoryWatch.nav') },
     { to: '/admin/workers', icon: HardHat, label: t('workers.title') },
-    { to: '/admin/qualified-personnel', icon: HardHat, label: t('qualifiedPersonnel.navLabel') },
+    { to: '/admin/ppe', icon: Shield, label: t('ppe.nav') },
     { to: '/admin/subcontractors', icon: Building2, label: t('subcontractors.title') },
   ]
 
@@ -195,20 +222,21 @@ export default function DashboardLayout() {
     { to: '/admin', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/admin/kpi', icon: ClipboardCheck, label: t('kpi.title') },
     { to: '/admin/kpi-history', icon: History, label: t('kpi.history') },
-    { to: '/admin/training', icon: FileText, label: t('training.navLabel') },
-    { to: '/admin/awareness', icon: Megaphone, label: t('awareness.navLabel') },
+    { to: '/admin/training', icon: GraduationCap, label: t('training.navLabel') },
+    { to: '/admin/awareness', icon: Users, label: t('awareness.navLabel') },
     { to: '/admin/sor', icon: AlertTriangle, label: t('sor.title') },
     { to: '/admin/work-permits', icon: ClipboardList, label: t('workPermits.title') },
-    { to: '/admin/inspections', icon: ClipboardCheck, label: t('inspections.title') },
+    { to: '/admin/inspections', icon: FileSearch, label: t('inspections.title') },
+    { to: '/admin/regulatory-watch', icon: FileText, label: t('regulatoryWatch.nav') },
     { to: '/admin/workers', icon: HardHat, label: t('workers.title') },
-    { to: '/admin/qualified-personnel', icon: HardHat, label: t('qualifiedPersonnel.navLabel') },
+    { to: '/admin/ppe', icon: Shield, label: t('ppe.nav') },
     { to: '/admin/subcontractors', icon: Building2, label: t('subcontractors.title') },
   ]
 
   const hrDirectorNavItems = [
     { to: '/admin', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/admin/workers', icon: HardHat, label: t('workers.title') },
-    { to: '/admin/qualified-personnel', icon: HardHat, label: t('qualifiedPersonnel.navLabel') },
+    { to: '/admin/ppe', icon: Shield, label: t('ppe.nav') },
   ]
 
   const userNavItems = [
@@ -216,13 +244,13 @@ export default function DashboardLayout() {
     { to: '/my-projects', icon: FolderKanban, label: t('nav.myProjects') },
     { to: '/kpi/submit', icon: PlusCircle, label: t('kpi.submission') },
     { to: '/kpi/history', icon: History, label: t('kpi.history') },
-    { to: '/training', icon: FileText, label: t('training.navLabel') },
+    { to: '/training', icon: GraduationCap, label: t('training.navLabel') },
     { to: '/awareness', icon: Users, label: t('awareness.navLabel') },
-    { to: '/user/sor', icon: AlertTriangle, label: t('sor.title') },
-    { to: '/work-permits', icon: ClipboardCheck, label: t('workPermits.title') },
-    { to: '/inspections', icon: ClipboardList, label: t('inspections.title') },
+    { to: '/work-permits', icon: ClipboardList, label: t('workPermits.title') },
+    { to: '/inspections', icon: FileSearch, label: t('inspections.title') },
+    { to: '/regulatory-watch', icon: FileText, label: t('regulatoryWatch.nav') },
     { to: '/workers', icon: HardHat, label: t('workers.title') },
-    { to: '/qualified-personnel', icon: HardHat, label: t('qualifiedPersonnel.navLabel') },
+    { to: '/ppe', icon: Shield, label: t('ppe.nav') },
     { to: '/subcontractors', icon: Building2, label: t('subcontractors.title') },
   ]
 
@@ -236,16 +264,21 @@ export default function DashboardLayout() {
     { to: '/supervisor', icon: AlertTriangle, label: t('sor.title') },
     { to: '/supervisor/projects', icon: FolderKanban, label: t('nav.myProjects') },
     { to: '/supervisor/awareness', icon: Users, label: t('awareness.navLabel') },
-    { to: '/supervisor/training', icon: FileText, label: t('training.navLabel') },
-    { to: '/supervisor/work-permits', icon: ClipboardCheck, label: t('workPermits.title') },
-    { to: '/supervisor/inspections', icon: ClipboardList, label: t('inspections.title') },
+    { to: '/supervisor/training', icon: GraduationCap, label: t('training.navLabel') },
+    { to: '/supervisor/work-permits', icon: ClipboardList, label: t('workPermits.title') },
+    { to: '/supervisor/inspections', icon: FileSearch, label: t('inspections.title') },
+    { to: '/supervisor/regulatory-watch', icon: FileText, label: t('regulatoryWatch.nav') },
     { to: '/supervisor/workers', icon: HardHat, label: t('workers.title') },
-    { to: '/qualified-personnel', icon: HardHat, label: t('qualifiedPersonnel.navLabel') },
+    { to: '/supervisor/ppe', icon: Shield, label: t('ppe.nav') },
   ]
 
   const hrNavItems = [
     { to: '/hr/workers', icon: HardHat, label: t('workers.title') },
-    { to: '/qualified-personnel', icon: HardHat, label: t('qualifiedPersonnel.navLabel') },
+    { to: '/hr/ppe', icon: Shield, label: t('ppe.nav') },
+  ]
+
+  const hseManagerAdminNavItems = [
+    { to: '/admin', icon: LayoutDashboard, label: t('nav.dashboard') },
   ]
 
   const getNavItems = () => {
@@ -258,11 +291,16 @@ export default function DashboardLayout() {
     if (effectiveRole === 'supervisor') return supervisorNavItems
     if (effectiveRole === 'hr') return hrNavItems
     if (effectiveRole === 'dev') return userNavItems
-    if (effectiveRole === 'hse_manager' || effectiveRole === 'responsable') return userNavItems
+    if (effectiveRole === 'hse_manager') return isAdminDashboardOnly ? hseManagerAdminNavItems : userNavItems
+    if (effectiveRole === 'responsable') return userNavItems
     return userNavItems
   }
 
   const navItems = getNavItems()
+  const canAccessHeavyMachinery = !isHR && !isHrDirector
+  const [heavyMachineryOpen, setHeavyMachineryOpen] = useState(() => {
+    return location.pathname.startsWith('/heavy-machinery')
+  })
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -285,7 +323,7 @@ export default function DashboardLayout() {
           <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-700">
             <div 
               className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => navigate(isUserAdminLike ? '/admin' : '/dashboard')}
+              onClick={() => navigate(isUserAdminLike || isAdminArea ? '/admin' : '/dashboard')}
             >
               <img 
                 src={appLogo} 
@@ -293,7 +331,7 @@ export default function DashboardLayout() {
                 className="h-10 w-10 object-contain rounded-lg"
               />
               <div>
-                <h1 className="font-bold text-sgtm-orange">SGTM</h1>
+                <h1 className="font-bold text-sgtm-orange">{t('common.companyName')}</h1>
                 <p className="text-xs text-gray-500">{t('common.appName')}</p>
               </div>
             </div>
@@ -309,7 +347,7 @@ export default function DashboardLayout() {
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-thin">
             <div className="mb-4">
               <span className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                {isUserAdminLike ? t('nav.administration') : t('nav.dashboard')}
+                {isAdminArea ? t('nav.administration') : t('nav.dashboard')}
               </span>
             </div>
             
@@ -327,6 +365,54 @@ export default function DashboardLayout() {
                 <span>{item.label}</span>
               </NavLink>
             ))}
+
+            {canAccessHeavyMachinery && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setHeavyMachineryOpen((v) => !v)}
+                  className={heavyMachineryOpen ? 'sidebar-link-active w-full justify-between' : 'sidebar-link w-full justify-between'}
+                >
+                  <span className="flex items-center gap-3">
+                    <Truck className="w-5 h-5" />
+                    <span>{t('heavyMachinery.title')}</span>
+                  </span>
+                  <ChevronDown className={heavyMachineryOpen ? 'w-4 h-4 rotate-180 transition-transform' : 'w-4 h-4 transition-transform'} />
+                </button>
+
+                {heavyMachineryOpen && (
+                  <div className="mt-1 ml-4 space-y-1">
+                    <NavLink
+                      to="/heavy-machinery/view-machines"
+                      className={({ isActive }) =>
+                        isActive ? 'sidebar-link-active' : 'sidebar-link'
+                      }
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <span>{t('heavyMachinery.viewMachines.nav')}</span>
+                    </NavLink>
+                    <NavLink
+                      to="/heavy-machinery/global-search"
+                      className={({ isActive }) =>
+                        isActive ? 'sidebar-link-active' : 'sidebar-link'
+                      }
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <span>{t('heavyMachinery.globalSearch.nav')}</span>
+                    </NavLink>
+                    <NavLink
+                      to="/heavy-machinery/expired-documentation"
+                      className={({ isActive }) =>
+                        isActive ? 'sidebar-link-active' : 'sidebar-link'
+                      }
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <span>{t('heavyMachinery.expiredDocumentation.nav')}</span>
+                    </NavLink>
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
 
           {/* Role label */}
@@ -381,28 +467,28 @@ export default function DashboardLayout() {
                       setProfileDropdownOpen(false)
                     }}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    title="Dev Tools"
+                    title={t('devTools.title')}
                   >
-                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Dev</span>
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{t('devTools.shortLabel')}</span>
                     <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                   </button>
 
                   {devToolsOpen && (
                     <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 animate-fade-in z-50">
                       <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Dev Tools</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Simulate role & project scope</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('devTools.title')}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{t('devTools.description')}</p>
                       </div>
 
                       <div className="px-4 py-3 space-y-3">
                         <div>
-                          <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Simulated role</label>
+                          <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">{t('devTools.simulatedRole')}</label>
                           <select
                             value={simulatedRole ?? ''}
                             onChange={(e) => setSimulatedRole(e.target.value || null)}
                             className="mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm"
                           >
-                            <option value="">(none)</option>
+                            <option value="">{t('devTools.none')}</option>
                             <option value="admin">admin</option>
                             <option value="hse_manager">hse_manager</option>
                             <option value="responsable">responsable</option>
@@ -417,14 +503,14 @@ export default function DashboardLayout() {
                         </div>
 
                         <div>
-                          <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Project scope</label>
+                          <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">{t('devTools.projectScope')}</label>
                           <select
                             value={projectScope}
                             onChange={(e) => setProjectScope(e.target.value)}
                             className="mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm"
                           >
                             <option value={DEV_PROJECT_SCOPE.ALL}>{t('common.allProjects')}</option>
-                            <option value={DEV_PROJECT_SCOPE.ASSIGNED}>Assigned only</option>
+                            <option value={DEV_PROJECT_SCOPE.ASSIGNED}>{t('devTools.assignedOnly')}</option>
                           </select>
                         </div>
 
@@ -437,7 +523,7 @@ export default function DashboardLayout() {
                             }}
                             className="text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
                           >
-                            Reset
+                            {t('common.reset')}
                           </button>
                         </div>
                       </div>

@@ -41,25 +41,8 @@ class WorkersExport implements FromCollection, WithHeadings, WithMapping, WithSt
             }
         }
 
-        if (!empty($this->filters['search'])) {
-            $query->search($this->filters['search']);
-        }
-
-        if (!empty($this->filters['project_id'])) {
-            $query->forProject($this->filters['project_id']);
-        }
-
-        if (!empty($this->filters['entreprise'])) {
-            $query->forEnterprise($this->filters['entreprise']);
-        }
-
-        if (!empty($this->filters['fonction'])) {
-            $query->where('fonction', 'like', '%' . $this->filters['fonction'] . '%');
-        }
-
-        if (isset($this->filters['is_active'])) {
-            $query->where('is_active', $this->filters['is_active']);
-        }
+        // Keep export aligned with the Worker Management list by reusing the exact same filter scope.
+        $query->applyFilters($this->filters);
 
         return $query->get();
     }

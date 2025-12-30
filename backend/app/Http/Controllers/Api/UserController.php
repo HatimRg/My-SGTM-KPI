@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Exports\UsersTemplateExport;
 use App\Imports\UsersImport;
 use App\Models\User;
+use App\Support\PasswordPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -71,10 +72,11 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        $role = $request->input('role');
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8',
+            'password' => PasswordPolicy::rulesForRole($role, true, false),
             'role' => 'required|in:admin,hse_manager,responsable,supervisor,hr,user,dev,pole_director,works_director,hse_director,hr_director',
             'pole' => 'nullable|string|max:255|required_if:role,pole_director',
             'phone' => 'nullable|string|max:20',
@@ -87,6 +89,7 @@ class UserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => $request->password, // Will be hashed by model mutator
+            'must_change_password' => true,
             'role' => $request->role,
             'pole' => $request->role === User::ROLE_POLE_DIRECTOR ? $request->pole : null,
             'phone' => $request->phone,
@@ -118,10 +121,11 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user)
     {
+        $role = $request->has('role') ? $request->input('role') : $user->role;
         $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => ['sometimes', 'email', Rule::unique('users')->ignore($user->id)],
-            'password' => 'nullable|string|min:8',
+            'password' => PasswordPolicy::rulesForRole($role, false, false),
             'role' => 'sometimes|in:admin,hse_manager,responsable,supervisor,hr,user,dev,pole_director,works_director,hse_director,hr_director',
             'pole' => 'nullable|string|max:255|required_if:role,pole_director',
             'phone' => 'nullable|string|max:20',
@@ -138,6 +142,7 @@ class UserController extends Controller
 
         if ($request->filled('password')) {
             $data['password'] = $request->password; // Will be hashed by model mutator
+            $data['must_change_password'] = true;
         }
 
         $user->update($data);

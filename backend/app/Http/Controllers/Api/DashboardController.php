@@ -11,6 +11,7 @@ use App\Models\AwarenessSession;
 use App\Models\SorReport;
 use App\Models\WorkPermit;
 use App\Models\Inspection;
+use App\Models\Machine;
 use App\Helpers\WeekHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -62,6 +63,10 @@ class DashboardController extends Controller
         $week = $request->get('week');
         $week = $week !== null ? (int) $week : null;
 
+        if (!$user || (!$user->isAdminLike() && !$user->isHseManager())) {
+            return $this->error('Access denied', 403);
+        }
+
         $projectIdsForPole = null;
         if ($pole !== null && $pole !== '') {
             $projectIdsForPole = Project::query()->visibleTo($user)->where('pole', $pole)->pluck('id');
@@ -97,12 +102,27 @@ class DashboardController extends Controller
         }
 
         // Overall statistics
+        $activeMachinesQuery = Machine::query()
+            ->whereNotNull('project_id')
+            ->where('is_active', true);
+        if ($projectIdsForPole !== null) {
+            if (count($projectIdsForPole) === 0) {
+                $activeMachinesQuery->whereRaw('1 = 0');
+            } else {
+                $activeMachinesQuery->whereIn('project_id', $projectIdsForPole);
+            }
+        }
+        if ($projectId) {
+            $activeMachinesQuery->where('project_id', $projectId);
+        }
+
         $stats = [
             'total_projects' => (clone $projectsBase)->count(),
             'active_projects' => (clone $projectsBase)->where('status', Project::STATUS_ACTIVE)->count(),
             'total_users' => User::count(),
             'active_users' => User::active()->count(),
             'pending_reports' => (clone $pendingReportsQuery)->count(),
+            'active_machines' => (clone $activeMachinesQuery)->count(),
             'total_reports' => (clone $totalReportsQuery)->count(),
         ];
 
@@ -724,6 +744,22 @@ class DashboardController extends Controller
 
         $projectIds = $projects->pluck('id');
 
+        $reports = KpiReport::query()
+            ->whereIn('project_id', $projectIds)
+            ->where('report_year', $year)
+            ->whereNotNull('week_number')
+            ->whereBetween('week_number', [1, 52])
+            ->get(['id', 'project_id', 'week_number', 'status']);
+
+        $reportsByWeekAndProject = [];
+        foreach ($reports as $report) {
+            $w = (int) $report->week_number;
+            $p = (int) $report->project_id;
+            if (!isset($reportsByWeekAndProject[$w][$p]) || (int) $report->id > (int) $reportsByWeekAndProject[$w][$p]->id) {
+                $reportsByWeekAndProject[$w][$p] = $report;
+            }
+        }
+
         // Pre-compute start week/year for each project
         $projectStartWeeks = [];
         foreach ($projects as $project) {
@@ -736,11 +772,6 @@ class DashboardController extends Controller
         $weeklyStatus = [];
 
         for ($w = 1; $w <= 52; $w++) {
-            $weekReports = KpiReport::whereIn('project_id', $projectIds)
-                ->where('week_number', $w)
-                ->where('report_year', $year)
-                ->get();
-
             $projectDetails = [];
 
             foreach ($projects as $project) {
@@ -755,7 +786,7 @@ class DashboardController extends Controller
                     }
                 }
 
-                $report = $weekReports->firstWhere('project_id', $project->id);
+                $report = $reportsByWeekAndProject[$w][(int) $project->id] ?? null;
                 $status = $report ? $report->status : 'not_submitted';
 
                 $projectDetails[] = [

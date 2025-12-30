@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   GraduationCap,
   ClipboardCheck,
+  Truck,
   TrendingUp,
   TrendingDown,
   ArrowUpRight,
@@ -581,10 +582,10 @@ export default function AdminDashboard() {
           color="green"
         />
         <StatCard
-          title={t('dashboard.pendingReports')}
-          value={stats.pending_reports ?? 0}
-          subtitle={t('dashboard.awaitingApproval')}
-          icon={ClipboardCheck}
+          title={t('dashboard.activeMachines')}
+          value={stats.active_machines ?? 0}
+          subtitle={t('dashboard.activeMachinesSubtitle')}
+          icon={Truck}
           color="amber"
         />
         <StatCard

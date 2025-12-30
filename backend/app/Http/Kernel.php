@@ -8,6 +8,7 @@ class Kernel extends HttpKernel
 {
     protected $middleware = [
         // \App\Http\Middleware\SecurityMonitor::class,
+        \App\Http\Middleware\TrustProxies::class,
         \App\Http\Middleware\SecurityHeaders::class,
         \Fruitcake\Cors\HandleCors::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
@@ -42,6 +43,7 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'admin' => \App\Http\Middleware\AdminMiddleware::class,
+        'heavy_machinery_access' => \App\Http\Middleware\HeavyMachineryAccessMiddleware::class,
         'cache.api' => \App\Http\Middleware\CacheApiResponse::class,
         'compress' => \App\Http\Middleware\CompressResponse::class,
     ];

@@ -8,11 +8,107 @@ use App\Models\SorReport;
 use App\Models\Project;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 
 class SorReportController extends Controller
 {
+    private function storeOptimizedSorPhoto(UploadedFile $image, int $reportId, string $kind): string
+    {
+        $dir = 'sor-photos';
+        $filename = "SOR_{$reportId}_{$kind}.jpg";
+        $path = "{$dir}/{$filename}";
+
+        if (!function_exists('imagecreatetruecolor')) {
+            $ext = strtolower($image->getClientOriginalExtension() ?: 'jpg');
+            $filenameRaw = "SOR_{$reportId}_{$kind}.{$ext}";
+            return $image->storeAs($dir, $filenameRaw, 'public');
+        }
+
+        $ext = strtolower($image->getClientOriginalExtension() ?: 'jpg');
+        $src = null;
+        try {
+            if (in_array($ext, ['jpg', 'jpeg'], true) && function_exists('imagecreatefromjpeg')) {
+                $src = @imagecreatefromjpeg($image->getRealPath());
+            } elseif ($ext === 'png' && function_exists('imagecreatefrompng')) {
+                $src = @imagecreatefrompng($image->getRealPath());
+            } elseif ($ext === 'webp' && function_exists('imagecreatefromwebp')) {
+                $src = @imagecreatefromwebp($image->getRealPath());
+            }
+
+            if (!$src) {
+                $extFallback = strtolower($image->getClientOriginalExtension() ?: 'jpg');
+                $filenameRaw = "SOR_{$reportId}_{$kind}.{$extFallback}";
+                return $image->storeAs($dir, $filenameRaw, 'public');
+            }
+
+            $w = imagesx($src);
+            $h = imagesy($src);
+            $maxW = 1280;
+            $maxH = 1280;
+            $scale = min($maxW / max(1, $w), $maxH / max(1, $h), 1);
+            $newW = (int) max(1, round($w * $scale));
+            $newH = (int) max(1, round($h * $scale));
+
+            if ($newW !== $w || $newH !== $h) {
+                $dst = imagecreatetruecolor($newW, $newH);
+                imagecopyresampled($dst, $src, 0, 0, 0, 0, $newW, $newH, $w, $h);
+                imagedestroy($src);
+                $src = $dst;
+            }
+
+            ob_start();
+            imagejpeg($src, null, 80);
+            $jpeg = ob_get_clean();
+            imagedestroy($src);
+
+            Storage::disk('public')->put($path, $jpeg);
+            return $path;
+        } catch (\Throwable $e) {
+            if (is_resource($src) || (class_exists('GdImage') && $src instanceof \GdImage)) {
+                @imagedestroy($src);
+            }
+            $extFallback = strtolower($image->getClientOriginalExtension() ?: 'jpg');
+            $filenameRaw = "SOR_{$reportId}_{$kind}.{$extFallback}";
+            return $image->storeAs($dir, $filenameRaw, 'public');
+        }
+    }
+
+    private function streamPublicFileWithCache(Request $request, string $path): \Illuminate\Http\Response
+    {
+        if (!Storage::disk('public')->exists($path)) {
+            abort(404, 'File not found');
+        }
+
+        $disk = Storage::disk('public');
+        $filename = basename($path);
+        $mime = $disk->mimeType($path) ?: 'application/octet-stream';
+        $etag = '"' . sha1($path . '|' . $disk->lastModified($path) . '|' . $disk->size($path)) . '"';
+
+        if ((string) $request->header('If-None-Match') === $etag) {
+            return response('', 304, [
+                'ETag' => $etag,
+                'Cache-Control' => 'private, max-age=31536000, immutable',
+            ]);
+        }
+
+        return response()->stream(function () use ($path) {
+            $stream = Storage::disk('public')->readStream($path);
+            if ($stream === false) {
+                return;
+            }
+            fpassthru($stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }, 200, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            'Cache-Control' => 'private, max-age=31536000, immutable',
+            'ETag' => $etag,
+        ]);
+    }
     /**
      * Get all SOR reports with filters
      */
@@ -123,23 +219,7 @@ class SorReportController extends Controller
             abort(404, 'File not found');
         }
 
-        $path = $sorReport->photo_path;
-        $filename = basename($path);
-        $mime = Storage::disk('public')->mimeType($path) ?: 'application/octet-stream';
-
-        return response()->stream(function () use ($path) {
-            $stream = Storage::disk('public')->readStream($path);
-            if ($stream === false) {
-                return;
-            }
-            fpassthru($stream);
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
-        }, 200, [
-            'Content-Type' => $mime,
-            'Content-Disposition' => 'inline; filename="' . $filename . '"',
-        ]);
+        return $this->streamPublicFileWithCache($request, $sorReport->photo_path);
     }
 
     public function viewCorrectivePhoto(Request $request, SorReport $sorReport)
@@ -155,23 +235,7 @@ class SorReportController extends Controller
             abort(404, 'File not found');
         }
 
-        $path = $sorReport->corrective_action_photo_path;
-        $filename = basename($path);
-        $mime = Storage::disk('public')->mimeType($path) ?: 'application/octet-stream';
-
-        return response()->stream(function () use ($path) {
-            $stream = Storage::disk('public')->readStream($path);
-            if ($stream === false) {
-                return;
-            }
-            fpassthru($stream);
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
-        }, 200, [
-            'Content-Type' => $mime,
-            'Content-Disposition' => 'inline; filename="' . $filename . '"',
-        ]);
+        return $this->streamPublicFileWithCache($request, $sorReport->corrective_action_photo_path);
     }
 
     /**
@@ -262,18 +326,14 @@ class SorReportController extends Controller
         // Handle problem photo upload
         if ($request->hasFile('photo')) {
             $photo = $request->file('photo');
-            $extension = $photo->getClientOriginalExtension();
-            $filename = "SOR_{$report->id}_{$projectCode}_problem_" . date('Ymd') . ".{$extension}";
-            $path = $photo->storeAs('sor-photos', $filename, 'public');
+            $path = $this->storeOptimizedSorPhoto($photo, (int) $report->id, 'problem');
             $report->update(['photo_path' => $path]);
         }
 
         // Handle corrective action photo upload
         if ($request->hasFile('corrective_action_photo')) {
             $photo = $request->file('corrective_action_photo');
-            $extension = $photo->getClientOriginalExtension();
-            $filename = "SOR_{$report->id}_{$projectCode}_corrective_" . date('Ymd') . ".{$extension}";
-            $path = $photo->storeAs('sor-photos', $filename, 'public');
+            $path = $this->storeOptimizedSorPhoto($photo, (int) $report->id, 'corrective');
             $report->update(['corrective_action_photo_path' => $path]);
         }
 
@@ -330,11 +390,7 @@ class SorReportController extends Controller
             }
             
             $photo = $request->file('corrective_action_photo');
-            $extension = $photo->getClientOriginalExtension();
-            $project = $sorReport->project;
-            $projectCode = $project ? preg_replace('/[^a-zA-Z0-9]/', '_', $project->code ?? $project->name) : 'unknown';
-            $filename = "SOR_{$sorReport->id}_{$projectCode}_corrective_" . date('Ymd_His') . ".{$extension}";
-            $path = $photo->storeAs('sor-photos', $filename, 'public');
+            $path = $this->storeOptimizedSorPhoto($photo, (int) $sorReport->id, 'corrective');
             $validated['corrective_action_photo_path'] = $path;
         }
 
@@ -409,16 +465,7 @@ class SorReportController extends Controller
             }
             
             $photo = $request->file('photo');
-            $extension = $photo->getClientOriginalExtension();
-            $project = $sorReport->project;
-            $projectCode = $project ? preg_replace('/[^a-zA-Z0-9]/', '_', $project->code ?? $project->name) : 'unknown';
-            $date = date('Ymd_His');
-            
-            // Create filename: SOR_{ID}_{PROJECT}_{DATE}.{ext}
-            $filename = "SOR_{$sorReport->id}_{$projectCode}_{$date}.{$extension}";
-            
-            // Store in public/sor-photos directory
-            $path = $photo->storeAs('sor-photos', $filename, 'public');
+            $path = $this->storeOptimizedSorPhoto($photo, (int) $sorReport->id, 'problem');
             $validated['photo_path'] = $path;
         }
 
@@ -430,13 +477,7 @@ class SorReportController extends Controller
             }
 
             $photo = $request->file('corrective_action_photo');
-            $extension = $photo->getClientOriginalExtension();
-            $project = $sorReport->project;
-            $projectCode = $project ? preg_replace('/[^a-zA-Z0-9]/', '_', $project->code ?? $project->name) : 'unknown';
-            $date = date('Ymd_His');
-
-            $filename = "SOR_{$sorReport->id}_{$projectCode}_corrective_{$date}.{$extension}";
-            $path = $photo->storeAs('sor-photos', $filename, 'public');
+            $path = $this->storeOptimizedSorPhoto($photo, (int) $sorReport->id, 'corrective');
             $validated['corrective_action_photo_path'] = $path;
         }
 

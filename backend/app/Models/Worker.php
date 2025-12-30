@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\WorkerTraining;
+use App\Models\WorkerQualification;
+use App\Models\WorkerMedicalAptitude;
 
 class Worker extends Model
 {
@@ -22,6 +24,7 @@ class Worker extends Model
         'is_active',
         'created_by',
         'updated_by',
+        'image_path',
     ];
 
     protected $casts = [
@@ -69,6 +72,16 @@ class Worker extends Model
         return $this->hasMany(WorkerTraining::class);
     }
 
+    public function qualifications()
+    {
+        return $this->hasMany(WorkerQualification::class);
+    }
+
+    public function medicalAptitudes()
+    {
+        return $this->hasMany(WorkerMedicalAptitude::class);
+    }
+
     /**
      * Scope for active workers
      */
@@ -113,6 +126,162 @@ class Worker extends Model
               ->orWhere('fonction', 'like', "%{$search}%")
               ->orWhere('entreprise', 'like', "%{$search}%");
         });
+    }
+
+    /**
+     * Apply the Worker Management filters to a query.
+     *
+     * This is used by the list, statistics, and export endpoints so they all stay consistent.
+     *
+     * Supported filters (array keys):
+     * - visible_project_ids: array<int>
+     * - search, project_id, pole, entreprise, fonction, is_active
+     * - training_type, training_label, training_presence (has|missing), training_expiry (any|valid|expired)
+     * - qualification_type, qualification_presence (has|missing), qualification_expiry (any|valid|expired)
+     * - medical_presence (has|missing), medical_status (apte|inapte|any), medical_expiry (any|valid|expired)
+     * - expired_filter (any|only_expired|without_expired): checks expiry across trainings/qualifications/medical.
+     */
+    public function scopeApplyFilters($query, array $filters)
+    {
+        $today = now()->startOfDay();
+
+        // Project visibility scoping (directors / assigned-only users)
+        if (array_key_exists('visible_project_ids', $filters) && is_array($filters['visible_project_ids'])) {
+            $ids = $filters['visible_project_ids'];
+            if (count($ids) === 0) {
+                return $query->whereRaw('1=0');
+            }
+            $query->whereIn('project_id', $ids);
+        }
+
+        // Basic filters
+        if (!empty($filters['search'])) {
+            $query->search($filters['search']);
+        }
+
+        if (!empty($filters['project_id'])) {
+            $query->forProject($filters['project_id']);
+        }
+
+        if (($pole = $filters['pole'] ?? null) !== null && $pole !== '') {
+            $query->whereHas('project', function ($q) use ($pole) {
+                $q->where('pole', $pole);
+            });
+        }
+
+        if (!empty($filters['entreprise'])) {
+            $query->forEnterprise($filters['entreprise']);
+        }
+
+        if (!empty($filters['fonction'])) {
+            $query->where('fonction', 'like', '%' . $filters['fonction'] . '%');
+        }
+
+        if (array_key_exists('is_active', $filters) && $filters['is_active'] !== null) {
+            $query->where('is_active', (bool) $filters['is_active']);
+        }
+
+        // Trainings filter (by training_type and optional label)
+        if (!empty($filters['training_type'])) {
+            $type = (string) $filters['training_type'];
+            $label = (string) ($filters['training_label'] ?? '');
+            $presence = (string) ($filters['training_presence'] ?? 'has');
+            $expiry = (string) ($filters['training_expiry'] ?? 'any');
+
+            $trainingConstraint = function ($q) use ($type, $label, $expiry, $today) {
+                $q->where('training_type', $type);
+                if ($label !== '') {
+                    $q->where('training_label', $label);
+                }
+                if ($expiry === 'valid') {
+                    $q->where(function ($d) use ($today) {
+                        $d->whereNull('expiry_date')->orWhere('expiry_date', '>=', $today);
+                    });
+                } elseif ($expiry === 'expired') {
+                    $q->whereNotNull('expiry_date')->where('expiry_date', '<', $today);
+                }
+            };
+
+            if ($presence === 'missing') {
+                $query->whereDoesntHave('trainings', $trainingConstraint);
+            } else {
+                $query->whereHas('trainings', $trainingConstraint);
+            }
+        }
+
+        // Qualifications filter
+        if (!empty($filters['qualification_type'])) {
+            $type = (string) $filters['qualification_type'];
+            $presence = (string) ($filters['qualification_presence'] ?? 'has');
+            $expiry = (string) ($filters['qualification_expiry'] ?? 'any');
+
+            $qualificationConstraint = function ($q) use ($type, $expiry, $today) {
+                $q->where('qualification_type', $type);
+                if ($expiry === 'valid') {
+                    $q->where(function ($d) use ($today) {
+                        $d->whereNull('expiry_date')->orWhere('expiry_date', '>=', $today);
+                    });
+                } elseif ($expiry === 'expired') {
+                    $q->whereNotNull('expiry_date')->where('expiry_date', '<', $today);
+                }
+            };
+
+            if ($presence === 'missing') {
+                $query->whereDoesntHave('qualifications', $qualificationConstraint);
+            } else {
+                $query->whereHas('qualifications', $qualificationConstraint);
+            }
+        }
+
+        // Medical aptitude filter
+        if (!empty($filters['medical_presence'])) {
+            $presence = (string) $filters['medical_presence'];
+            $status = (string) ($filters['medical_status'] ?? 'any');
+            $expiry = (string) ($filters['medical_expiry'] ?? 'any');
+
+            $medicalConstraint = function ($q) use ($status, $expiry, $today) {
+                if ($status === 'apte' || $status === 'inapte') {
+                    $q->where('aptitude_status', $status);
+                }
+                if ($expiry === 'valid') {
+                    $q->where(function ($d) use ($today) {
+                        $d->whereNull('expiry_date')->orWhere('expiry_date', '>=', $today);
+                    });
+                } elseif ($expiry === 'expired') {
+                    $q->whereNotNull('expiry_date')->where('expiry_date', '<', $today);
+                }
+            };
+
+            if ($presence === 'missing') {
+                $query->whereDoesntHave('medicalAptitudes', $medicalConstraint);
+            } else {
+                $query->whereHas('medicalAptitudes', $medicalConstraint);
+            }
+        }
+
+        // Independent expired filter (any expired record in trainings/qualifications/medical)
+        $expiredFilter = (string) ($filters['expired_filter'] ?? 'any');
+        if ($expiredFilter === 'only_expired') {
+            $query->where(function ($q) use ($today) {
+                $q->whereHas('trainings', function ($t) use ($today) {
+                    $t->whereNotNull('expiry_date')->where('expiry_date', '<', $today);
+                })->orWhereHas('qualifications', function ($t) use ($today) {
+                    $t->whereNotNull('expiry_date')->where('expiry_date', '<', $today);
+                })->orWhereHas('medicalAptitudes', function ($t) use ($today) {
+                    $t->whereNotNull('expiry_date')->where('expiry_date', '<', $today);
+                });
+            });
+        } elseif ($expiredFilter === 'without_expired') {
+            $query->whereDoesntHave('trainings', function ($t) use ($today) {
+                $t->whereNotNull('expiry_date')->where('expiry_date', '<', $today);
+            })->whereDoesntHave('qualifications', function ($t) use ($today) {
+                $t->whereNotNull('expiry_date')->where('expiry_date', '<', $today);
+            })->whereDoesntHave('medicalAptitudes', function ($t) use ($today) {
+                $t->whereNotNull('expiry_date')->where('expiry_date', '<', $today);
+            });
+        }
+
+        return $query;
     }
 
     /**

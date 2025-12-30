@@ -4,6 +4,7 @@ import { useLanguage } from '../i18n'
 import { useAuthStore } from '../store/authStore'
 import ConfirmDialog from './ui/ConfirmDialog'
 import Select from './ui/Select'
+import PasswordStrength, { checkPasswordAgainstPolicy, getPasswordPolicy } from './ui/PasswordStrength'
 import {
   Users,
   UserPlus,
@@ -27,9 +28,9 @@ export default function MemberManagement({ projectId, projectName }) {
 
   const creatableRoles =
     currentUser?.role === 'hse_manager'
-      ? ['responsable', 'supervisor']
+      ? ['responsable', 'supervisor', 'user']
       : currentUser?.role === 'responsable'
-        ? ['supervisor']
+        ? ['supervisor', 'user']
         : ['supervisor']
   
   // Combined members list
@@ -223,6 +224,15 @@ export default function MemberManagement({ projectId, projectName }) {
 
   const handleSubmitCreate = async (e) => {
     e.preventDefault()
+
+    if (formData.password) {
+      const policy = getPasswordPolicy(formData.role)
+      if (!checkPasswordAgainstPolicy(formData.password, policy).ok) {
+        toast.error(t('auth.passwordPolicy.invalid'))
+        return
+      }
+    }
+
     setSaving(true)
 
     try {
@@ -640,8 +650,9 @@ export default function MemberManagement({ projectId, projectName }) {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="input"
                   {...(!editingMember && { required: true })}
-                  minLength={8}
+                  minLength={getPasswordPolicy(formData.role).minLength}
                 />
+                <PasswordStrength password={formData.password} role={formData.role} />
               </div>
 
               {!editingMember && (

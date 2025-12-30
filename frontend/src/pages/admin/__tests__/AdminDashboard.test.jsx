@@ -33,6 +33,7 @@ const mockDashboardData = {
         total_users: 25,
         active_users: 20,
         pending_reports: 5,
+        active_machines: 12,
         total_reports: 100,
       },
       kpi_summary: {

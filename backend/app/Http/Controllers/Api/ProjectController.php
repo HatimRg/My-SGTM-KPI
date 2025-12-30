@@ -358,8 +358,7 @@ class ProjectController extends Controller
             return $this->error('Unauthorized', 401);
         }
         
-        // Check if user is admin or responsable for this project
-        if (!$user->isAdminLike() && !$user->isResponsable()) {
+        if (!$user->isAdminLike() && !$user->isResponsable() && !$user->isHseManager()) {
             return $this->error('Unauthorized', 403);
         }
 
@@ -394,7 +393,7 @@ class ProjectController extends Controller
             return $this->error('Unauthorized', 401);
         }
         
-        if (!$user->isAdminLike() && !$user->isResponsable()) {
+        if (!$user->isAdminLike() && !$user->isResponsable() && !$user->isHseManager()) {
             return $this->error('Unauthorized', 403);
         }
 
@@ -431,7 +430,7 @@ class ProjectController extends Controller
             return $this->error('Unauthorized', 401);
         }
         
-        if (!$user->isAdminLike() && !$user->isResponsable()) {
+        if (!$user->isAdminLike() && !$user->isResponsable() && !$user->isHseManager()) {
             return $this->error('Unauthorized', 403);
         }
 

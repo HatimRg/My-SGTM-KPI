@@ -9,7 +9,6 @@ import Modal from '../../components/ui/Modal'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
 import {
   Search,
-  HardHat,
   PlusCircle,
   FileText,
   AlertTriangle,
@@ -17,6 +16,7 @@ import {
   Loader2,
   Download,
   Filter,
+  Users,
   X,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -76,6 +76,12 @@ export default function QualifiedPersonnel() {
   const [trainings, setTrainings] = useState([])
   const [loadingTrainings, setLoadingTrainings] = useState(false)
 
+  const [overviewTrainings, setOverviewTrainings] = useState([])
+  const [loadingOverviewTrainings, setLoadingOverviewTrainings] = useState(false)
+  const [overviewPage, setOverviewPage] = useState(1)
+  const [overviewTotalPages, setOverviewTotalPages] = useState(1)
+  const [overviewTotalResults, setOverviewTotalResults] = useState(0)
+
   const [trainingType, setTrainingType] = useState('')
   const [trainingLabel, setTrainingLabel] = useState('')
   const [trainingDate, setTrainingDate] = useState('')
@@ -83,11 +89,17 @@ export default function QualifiedPersonnel() {
   const [certificateFile, setCertificateFile] = useState(null)
   const [savingTraining, setSavingTraining] = useState(false)
 
+  const [addTrainingOpen, setAddTrainingOpen] = useState(false)
+  const [workersModalOpen, setWorkersModalOpen] = useState(false)
+
   const [activeCertificate, setActiveCertificate] = useState(null)
 
   const [showExpiring, setShowExpiring] = useState(false)
   const [expiringTrainings, setExpiringTrainings] = useState([])
   const [loadingExpiring, setLoadingExpiring] = useState(false)
+  const [expiringPage, setExpiringPage] = useState(1)
+  const [expiringTotalPages, setExpiringTotalPages] = useState(1)
+  const [expiringTotalResults, setExpiringTotalResults] = useState(0)
 
   const isExpiryBeforeTraining =
     trainingDate && expiryDate && typeof trainingDate === 'string' && typeof expiryDate === 'string'
@@ -124,6 +136,16 @@ export default function QualifiedPersonnel() {
           const payload = res.data
           const worker = payload.data ?? payload
           setSelectedWorker(worker)
+
+          const label =
+            (worker?.full_name && String(worker.full_name).trim()) ||
+            `${worker?.prenom ?? ''} ${worker?.nom ?? ''}`.trim() ||
+            (worker?.cin && String(worker.cin).trim()) ||
+            ''
+          if (label) {
+            setSearchTerm(label)
+            setWorkersPage(1)
+          }
         })
         .catch((error) => {
           console.error('Failed to load worker for qualified personnel deep-link', error)
@@ -134,6 +156,12 @@ export default function QualifiedPersonnel() {
   useEffect(() => {
     fetchWorkers()
   }, [selectedProject, searchTerm, workerFilterTrainingType, workerFilterTrainingLabel, workersPage])
+
+  useEffect(() => {
+    if (!showExpiring) {
+      fetchOverviewTrainings()
+    }
+  }, [selectedProject, searchTerm, workerFilterTrainingType, workerFilterTrainingLabel, overviewPage, showExpiring])
 
   useEffect(() => {
     const fetchOtherLabels = async () => {
@@ -165,7 +193,7 @@ export default function QualifiedPersonnel() {
     if (showExpiring) {
       fetchExpiringTrainings()
     }
-  }, [showExpiring])
+  }, [showExpiring, expiringPage, selectedProject, searchTerm, workerFilterTrainingType, workerFilterTrainingLabel])
 
   const fetchWorkers = async () => {
     try {
@@ -195,14 +223,42 @@ export default function QualifiedPersonnel() {
       setWorkers(items)
       setWorkersTotalPages(meta.last_page ?? 1)
       setWorkersTotalResults(meta.total ?? items.length)
-      if (!selectedWorker && items.length > 0) {
-        setSelectedWorker(items[0])
-      }
     } catch (error) {
       console.error('Failed to load workers for qualified personnel', error)
       toast.error(t('errors.somethingWentWrong') ?? 'Failed to load workers')
     } finally {
       setLoadingWorkers(false)
+    }
+  }
+
+  const fetchOverviewTrainings = async () => {
+    try {
+      setLoadingOverviewTrainings(true)
+      const params = {
+        page: overviewPage,
+        per_page: 25,
+      }
+      if (selectedProject) params.project_id = selectedProject
+      if (searchTerm) params.search = searchTerm
+      if (workerFilterTrainingType) params.training_type = workerFilterTrainingType
+      if (workerFilterTrainingType === 'other' && workerFilterTrainingLabel) {
+        params.training_label = workerFilterTrainingLabel
+      }
+
+      const res = await workerTrainingService.getAll(params)
+      const payload = res.data
+      const data = payload.data ?? payload
+      const items = Array.isArray(data) ? data : (data.data ?? [])
+      const meta = payload.meta ?? data.meta ?? data
+
+      setOverviewTrainings(items)
+      setOverviewTotalPages(meta.last_page ?? 1)
+      setOverviewTotalResults(meta.total ?? items.length)
+    } catch (error) {
+      console.error('Failed to load overview worker trainings', error)
+      toast.error(t('errors.somethingWentWrong') ?? 'Failed to load trainings')
+    } finally {
+      setLoadingOverviewTrainings(false)
     }
   }
 
@@ -232,13 +288,23 @@ export default function QualifiedPersonnel() {
       const params = {
         status: 'expiring_or_expired',
         for_my_projects: true,
-        per_page: 100,
+        page: expiringPage,
+        per_page: 25,
+      }
+      if (selectedProject) params.project_id = selectedProject
+      if (searchTerm) params.search = searchTerm
+      if (workerFilterTrainingType) params.training_type = workerFilterTrainingType
+      if (workerFilterTrainingType === 'other' && workerFilterTrainingLabel) {
+        params.training_label = workerFilterTrainingLabel
       }
       const res = await workerTrainingService.getAll(params)
       const payload = res.data
       const data = payload.data ?? payload
       const items = Array.isArray(data) ? data : (data.data ?? [])
+      const meta = payload.meta ?? data.meta ?? data
       setExpiringTrainings(items)
+      setExpiringTotalPages(meta.last_page ?? 1)
+      setExpiringTotalResults(meta.total ?? items.length)
     } catch (error) {
       console.error('Failed to load expiring trainings', error)
       toast.error(t('errors.somethingWentWrong') ?? 'Failed to load trainings')
@@ -291,9 +357,12 @@ export default function QualifiedPersonnel() {
       setCertificateFile(null)
 
       fetchWorkerTrainings(selectedWorker.id)
+      fetchOverviewTrainings()
       if (showExpiring) {
         fetchExpiringTrainings()
       }
+
+      setAddTrainingOpen(false)
     } catch (error) {
       console.error('Failed to save worker training', error)
       const message = error.response?.data?.message ?? t('errors.somethingWentWrong') ?? 'Failed to save training'
@@ -342,6 +411,17 @@ export default function QualifiedPersonnel() {
     return workerFilterTrainingType
   }
 
+  const filteredOverviewTrainings = useMemo(() => {
+    const list = Array.isArray(overviewTrainings) ? overviewTrainings : []
+    if (!workerFilterTrainingType) return list
+    if (workerFilterTrainingType === 'other' && workerFilterTrainingLabel) {
+      return list.filter(
+        (tr) => tr.training_type === 'other' && (tr.training_label ?? '') === workerFilterTrainingLabel
+      )
+    }
+    return list.filter((tr) => tr.training_type === workerFilterTrainingType)
+  }, [overviewTrainings, workerFilterTrainingType, workerFilterTrainingLabel])
+
   const hasWorkersFilters = Boolean(
     selectedProject ||
     searchTerm ||
@@ -349,48 +429,91 @@ export default function QualifiedPersonnel() {
     workerFilterTrainingLabel
   )
 
+  const resetWorkerFilters = () => {
+    setSelectedProject('')
+    setSearchTerm('')
+    setWorkerFilterTrainingType('')
+    setWorkerFilterTrainingLabel('')
+    setWorkersPage(1)
+    setOverviewPage(1)
+    setExpiringPage(1)
+    setSelectedWorker(null)
+  }
+
+  const selectedProjectLabel = useMemo(() => {
+    if (!selectedProject) return ''
+    const p = sortedProjects.find((x) => String(x.id) === String(selectedProject))
+    return p ? getProjectLabel(p) : ''
+  }, [selectedProject, sortedProjects])
+
+  const trainingsShownLabel = useMemo(() => {
+    if (showExpiring) {
+      return `${expiringTrainings.length} / ${expiringTotalResults}`
+    }
+    return `${filteredOverviewTrainings.length} / ${overviewTotalResults}`
+  }, [showExpiring, expiringTrainings.length, expiringTotalResults, filteredOverviewTrainings.length, overviewTotalResults])
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
+    <div className="space-y-4 animate-fade-in">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div className="min-w-0">
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
             {t('nav.dashboard')} / {t('qualifiedPersonnel.navLabel')}
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">
             {t('qualifiedPersonnel.pageTitle')}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             {t('qualifiedPersonnel.pageSubtitle')}
           </p>
         </div>
+
         <div className="flex flex-wrap gap-2 items-center">
           <button
             type="button"
-            onClick={() => setShowExpiring((prev) => !prev)}
-            className="btn-outline btn-sm flex items-center gap-2"
+            onClick={() => {
+              setShowExpiring((prev) => !prev)
+              setExpiringPage(1)
+            }}
+            className={`btn-sm flex items-center gap-2 ${showExpiring ? 'btn-primary' : 'btn-outline'}`}
           >
-            <AlertTriangle className="w-4 h-4 text-amber-500" />
+            <AlertTriangle className={`w-4 h-4 ${showExpiring ? 'text-white' : 'text-amber-500'}`} />
             {showExpiring
               ? t('qualifiedPersonnel.viewAllButton')
               : t('qualifiedPersonnel.viewExpiringButton')}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setWorkersModalOpen(true)}
+            className="btn-outline btn-sm flex items-center gap-2"
+          >
+            <Users className="w-4 h-4" />
+            {t('qualifiedPersonnel.workerCardTitle')}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAddTrainingOpen(true)}
+            className="btn-primary btn-sm flex items-center gap-2"
+          >
+            <PlusCircle className="w-4 h-4" />
+            {t('qualifiedPersonnel.addTrainingTitle')}
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="space-y-4 lg:col-span-1">
-          <div className="card p-3 space-y-3">
-            <div className="flex items-center gap-2">
-              <HardHat className="w-5 h-5 text-hse-primary" />
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                {t('qualifiedPersonnel.workerCardTitle')}
-              </h2>
-            </div>
+      <div className="card p-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div>
+            <label className="label text-xs">{t('common.project')}</label>
             <Select
               value={selectedProject}
               onChange={(e) => {
                 setSelectedProject(e.target.value)
                 setWorkersPage(1)
+                setOverviewPage(1)
+                setExpiringPage(1)
                 setSelectedWorker(null)
                 setWorkerFilterTrainingLabel('')
               }}
@@ -402,7 +525,10 @@ export default function QualifiedPersonnel() {
                 </option>
               ))}
             </Select>
+          </div>
 
+          <div>
+            <label className="label text-xs">{t('qualifiedPersonnel.trainingType')}</label>
             <Select
               value={getTrainingFilterValue()}
               onChange={(e) => {
@@ -418,7 +544,7 @@ export default function QualifiedPersonnel() {
                   setWorkerFilterTrainingLabel('')
                 }
                 setWorkersPage(1)
-                setSelectedWorker(null)
+                setOverviewPage(1)
               }}
               className="py-1.5 text-sm"
             >
@@ -438,6 +564,10 @@ export default function QualifiedPersonnel() {
                 </optgroup>
               )}
             </Select>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="label text-xs">{t('common.search')}</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
@@ -446,442 +576,629 @@ export default function QualifiedPersonnel() {
                 onChange={(e) => {
                   setSearchTerm(e.target.value)
                   setWorkersPage(1)
+                  setOverviewPage(1)
                   setSelectedWorker(null)
                 }}
                 placeholder={t('qualifiedPersonnel.filters.searchPlaceholder')}
                 className="input pl-9 py-1.5 text-sm"
               />
             </div>
-
-            {hasWorkersFilters && (
-              <div className="text-[11px] text-gray-500 dark:text-gray-400">
-                {t('qualifiedPersonnel.filters.resultsCount', { count: workersTotalResults })}
-              </div>
-            )}
-          </div>
-
-          <div className="card p-3 max-h-[520px] overflow-y-auto">
-            {loadingWorkers ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-5 h-5 animate-spin text-hse-primary" />
-              </div>
-            ) : workers.length === 0 ? (
-              <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-4">
-                {t('workers.noWorkers')}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {workers.map((worker) => {
-                  const isSelected = selectedWorker?.id === worker.id
-                  return (
-                    <button
-                      key={worker.id}
-                      type="button"
-                      onClick={() => handleSelectWorker(worker)}
-                      className={`w-full text-left border rounded-lg px-3 py-2 text-xs transition-colors ${
-                        isSelected
-                          ? 'border-hse-primary bg-hse-primary/5'
-                          : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                            {worker.prenom} {worker.nom}
-                          </p>
-                          <p className="text-[11px] text-gray-500 dark:text-gray-400 font-mono">
-                            {worker.cin?.toUpperCase()}
-                          </p>
-                        </div>
-                        <div className="text-right text-[11px] text-gray-500 dark:text-gray-400">
-                          <p className="truncate max-w-[120px]">
-                            {worker.fonction ?? ''}
-                          </p>
-                          <p className="truncate max-w-[120px]">
-                            {worker.project?.name ?? ''}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-
-            {workersTotalPages > 1 && (
-              <div className="mt-3 flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
-                <span>
-                  {t('common.page')} {workersPage} {t('common.of')} {workersTotalPages}
-                </span>
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setWorkersPage((p) => Math.max(1, p - 1))}
-                    disabled={workersPage === 1}
-                    className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {t('common.previous')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWorkersPage((p) => Math.min(workersTotalPages, p + 1))}
-                    disabled={workersPage === workersTotalPages}
-                    className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {t('common.next')}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
-        <div className="space-y-4 lg:col-span-2">
-          {selectedWorker ? (
-            <>
-              <div className="card p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-hse-primary/10 flex items-center justify-center">
-                    <HardHat className="w-5 h-5 text-hse-primary" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900 dark:text-gray-100">
-                      {selectedWorker.prenom} {selectedWorker.nom}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                      {selectedWorker.cin?.toUpperCase()}
-                    </p>
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-                      {selectedWorker.fonction ?? ''} · {selectedWorker.entreprise ?? ''} ·{' '}
-                      {selectedWorker.project?.name ?? ''}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedWorker(null)}
-                  className="btn-outline btn-sm flex items-center gap-2"
-                  title={t('common.unselect')}
-                >
-                  <X className="w-4 h-4" />
-                  {t('common.unselect')}
-                </button>
+        <div className="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2">
+              <div className="text-[11px] text-gray-500 dark:text-gray-400">{t('workers.title')}</div>
+              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {workersTotalResults}
               </div>
-
-              <div className="card p-4 space-y-4 overflow-visible">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <PlusCircle className="w-4 h-4 text-hse-primary" />
-                    <h2 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                      {t('qualifiedPersonnel.addTrainingTitle')}
-                    </h2>
-                  </div>
-                </div>
-
-                <form onSubmit={handleSaveTraining} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
-                      <label className="label text-xs">
-                        {t('qualifiedPersonnel.trainingType')}
-                      </label>
-                      <Select
-                        value={trainingType}
-                        onChange={(e) => setTrainingType(e.target.value)}
-                      >
-                        <option value="">{t('common.select')}</option>
-                        {TRAINING_TYPES.map((type) => (
-                          <option key={type.value} value={type.value}>
-                            {t(type.labelKey)}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="label text-xs">
-                        {t('qualifiedPersonnel.trainingDate')}
-                      </label>
-                      <DatePicker
-                        value={trainingDate}
-                        onChange={setTrainingDate}
-                        placeholder={t('qualifiedPersonnel.trainingDate')}
-                      />
-                    </div>
-                    <div>
-                      <label className="label text-xs">
-                        {t('qualifiedPersonnel.expiryDate')}
-                      </label>
-                      <DatePicker
-                        value={expiryDate}
-                        onChange={setExpiryDate}
-                        placeholder={t('qualifiedPersonnel.expiryDate')}
-                      />
-                    </div>
-                  </div>
-
-                  {trainingType === 'other' && (
-                    <div>
-                      <label className="label text-xs">
-                        {t('qualifiedPersonnel.trainingLabel')}
-                      </label>
-                      <input
-                        type="text"
-                        value={trainingLabel}
-                        onChange={(e) => setTrainingLabel(e.target.value)}
-                        className="input"
-                      />
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="label text-xs">
-                      {t('qualifiedPersonnel.certificate')}
-                    </label>
-                    <label className="flex items-center justify-between border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-xs cursor-pointer hover:border-hse-primary hover:bg-hse-primary/5">
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-700 dark:text-gray-200">
-                          {certificateFile
-                            ? certificateFile.name
-                            : t('qualifiedPersonnel.chooseFile')}
-                        </span>
-                      </div>
-                      <input
-                        type="file"
-                        accept="application/pdf"
-                        onChange={handleCertificateChange}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <button
-                      type="submit"
-                      disabled={
-                        savingTraining ||
-                        !trainingType ||
-                        !trainingDate ||
-                        (trainingType === 'other' && !trainingLabel.trim()) ||
-                        isExpiryBeforeTraining
-                      }
-                      className="btn-primary flex items-center gap-2 text-sm"
-                    >
-                      {savingTraining && <Loader2 className="w-4 h-4 animate-spin" />}
-                      {t('qualifiedPersonnel.saveTraining')}
-                    </button>
-                  </div>
-                </form>
+            </div>
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2">
+              <div className="text-[11px] text-gray-500 dark:text-gray-400">{t('common.project')}</div>
+              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                {selectedProjectLabel || t('common.all')}
               </div>
-
-              <div className="card p-4 space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-hse-primary" />
-                    <h2 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                      {t('qualifiedPersonnel.trainingListTitle')}
-                    </h2>
-                  </div>
-                </div>
-
-                {loadingTrainings ? (
-                  <div className="flex items-center justify-center py-6">
-                    <Loader2 className="w-5 h-5 animate-spin text-hse-primary" />
-                  </div>
-                ) : sortedTrainings.length === 0 ? (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {t('qualifiedPersonnel.noTrainings')}
-                  </p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-gray-200 dark:border-gray-700 text-left">
-                          <th className="py-2 pr-3 font-medium text-gray-500 dark:text-gray-400">
-                            {t('qualifiedPersonnel.colType')}
-                          </th>
-                          <th className="py-2 pr-3 font-medium text-gray-500 dark:text-gray-400">
-                            {t('qualifiedPersonnel.colStartDate')}
-                          </th>
-                          <th className="py-2 pr-3 font-medium text-gray-500 dark:text-gray-400">
-                            {t('qualifiedPersonnel.colEndDate')}
-                          </th>
-                          <th className="py-2 pr-3 font-medium text-gray-500 dark:text-gray-400">
-                            {t('common.status')}
-                          </th>
-                          <th className="py-2 pr-3 font-medium text-gray-500 dark:text-gray-400">
-                            {t('qualifiedPersonnel.colCertificate')}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sortedTrainings.map((tr) => (
-                          <tr
-                            key={tr.id}
-                            className="border-b border-gray-100 dark:border-gray-800"
-                          >
-                            <td className="py-2 pr-3 text-gray-900 dark:text-gray-100">
-                              {getTypeLabel(tr)}
-                            </td>
-                            <td className="py-2 pr-3 text-gray-700 dark:text-gray-200">
-                              {formatDate(tr.training_date)}
-                            </td>
-                            <td className="py-2 pr-3 text-gray-700 dark:text-gray-200">
-                              {formatDate(tr.expiry_date)}
-                            </td>
-                            <td className="py-2 pr-3">
-                              <span
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] ${
-                                  STATUS_STYLES[tr.status] ?? STATUS_STYLES.valid
-                                }`}
-                              >
-                                {tr.status === 'expired' && (
-                                  <AlertTriangle className="w-3 h-3" />
-                                )}
-                                {tr.status === 'expiring' && (
-                                  <AlertTriangle className="w-3 h-3" />
-                                )}
-                                {tr.status === 'valid' && (
-                                  <CheckCircle className="w-3 h-3" />
-                                )}
-                                {getStatusLabel(tr.status)}
-                              </span>
-                            </td>
-                            <td className="py-2 pr-3 text-gray-700 dark:text-gray-200">
-                              {tr.certificate_url ? (
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => setActiveCertificate(tr)}
-                                    className="text-[11px] text-hse-primary hover:underline"
-                                  >
-                                    {t('qualifiedPersonnel.viewCertificate')}
-                                  </button>
-                                  <a
-                                    href={tr.certificate_url}
-                                    download
-                                    className="text-[11px] text-gray-500 hover:underline flex items-center gap-1"
-                                  >
-                                    <Download className="w-3 h-3" />
-                                    {t('qualifiedPersonnel.downloadCertificate')}
-                                  </a>
-                                </div>
-                              ) : (
-                                <span className="text-[11px] text-gray-400">-</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+            </div>
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2">
+              <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                {showExpiring ? t('qualifiedPersonnel.expiringListTitle') : t('qualifiedPersonnel.trainingListTitle')}
               </div>
-            </>
+              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {trainingsShownLabel}
+              </div>
+            </div>
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2">
+              <div className="text-[11px] text-gray-500 dark:text-gray-400">{t('common.selected')}</div>
+              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                {selectedWorker ? `${selectedWorker.prenom} ${selectedWorker.nom}` : '-'}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={resetWorkerFilters}
+              disabled={!hasWorkersFilters}
+              className="btn-outline btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {t('common.reset')}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="card p-4">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-hse-primary" />
+            <h2 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+              {showExpiring ? t('qualifiedPersonnel.expiringListTitle') : t('qualifiedPersonnel.trainingListTitle')}
+            </h2>
+          </div>
+
+          <div className="text-[11px] text-gray-500 dark:text-gray-400">
+            {t('common.page')} {showExpiring ? expiringPage : overviewPage} {t('common.of')}{' '}
+            {showExpiring ? expiringTotalPages : overviewTotalPages}
+          </div>
+        </div>
+
+        {showExpiring ? (
+          loadingExpiring ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="w-6 h-6 animate-spin text-hse-primary" />
+            </div>
+          ) : expiringTrainings.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {t('qualifiedPersonnel.noExpiring') ?? t('qualifiedPersonnel.noTrainings')}
+            </p>
           ) : (
-            <div className="card p-6 flex flex-col items-center justify-center text-center gap-3 h-full min-h-[260px]">
-              <HardHat className="w-10 h-10 text-gray-300 dark:text-gray-700" />
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                {t('qualifiedPersonnel.noWorkerSelected')}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md">
-                {t('qualifiedPersonnel.noWorkerSelectedHelp')}
-              </p>
+            <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+              <table className="min-w-full text-xs">
+                <thead className="bg-gray-50 dark:bg-gray-800">
+                  <tr className="border-b border-gray-200 dark:border-gray-700 text-left">
+                    <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                      {t('workers.nom')}/{t('workers.prenom')}
+                    </th>
+                    <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                      {t('workers.cin')}
+                    </th>
+                    <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                      {t('workers.projet')}
+                    </th>
+                    <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                      {t('qualifiedPersonnel.colType')}
+                    </th>
+                    <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                      {t('qualifiedPersonnel.colEndDate')}
+                    </th>
+                    <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                      {t('common.status')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expiringTrainings.map((tr) => (
+                    <tr
+                      key={tr.id}
+                      className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                    >
+                      <td className="py-2.5 px-3 text-gray-900 dark:text-gray-100">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (tr.worker) setSelectedWorker(tr.worker)
+                          }}
+                          className="hover:underline"
+                        >
+                          {tr.worker?.prenom} {tr.worker?.nom}
+                        </button>
+                      </td>
+                      <td className="py-2.5 px-3 text-gray-700 dark:text-gray-200 font-mono">
+                        {tr.worker?.cin?.toUpperCase()}
+                      </td>
+                      <td className="py-2.5 px-3 text-gray-700 dark:text-gray-200">
+                        {tr.worker?.project?.name ?? ''}
+                      </td>
+                      <td className="py-2.5 px-3 text-gray-700 dark:text-gray-200">
+                        {getTypeLabel(tr)}
+                      </td>
+                      <td className="py-2.5 px-3 text-gray-700 dark:text-gray-200">
+                        {formatDate(tr.expiry_date)}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] ${
+                            STATUS_STYLES[tr.status] ?? STATUS_STYLES.valid
+                          }`}
+                        >
+                          {tr.status === 'expired' && <AlertTriangle className="w-3 h-3" />}
+                          {tr.status === 'expiring' && <AlertTriangle className="w-3 h-3" />}
+                          {tr.status === 'valid' && <CheckCircle className="w-3 h-3" />}
+                          {getStatusLabel(tr.status)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : loadingOverviewTrainings ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="w-6 h-6 animate-spin text-hse-primary" />
+          </div>
+        ) : filteredOverviewTrainings.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {t('qualifiedPersonnel.noTrainings')}
+          </p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+            <table className="min-w-full text-xs">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr className="border-b border-gray-200 dark:border-gray-700 text-left">
+                  <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                    {t('workers.nom')}/{t('workers.prenom')}
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                    {t('workers.cin')}
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                    {t('workers.projet')}
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                    {t('qualifiedPersonnel.colType')}
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                    {t('qualifiedPersonnel.colStartDate')}
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                    {t('qualifiedPersonnel.colEndDate')}
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                    {t('common.status')}
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                    {t('qualifiedPersonnel.colCertificate')}
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                    {t('common.actions')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredOverviewTrainings.map((tr) => (
+                  <tr
+                    key={tr.id}
+                    className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                  >
+                    <td className="py-2.5 px-3 text-gray-900 dark:text-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (tr.worker) setSelectedWorker(tr.worker)
+                        }}
+                        className="hover:underline"
+                      >
+                        {tr.worker?.prenom} {tr.worker?.nom}
+                      </button>
+                    </td>
+                    <td className="py-2.5 px-3 text-gray-700 dark:text-gray-200 font-mono">
+                      {tr.worker?.cin?.toUpperCase()}
+                    </td>
+                    <td className="py-2.5 px-3 text-gray-700 dark:text-gray-200">
+                      {tr.worker?.project?.name ?? ''}
+                    </td>
+                    <td className="py-2.5 px-3 text-gray-700 dark:text-gray-200">
+                      {getTypeLabel(tr)}
+                    </td>
+                    <td className="py-2.5 px-3 text-gray-700 dark:text-gray-200">
+                      {formatDate(tr.training_date)}
+                    </td>
+                    <td className="py-2.5 px-3 text-gray-700 dark:text-gray-200">
+                      {formatDate(tr.expiry_date)}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] ${
+                          STATUS_STYLES[tr.status] ?? STATUS_STYLES.valid
+                        }`}
+                      >
+                        {tr.status === 'expired' && <AlertTriangle className="w-3 h-3" />}
+                        {tr.status === 'expiring' && <AlertTriangle className="w-3 h-3" />}
+                        {tr.status === 'valid' && <CheckCircle className="w-3 h-3" />}
+                        {getStatusLabel(tr.status)}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-gray-700 dark:text-gray-200">
+                      {tr.certificate_url ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setActiveCertificate(tr)}
+                            className="text-[11px] text-hse-primary hover:underline"
+                          >
+                            {t('qualifiedPersonnel.viewCertificate')}
+                          </button>
+                          <a
+                            href={tr.certificate_url}
+                            download
+                            className="text-[11px] text-gray-500 hover:underline flex items-center gap-1"
+                          >
+                            <Download className="w-3 h-3" />
+                            {t('qualifiedPersonnel.downloadCertificate')}
+                          </a>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (tr.worker) {
+                            setSelectedWorker(tr.worker)
+                            setAddTrainingOpen(true)
+                          }
+                        }}
+                        className="btn-outline btn-xs"
+                      >
+                        {t('qualifiedPersonnel.addTrainingTitle')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="mt-3 flex items-center justify-between">
+          <div className="text-[11px] text-gray-500 dark:text-gray-400">
+            {showExpiring
+              ? t('qualifiedPersonnel.filters.resultsCount', { count: expiringTotalResults })
+              : t('qualifiedPersonnel.filters.resultsCount', { count: overviewTotalResults })}
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                showExpiring
+                  ? setExpiringPage((p) => Math.max(1, p - 1))
+                  : setOverviewPage((p) => Math.max(1, p - 1))
+              }
+              disabled={showExpiring ? expiringPage === 1 : overviewPage === 1}
+              className="btn-outline btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {t('common.previous')}
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                showExpiring
+                  ? setExpiringPage((p) => Math.min(expiringTotalPages, p + 1))
+                  : setOverviewPage((p) => Math.min(overviewTotalPages, p + 1))
+              }
+              disabled={showExpiring ? expiringPage === expiringTotalPages : overviewPage === overviewTotalPages}
+              className="btn-outline btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {t('common.next')}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {selectedWorker && (
+        <div className="card p-4 space-y-3">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-xs text-gray-500 dark:text-gray-400">{t('common.selected')}</div>
+              <div className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
+                {selectedWorker.prenom} {selectedWorker.nom}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate">
+                {selectedWorker.cin?.toUpperCase()}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setAddTrainingOpen(true)}
+                className="btn-primary btn-sm flex items-center gap-2"
+              >
+                <PlusCircle className="w-4 h-4" />
+                {t('qualifiedPersonnel.addTrainingTitle')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedWorker(null)}
+                className="btn-outline btn-sm flex items-center gap-2"
+              >
+                <X className="w-4 h-4" />
+                {t('common.unselect')}
+              </button>
+            </div>
+          </div>
+
+          {loadingTrainings ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="w-5 h-5 animate-spin text-hse-primary" />
+            </div>
+          ) : sortedTrainings.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('qualifiedPersonnel.noTrainings')}</p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+              <table className="min-w-full text-xs">
+                <thead className="bg-gray-50 dark:bg-gray-800">
+                  <tr className="border-b border-gray-200 dark:border-gray-700 text-left">
+                    <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                      {t('qualifiedPersonnel.colType')}
+                    </th>
+                    <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                      {t('qualifiedPersonnel.colStartDate')}
+                    </th>
+                    <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                      {t('qualifiedPersonnel.colEndDate')}
+                    </th>
+                    <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                      {t('common.status')}
+                    </th>
+                    <th className="py-2.5 px-3 font-medium text-gray-600 dark:text-gray-300">
+                      {t('qualifiedPersonnel.colCertificate')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedTrainings.map((tr) => (
+                    <tr
+                      key={tr.id}
+                      className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                    >
+                      <td className="py-2.5 px-3 text-gray-900 dark:text-gray-100">{getTypeLabel(tr)}</td>
+                      <td className="py-2.5 px-3 text-gray-700 dark:text-gray-200">{formatDate(tr.training_date)}</td>
+                      <td className="py-2.5 px-3 text-gray-700 dark:text-gray-200">{formatDate(tr.expiry_date)}</td>
+                      <td className="py-2.5 px-3">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] ${
+                            STATUS_STYLES[tr.status] ?? STATUS_STYLES.valid
+                          }`}
+                        >
+                          {tr.status === 'expired' && <AlertTriangle className="w-3 h-3" />}
+                          {tr.status === 'expiring' && <AlertTriangle className="w-3 h-3" />}
+                          {tr.status === 'valid' && <CheckCircle className="w-3 h-3" />}
+                          {getStatusLabel(tr.status)}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-gray-700 dark:text-gray-200">
+                        {tr.certificate_url ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setActiveCertificate(tr)}
+                              className="text-[11px] text-hse-primary hover:underline"
+                            >
+                              {t('qualifiedPersonnel.viewCertificate')}
+                            </button>
+                            <a
+                              href={tr.certificate_url}
+                              download
+                              className="text-[11px] text-gray-500 hover:underline flex items-center gap-1"
+                            >
+                              <Download className="w-3 h-3" />
+                              {t('qualifiedPersonnel.downloadCertificate')}
+                            </a>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-gray-400">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      <Modal
+        isOpen={workersModalOpen}
+        onClose={() => setWorkersModalOpen(false)}
+        title={t('qualifiedPersonnel.workerCardTitle')}
+        size="xl"
+      >
+        <div className="space-y-3">
+          {loadingWorkers ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="w-6 h-6 animate-spin text-hse-primary" />
+            </div>
+          ) : workers.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('workers.noWorkers')}</p>
+          ) : (
+            <div className="space-y-2">
+              {workers.map((worker) => (
+                <button
+                  key={worker.id}
+                  type="button"
+                  onClick={() => {
+                    handleSelectWorker(worker)
+                    setWorkersModalOpen(false)
+                  }}
+                  className="w-full text-left border rounded-xl px-3 py-2 text-xs transition-colors border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">
+                        {worker.prenom} {worker.nom}
+                      </p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 font-mono truncate">
+                        {worker.cin?.toUpperCase()}
+                      </p>
+                    </div>
+                    <div className="text-right text-[11px] text-gray-500 dark:text-gray-400">
+                      <p className="truncate max-w-[180px]">{worker.fonction ?? ''}</p>
+                      <p className="truncate max-w-[180px]">{worker.project?.name ?? ''}</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
             </div>
           )}
 
-          {showExpiring && (
-            <div className="card p-4 space-y-3 mt-4">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-amber-500" />
-                  <h2 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                    {t('qualifiedPersonnel.expiringListTitle')}
-                  </h2>
-                </div>
+          {workersTotalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                {t('common.page')} {workersPage} {t('common.of')} {workersTotalPages}
               </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWorkersPage((p) => Math.max(1, p - 1))}
+                  disabled={workersPage === 1}
+                  className="btn-outline btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {t('common.previous')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWorkersPage((p) => Math.min(workersTotalPages, p + 1))}
+                  disabled={workersPage === workersTotalPages}
+                  className="btn-outline btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {t('common.next')}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
 
-              {loadingExpiring ? (
-                <div className="flex items-center justify-center py-6">
-                  <Loader2 className="w-5 h-5 animate-spin text-hse-primary" />
-                </div>
-              ) : expiringTrainings.length === 0 ? (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {t('qualifiedPersonnel.noExpiring') ?? t('qualifiedPersonnel.noTrainings')}
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-gray-200 dark:border-gray-700 text-left">
-                        <th className="py-2 pr-3 font-medium text-gray-500 dark:text-gray-400">
-                          {t('workers.nom')}/{t('workers.prenom')}
-                        </th>
-                        <th className="py-2 pr-3 font-medium text-gray-500 dark:text-gray-400">
-                          {t('workers.cin')}
-                        </th>
-                        <th className="py-2 pr-3 font-medium text-gray-500 dark:text-gray-400">
-                          {t('workers.projet')}
-                        </th>
-                        <th className="py-2 pr-3 font-medium text-gray-500 dark:text-gray-400">
-                          {t('qualifiedPersonnel.colType')}
-                        </th>
-                        <th className="py-2 pr-3 font-medium text-gray-500 dark:text-gray-400">
-                          {t('qualifiedPersonnel.colEndDate')}
-                        </th>
-                        <th className="py-2 pr-3 font-medium text-gray-500 dark:text-gray-400">
-                          {t('common.status')}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {expiringTrainings.map((tr) => (
-                        <tr
-                          key={tr.id}
-                          className="border-b border-gray-100 dark:border-gray-800"
-                        >
-                          <td className="py-2 pr-3 text-gray-900 dark:text-gray-100">
-                            {tr.worker?.prenom} {tr.worker?.nom}
-                          </td>
-                          <td className="py-2 pr-3 text-gray-700 dark:text-gray-200 font-mono">
-                            {tr.worker?.cin?.toUpperCase()}
-                          </td>
-                          <td className="py-2 pr-3 text-gray-700 dark:text-gray-200">
-                            {tr.worker?.project?.name ?? ''}
-                          </td>
-                          <td className="py-2 pr-3 text-gray-700 dark:text-gray-200">
-                            {getTypeLabel(tr)}
-                          </td>
-                          <td className="py-2 pr-3 text-gray-700 dark:text-gray-200">
-                            {formatDate(tr.expiry_date)}
-                          </td>
-                          <td className="py-2 pr-3">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] ${
-                                STATUS_STYLES[tr.status] ?? STATUS_STYLES.valid
-                              }`}
-                            >
-                              {tr.status === 'expired' && (
-                                <AlertTriangle className="w-3 h-3" />
-                              )}
-                              {tr.status === 'expiring' && (
-                                <AlertTriangle className="w-3 h-3" />
-                              )}
-                              {tr.status === 'valid' && (
-                                <CheckCircle className="w-3 h-3" />
-                              )}
-                              {getStatusLabel(tr.status)}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+      <Modal
+        isOpen={addTrainingOpen}
+        onClose={() => setAddTrainingOpen(false)}
+        title={t('qualifiedPersonnel.addTrainingTitle')}
+        size="lg"
+      >
+        <div className="space-y-4">
+          {!selectedWorker ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200 px-3 py-2 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span>{t('qualifiedPersonnel.noWorkerSelected') ?? 'Select a worker first'}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddTrainingOpen(false)
+                    setWorkersModalOpen(true)
+                  }}
+                  className="btn-outline btn-sm"
+                >
+                  {t('common.select')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2">
+              <div className="text-[11px] text-gray-500 dark:text-gray-400">{t('common.selected')}</div>
+              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {selectedWorker.prenom} {selectedWorker.nom}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                {selectedWorker.cin?.toUpperCase()}
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSaveTraining} className="space-y-4">
+            <div>
+              <label className="label text-xs">{t('qualifiedPersonnel.trainingType')}</label>
+              <Select value={trainingType} onChange={(e) => setTrainingType(e.target.value)}>
+                <option value="">{t('common.select')}</option>
+                {TRAINING_TYPES.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {t(type.labelKey)}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            {trainingType === 'other' && (
+              <div>
+                <label className="label text-xs">{t('qualifiedPersonnel.trainingLabel')}</label>
+                <input
+                  type="text"
+                  value={trainingLabel}
+                  onChange={(e) => setTrainingLabel(e.target.value)}
+                  className="input"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="label text-xs">{t('qualifiedPersonnel.trainingDate')}</label>
+              <DatePicker
+                value={trainingDate}
+                onChange={setTrainingDate}
+                placeholder={t('qualifiedPersonnel.trainingDate')}
+              />
+            </div>
+
+            <div>
+              <label className="label text-xs">{t('qualifiedPersonnel.expiryDate')}</label>
+              <DatePicker
+                value={expiryDate}
+                onChange={setExpiryDate}
+                placeholder={t('qualifiedPersonnel.expiryDate')}
+              />
+              {isExpiryBeforeTraining && (
+                <div className="mt-1 text-[11px] text-red-600 dark:text-red-400">
+                  {t('qualifiedPersonnel.invalidExpiry')}
                 </div>
               )}
             </div>
-          )}
+
+            <div>
+              <label className="label text-xs">{t('qualifiedPersonnel.certificate')}</label>
+              <label className="flex items-center justify-between border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-xs cursor-pointer hover:border-hse-primary hover:bg-hse-primary/5">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-gray-500" />
+                  <span className="text-gray-700 dark:text-gray-200">
+                    {certificateFile ? certificateFile.name : t('qualifiedPersonnel.chooseFile')}
+                  </span>
+                </div>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handleCertificateChange}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+              <button type="button" onClick={() => setAddTrainingOpen(false)} className="btn-outline btn-sm">
+                {t('common.cancel')}
+              </button>
+              <button
+                type="submit"
+                disabled={
+                  savingTraining ||
+                  !selectedWorker ||
+                  !trainingType ||
+                  !trainingDate ||
+                  (trainingType === 'other' && !trainingLabel.trim()) ||
+                  isExpiryBeforeTraining
+                }
+                className="btn-primary btn-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingTraining && <Loader2 className="w-4 h-4 animate-spin" />}
+                {t('qualifiedPersonnel.saveTraining')}
+              </button>
+            </div>
+          </form>
         </div>
-      </div>
+      </Modal>
 
       {activeCertificate && (
         <Modal

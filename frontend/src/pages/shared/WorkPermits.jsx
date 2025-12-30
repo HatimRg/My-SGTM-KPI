@@ -145,7 +145,7 @@ export default function WorkPermits() {
         setSelectedProject(projectList[0])
       }
     } catch (error) {
-      toast.error('Failed to load projects')
+      toast.error(t('workPermits.loadProjectsFailed'))
     } finally {
       setLoading(false)
     }
@@ -182,7 +182,7 @@ export default function WorkPermits() {
         previous: data.previous_week,
       })
     } catch (error) {
-      toast.error('Failed to load permits')
+      toast.error(t('workPermits.loadPermitsFailed'))
     } finally {
       setPermitsLoading(false)
     }
@@ -259,17 +259,16 @@ export default function WorkPermits() {
       setShowModal(false)
       fetchPermits()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to save permit')
+      toast.error(error.response?.data?.message || t('errors.failedToSave'))
     } finally {
       setSaving(false)
     }
   }
-
   const handleDelete = (permit) => {
     setConfirmPermit(permit)
   }
 
-  const confirmDelete = async () => {
+  const confirmDeletePermit = async () => {
     if (!confirmPermit) return
 
     try {
@@ -277,34 +276,13 @@ export default function WorkPermits() {
       toast.success(t('workPermits.deleted'))
       fetchPermits()
     } catch (error) {
-      toast.error('Failed to delete permit')
+      toast.error(t('workPermits.deleteFailed'))
     } finally {
       setConfirmPermit(null)
     }
   }
 
-  const handleCopySelected = async () => {
-    if (selectedToCopy.length === 0) return
-    
-    setCopying(true)
-    try {
-      const res = await workPermitService.copyFromPrevious({
-        project_id: selectedProject.id,
-        week_number: weekNumber,
-        year: year,
-        permit_ids: selectedToCopy,
-      })
-      toast.success(t('workPermits.copied', { count: res.data.data.copied_count }))
-      setSelectedToCopy([])
-      fetchPermits()
-    } catch (error) {
-      toast.error('Failed to copy permits')
-    } finally {
-      setCopying(false)
-    }
-  }
-
-  const handleLaunchWeek = () => {
+  const handleLaunchWeek = async () => {
     setShowLaunchConfirm(true)
   }
 
@@ -323,9 +301,30 @@ export default function WorkPermits() {
       toast.success(t('workPermits.weekLaunched', { count: res.data.data.activated_count }))
       fetchPermits()
     } catch (error) {
-      toast.error('Failed to launch week')
+      toast.error(t('workPermits.launchFailed'))
     } finally {
       setShowLaunchConfirm(false)
+    }
+  }
+
+  const handleCopySelected = async () => {
+    if (selectedToCopy.length === 0) return
+    
+    setCopying(true)
+    try {
+      const res = await workPermitService.copyFromPrevious({
+        project_id: selectedProject.id,
+        week_number: weekNumber,
+        year: year,
+        permit_ids: selectedToCopy,
+      })
+      toast.success(t('workPermits.copied', { count: res.data.data.copied_count }))
+      setSelectedToCopy([])
+      fetchPermits()
+    } catch (error) {
+      toast.error(t('workPermits.copyFailed'))
+    } finally {
+      setCopying(false)
     }
   }
 
@@ -914,7 +913,7 @@ export default function WorkPermits() {
         confirmLabel={t('common.delete')}
         cancelLabel={t('common.cancel')}
         variant="danger"
-        onConfirm={confirmDelete}
+        onConfirm={confirmDeletePermit}
         onCancel={() => setConfirmPermit(null)}
       />
 

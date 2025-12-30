@@ -79,6 +79,10 @@ export const useAuthStore = create(
           password: newPassword,
           password_confirmation: confirmPassword,
         })
+        const { user } = get()
+        if (user) {
+          set({ user: { ...user, must_change_password: false } })
+        }
         return response.data
       },
 

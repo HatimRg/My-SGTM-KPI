@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { userService, projectService } from '../../services/api'
 import { useLanguage } from '../../i18n'
 import { useAuthStore } from '../../store/authStore'
-import { Modal, ConfirmDialog, Select } from '../../components/ui'
+import { Modal, ConfirmDialog, Select, PasswordStrength, getPasswordPolicy, checkPasswordAgainstPolicy } from '../../components/ui'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
 import {
   Users,
@@ -61,6 +61,55 @@ export default function UserManagement() {
     return sortProjects(projects, projectListPreference)
   }, [projects, projectListPreference])
 
+  const passwordPolicy = useMemo(() => getPasswordPolicy(formData.role), [formData.role])
+
+  const getErrorMessage = (error) => {
+    const responseData = error?.response?.data
+
+    const candidates = [
+      responseData?.errors,
+      responseData?.data?.errors,
+      responseData?.error?.errors,
+    ]
+
+    for (const errors of candidates) {
+      if (errors && typeof errors === 'object') {
+        const keys = Object.keys(errors)
+        if (keys.length > 0) {
+          const firstKey = keys[0]
+          const firstValue = errors[firstKey]
+          const firstMessage = Array.isArray(firstValue) ? firstValue[0] : firstValue
+          if (typeof firstMessage === 'string' && firstMessage.trim() !== '') return firstMessage
+        }
+      }
+    }
+
+    const message = responseData?.message ?? responseData?.data?.message
+    if (typeof message === 'string' && message.trim() !== '') return message
+    return t('users.saveError')
+  }
+
+  const buildUserPayload = (data, isEdit) => {
+    const normalizedProjectIds = Array.isArray(data.project_ids)
+      ? data.project_ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+      : []
+
+    const payload = {
+      ...data,
+      name: (data.name ?? '').trim(),
+      email: (data.email ?? '').trim(),
+      phone: (data.phone ?? '').trim() || null,
+      pole: data.role === 'pole_director' ? ((data.pole ?? '').trim() || null) : null,
+      project_ids: data.role === 'pole_director' ? [] : normalizedProjectIds,
+    }
+
+    if (isEdit && !payload.password) {
+      delete payload.password
+    }
+
+    return payload
+  }
+
   useEffect(() => {
     fetchUsers()
     fetchProjects()
@@ -113,13 +162,13 @@ export default function UserManagement() {
       const filename = extractFilename(res.headers?.['content-disposition']) ?? 'SGTM-Users-Template.xlsx'
       downloadBlob(res.data, filename)
     } catch (e) {
-      toast.error('Failed to download template')
+      toast.error(t('users.bulk.downloadTemplateFailed'))
     }
   }
 
   const handleBulkImport = async () => {
     if (!bulkFile) {
-      toast.error('Please choose a file')
+      toast.error(t('users.bulk.chooseFile'))
       return
     }
 
@@ -132,13 +181,13 @@ export default function UserManagement() {
       const imported = payload.imported ?? 0
       const updated = payload.updated ?? 0
       const errors = payload.errors ?? []
-      toast.success(`Imported: ${imported} / Updated: ${updated}`)
-      if (errors.length > 0) toast.error(`${errors.length} row(s) had issues`)
+      toast.success(t('users.bulk.importSummary', { imported, updated }))
+      if (errors.length > 0) toast.error(t('users.bulk.importIssues', { count: errors.length }))
       setBulkFile(null)
       setBulkOpen(false)
       fetchUsers()
     } catch (e) {
-      toast.error(e.response?.data?.message ?? 'Failed to import users')
+      toast.error(e.response?.data?.message ?? t('users.bulk.importFailed'))
     } finally {
       setBulkUploading(false)
     }
@@ -207,21 +256,29 @@ export default function UserManagement() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    const payload = buildUserPayload(formData, !!editingUser)
+    if (payload.password) {
+      if (!checkPasswordAgainstPolicy(payload.password, passwordPolicy).ok) {
+        toast.error(t('auth.passwordPolicy.invalid'))
+        return
+      }
+    }
+
     setSaving(true)
 
     try {
       if (editingUser) {
-        await userService.update(editingUser.id, formData)
+        await userService.update(editingUser.id, payload)
         toast.success(t('users.updateSuccess'))
       } else {
-        await userService.create(formData)
+        await userService.create(payload)
         toast.success(t('users.createSuccess'))
       }
       closeModal()
       fetchUsers()
     } catch (error) {
-      const message = error.response?.data?.message ?? t('users.saveError')
-      toast.error(message)
+      toast.error(getErrorMessage(error))
     } finally {
       setSaving(false)
     }
@@ -667,8 +724,9 @@ export default function UserManagement() {
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               className="input"
               {...(!editingUser && { required: true })}
-              minLength={8}
+              minLength={passwordPolicy.minLength}
             />
+            <PasswordStrength password={formData.password} role={formData.role} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

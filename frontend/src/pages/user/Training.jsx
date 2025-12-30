@@ -131,7 +131,7 @@ export default function Training() {
       setTrainings(response.data.data ?? [])
     } catch (error) {
       console.error('Failed to load trainings', error)
-      toast.error(t('errors.somethingWentWrong') ?? 'Failed to load trainings')
+      toast.error(t('errors.failedToLoad'))
     } finally {
       setLoadingTrainings(false)
     }
@@ -192,7 +192,7 @@ export default function Training() {
       window.URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Error exporting trainings:', error)
-      toast.error(t('errors.somethingWentWrong') ?? 'Error while exporting')
+      toast.error(t('errors.failedToExport'))
     } finally {
       setExporting(false)
     }
@@ -230,7 +230,7 @@ export default function Training() {
       })
       .catch((error) => {
         console.error('Failed to load training photo', error)
-        toast.error(t('errors.failedToLoad') ?? 'Failed to load')
+        toast.error(t('errors.failedToLoad'))
       })
       .finally(() => {
         setLoadingPhoto(false)
@@ -264,7 +264,7 @@ export default function Training() {
     trainingService
       .create(payload)
       .then(() => {
-        toast.success(t('training.created') ?? 'Training saved')
+        toast.success(t('training.created'))
         // Reset only form fields, keep filters
         setDate('')
         setIsExternal(false)
@@ -280,7 +280,7 @@ export default function Training() {
       })
       .catch((error) => {
         console.error('Failed to create training', error)
-        const message = error.response?.data?.message ?? t('errors.somethingWentWrong') ?? 'Failed to save training'
+        const message = error.response?.data?.message ?? t('errors.failedToSave')
         toast.error(message)
       })
   }
@@ -747,7 +747,7 @@ export default function Training() {
                 disabled={currentPage === 1}
                 className="btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {t('common.previous') ?? 'Previous'}
+                {t('common.previous')}
               </button>
               <button
                 type="button"
@@ -755,7 +755,7 @@ export default function Training() {
                 disabled={currentPage === totalPages}
                 className="btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {t('common.next') ?? 'Next'}
+                {t('common.next')}
               </button>
             </div>
           </div>
@@ -789,7 +789,7 @@ export default function Training() {
                 />
               ) : (
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  {t('errors.failedToLoad') ?? 'Failed to load'}
+                  {t('errors.failedToLoad')}
                 </div>
               )}
             </div>

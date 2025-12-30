@@ -23,7 +23,7 @@ export default function StepIncidentTracking({ formData, updateFormData, t }) {
         </div>
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('kpi.incidents.title')}</h2>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">SUIVI DES INCIDENTS & ACCIDENTS</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">{t('kpi.incidents.subtitle')}</p>
         </div>
       </div>
 
@@ -31,7 +31,7 @@ export default function StepIncidentTracking({ formData, updateFormData, t }) {
       <div className="bg-red-50 dark:bg-red-900/30 rounded-xl p-6 border border-red-200 dark:border-red-700">
         <h3 className="font-semibold text-red-900 dark:text-red-300 mb-4 flex items-center gap-2">
           <Skull className="w-5 h-5" />
-          {t('kpi.incidents.fatality')} / Fatality
+          {t('kpi.incidents.fatality')}
         </h3>
         <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-red-200 dark:border-red-700 max-w-md">
           <label className="font-medium text-red-900 dark:text-red-300 block mb-2">
@@ -52,7 +52,7 @@ export default function StepIncidentTracking({ formData, updateFormData, t }) {
       <div className="bg-orange-50 dark:bg-orange-900/30 rounded-xl p-6 border border-orange-200 dark:border-orange-700">
         <h3 className="font-semibold text-orange-900 dark:text-orange-300 mb-4 flex items-center gap-2">
           <Clock className="w-5 h-5" />
-          {t('kpi.incidents.lostTimeAccident')} / Lost Time Accident
+          {t('kpi.incidents.lostTimeAccident')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-orange-200 dark:border-orange-700">
@@ -124,7 +124,7 @@ export default function StepIncidentTracking({ formData, updateFormData, t }) {
       <div className="bg-amber-50 dark:bg-amber-900/30 rounded-xl p-6 border border-amber-200 dark:border-amber-700">
         <h3 className="font-semibold text-amber-900 dark:text-amber-300 mb-4 flex items-center gap-2">
           <AlertCircle className="w-5 h-5" />
-          {t('kpi.incidents.nearMiss')} / Near Miss
+          {t('kpi.incidents.nearMiss')}
         </h3>
         <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-amber-200 dark:border-amber-700 max-w-md">
           <label className="font-medium text-amber-900 dark:text-amber-300 block mb-2">
@@ -196,7 +196,7 @@ export default function StepIncidentTracking({ formData, updateFormData, t }) {
 
       {/* Summary */}
       <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-6 border border-blue-200 dark:border-blue-700">
-        <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-4">Résumé</h3>
+        <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-4">{t('kpi.incidents.summary')}</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
             <p className="text-2xl font-bold text-red-600 dark:text-red-400">{formData.accidents_fatal ?? 0}</p>
@@ -204,7 +204,7 @@ export default function StepIncidentTracking({ formData, updateFormData, t }) {
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
             <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{formData.accidents_serious ?? 0}</p>
-            <p className="text-xs text-gray-600 dark:text-gray-400">LTA</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">{t('kpi.incidents.ltaShort')}</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
             <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{formData.first_aid_cases ?? 0}</p>

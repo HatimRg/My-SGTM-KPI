@@ -64,6 +64,15 @@ class WorkerTrainingController extends Controller
             });
         }
 
+        if ($request->filled('training_type')) {
+            $trainingType = $request->get('training_type');
+            $query->where('training_type', $trainingType);
+
+            if ($trainingType === 'other' && $request->filled('training_label')) {
+                $query->where('training_label', $request->get('training_label'));
+            }
+        }
+
         $status = $request->get('status');
         if ($status) {
             $today = now()->startOfDay();

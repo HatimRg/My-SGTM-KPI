@@ -17,6 +17,7 @@ class User extends Authenticatable
         'email',
         'cin',
         'password',
+        'must_change_password',
         'role',
         'pole',
         'phone',
@@ -34,6 +35,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'is_active' => 'boolean',
+        'must_change_password' => 'boolean',
     ];
 
     public function setPasswordAttribute($value)
@@ -71,10 +73,12 @@ class User extends Authenticatable
     const HSE_MANAGER_CREATABLE_ROLES = [
         self::ROLE_RESPONSABLE,
         self::ROLE_SUPERVISOR,
+        self::ROLE_USER,
     ];
 
     const RESPONSABLE_CREATABLE_ROLES = [
         self::ROLE_SUPERVISOR,
+        self::ROLE_USER,
     ];
 
     // Roles that can access workers management

@@ -32,31 +32,72 @@ import {
 import toast from 'react-hot-toast'
 
 // Categories from Page 5
-const CATEGORIES = {
-  nettoyage_rangement: 'Nettoyage et Rangement',
-  protection_chute: 'Protection contre les chute',
-  echafaudage: 'Echafaudage/Echelles/Escaliers',
-  epi: 'Equipements de Protection Individuel',
-  excavations: 'Excavations',
-  levage: 'Levage',
-  methode_travail: 'Méthode de travail - SPA',
-  manutention: 'Manutention',
-  vehicule_transport: 'Vehicule/Transport',
-  outils_equipements: 'Outils/Equipements',
-  chute_trebuchement: 'Chute & Trébuchement',
-  electricite: 'Electricité',
-  protection_incendie: 'Protection Incendie',
-  communication_attitude: 'Communication/Attitude',
-  acces_passage: 'Accès/Passage/Issues de Secours',
-  formation_toolbox: 'Formation/Toolbox/Réunion',
-  inspection_evaluation: 'Inspection et Evaluation',
-  documentation_hse: 'Documentation HSE & Evaluation',
-  gestion_sous_traitants: 'Gestion des sous-traitants',
-  autre: 'Autre',
-}
+const CATEGORIES = [
+  'nettoyage_rangement',
+  'protection_chute',
+  'echafaudage',
+  'epi',
+  'excavations',
+  'levage',
+  'methode_travail',
+  'manutention',
+  'vehicule_transport',
+  'outils_equipements',
+  'chute_trebuchement',
+  'electricite',
+  'protection_incendie',
+  'communication_attitude',
+  'acces_passage',
+  'formation_toolbox',
+  'inspection_evaluation',
+  'documentation_hse',
+  'gestion_sous_traitants',
+  'autre',
+]
+
+ const sorPhotoBlobUrlCache = new Map()
+ const SOR_PHOTO_CACHE_MAX = 50
+
+ const normalizeSorPhotoPath = (url) => {
+   let path = url?.replace(/^https?:\/\/[^/]+/, '')
+   if (!path) return null
+
+   if (path.startsWith('/api/')) {
+     path = path.replace(/^\/api\//, '/')
+   } else if (path === '/api') {
+     path = '/'
+   }
+
+   return path
+ }
+
+ const getSorPhotoBlobUrl = async (url) => {
+   const path = normalizeSorPhotoPath(url)
+   if (!path) return null
+
+   const cached = sorPhotoBlobUrlCache.get(path)
+   if (cached) {
+     sorPhotoBlobUrlCache.delete(path)
+     sorPhotoBlobUrlCache.set(path, cached)
+     return cached
+   }
+
+   const response = await api.get(path, { responseType: 'blob' })
+   const objectUrl = window.URL.createObjectURL(response.data)
+   sorPhotoBlobUrlCache.set(path, objectUrl)
+
+   while (sorPhotoBlobUrlCache.size > SOR_PHOTO_CACHE_MAX) {
+     const firstKey = sorPhotoBlobUrlCache.keys().next().value
+     const firstUrl = sorPhotoBlobUrlCache.get(firstKey)
+     if (firstUrl) window.URL.revokeObjectURL(firstUrl)
+     sorPhotoBlobUrlCache.delete(firstKey)
+   }
+
+   return objectUrl
+ }
 
 export default function SorSubmission() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const { user } = useAuthStore()
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -114,6 +155,22 @@ export default function SorSubmission() {
   const [viewProblemPhotoUrl, setViewProblemPhotoUrl] = useState(null)
   const [viewCorrectivePhotoUrl, setViewCorrectivePhotoUrl] = useState(null)
 
+  const dateLocale = language === 'fr' ? 'fr-FR' : 'en-GB'
+
+  const formatDate = useCallback((value) => {
+    if (!value) return ''
+    try {
+      return new Date(value).toLocaleDateString(dateLocale)
+    } catch {
+      return ''
+    }
+  }, [dateLocale])
+
+  const getCategoryLabel = useCallback((key) => {
+    if (!key) return ''
+    return t(`sor.categories.${key}`)
+  }, [t])
+
   // ESC key handler for all modals
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -129,25 +186,7 @@ export default function SorSubmission() {
   }, [showForm, showCorrectivePrompt, showCorrectiveModal, viewingReport])
 
   useEffect(() => {
-    let problemBlobUrl = null
-    let correctiveBlobUrl = null
     let cancelled = false
-
-    const fetchBlobUrl = async (url) => {
-      let path = url?.replace(/^https?:\/\/[^/]+/, '')
-      if (!path) return null
-
-      // Normalize API paths so axios baseURL '/api' doesn't double-prefix.
-      // Backend should return '/sor-reports/...', but keep backward compatibility.
-      if (path.startsWith('/api/')) {
-        path = path.replace(/^\/api\//, '/')
-      } else if (path === '/api') {
-        path = '/'
-      }
-
-      const response = await api.get(path, { responseType: 'blob' })
-      return window.URL.createObjectURL(response.data)
-    }
 
     const load = async () => {
       setViewProblemPhotoUrl(null)
@@ -157,8 +196,8 @@ export default function SorSubmission() {
 
       try {
         if (viewingReport.photo_view_url) {
-          problemBlobUrl = await fetchBlobUrl(viewingReport.photo_view_url)
-          if (!cancelled) setViewProblemPhotoUrl(problemBlobUrl)
+          const url = await getSorPhotoBlobUrl(viewingReport.photo_view_url)
+          if (!cancelled) setViewProblemPhotoUrl(url)
         }
       } catch (e) {
         console.error('Error loading problem photo:', e)
@@ -166,8 +205,8 @@ export default function SorSubmission() {
 
       try {
         if (viewingReport.corrective_action_photo_view_url) {
-          correctiveBlobUrl = await fetchBlobUrl(viewingReport.corrective_action_photo_view_url)
-          if (!cancelled) setViewCorrectivePhotoUrl(correctiveBlobUrl)
+          const url = await getSorPhotoBlobUrl(viewingReport.corrective_action_photo_view_url)
+          if (!cancelled) setViewCorrectivePhotoUrl(url)
         }
       } catch (e) {
         console.error('Error loading corrective photo:', e)
@@ -178,10 +217,21 @@ export default function SorSubmission() {
 
     return () => {
       cancelled = true
-      if (problemBlobUrl) window.URL.revokeObjectURL(problemBlobUrl)
-      if (correctiveBlobUrl) window.URL.revokeObjectURL(correctiveBlobUrl)
     }
   }, [viewingReport])
+
+  useEffect(() => {
+    return () => {
+      for (const url of sorPhotoBlobUrlCache.values()) {
+        try {
+          window.URL.revokeObjectURL(url)
+        } catch {
+          // ignore
+        }
+      }
+      sorPhotoBlobUrlCache.clear()
+    }
+  }, [])
 
   useEffect(() => {
     fetchData()
@@ -288,7 +338,7 @@ export default function SorSubmission() {
     const file = e.dataTransfer?.files?.[0]
     if (!file) return
     if (!file.type?.startsWith('image/')) {
-      toast.error(t('errors.invalidFileType') ?? t('errors.somethingWentWrong'))
+      toast.error(t('errors.invalidFileType'))
       return
     }
     setFormData(prev => ({ ...prev, photo: file }))
@@ -479,7 +529,7 @@ export default function SorSubmission() {
     const file = e.dataTransfer?.files?.[0]
     if (!file) return
     if (!file.type?.startsWith('image/')) {
-      toast.error(t('errors.invalidFileType') || t('errors.somethingWentWrong'))
+      toast.error(t('errors.invalidFileType'))
       return
     }
     setCorrectiveData(prev => ({ ...prev, corrective_action_photo: file }))
@@ -549,7 +599,7 @@ export default function SorSubmission() {
     const file = e.dataTransfer?.files?.[0]
     if (!file) return
     if (!file.type?.startsWith('image/')) {
-      toast.error(t('errors.invalidFileType') || t('errors.somethingWentWrong'))
+      toast.error(t('errors.invalidFileType'))
       return
     }
     setFormData(prev => ({ ...prev, corrective_action_photo: file }))
@@ -644,7 +694,7 @@ export default function SorSubmission() {
                   <div className="flex items-center gap-2">
                     <span className="font-medium dark:text-gray-100">{report.project?.name}</span>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(report.observation_date).toLocaleDateString('fr-FR')}
+                      {formatDate(report.observation_date)}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-md">{report.non_conformity}</p>
@@ -699,8 +749,8 @@ export default function SorSubmission() {
               className="input"
             >
               <option value="">{t('common.all')}</option>
-              {Object.entries(CATEGORIES).map(([key, label]) => (
-                <option key={key} value={key}>{label}</option>
+              {CATEGORIES.map((key) => (
+                <option key={key} value={key}>{getCategoryLabel(key)}</option>
               ))}
             </select>
           </div>
@@ -754,13 +804,13 @@ export default function SorSubmission() {
                 {reports.map((report) => (
                   <tr key={report.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <td className="px-4 py-3 text-sm dark:text-gray-300">
-                      {new Date(report.observation_date).toLocaleDateString('fr-FR')}
+                      {formatDate(report.observation_date)}
                     </td>
                     <td className="px-4 py-3 text-sm font-medium dark:text-gray-100">{report.project?.name}</td>
                     <td className="px-4 py-3 text-sm dark:text-gray-300">{report.zone ?? ''}</td>
                     <td className="px-4 py-3 text-sm">
                       <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 dark:text-gray-300 rounded text-xs">
-                        {CATEGORIES[report.category] ?? report.category}
+                        {getCategoryLabel(report.category) || report.category}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm max-w-xs truncate dark:text-gray-300">{report.non_conformity}</td>
@@ -946,8 +996,8 @@ export default function SorSubmission() {
                   required
                 >
                   <option value="">{t('sor.selectCategory')}</option>
-                  {Object.entries(CATEGORIES).map(([key, label]) => (
-                    <option key={key} value={key}>{label}</option>
+                  {CATEGORIES.map((key) => (
+                    <option key={key} value={key}>{getCategoryLabel(key)}</option>
                   ))}
                 </select>
               </div>
@@ -1078,7 +1128,7 @@ export default function SorSubmission() {
                   </div>
                   <div>
                     <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.date')}</span>
-                    <p className="font-medium dark:text-gray-100">{new Date(viewingReport.observation_date).toLocaleDateString('fr-FR')}</p>
+                    <p className="font-medium dark:text-gray-100">{formatDate(viewingReport.observation_date)}</p>
                   </div>
                   <div>
                     <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.time')}</span>
@@ -1096,7 +1146,7 @@ export default function SorSubmission() {
 
                 <div>
                   <span className="text-gray-500 dark:text-gray-400 text-sm">{t('sor.category')}</span>
-                  <p className="font-medium dark:text-gray-100">{CATEGORIES[viewingReport.category] ?? viewingReport.category}</p>
+                  <p className="font-medium dark:text-gray-100">{getCategoryLabel(viewingReport.category) || viewingReport.category}</p>
                 </div>
 
                 <div>
@@ -1128,8 +1178,8 @@ export default function SorSubmission() {
 
                     {viewingReport.corrective_action_date && (
                       <p className="text-sm text-green-600 dark:text-green-400 mt-2">
-                        {t('sor.correctiveDate')}: {new Date(viewingReport.corrective_action_date).toLocaleDateString('fr-FR')}
-                        {viewingReport.corrective_action_time && ` à ${viewingReport.corrective_action_time}`}
+                        {t('sor.correctiveDate')}: {formatDate(viewingReport.corrective_action_date)}
+                        {viewingReport.corrective_action_time && ` ${t('common.at')} ${viewingReport.corrective_action_time}`}
                       </p>
                     )}
 
@@ -1291,8 +1341,8 @@ export default function SorSubmission() {
                   <h4 className="font-medium text-sm text-gray-500 dark:text-gray-400 mb-2">{t('sor.problemSummary')}</h4>
                   <div className="space-y-1">
                     <p className="text-sm dark:text-gray-300"><span className="font-medium">{t('sor.project')}:</span> {pendingReport.project?.name}</p>
-                    <p className="text-sm dark:text-gray-300"><span className="font-medium">{t('sor.date')}:</span> {new Date(pendingReport.observation_date).toLocaleDateString('fr-FR')}</p>
-                    <p className="text-sm dark:text-gray-300"><span className="font-medium">{t('sor.category')}:</span> {CATEGORIES[pendingReport.category] || pendingReport.category}</p>
+                    <p className="text-sm dark:text-gray-300"><span className="font-medium">{t('sor.date')}:</span> {formatDate(pendingReport.observation_date)}</p>
+                    <p className="text-sm dark:text-gray-300"><span className="font-medium">{t('sor.category')}:</span> {getCategoryLabel(pendingReport.category) || pendingReport.category}</p>
                     <p className="text-sm text-gray-700 dark:text-gray-400 mt-2">{pendingReport.non_conformity}</p>
                   </div>
                 </div>
