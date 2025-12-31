@@ -764,9 +764,9 @@ export const SECTION_12 = {
           code: { fr: 'Arrêté 12 Déc 2008', en: 'Decree Dec 12, 2008' },
           text: {
             fr:
-              "Arrêté du 12 décembre 2008 rendant d'application obligatoire des normes. Les normes marocaines annexées sont rendues d'application obligatoire 3 mois après la publication au Bulletin officiel.",
+              "Arrêté 12 décembre 2008 rendant d'application obligatoire de normes\nLes normes marocaines annexées au présent arrêté sont rendues d'application obligatoire 3 mois après la publication du présent arrêté au \" Bulletin officiel \".",
             en:
-              'Decree of December 12, 2008 making standards mandatory. The attached Moroccan standards become mandatory 3 months after publication in the Official Bulletin.',
+              "Arrêté 12 décembre 2008 rendant d'application obligatoire de normes\nLes normes marocaines annexées au présent arrêté sont rendues d'application obligatoire 3 mois après la publication du présent arrêté au \" Bulletin officiel \".",
           },
         },
         {
@@ -774,9 +774,9 @@ export const SECTION_12 = {
           code: { fr: 'Liste de normes', en: 'Standards list' },
           text: {
             fr:
-              "- Sécurité des appareils électrodomestiques et analogues - Prescriptions générales.\n- Sécurité des appareils électrodomestiques et analogues - Règles particulières (fers à repasser, grilles-pain, friteuses, machines de cuisine, chauffe-eau, aspirateurs, essoreuses, lave-vaisselle, cuisinières/fours/tables, plaques à griller, sauteuses, appareils de chauffage et accumulation).\n- Emballages en matières plastiques - Migration des constituants (contact denrées alimentaires).\n- Gants de protection (produits chimiques et micro-organismes EN 374, risques mécaniques EN 388, risques thermiques, froid, sapeurs-pompiers).\n- Chaussures de sécurité à usage professionnel (EN 20345).\n- NM 21.9.014 : extincteurs mobiles - Règle d'installation.\n- NM 21.9.015 : extincteurs d'incendie portatifs - Caractéristiques et essais.",
+              "- Sécurité des appareils électrodomestiques et analogues - Prescriptions générales.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les fers à repasser électriques.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les grilles pain, les grils, les cocottes et appareils analogues\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour friteuses, les poêles à frire et appareils analogues\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les machines de cuisine.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les appareils de chauffage des liquides.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les chauffe- eau instantanés.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les aspirateurs et les appareils de nettoyage à aspiration d'eau.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les essoreuses centrifuges.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les lave-vaisselle.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les friteuses électriques à usage collectif.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les cuisinières, les fours, les tables de cuisson et les foyers de cuisson électriques à usage collectif\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les plaques à griller électriques à usage collectif.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les sauteuses électriques à usage collectif.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les grilles et grille-pain électriques à usage collectif.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les lave- vaisselle électriques à usage collectif.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les appareils de chauffage et accumulation.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les machines de cuisine électriques à usage collectifs.\n- Emballages en matières plastiques- Migration des constituants des matériaux et objets en matière plastique destinés à entrer en contact avec les denrées alimentaires- Règles de base.\n- Gants de protection contre les produits chimiques et les micro-organismes- Technologie et performances requises. EN 374\n- Gants de protection contre les risques mécaniques. EN 388\n- Gants de protection contre les risques thermiques- chaleur et/ou feu. EN 388\n- Gants de protection contre le froid.\n- Gants de protection pour les sapeurs- pompiers.\n- Chaussures de sécurité à usage professionnel- Spécification EN 20345\n- Chaussures de sécurité à usage professionnel- Spécifications additionnelles. EN 20345\n- Sont rendues d'application obligatoire les normes désignées ci-après : NM 21.9.014 : extincteurs mobiles - Règle d'installation ;\n- NM 21.9.015 : extincteurs d'incendie portatifs - Caractéristiques et essais.",
             en:
-              "- Safety of household and similar electrical appliances - General requirements.\n- Household appliances - Particular rules (irons, toasters, fryers, kitchen machines, water heaters, vacuum cleaners, centrifuge dryers, dishwashers, cookers/ovens/hobs, grills, tilting pans, heating/storage appliances).\n- Plastic packaging - Migration rules (food contact).\n- Protective gloves (chemicals & microorganisms EN 374, mechanical risks EN 388, thermal risks, cold, firefighters).\n- Safety footwear (EN 20345).\n- NM 21.9.014: mobile extinguishers - installation rule.\n- NM 21.9.015: portable fire extinguishers - characteristics and tests.",
+              "- Sécurité des appareils électrodomestiques et analogues - Prescriptions générales.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les fers à repasser électriques.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les grilles pain, les grils, les cocottes et appareils analogues\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour friteuses, les poêles à frire et appareils analogues\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les machines de cuisine.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les appareils de chauffage des liquides.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les chauffe- eau instantanés.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les aspirateurs et les appareils de nettoyage à aspiration d'eau.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les essoreuses centrifuges.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les lave-vaisselle.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les friteuses électriques à usage collectif.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les cuisinières, les fours, les tables de cuisson et les foyers de cuisson électriques à usage collectif\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les plaques à griller électriques à usage collectif.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les sauteuses électriques à usage collectif.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les grilles et grille-pain électriques à usage collectif.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les lave- vaisselle électriques à usage collectif.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les appareils de chauffage et accumulation.\n- Sécurité des appareils électrodomestiques et analogues- Règles particulières pour les machines de cuisine électriques à usage collectifs.\n- Emballages en matières plastiques- Migration des constituants des matériaux et objets en matière plastique destinés à entrer en contact avec les denrées alimentaires- Règles de base.\n- Gants de protection contre les produits chimiques et les micro-organismes- Technologie et performances requises. EN 374\n- Gants de protection contre les risques mécaniques. EN 388\n- Gants de protection contre les risques thermiques- chaleur et/ou feu. EN 388\n- Gants de protection contre le froid.\n- Gants de protection pour les sapeurs- pompiers.\n- Chaussures de sécurité à usage professionnel- Spécification EN 20345\n- Chaussures de sécurité à usage professionnel- Spécifications additionnelles. EN 20345\n- Sont rendues d'application obligatoire les normes désignées ci-après : NM 21.9.014 : extincteurs mobiles - Règle d'installation ;\n- NM 21.9.015 : extincteurs d'incendie portatifs - Caractéristiques et essais.",
           },
         },
       ],
@@ -1165,6 +1165,167 @@ export const SECTION_9_11 = {
         },
       ],
     },
+    {
+      chapter_id: 'agents_biologiques',
+      title: {
+        fr: 'Agents biologiques',
+        en: 'Agents biologiques',
+      },
+      articles: [
+        {
+          article_id: 'ab_art_60',
+          code: { fr: 'Article 60', en: 'Article 60' },
+          text: {
+            fr: "Lors de l’évaluation des risques, l’employeur porte une attention particulière sur les dangers des agents biologiques susceptibles d’être présents dans l’organisme des patients ou de personnes décédées et chez les animaux vivants ou morts, dans les échantillons, les prélèvements et les déchets qui en proviennent.",
+            en: "Lors de l’évaluation des risques, l’employeur porte une attention particulière sur les dangers des agents biologiques susceptibles d’être présents dans l’organisme des patients ou de personnes décédées et chez les animaux vivants ou morts, dans les échantillons, les prélèvements et les déchets qui en proviennent.",
+          },
+        },
+        {
+          article_id: 'ab_art_61',
+          code: { fr: 'Article 61', en: 'Article 61' },
+          text: {
+            fr: "Les résultats de l’évaluation des risques biologiques sont consignés dans une fiche d’évaluation des risques, mise à la disposition de l’agent chargé de l’inspection du travail.",
+            en: "Les résultats de l’évaluation des risques biologiques sont consignés dans une fiche d’évaluation des risques, mise à la disposition de l’agent chargé de l’inspection du travail.",
+          },
+        },
+        {
+          article_id: 'ab_art_63',
+          code: { fr: 'Article 63', en: 'Article 63' },
+          text: {
+            fr: "Lorsque les résultats de l’évaluation des risques révèlent l’existence d’un risque pour la santé ou la sécurité des salariés, toute exposition à un agent biologique dangereux est évitée",
+            en: "Lorsque les résultats de l’évaluation des risques révèlent l’existence d’un risque pour la santé ou la sécurité des salariés, toute exposition à un agent biologique dangereux est évitée",
+          },
+        },
+        {
+          article_id: 'ab_art_65',
+          code: { fr: 'Article 65', en: 'Article 65' },
+          text: {
+            fr: "L’employeur doit établir une consigne de sécurité interdisant l’introduction des produits fixés ci-après, par les salariés et pour leur propre usage dans les lieux de travail où existe un risque de contamination, pour les activités qui impliquent des agents biologiques pathogènes: 1° de nourriture et de boissons ; 2° d’articles pour fumeurs ; 3° de cosmétiques et de mouchoirs autres que les mouchoirs en papier, qui devront être éliminés comme des déchets contaminés.",
+            en: "L’employeur doit établir une consigne de sécurité interdisant l’introduction des produits fixés ci-après, par les salariés et pour leur propre usage dans les lieux de travail où existe un risque de contamination, pour les activités qui impliquent des agents biologiques pathogènes: 1° de nourriture et de boissons ; 2° d’articles pour fumeurs ; 3° de cosmétiques et de mouchoirs autres que les mouchoirs en papier, qui devront être éliminés comme des déchets contaminés.",
+          },
+        },
+        {
+          article_id: 'ab_art_66',
+          code: { fr: 'Article 66', en: 'Article 66' },
+          text: {
+            fr: "Pour les activités qui impliquent des agents biologiques pathogènes, l’employeur: 1° fournit aux salariés des moyens de protection individuelle, notamment des vêtements de protection appropriés. 2° veille à ce que les moyens de protection individuelle soient enlevés lorsque le salarié quitte le lieu de travail. 3° fait en sorte, lorsqu’ils sont réutilisables, que les moyens de protection individuelle soient rangés dans un endroit spécifique, nettoyés, désinfectés et vérifiés avant et après chaque utilisation et, s’il y à lieu, réparés ou remplacés. 4° met à la disposition des salariés des installations sanitaires appropriées, un dispositif de lavage oculaire et des antiseptiques pour la peau ainsi que, s’il y a lieu, des collyres prescrits par le médecin du travail. 5° pour les activités impliquant le prélèvement, la manipulation et le traitement d’échantillons d’origine humaine ou animale, met au point des procédures à suivre et met à disposition des salariés des matériels adaptés visant à minimiser les risques de contamination.",
+            en: "Pour les activités qui impliquent des agents biologiques pathogènes, l’employeur: 1° fournit aux salariés des moyens de protection individuelle, notamment des vêtements de protection appropriés. 2° veille à ce que les moyens de protection individuelle soient enlevés lorsque le salarié quitte le lieu de travail. 3° fait en sorte, lorsqu’ils sont réutilisables, que les moyens de protection individuelle soient rangés dans un endroit spécifique, nettoyés, désinfectés et vérifiés avant et après chaque utilisation et, s’il y à lieu, réparés ou remplacés. 4° met à la disposition des salariés des installations sanitaires appropriées, un dispositif de lavage oculaire et des antiseptiques pour la peau ainsi que, s’il y a lieu, des collyres prescrits par le médecin du travail. 5° pour les activités impliquant le prélèvement, la manipulation et le traitement d’échantillons d’origine humaine ou animale, met au point des procédures à suivre et met à disposition des salariés des matériels adaptés visant à minimiser les risques de contamination.",
+          },
+        },
+        {
+          article_id: 'ab_art_68',
+          code: { fr: 'Article 68', en: 'Article 68' },
+          text: {
+            fr: "L’employeur doit prendre les mesures appropriées pour préserver la santé et la sécurité des salariés, dans les lieux où des salariés sont susceptibles d’être en contact avec des agents biologiques pathogènes pouvant être présents dans l’organisme de patients ou de personnes décédées ou chez des animaux vivants ou morts, notamment par une information sur les procédés de décontamination et de désinfection, et la mise en œuvre des procédés permettant de manipuler et d’éliminer sans risque les déchets contaminés.",
+            en: "L’employeur doit prendre les mesures appropriées pour préserver la santé et la sécurité des salariés, dans les lieux où des salariés sont susceptibles d’être en contact avec des agents biologiques pathogènes pouvant être présents dans l’organisme de patients ou de personnes décédées ou chez des animaux vivants ou morts, notamment par une information sur les procédés de décontamination et de désinfection, et la mise en œuvre des procédés permettant de manipuler et d’éliminer sans risque les déchets contaminés.",
+          },
+        },
+        {
+          article_id: 'ab_art_70',
+          code: { fr: 'Article 70', en: 'Article 70' },
+          text: {
+            fr: "Dans les laboratoires, notamment ceux réalisant des analyses de biologie médicale et dans les locaux destinés aux animaux de laboratoire contaminés ou susceptibles de l'être par des agents biologiques pathogènes, des mesures de confinement appropriées au résultat de l'évaluation des risques sont prises. Il en est de même pour les procédés industriels utilisant des agents biologiques pathogènes. Lorsqu’au terme de l’évaluation des risques un doute subsiste quant au classement d’un agent biologique dont l’utilisation industrielle pourrait comporter un risque grave pour la santé des salariés, le niveau et les mesures de confinement adoptés sont ceux correspondant au moins à un agent du groupe 3 mentionné à l’article 56 ci-dessus.",
+            en: "Dans les laboratoires, notamment ceux réalisant des analyses de biologie médicale et dans les locaux destinés aux animaux de laboratoire contaminés ou susceptibles de l'être par des agents biologiques pathogènes, des mesures de confinement appropriées au résultat de l'évaluation des risques sont prises. Il en est de même pour les procédés industriels utilisant des agents biologiques pathogènes. Lorsqu’au terme de l’évaluation des risques un doute subsiste quant au classement d’un agent biologique dont l’utilisation industrielle pourrait comporter un risque grave pour la santé des salariés, le niveau et les mesures de confinement adoptés sont ceux correspondant au moins à un agent du groupe 3 mentionné à l’article 56 ci-dessus.",
+          },
+        },
+        {
+          article_id: 'ab_art_71',
+          code: { fr: 'Article 71', en: 'Article 71' },
+          text: {
+            fr: "Les laboratoires dont l’objectif n’est pas de travailler avec des agents biologiques pathogènes adoptent, en cas d’incertitude quant à la présence de ces agents, au moins le niveau de confinement requis pour les agents du groupe 2 et, si nécessaire, celui correspondant à ceux des groupes 3 ou 4 mentionnés à l’article 56 ci-dessus.",
+            en: "Les laboratoires dont l’objectif n’est pas de travailler avec des agents biologiques pathogènes adoptent, en cas d’incertitude quant à la présence de ces agents, au moins le niveau de confinement requis pour les agents du groupe 2 et, si nécessaire, celui correspondant à ceux des groupes 3 ou 4 mentionnés à l’article 56 ci-dessus.",
+          },
+        },
+        {
+          article_id: 'ab_art_72',
+          code: { fr: 'Article 72', en: 'Article 72' },
+          text: {
+            fr: "L’employeur doit fournir sur le lieu de travail des instructions écrites et, le cas échéant, des affiches portant sur la procédure à suivre: 1° en cas d’accident ou d'incident grave mettant en cause un agent biologique pathogène ; 2° lors de la manipulation de tout agent biologique du groupe 4 mentionné à l’article 56 ci-dessus, notamment lors de son élimination.",
+            en: "L’employeur doit fournir sur le lieu de travail des instructions écrites et, le cas échéant, des affiches portant sur la procédure à suivre: 1° en cas d’accident ou d'incident grave mettant en cause un agent biologique pathogène ; 2° lors de la manipulation de tout agent biologique du groupe 4 mentionné à l’article 56 ci-dessus, notamment lors de son élimination.",
+          },
+        },
+        {
+          article_id: 'ab_art_73',
+          code: { fr: 'Article 73', en: 'Article 73' },
+          text: {
+            fr: "L’employeur doit informer les salariés, le médecin du travail, le comité de sécurité et d’hygiène ou, à défaut, les délégués des salariés: 1° sans délai, de tout accident ou incident ayant pu entraîner la dissémination d’un agent biologique susceptible de provoquer chez l’homme une infection ou une maladie grave ; 2° le plus rapidement possible, de la cause de cet accident ou incident et des mesures prises ou à prendre pour remédier à la situation.",
+            en: "L’employeur doit informer les salariés, le médecin du travail, le comité de sécurité et d’hygiène ou, à défaut, les délégués des salariés: 1° sans délai, de tout accident ou incident ayant pu entraîner la dissémination d’un agent biologique susceptible de provoquer chez l’homme une infection ou une maladie grave ; 2° le plus rapidement possible, de la cause de cet accident ou incident et des mesures prises ou à prendre pour remédier à la situation.",
+          },
+        },
+        {
+          article_id: 'ab_art_74',
+          code: { fr: 'Article 74', en: 'Article 74' },
+          text: {
+            fr: "Des dispositions spécifiques, intégrées s’il y a lieu au règlement intérieur de l’établissement, rappellent aux salariés leur obligation de signaler immédiatement tout accident ou incident mettant eu cause un agent biologique pathogène.",
+            en: "Des dispositions spécifiques, intégrées s’il y a lieu au règlement intérieur de l’établissement, rappellent aux salariés leur obligation de signaler immédiatement tout accident ou incident mettant eu cause un agent biologique pathogène.",
+          },
+        },
+        {
+          article_id: 'ab_art_75',
+          code: { fr: 'Article 75', en: 'Article 75' },
+          text: {
+            fr: "Lorsque les résultats de l’évaluation des risques révèlent l’existence d’un risque pour la santé ou la sécurité des salariés, l’employeur doit tenir à la disposition des salariés intéressés, et du comité de sécurité et d’hygiène ou, à défaut, des délégués des salariés les informations suivantes: 1° les activités au cours desquelles les salariés sont exposés à des agents biologiques pathogènes, les procédures, les méthodes de travail et les mesures et moyens de protection et de prévention correspondants. 2° le nombre de salariés exposés. 3° le nom et l’adresse du médecin du travail. 4° le nom de la personne qui, le cas échéant, est chargée par l'employeur, et sous sa responsabilité, d’assurer la sécurité sur le lieu de travail. 5° un plan d’urgence pour la protection des salariés contre l’exposition aux agents biologiques des groupes 3 ou 4 mentionnés à l’article 56 ci-dessus, en cas de défaillance du confinement physique.",
+            en: "Lorsque les résultats de l’évaluation des risques révèlent l’existence d’un risque pour la santé ou la sécurité des salariés, l’employeur doit tenir à la disposition des salariés intéressés, et du comité de sécurité et d’hygiène ou, à défaut, des délégués des salariés les informations suivantes: 1° les activités au cours desquelles les salariés sont exposés à des agents biologiques pathogènes, les procédures, les méthodes de travail et les mesures et moyens de protection et de prévention correspondants. 2° le nombre de salariés exposés. 3° le nom et l’adresse du médecin du travail. 4° le nom de la personne qui, le cas échéant, est chargée par l'employeur, et sous sa responsabilité, d’assurer la sécurité sur le lieu de travail. 5° un plan d’urgence pour la protection des salariés contre l’exposition aux agents biologiques des groupes 3 ou 4 mentionnés à l’article 56 ci-dessus, en cas de défaillance du confinement physique.",
+          },
+        },
+        {
+          article_id: 'ab_art_77',
+          code: { fr: 'Article 77', en: 'Article 77' },
+          text: {
+            fr: "L’employeur doit organiser au bénéfice des salariés une formation à la sécurité portant sur: 1° les risques pour la santé et les prescriptions en matière d’hygiène. 2° les précautions à prendre pour éviter l’exposition. 3° le port et l’utilisation des équipements et des vêtements de protection individuelle. 4° les modalités de tri, de collecte, de stockage, de transport et d’élimination des déchets. 5° les mesures à prendre pour prévenir ou pallier les incidents. 6° la procédure à suivre en cas d’accident.",
+            en: "L’employeur doit organiser au bénéfice des salariés une formation à la sécurité portant sur: 1° les risques pour la santé et les prescriptions en matière d’hygiène. 2° les précautions à prendre pour éviter l’exposition. 3° le port et l’utilisation des équipements et des vêtements de protection individuelle. 4° les modalités de tri, de collecte, de stockage, de transport et d’élimination des déchets. 5° les mesures à prendre pour prévenir ou pallier les incidents. 6° la procédure à suivre en cas d’accident.",
+          },
+        },
+        {
+          article_id: 'ab_art_78',
+          code: { fr: 'Article 78', en: 'Article 78' },
+          text: {
+            fr: "La formation à la sécurité est dispensée avant que les salariés n’exercent une activité impliquant un contact avec des agents biologiques. Elle est répétée régulièrement et est adaptée à l’évolution des risques ainsi que lors de la modification significative des procédés de travail.",
+            en: "La formation à la sécurité est dispensée avant que les salariés n’exercent une activité impliquant un contact avec des agents biologiques. Elle est répétée régulièrement et est adaptée à l’évolution des risques ainsi que lors de la modification significative des procédés de travail.",
+          },
+        },
+        {
+          article_id: 'ab_art_79',
+          code: { fr: 'Article 79', en: 'Article 79' },
+          text: {
+            fr: "L’employeur doit établir, après avis du médecin du travail, une liste des salariés exposés à des agents biologiques des groupes 3 ou 4 mentionnés à l’article 56 ci-dessus. Il indique le type de travail réalisé, et, lorsque c'est possible, l’agent biologique auquel les salariés sont exposés ainsi que les données relatives aux expositions, aux accidents et aux incidents. La liste est communiquée au médecin du travail.",
+            en: "L’employeur doit établir, après avis du médecin du travail, une liste des salariés exposés à des agents biologiques des groupes 3 ou 4 mentionnés à l’article 56 ci-dessus. Il indique le type de travail réalisé, et, lorsque c'est possible, l’agent biologique auquel les salariés sont exposés ainsi que les données relatives aux expositions, aux accidents et aux incidents. La liste est communiquée au médecin du travail.",
+          },
+        },
+        {
+          article_id: 'ab_art_80',
+          code: { fr: 'Article 80', en: 'Article 80' },
+          text: {
+            fr: "La liste des salariés exposés est conservée au moins dix ans après la fin de l’exposition. Toutefois, lorsque les agents biologiques sont susceptibles de provoquer des maladies présentant une longue période d’incubation, elle est conservée aussi longtemps que des manifestations pathologiques sont possibles.",
+            en: "La liste des salariés exposés est conservée au moins dix ans après la fin de l’exposition. Toutefois, lorsque les agents biologiques sont susceptibles de provoquer des maladies présentant une longue période d’incubation, elle est conservée aussi longtemps que des manifestations pathologiques sont possibles.",
+          },
+        },
+        {
+          article_id: 'ab_art_83',
+          code: { fr: 'Article 83', en: 'Article 83' },
+          text: {
+            fr: "Un salarié ne peut être affecté à des travaux l’exposant à des agents biologiques pathogènes, que s’il a fait l’objet d’un examen médical préalable par le médecin du travail et si la fiche médicale d’aptitude établie à cette occasion atteste qu’il ne présente pas de contre-indication médicale à ces travaux. Le médecin du travail établit la fiche médicale d’aptitude en double exemplaire. Il en remet un exemplaire au salarié et transmet l’autre à l’employeur, qui le conserve pour être présenté à tout moment, sur leur demande, à l’agent chargé de l’inspection du travail et au médecin chargé de l’inspection du travail. Cette fiche est renouvelée au moins une fois par an, après examen par le médecin du travail.",
+            en: "Un salarié ne peut être affecté à des travaux l’exposant à des agents biologiques pathogènes, que s’il a fait l’objet d’un examen médical préalable par le médecin du travail et si la fiche médicale d’aptitude établie à cette occasion atteste qu’il ne présente pas de contre-indication médicale à ces travaux. Le médecin du travail établit la fiche médicale d’aptitude en double exemplaire. Il en remet un exemplaire au salarié et transmet l’autre à l’employeur, qui le conserve pour être présenté à tout moment, sur leur demande, à l’agent chargé de l’inspection du travail et au médecin chargé de l’inspection du travail. Cette fiche est renouvelée au moins une fois par an, après examen par le médecin du travail.",
+          },
+        },
+        {
+          article_id: 'ab_art_89',
+          code: { fr: 'Article 89', en: 'Article 89' },
+          text: {
+            fr: "En dehors des visites périodiques, l’employeur fait examiner par le médecin du travail tout salarié exposé à des agents biologiques pathogènes qui se déclare incommodé par des travaux qu’il exécute. Cet examen peut être réalisé à la demande du salarié. Le médecin du travail est informé par l'employeur des absences, pour cause de maladie, des salariés exposés à ces agents biologiques pathogènes.",
+            en: "En dehors des visites périodiques, l’employeur fait examiner par le médecin du travail tout salarié exposé à des agents biologiques pathogènes qui se déclare incommodé par des travaux qu’il exécute. Cet examen peut être réalisé à la demande du salarié. Le médecin du travail est informé par l'employeur des absences, pour cause de maladie, des salariés exposés à ces agents biologiques pathogènes.",
+          },
+        },
+        {
+          article_id: 'ab_art_93',
+          code: { fr: 'Article 93', en: 'Article 93' },
+          text: {
+            fr: "Le médecin du travail constitue et tient, pour chaque salarié susceptible d’être exposé aux agents biologiques pathogènes, un dossier médical spécial, ce dossier est complété après chaque examen médical ultérieur.",
+            en: "Le médecin du travail constitue et tient, pour chaque salarié susceptible d’être exposé aux agents biologiques pathogènes, un dossier médical spécial, ce dossier est complété après chaque examen médical ultérieur.",
+          },
+        },
+      ],
+    },
   ],
 }
 
@@ -1175,6 +1336,95 @@ export const SECTION_10_13 = {
     en: '13. BTP',
   },
   chapters: [
+    {
+      chapter_id: 'btp_dispositions_generales',
+      title: {
+        fr: 'Dispositions générales',
+        en: 'Dispositions générales',
+      },
+      articles: [
+        {
+          article_id: 'btp_art_premier',
+          code: { fr: 'Article Premier', en: 'Article First' },
+          text: {
+            fr: "Indépendamment des mesures auxquelles ils sont astreints en vertu de la réglementation en vigueur sur la protection, l'hygiène et la salubrité des travailleurs, les chefs des établissements dans lesquels est exercée une profession commerciale, industrielle ou libérale et dont le personnel effectue, même à titre occasionnel, des travaux visés par les titres III à VI du présent arrêté, sont tenus de prendre les mesures particulières de protection et de salubrité énoncées aux articles suivants.",
+            en: "Indépendamment des mesures auxquelles ils sont astreints en vertu de la réglementation en vigueur sur la protection, l'hygiène et la salubrité des travailleurs, les chefs des établissements dans lesquels est exercée une profession commerciale, industrielle ou libérale et dont le personnel effectue, même à titre occasionnel, des travaux visés par les titres III à VI du présent arrêté, sont tenus de prendre les mesures particulières de protection et de salubrité énoncées aux articles suivants.",
+          },
+        },
+        {
+          article_id: 'btp_art_2',
+          code: { fr: 'Article 2', en: 'Article 2' },
+          text: {
+            fr: "Le matériel utilisé dans les chantiers pour l'établissement des échafaudages, échelles, passerelles, appareils de manutention ou de levage et tous autres engins ou installations, doit être d'une résistance suffisante pour supporter les charges et les efforts auxquels il sera soumis. Il sera vérifié avant son emploi.",
+            en: "Le matériel utilisé dans les chantiers pour l'établissement des échafaudages, échelles, passerelles, appareils de manutention ou de levage et tous autres engins ou installations, doit être d'une résistance suffisante pour supporter les charges et les efforts auxquels il sera soumis. Il sera vérifié avant son emploi.",
+          },
+        },
+        {
+          article_id: 'btp_art_3',
+          code: { fr: 'Article 3', en: 'Article 3' },
+          text: {
+            fr: "Avant leur mise en service sur le chantier, les appareils de levage ou de manutention doivent être vérifiés par l'entrepreneur ou son préposé dans toutes leurs parties et essayés en vue de s'assurer de leur solidité. La vérification sera renouvelée chaque fois que ces appareils auront subi des démontages ou des modifications, ou que l'une de leurs parties aura été remplacée. Elle sera renouvelée également lorsque des ouvriers signaleront le mauvais état des appareils ou l'existence de causes susceptibles de compromettre la solidité de ceux-ci.",
+            en: "Avant leur mise en service sur le chantier, les appareils de levage ou de manutention doivent être vérifiés par l'entrepreneur ou son préposé dans toutes leurs parties et essayés en vue de s'assurer de leur solidité. La vérification sera renouvelée chaque fois que ces appareils auront subi des démontages ou des modifications, ou que l'une de leurs parties aura été remplacée. Elle sera renouvelée également lorsque des ouvriers signaleront le mauvais état des appareils ou l'existence de causes susceptibles de compromettre la solidité de ceux-ci.",
+          },
+        },
+        {
+          article_id: 'btp_art_4',
+          code: { fr: 'Article 4', en: 'Article 4' },
+          text: {
+            fr: "Les crochets de suspension seront conçus de manière telle qu'un décrochement accidentel des fardeaux soit impossible.",
+            en: "Les crochets de suspension seront conçus de manière telle qu'un décrochement accidentel des fardeaux soit impossible.",
+          },
+        },
+        {
+          article_id: 'btp_art_5',
+          code: { fr: 'Article 5', en: 'Article 5' },
+          text: {
+            fr: "Tous les appareils de levage et de manutention mus mécaniquement seront munis d'un frein ou de tout autre dispositif équivalent capable d'arrêter le mouvement dans toutes les positions, et disposé de façon à pouvoir fonctionner automatiquement, ou à être actionné par le préposé à la manoeuvre de l'appareil immédiatement et directement de sa place de manoeuvre, même en cas d'interruption de la puissance motrice. Les crics seront disposés de manière à éviter les accidents causés par le retour de la manivelle et seront maintenus en bon état de fonctionnement.",
+            en: "Tous les appareils de levage et de manutention mus mécaniquement seront munis d'un frein ou de tout autre dispositif équivalent capable d'arrêter le mouvement dans toutes les positions, et disposé de façon à pouvoir fonctionner automatiquement, ou à être actionné par le préposé à la manoeuvre de l'appareil immédiatement et directement de sa place de manoeuvre, même en cas d'interruption de la puissance motrice. Les crics seront disposés de manière à éviter les accidents causés par le retour de la manivelle et seront maintenus en bon état de fonctionnement.",
+          },
+        },
+        {
+          article_id: 'btp_art_6',
+          code: { fr: 'Article 6', en: 'Article 6' },
+          text: {
+            fr: "En service normal, aucune chaîne, aucun câble métallique ou cordage ne peut travailler à une charge supérieure au sixième de sa résistance à la rupture.",
+            en: "En service normal, aucune chaîne, aucun câble métallique ou cordage ne peut travailler à une charge supérieure au sixième de sa résistance à la rupture.",
+          },
+        },
+        {
+          article_id: 'btp_art_7',
+          code: { fr: 'Article 7', en: 'Article 7' },
+          text: {
+            fr: "Des dispositions seront prises et des consignes seront données pour assurer la sécurité des ouvriers pendant le fonctionnement des appareils de levage ou de manutention. Pour les travaux exceptionnels, toutes dispositions spéciales devront être prises pour garantir les ouvriers contre les dangers de la rupture éventuelle de la chaîne ou du câble. Lorsque les matériaux sont élevés à l'aide de poulies, les ouvriers ne doivent en aucun cas demeurer sous l'aplomb du fardeau. Dans la mesure du possible, des barrières de protection devront empêcher le passage sous l'aplomb du chemin parcouru par les bennes. Il sera, en outre, interdit d'installer des poulies dont les projections verticales se trouveraient à moins de 2 mètres de distance les unes des autres.",
+            en: "Des dispositions seront prises et des consignes seront données pour assurer la sécurité des ouvriers pendant le fonctionnement des appareils de levage ou de manutention. Pour les travaux exceptionnels, toutes dispositions spéciales devront être prises pour garantir les ouvriers contre les dangers de la rupture éventuelle de la chaîne ou du câble. Lorsque les matériaux sont élevés à l'aide de poulies, les ouvriers ne doivent en aucun cas demeurer sous l'aplomb du fardeau. Dans la mesure du possible, des barrières de protection devront empêcher le passage sous l'aplomb du chemin parcouru par les bennes. Il sera, en outre, interdit d'installer des poulies dont les projections verticales se trouveraient à moins de 2 mètres de distance les unes des autres.",
+          },
+        },
+        {
+          article_id: 'btp_art_8',
+          code: { fr: 'Article 8', en: 'Article 8' },
+          text: {
+            fr: "Toutes précautions seront prises pour éviter la chute des objets déplacés par les appareils de levage. Les outils et objets divers, les matériaux (à l'exception des pièces de bois et des pièces métalliques servant d'armature ou utilisées pour le coffrage, la construction des échafaudages, de la charpente, etc.) ne pourront être suspendus directement aux câbles et cordages des appareils de levage : ils seront placés dans des bennes bien constituées. L'emploi des couffins pour le levage et, le cas échéant, la descente du béton et des matériaux, à l'aide des engins en service, est formellement interdit. Les objets qui dépassent le bord de la benne doivent être rattachés au câble, à la chaîne ou au cordage, à moins que la benne ne soit pourvue d'un filet de sécurité. Les ouvriers préposés à la manoeuvre des treuils établis sur le sol, pour la montée des matériaux, seront protégés contre les chutes d'outils, de matériaux ou objets analogues par un toit de sécurité suffisamment résistant.",
+            en: "Toutes précautions seront prises pour éviter la chute des objets déplacés par les appareils de levage. Les outils et objets divers, les matériaux (à l'exception des pièces de bois et des pièces métalliques servant d'armature ou utilisées pour le coffrage, la construction des échafaudages, de la charpente, etc.) ne pourront être suspendus directement aux câbles et cordages des appareils de levage : ils seront placés dans des bennes bien constituées. L'emploi des couffins pour le levage et, le cas échéant, la descente du béton et des matériaux, à l'aide des engins en service, est formellement interdit. Les objets qui dépassent le bord de la benne doivent être rattachés au câble, à la chaîne ou au cordage, à moins que la benne ne soit pourvue d'un filet de sécurité. Les ouvriers préposés à la manoeuvre des treuils établis sur le sol, pour la montée des matériaux, seront protégés contre les chutes d'outils, de matériaux ou objets analogues par un toit de sécurité suffisamment résistant.",
+          },
+        },
+        {
+          article_id: 'btp_art_9',
+          code: { fr: 'Article 9', en: 'Article 9' },
+          text: {
+            fr: "Les treuils à bras doivent être munis d'un encliquetage et d'un frein ou de tout autre dispositif permettant leur immobilisation immédiate. Le tambour du treuil sera conçu de manière telle que la sortie du câble dudit tambour soit impossible.",
+            en: "Les treuils à bras doivent être munis d'un encliquetage et d'un frein ou de tout autre dispositif permettant leur immobilisation immédiate. Le tambour du treuil sera conçu de manière telle que la sortie du câble dudit tambour soit impossible.",
+          },
+        },
+        {
+          article_id: 'btp_art_10',
+          code: { fr: 'Article 10', en: 'Article 10' },
+          text: {
+            fr: "Sauf le cas visé à l'article 12 et le cas des téléfériques qui fera l'objet d'un règlement spécial, il est interdit d'utiliser les monte-charge ou les bennes des transporteurs pour transporter du personnel.",
+            en: "Sauf le cas visé à l'article 12 et le cas des téléfériques qui fera l'objet d'un règlement spécial, il est interdit d'utiliser les monte-charge ou les bennes des transporteurs pour transporter du personnel.",
+          },
+        },
+      ],
+    },
     {
       chapter_id: 'btp_titre_iii_travaux_souterrains',
       title: {
@@ -1638,19 +1888,19 @@ export const SECTION_11_14 = {
       },
       articles: [
         {
-          article_id: 'pi_art_premier',
-          code: { fr: 'Article Premier', en: 'Article Premier' },
-          text: {
-            fr: "Est fixée ainsi qu'il suit la liste des travaux exposant le personnel, d'une façon habituelle, à l'inhalation de poussières d'origine industrielle : A.- Travaux exposant à l'inhalation de poussières de silice libre, notamment : Travaux de forage, d'abattage, d'extraction de minerais ou de roches renfermant de la silice libre ; Concassage, broyage, tamisage et manipulation, effectués à sec, de minerais ou de roches renfermant de la silice libre ou de produits renfermant de la silice libre ; Taille et polissage de roches renfermant de la silice libre ; Fabrication et manipulation de produits abrasifs, de poudres à nettoyer ou autres produits renfermant de la silice libre ; Fabrication du Carborundum, du verre, de la porcelaine, de la faïence et autres produits céramiques, ainsi que des produits réfractaires ; Travaux de fonderie exposant aux poussières de sable (décochage, ébarbage, dessablage) ; Travaux de moulage, polissage, aiguisage, effectués à sec, au moyen de meules renfermant de la silice libre ; Travaux de décapage ou de polissage au jet de sable exposant aux poussières de silice libre ;",
-            en: "Est fixée ainsi qu'il suit la liste des travaux exposant le personnel, d'une façon habituelle, à l'inhalation de poussières d'origine industrielle : A.- Travaux exposant à l'inhalation de poussières de silice libre, notamment : Travaux de forage, d'abattage, d'extraction de minerais ou de roches renfermant de la silice libre ; Concassage, broyage, tamisage et manipulation, effectués à sec, de minerais ou de roches renfermant de la silice libre ou de produits renfermant de la silice libre ; Taille et polissage de roches renfermant de la silice libre ; Fabrication et manipulation de produits abrasifs, de poudres à nettoyer ou autres produits renfermant de la silice libre ; Fabrication du Carborundum, du verre, de la porcelaine, de la faïence et autres produits céramiques, ainsi que des produits réfractaires ; Travaux de fonderie exposant aux poussières de sable (décochage, ébarbage, dessablage) ; Travaux de moulage, polissage, aiguisage, effectués à sec, au moyen de meules renfermant de la silice libre ; Travaux de décapage ou de polissage au jet de sable exposant aux poussières de silice libre ;",
-          },
-        },
-        {
           article_id: 'pi_art_2_visites',
           code: { fr: 'Article 2', en: 'Article 2' },
           text: {
             fr: "En sus des examens prévus aux articles 10 et 11 du décret susvisé n° 2-56-248 du 18 rejeb 1377 (8 février 1958), tout travailleur occupé de façon habituelle dans les locaux ou chantiers où sont exécutés les travaux visés à l'article précédent est soumis à des visites médicales périodiques. Ces visites doivent être effectuées, la première immédiatement avant l'affectation du travailleur aux locaux ou chantiers.",
             en: "En sus des examens prévus aux articles 10 et 11 du décret susvisé n° 2-56-248 du 18 rejeb 1377 (8 février 1958), tout travailleur occupé de façon habituelle dans les locaux ou chantiers où sont exécutés les travaux visés à l'article précédent est soumis à des visites médicales périodiques. Ces visites doivent être effectuées, la première immédiatement avant l'affectation du travailleur aux locaux ou chantiers.",
+          },
+        },
+        {
+          article_id: 'pi_art_premier',
+          code: { fr: 'Article Premier', en: 'Article Premier' },
+          text: {
+            fr: "Est fixée ainsi qu'il suit la liste des travaux exposant le personnel, d'une façon habituelle, à l'inhalation de poussières d'origine industrielle : A.- Travaux exposant à l'inhalation de poussières de silice libre, notamment : Travaux de forage, d'abattage, d'extraction de minerais ou de roches renfermant de la silice libre ; Concassage, broyage, tamisage et manipulation, effectués à sec, de minerais ou de roches renfermant de la silice libre ou de produits renfermant de la silice libre ; Taille et polissage de roches renfermant de la silice libre ; Fabrication et manipulation de produits abrasifs, de poudres à nettoyer ou autres produits renfermant de la silice libre ; Fabrication du Carborundum, du verre, de la porcelaine, de la faïence et autres produits céramiques, ainsi que des produits réfractaires ; Travaux de fonderie exposant aux poussières de sable (décochage, ébarbage, dessablage) ; Travaux de moulage, polissage, aiguisage, effectués à sec, au moyen de meules renfermant de la silice libre ; Travaux de décapage ou de polissage au jet de sable exposant aux poussières de silice libre ;",
+            en: "Est fixée ainsi qu'il suit la liste des travaux exposant le personnel, d'une façon habituelle, à l'inhalation de poussières d'origine industrielle : A.- Travaux exposant à l'inhalation de poussières de silice libre, notamment : Travaux de forage, d'abattage, d'extraction de minerais ou de roches renfermant de la silice libre ; Concassage, broyage, tamisage et manipulation, effectués à sec, de minerais ou de roches renfermant de la silice libre ou de produits renfermant de la silice libre ; Taille et polissage de roches renfermant de la silice libre ; Fabrication et manipulation de produits abrasifs, de poudres à nettoyer ou autres produits renfermant de la silice libre ; Fabrication du Carborundum, du verre, de la porcelaine, de la faïence et autres produits céramiques, ainsi que des produits réfractaires ; Travaux de fonderie exposant aux poussières de sable (décochage, ébarbage, dessablage) ; Travaux de moulage, polissage, aiguisage, effectués à sec, au moyen de meules renfermant de la silice libre ; Travaux de décapage ou de polissage au jet de sable exposant aux poussières de silice libre ;",
           },
         },
       ],
