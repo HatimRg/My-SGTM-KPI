@@ -12,110 +12,96 @@ export const SECTION_1 = {
     {
       chapter_id: 'ch1',
       title: {
-        fr: "Chapitre I : Dispositions générales",
-        en: 'Chapter I: General provisions',
+        fr: "Titre IV : De l'hygiène et de la sécurité des salariés\nChapitre I : Dispositions générales",
+        en: "Titre IV : De l'hygiène et de la sécurité des salariés\nChapitre I : Dispositions générales",
       },
       articles: [
         {
           article_id: '281',
           code: { fr: 'Article 281', en: 'Article 281' },
           text: {
-            fr:
-              "Locaux propres. Bonnes conditions d'hygiène, de propreté et de salubrité nécessaires à la santé des salariés (prévention incendie, éclairage, eau potable, chauffage, aération, insonorisation, ventilation, fosses d'aisances, évacuation des eaux résiduaires et de lavage, poussières et vapeurs, vestiaires, toilettes et couchage). Approvisionnement normal en eau potable des chantiers et logements salubres.",
-            en:
-              'Clean premises. Good hygiene, cleanliness and sanitary conditions necessary for employees\' health (fire prevention, lighting, drinking water, heating, aeration, soundproofing, ventilation, latrines, wastewater and washing water disposal, dust and fumes, changing rooms, washing and sleeping facilities). Normal supply of drinking water on sites and decent accommodation and hygiene conditions for employees.',
+            fr: "- Locaux propres\n- Bonne conditions d'hygiène, de propreté et de salubrité nécessaire à la santé des salariés pour prévention incendie, éclairage, eau potable chauffage, l'aération, l'insonorisation, la ventilation, l'eau potable, les fosses d'aisances,\n- l'évacuation des eaux résiduaires et de lavage, les poussières et vapeurs, les vestiaires, la toilette et le couchage des salariés.\n- Approvisionnement normal en eau potable des chantiers et y assurer des logements salubres et des conditions d'hygiène satisfaisantes pour les salariés.",
+            en: "- Locaux propres\n- Bonne conditions d'hygiène, de propreté et de salubrité nécessaire à la santé des salariés pour prévention incendie, éclairage, eau potable chauffage, l'aération, l'insonorisation, la ventilation, l'eau potable, les fosses d'aisances,\n- l'évacuation des eaux résiduaires et de lavage, les poussières et vapeurs, les vestiaires, la toilette et le couchage des salariés.\n- Approvisionnement normal en eau potable des chantiers et y assurer des logements salubres et des conditions d'hygiène satisfaisantes pour les salariés.",
           },
         },
         {
           article_id: '282',
           code: { fr: 'Article 282', en: 'Article 282' },
           text: {
-            fr:
-              "Aménagement des locaux pour garantir la sécurité des salariés handicapés. Mise en place de dispositifs de protection afin que leur utilisation ne présente pas de danger.",
-            en:
-              'Adapt premises to ensure the safety of employees with disabilities. Put protective devices in place so their use does not present danger.',
+            fr: "- Aménagement des locaux pour garantir la sécurité des salariés handicapé.\n- Mise en place de dispositifs de protection afin que leur utilisation ne présente pas de danger pour les salariés.",
+            en: "- Aménagement des locaux pour garantir la sécurité des salariés handicapé.\n- Mise en place de dispositifs de protection afin que leur utilisation ne présente pas de danger pour les salariés.",
           },
         },
         {
           article_id: '283',
           code: { fr: 'Article 283', en: 'Article 283' },
           text: {
-            fr:
-              "Interdiction d'acquisition ou de location de machines présentant un danger sans dispositifs de protection dont elles ont été pourvues à l'origine.",
-            en:
-              'Prohibition on purchasing or renting machines presenting danger without the original protective devices they were initially fitted with.',
+            fr: "- Interdiction d'acquisition ou de location de machines présentant un danger pour les salariés sans dispositifs protection dont elles ont été pourvues à l'origine.",
+            en: "- Interdiction d'acquisition ou de location de machines présentant un danger pour les salariés sans dispositifs protection dont elles ont été pourvues à l'origine.",
           },
         },
         {
           article_id: '284',
           code: { fr: 'Article 284', en: 'Article 284' },
           text: {
-            fr:
-              "Obligation de port de ceinture ou autres dispositifs de sécurité et de masques de protection pour les salariés appelés à réaliser ce genre de travaux.",
-            en:
-              'Mandatory use of safety belts or other safety devices and protective masks for employees performing such work.',
+            fr: "- Obligation de port de ceinture ou autre dispositifs de sécurité et de masques de protection pour les salariés appelés à réaliser ce genre de travaux",
+            en: "- Obligation de port de ceinture ou autre dispositifs de sécurité et de masques de protection pour les salariés appelés à réaliser ce genre de travaux",
           },
         },
         {
           article_id: '285',
           code: { fr: 'Article 285', en: 'Article 285' },
           text: {
-            fr:
-              "Obligation de clôture des puits, trappes ou ouvertures de descente. Barrières de protection/cloisons pour les moteurs. Escaliers solides munis de fortes rampes. Échafaudages munis de garde-corps rigides d'au moins 90 cm.",
-            en:
-              'Requirement to fence off wells, hatches or descent openings. Protective barriers/partitions for motors. Solid stairs with strong handrails. Scaffolds fitted with rigid guardrails at least 90 cm high.',
+            fr: "- Obligation de clôture des puits, trappes ou ouvertures de descente.\n- Obligation de mise en place de barrières de protection/cloisons pour les moteurs.\n- Les escaliers doivent être solides et munis de fortes rampes.\n- Les échafaudages doivent être munis de garde-corps rigides d'au moins 90 cm de haut.",
+            en: "- Obligation de clôture des puits, trappes ou ouvertures de descente.\n- Obligation de mise en place de barrières de protection/cloisons pour les moteurs.\n- Les escaliers doivent être solides et munis de fortes rampes.\n- Les échafaudages doivent être munis de garde-corps rigides d'au moins 90 cm de haut.",
           },
         },
         {
           article_id: '286',
           code: { fr: 'Article 286', en: 'Article 286' },
           text: {
-            fr: "Mettre en place des dispositifs de sécurité intégrés et éviter le contact avec les courroies.",
-            en: 'Put in place integrated safety devices and avoid contact with belts.',
+            fr: "- Mettre place de dispositifs de sécurité intégré\n- Eviter le contact avec les courroies",
+            en: "- Mettre place de dispositifs de sécurité intégré\n- Eviter le contact avec les courroies",
           },
         },
         {
           article_id: '287',
           code: { fr: 'Article 287', en: 'Article 287' },
           text: {
-            fr:
-              "Interdiction d'utilisation de produits/substances/appareils/machines reconnus comme susceptibles de porter atteinte à la santé ou à la sécurité. Interdiction de permettre l'utilisation dans des conditions contraires à la réglementation.",
-            en:
-              'Prohibition on using products/substances/devices/machines recognized as likely to harm health or compromise safety. Prohibition on allowing their use under conditions contrary to regulations.',
+            fr: "- Interdiction d'utilisation de produits ou substances, d'appareils ou de machines reconnus par l'autorité compétente comme étant susceptibles de porter atteinte à leur santé ou de compromettre leur sécurité.\n- Interdiction de permettre à ses salariés l'utilisation, dans des conditions contraires à celles fixées par voie réglementaire, de produits ou substances,d'appareils ou de machines susceptibles de porter atteinte à leur santé ou de compromettre leur sécurité.",
+            en: "- Interdiction d'utilisation de produits ou substances, d'appareils ou de machines reconnus par l'autorité compétente comme étant susceptibles de porter atteinte à leur santé ou de compromettre leur sécurité.\n- Interdiction de permettre à ses salariés l'utilisation, dans des conditions contraires à celles fixées par voie réglementaire, de produits ou substances,d'appareils ou de machines susceptibles de porter atteinte à leur santé ou de compromettre leur sécurité.",
           },
         },
         {
           article_id: '288',
           code: { fr: 'Article 288', en: 'Article 288' },
           text: {
-            fr: 'Signaler sur les emballages des substances et préparations dangereuses un avertissement des dangers.',
-            en: 'Provide hazard warnings on packaging of dangerous substances and preparations.',
+            fr: "- Signaler sur les emballages des substances et préparations dangereuses un avertissement des dangers",
+            en: "- Signaler sur les emballages des substances et préparations dangereuses un avertissement des dangers",
           },
         },
         {
           article_id: '289',
           code: { fr: 'Article 289', en: 'Article 289' },
           text: {
-            fr:
-              "Informer les salariés des dispositions légales concernant la protection contre les dangers des machines. Afficher un avis lisible indiquant les dangers et précautions. Interdiction d'utiliser des machines sans dispositifs de protection, d'inopérer les dispositifs, et d'imposer le transport manuel de charges compromettant la santé/sécurité.",
-            en:
-              'Inform employees of legal provisions on protection against machine hazards. Display a readable notice indicating hazards and precautions. Prohibit the use of machines without protective devices, prohibit making protective devices inoperative, and prohibit requiring manual handling of loads likely to compromise health/safety.',
+            fr: "- informer les salariés des dispositions légales concernant la protection des dangers que peuvent constituer les machines.\n- Afficher un avis lisible indiquant les dangers résultant de l'utilisation des machines ainsi que les précautions à prendre.\n- Interdiction d'utiliser des machines sans dispostifs de protection\n- Interdiction de rendre inopérants les dispostifs de protection\n- interdiction de demander à un salarié d'effectuer le transport manuel des charges dont le poids est susceptible de compromettre sa santé ou sa sécurité.",
+            en: "- informer les salariés des dispositions légales concernant la protection des dangers que peuvent constituer les machines.\n- Afficher un avis lisible indiquant les dangers résultant de l'utilisation des machines ainsi que les précautions à prendre.\n- Interdiction d'utiliser des machines sans dispostifs de protection\n- Interdiction de rendre inopérants les dispostifs de protection\n- interdiction de demander à un salarié d'effectuer le transport manuel des charges dont le poids est susceptible de compromettre sa santé ou sa sécurité.",
           },
         },
         {
           article_id: '290',
           code: { fr: 'Article 290', en: 'Article 290' },
           text: {
-            fr: 'Réalisation de visite médicale avant recrutement avec renouvellement périodique.',
-            en: 'Carry out a medical examination before hiring with periodic renewal.',
+            fr: "- Réalisation de visite médicale avant de recruter avec renouvellement périodique",
+            en: "- Réalisation de visite médicale avant de recruter avec renouvellement périodique",
           },
         },
         {
           article_id: '294',
           code: { fr: 'Article 294', en: 'Article 294' },
           text: {
-            fr: "Garantir les conditions d'hygiène et de sécurité.",
-            en: 'Ensure hygiene and safety conditions.',
+            fr: "-Garantir les conditions d'hygiène et de sécurité",
+            en: "-Garantir les conditions d'hygiène et de sécurité",
           },
         },
       ],
@@ -131,10 +117,8 @@ export const SECTION_1 = {
           article_id: '302',
           code: { fr: 'Article 302', en: 'Article 302' },
           text: {
-            fr:
-              "Indication du poids du colis, sa nature, son contenu et position de chargement à l'extérieur en lettres claires et visibles. Estimer ce poids à un poids maximum dans les cas exceptionnels où il est difficile de déterminer le poids exact.",
-            en:
-              'Indicate the package weight, nature, contents and loading position on the outside in clear and visible letters. In exceptional cases where it is difficult to determine the exact weight, estimate a maximum weight.',
+            fr: "- Indication du poids du colis, sa nature, son contenu et position de chargement à l'extérieur en lettre claires et visibles\n- Estimer ce poids à un poids maximum dans les cas expectionnels ou iles difficile de déterminer le poids exact.",
+            en: "- Indication du poids du colis, sa nature, son contenu et position de chargement à l'extérieur en lettre claires et visibles\n- Estimer ce poids à un poids maximum dans les cas expectionnels ou iles difficile de déterminer le poids exact.",
           },
         },
       ],
@@ -150,75 +134,129 @@ export const SECTION_1 = {
           article_id: '304',
           code: { fr: 'Article 304', en: 'Article 304' },
           text: {
-            fr: 'Création de service médical indépendant.',
-            en: 'Creation of an independent occupational medical service.',
+            fr: "- Création de service médical indépendant.",
+            en: "- Création de service médical indépendant.",
           },
         },
         {
           article_id: '305',
           code: { fr: 'Article 305', en: 'Article 305' },
           text: {
-            fr: "Constituer soit des services médicaux du travail indépendants ou communs inter-entreprises.",
-            en: 'Set up independent occupational medical services or inter-company shared services.',
+            fr: "- Constituer soit des services médicaux du travail indépendants ou communs inter-entreprises",
+            en: "- Constituer soit des services médicaux du travail indépendants ou communs inter-entreprises",
           },
         },
         {
           article_id: '310',
           code: { fr: 'Article 310', en: 'Article 310' },
           text: {
-            fr:
-              "Médecin du travail titulaire d'un diplôme en médecine du travail et inscrit au tableau de l'Ordre des médecins avec l'autorisation d'exercer.",
-            en:
-              'The occupational physician must hold a diploma in occupational medicine and be registered with the Medical Council, with authorization to practice.',
+            fr: "- Médecin de travail titulaire d'un diplôme en médecine du travail et inscrit au tableau de l'Ordre des médecins avec l'autorisation d'exercer la médecine.",
+            en: "- Médecin de travail titulaire d'un diplôme en médecine du travail et inscrit au tableau de l'Ordre des médecins avec l'autorisation d'exercer la médecine.",
           },
         },
         {
           article_id: '311',
           code: { fr: 'Article 311', en: 'Article 311' },
           text: {
-            fr:
-              "Le médecin du travail étranger doit avoir obtenu l'autorisation prévue par les dispositions relatives à l'emploi des étrangers.",
-            en:
-              'A foreign occupational physician must obtain the authorization provided for by rules relating to employment of foreigners.',
+            fr: "Le médecin du travail étranger doit avoir obtenu l'autorisation prévue par les dispositions relatives à l'emploi des étrangers.",
+            en: "Le médecin du travail étranger doit avoir obtenu l'autorisation prévue par les dispositions relatives à l'emploi des étrangers.",
           },
         },
         {
           article_id: '317',
           code: { fr: 'Article 317', en: 'Article 317' },
           text: {
-            fr:
-              "Formation sur les techniques et méthodes des premiers secours en cas d'urgence de 2 salariés au moins.",
-            en: 'Train at least two employees in first aid techniques and emergency methods.',
+            fr: "- Formation sur les techniques et méthodes des premiers secours en cas d'urgence de 2 salariés au moins.",
+            en: "- Formation sur les techniques et méthodes des premiers secours en cas d'urgence de 2 salariés au moins.",
           },
         },
         {
           article_id: '325',
           code: { fr: 'Article 325', en: 'Article 325' },
           text: {
-            fr:
-              "Établissement d'une fiche d'entreprise mise à jour régulièrement, comprenant la liste des risques et maladies professionnels ainsi que le nombre de salariés exposés.",
-            en:
-              'Establish a company record updated regularly, including the list of occupational risks and diseases and the number of employees exposed.',
+            fr: "Etablissement d'une fiche d'entreprise mise à jour régulièrement. et qui comprend la liste des risques et maladies professionnels, ainsi que le nombre de salariés exposés à ces risques et maladies.",
+            en: "Etablissement d'une fiche d'entreprise mise à jour régulièrement. et qui comprend la liste des risques et maladies professionnels, ainsi que le nombre de salariés exposés à ces risques et maladies.",
           },
         },
         {
           article_id: '327',
           code: { fr: 'Article 327', en: 'Article 327' },
           text: {
-            fr:
-              "Réalisation d'examen médical pour tout salarié avant embauchage (ou au plus tard avant la fin de la période d'essai), puis périodiquement; fréquence accrue pour mineurs et cas particuliers (exposés, femmes enceintes, etc.), et après certaines absences.",
-            en:
-              'Carry out medical examinations for each employee before hiring (or at the latest before the end of the probation period), then periodically; increased frequency for minors and special cases (exposed workers, pregnant women, etc.), and after certain absences.',
+            fr: "- Réalisation d'examen médical pour 1° tout salarié, avant l'embauchage ou, au plus tard, avant l'expiration de la période d'essai ; 2° tout salarié, à raison d'une fois au moins tous les douze mois, pour les salariés ayant atteint ou dépassé 18 ans et tous les six mois pour ceux ayant moins de 18 ans ; 3° tout salarié exposé à un danger quelconque, la femme enceinte, la mère d'un enfant de moins de deux ans, les mutilés et les handicapés suivant une fréquence dont le médecin du travail reste juge ;\n- Tout salarié dans les cas suivants : 5° après une absence de plus de trois semaines pour cause d'accident autre que l'accident du travail ou de maladie autre que professionnelle ; 6°-après une absence pour cause d'accident du travail ou de maladie professionnelle ; 7°en cas d'absences répétées pour raison de santé.",
+            en: "- Réalisation d'examen médical pour 1° tout salarié, avant l'embauchage ou, au plus tard, avant l'expiration de la période d'essai ; 2° tout salarié, à raison d'une fois au moins tous les douze mois, pour les salariés ayant atteint ou dépassé 18 ans et tous les six mois pour ceux ayant moins de 18 ans ; 3° tout salarié exposé à un danger quelconque, la femme enceinte, la mère d'un enfant de moins de deux ans, les mutilés et les handicapés suivant une fréquence dont le médecin du travail reste juge ;\n- Tout salarié dans les cas suivants : 5° après une absence de plus de trois semaines pour cause d'accident autre que l'accident du travail ou de maladie autre que professionnelle ; 6°-après une absence pour cause d'accident du travail ou de maladie professionnelle ; 7°en cas d'absences répétées pour raison de santé.",
           },
         },
         {
           article_id: '328',
           code: { fr: 'Article 328', en: 'Article 328' },
           text: {
-            fr:
-              "Réalisation d'examen complémentaire à l'embauchage et lors des visites d'inspection lorsque nécessaires pour dépistage de maladies professionnelles ou contagieuses.",
-            en:
-              'Carry out additional examinations at hiring and during inspections when necessary for screening occupational or contagious diseases.',
+            fr: "- Réalisation d'examen complémentaire lors de l'embauchage et lors des visites d'inspection lorsque ces examens sont nécessités par le dépistage de maladies professionnelles ou de maladies contagieuses.",
+            en: "- Réalisation d'examen complémentaire lors de l'embauchage et lors des visites d'inspection lorsque ces examens sont nécessités par le dépistage de maladies professionnelles ou de maladies contagieuses.",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'ch5',
+      title: {
+        fr: "Chapitre V : Des comités de sécurité et d'hygiène",
+        en: "Chapitre V : Des comités de sécurité et d'hygiène",
+      },
+      articles: [
+        {
+          article_id: '336',
+          code: { fr: 'Article 336', en: 'Article 336' },
+          text: {
+            fr: "- Création de comités de sécurité et d'hygiène",
+            en: "- Création de comités de sécurité et d'hygiène",
+          },
+        },
+        {
+          article_id: '337',
+          code: { fr: 'Article 337', en: 'Article 337' },
+          text: {
+            fr: "Le comité de sécurité et d'hygiène se compose :\n- de l'employeur ou son représentant, président ;\n- du chef du service de sécurité, ou à défaut, un ingénieur ou cadre technique travaillant dans l'entreprise, désigné par l'employeur ;\n- du médecin du travail dans l'entreprise ;\n- de deux délégués des salariés, élus par les délégués des salariés ;\n- d'un ou deux représentants des syndicats dans l'entreprise, le cas échéant.\n- toute personne appartenant à l'entreprise et possédant une compétence et une expérience en matière d'hygiène et de sécurité professionnelle, notamment le chef du service du personnel ou le directeur de l'administration de la production dans l'entreprise.",
+            en: "Le comité de sécurité et d'hygiène se compose :\n- de l'employeur ou son représentant, président ;\n- du chef du service de sécurité, ou à défaut, un ingénieur ou cadre technique travaillant dans l'entreprise, désigné par l'employeur ;\n- du médecin du travail dans l'entreprise ;\n- de deux délégués des salariés, élus par les délégués des salariés ;\n- d'un ou deux représentants des syndicats dans l'entreprise, le cas échéant.\n- toute personne appartenant à l'entreprise et possédant une compétence et une expérience en matière d'hygiène et de sécurité professionnelle, notamment le chef du service du personnel ou le directeur de l'administration de la production dans l'entreprise.",
+          },
+        },
+        {
+          article_id: '339',
+          code: { fr: 'Article 339', en: 'Article 339' },
+          text: {
+            fr: "Le comité de sécurité et d'hygiène se réunit sur convocation de son président:\n- une fois chaque trimestre et chaque fois qu'il est nécessaire.\n- à la suite de tout accident ayant entraîné ou qui aurait pu entraîner des conséquences graves.",
+            en: "Le comité de sécurité et d'hygiène se réunit sur convocation de son président:\n- une fois chaque trimestre et chaque fois qu'il est nécessaire.\n- à la suite de tout accident ayant entraîné ou qui aurait pu entraîner des conséquences graves.",
+          },
+        },
+        {
+          article_id: '340',
+          code: { fr: 'Article 340', en: 'Article 340' },
+          text: {
+            fr: "- Le comité doit procéder à une enquête à l'occasion de tout accident du travail, par deux membres du comité, l'un représentant l'employeur, l'autre représentant les salariés,\n- Etablir un rapport sur les circonstances de l'accident du travail, de la maladie professionnelle ou à caractère professionnel,",
+            en: "- Le comité doit procéder à une enquête à l'occasion de tout accident du travail, par deux membres du comité, l'un représentant l'employeur, l'autre représentant les salariés,\n- Etablir un rapport sur les circonstances de l'accident du travail, de la maladie professionnelle ou à caractère professionnel,",
+          },
+        },
+        {
+          article_id: '341',
+          code: { fr: 'Article 341', en: 'Article 341' },
+          text: {
+            fr: "- Envoyer le rapport d'AT/ de MP à l'agent chargé de l'inspection de travail dans les 15 jours qui suivent sa survenue",
+            en: "- Envoyer le rapport d'AT/ de MP à l'agent chargé de l'inspection de travail dans les 15 jours qui suivent sa survenue",
+          },
+        },
+        {
+          article_id: '342',
+          code: { fr: 'Article 342', en: 'Article 342' },
+          text: {
+            fr: "Le comité de sécurité et d'hygiène doit établir un rapport annuel à la fin de chaque année grégorienne sur l'évolution des risques professionnels dans l'entreprise. Ce rapport, doit être adressé par l'employeur à l'agent chargé de l'inspection du travail et au médecin chargé de l'inspection du travail au plus tard dans les 90 jours qui suivent l'année au titre de laquelle il a été établi.",
+            en: "Le comité de sécurité et d'hygiène doit établir un rapport annuel à la fin de chaque année grégorienne sur l'évolution des risques professionnels dans l'entreprise. Ce rapport, doit être adressé par l'employeur à l'agent chargé de l'inspection du travail et au médecin chargé de l'inspection du travail au plus tard dans les 90 jours qui suivent l'année au titre de laquelle il a été établi.",
+          },
+        },
+        {
+          article_id: '343',
+          code: { fr: 'Article 343', en: 'Article 343' },
+          text: {
+            fr: "le CHS consigne sur un registre spécial qui doit être tenu à la disposition des agents chargés de l'inspection du travail et du médecin chargé de l'inspection du travail :\n- les procès-verbaux des réunions du comité de sécurité et d'hygiène en cas d'accidents graves ;\n- le rapport annuel sur l'évolution des risques professionnels dans l'entreprise ;\n- le programme annuel de prévention contre les risques professionnels.",
+            en: "le CHS consigne sur un registre spécial qui doit être tenu à la disposition des agents chargés de l'inspection du travail et du médecin chargé de l'inspection du travail :\n- les procès-verbaux des réunions du comité de sécurité et d'hygiène en cas d'accidents graves ;\n- le rapport annuel sur l'évolution des risques professionnels dans l'entreprise ;\n- le programme annuel de prévention contre les risques professionnels.",
           },
         },
       ],
@@ -802,8 +840,8 @@ export const SECTION_15 = {
           article_id: 'tm_decret_2003',
           code: { fr: 'Décret 26 Mars 2003', en: 'Decree Mar 26, 2003' },
           text: {
-            fr: "Décret du 26 mars 2003 relatif au transport routier de marchandise pour compte d'autrui ou pour son compte propre.",
-            en: 'Decree of March 26, 2003 on road transport of goods for hire or on own account.',
+            fr: "Décret du 26 Mars 2003 relatif au transport routier de marchandise pour compte d'autrui ou pour son compte propre",
+            en: "Décret du 26 Mars 2003 relatif au transport routier de marchandise pour compte d'autrui ou pour son compte propre",
           },
         },
         {
@@ -811,9 +849,9 @@ export const SECTION_15 = {
           code: { fr: 'Arrêté 23 Sept 2003', en: 'Decree Sep 23, 2003' },
           text: {
             fr:
-              "Arrêté du 23 septembre 2003 relatif au contrat type de transport routier de marchandises pour compte d'autrui et au contrat type pour la location de véhicules automobiles de transport de marchandises avec conducteur.",
+              "Arrêté du 23 septembre 2003 relatif au contrat type de transport routier de marchandises pour compte d'autrui et au contrat type pour la location de véhicules automobiles de transport de marchandises avec conducteur",
             en:
-              'Decree of September 23, 2003 on the standard contract for road freight transport for hire and the standard contract for renting road freight vehicles with driver.',
+              "Arrêté du 23 septembre 2003 relatif au contrat type de transport routier de marchandises pour compte d'autrui et au contrat type pour la location de véhicules automobiles de transport de marchandises avec conducteur",
           },
         },
       ],
@@ -1959,16 +1997,16 @@ export const SECTION_12_16 = {
           article_id: 'tmd_art_7',
           code: { fr: 'Article 7', en: 'Article 7' },
           text: {
-            fr: "Les véhicules visés à l'alinéa 5 du présent article, utilisés pour le transport par route de marchandises dangereuses, doivent être munis d'un document appelé « certificat d'agrément » attestant leur conformité avec les prescriptions relatives à la construction et à l'équipement prévues à l'article 6 ci-dessus. Le certificat d'agrément est délivré et renouvelé par l'administration suite à un contrôle technique, lorsque le véhicule concerné est conforme aux prescriptions requises pour la catégorie à laquelle il appartient. Il est valable un an.",
-            en: "Les véhicules visés à l'alinéa 5 du présent article, utilisés pour le transport par route de marchandises dangereuses, doivent être munis d'un document appelé « certificat d'agrément » attestant leur conformité avec les prescriptions relatives à la construction et à l'équipement prévues à l'article 6 ci-dessus. Le certificat d'agrément est délivré et renouvelé par l'administration suite à un contrôle technique, lorsque le véhicule concerné est conforme aux prescriptions requises pour la catégorie à laquelle il appartient. Il est valable un an.",
+            fr: "Les véhicules visés à l'alinéa 5 du présent article, utilisés pour le transport par route de marchandises dangereuses, doivent être munis d'un document appelé « certificat d'agrément » attestant leur conformité avec les prescriptions relatives à la construction et à l'équipement prévues à l'article 6 ci-dessus.\n- Le certificat d'agrément est délivré et renouvelé par l'administration suite à un contrôle technique, lorsque le véhicule concerné est conforme aux prescriptions requises pour la catégorie à laquelle il appartient.\n- il est valable un an",
+            en: "Les véhicules visés à l'alinéa 5 du présent article, utilisés pour le transport par route de marchandises dangereuses, doivent être munis d'un document appelé « certificat d'agrément » attestant leur conformité avec les prescriptions relatives à la construction et à l'équipement prévues à l'article 6 ci-dessus.\n- Le certificat d'agrément est délivré et renouvelé par l'administration suite à un contrôle technique, lorsque le véhicule concerné est conforme aux prescriptions requises pour la catégorie à laquelle il appartient.\n- il est valable un an",
           },
         },
         {
           article_id: 'tmd_art_9',
           code: { fr: 'Article 9', en: 'Article 9' },
           text: {
-            fr: "Tout véhicule transportant des marchandises dangereuses par route doit porter, d'une manière apparente, une signalisation identifiant les marchandises transportées avec les dangers qu'ils représentent.",
-            en: "Tout véhicule transportant des marchandises dangereuses par route doit porter, d'une manière apparente, une signalisation identifiant les marchandises transportées avec les dangers qu'ils représentent.",
+            fr: "Tout véhiculetransportant des marchandises dangereuses par route doit porter, d'une manière apparente, une signalisation identifiant les marchandises transportées avec les dangers qu'ils représentent.",
+            en: "Tout véhiculetransportant des marchandises dangereuses par route doit porter, d'une manière apparente, une signalisation identifiant les marchandises transportées avec les dangers qu'ils représentent.",
           },
         },
         {
@@ -1983,16 +2021,16 @@ export const SECTION_12_16 = {
           article_id: 'tmd_art_19',
           code: { fr: 'Article 19', en: 'Article 19' },
           text: {
-            fr: "Le transporteur doit remettre au conducteur du véhicule, au plus tard au moment du chargement ou du remplissage des marchandises dangereuses dans le véhicule concerné, une fiche de sécurité pour chaque marchandise transportée ou pour chaque groupe de marchandises présentant les mêmes dangers. Chaque fiche comporte des instructions de sécurité et toutes informations utiles, notamment : 1. l'identification de la ou des marchandises dangereuses transportées ; 2. la nature du danger présenté par lesdites marchandises ; 3. les mesures que doit prendre le conducteur en cas d'incident ou d'accident et les équipements nécessaires pour l'application de ces mesures ; 4. les moyens d'intervention pour limiter les conséquences de l'incident ou de l'accident survenu ; 5. L'administration fixe le modèle de la fiche de sécurité et les modalités de sa délivrance et de son utilisation ; 6. Le transporteur est responsable du contenu de la fiche de sécurité.",
-            en: "Le transporteur doit remettre au conducteur du véhicule, au plus tard au moment du chargement ou du remplissage des marchandises dangereuses dans le véhicule concerné, une fiche de sécurité pour chaque marchandise transportée ou pour chaque groupe de marchandises présentant les mêmes dangers. Chaque fiche comporte des instructions de sécurité et toutes informations utiles, notamment : 1. l'identification de la ou des marchandises dangereuses transportées ; 2. la nature du danger présenté par lesdites marchandises ; 3. les mesures que doit prendre le conducteur en cas d'incident ou d'accident et les équipements nécessaires pour l'application de ces mesures ; 4. les moyens d'intervention pour limiter les conséquences de l'incident ou de l'accident survenu ; 5. L'administration fixe le modèle de la fiche de sécurité et les modalités de sa délivrance et de son utilisation ; 6. Le transporteur est responsable du contenu de la fiche de sécurité.",
+            fr: "Le transporteur doit remettre au conducteur du véhicule, au plus tard, au moment du chargement ou du remplissage des marchandises dangereuses dans le véhicule concerné, une fiche de sécurité pour chaque marchandise transportée ou pour chaque groupe de marchandises présentant les mêmes dangers. Chaque fiche comporte des instructions de sécurtité et toutes informations utiles, notamment :\n- 1. l'identification de la ou des marchandises dangereuses transportées ;\n- 2. la nature du danger présenté par lesdites marchandises ;\n- 3. les mesures que doit prendre le conducteur en cas d'incident ou d'accident et les équipements nécessaires pour l'application de ces mesures ;\n- 4. les moyens d'intervention pour limiter les conséquences de l'incident ou de l'accident survenu.\n- 5. L'administration fixe le modèle de la fiche de sécurité et les modalités de sa délivrance et de son utilisation.\n- 6. Le transporteur est responsable du contenu de la fiche de sécurité.",
+            en: "Le transporteur doit remettre au conducteur du véhicule, au plus tard, au moment du chargement ou du remplissage des marchandises dangereuses dans le véhicule concerné, une fiche de sécurité pour chaque marchandise transportée ou pour chaque groupe de marchandises présentant les mêmes dangers. Chaque fiche comporte des instructions de sécurtité et toutes informations utiles, notamment :\n- 1. l'identification de la ou des marchandises dangereuses transportées ;\n- 2. la nature du danger présenté par lesdites marchandises ;\n- 3. les mesures que doit prendre le conducteur en cas d'incident ou d'accident et les équipements nécessaires pour l'application de ces mesures ;\n- 4. les moyens d'intervention pour limiter les conséquences de l'incident ou de l'accident survenu.\n- 5. L'administration fixe le modèle de la fiche de sécurité et les modalités de sa délivrance et de son utilisation.\n- 6. Le transporteur est responsable du contenu de la fiche de sécurité.",
           },
         },
         {
           article_id: 'tmd_art_21',
           code: { fr: 'Article 21', en: 'Article 21' },
           text: {
-            fr: "Nul ne peut conduire les véhicules visés à l'alinéa 2 du présent article s'il n'est titulaire d'un certificat attestant qu'il a suivi une formation spéciale en matière de transport de marchandises dangereuses. L'administration fixe les catégories de véhicules destinés au transport par route des marchandises dangereuses dont les conducteurs doivent être titulaires du certificat de formation indiqué ci-dessus, en tenant compte du poids maximal autorisé en charge desdits véhicules, de la nature et des quantités de marchandises dangereuses à transporter par ces véhicules ainsi que des conditions de transport. La formation susvisée est dispensée par des établissements agréés par l'administration à cet effet. Le certificat de formation est délivré par lesdits établissements au postulant qui a réussi la formation spéciale. Tout conducteur titulaire du certificat de la formation spéciale doit suivre tous les cinq ans, en vue de renouvellement de son certificat, une formation de recyclage au cours de la dernière année de ladite période. Le programme et les conditions d'organisation de ladite formation, les modalités d'évaluation, les conditions d'agrément des établissements de formation, le modèle et le contenu du certificat de formation ainsi que les modalités de sa délivrance et de son renouvellement sont fixés par voie réglementaire.",
-            en: "Nul ne peut conduire les véhicules visés à l'alinéa 2 du présent article s'il n'est titulaire d'un certificat attestant qu'il a suivi une formation spéciale en matière de transport de marchandises dangereuses. L'administration fixe les catégories de véhicules destinés au transport par route des marchandises dangereuses dont les conducteurs doivent être titulaires du certificat de formation indiqué ci-dessus, en tenant compte du poids maximal autorisé en charge desdits véhicules, de la nature et des quantités de marchandises dangereuses à transporter par ces véhicules ainsi que des conditions de transport. La formation susvisée est dispensée par des établissements agréés par l'administration à cet effet. Le certificat de formation est délivré par lesdits établissements au postulant qui a réussi la formation spéciale. Tout conducteur titulaire du certificat de la formation spéciale doit suivre tous les cinq ans, en vue de renouvellement de son certificat, une formation de recyclage au cours de la dernière année de ladite période. Le programme et les conditions d'organisation de ladite formation, les modalités d'évaluation, les conditions d'agrément des établissements de formation, le modèle et le contenu du certificat de formation ainsi que les modalités de sa délivrance et de son renouvellement sont fixés par voie réglementaire.",
+            fr: "Nul ne peut conduire les véhicules visés à l'alinéa 2 du présent article s'il n'est titulaire d'un certificat attestant qu'il a suivi une formation spéciale en matière de transport de marchandises dangereuses. L'administration fixe les catégories de véhicules destinés au transport par route de marchandises dangereuses dont les conducteurs doivent être titulaires du certificat de formation, indiqué ci-dessus, en tenant compte du poids maximal autorisé en charge desdits véhicules, de la nature et des quantités de marchandises dangereuses à transporter par ces véhicules ainsi que des conditions de transport. La formation susvisée est dispensée par des établissements agréés par l'administration à cet effet. Le certificat de formation est délivré par lesdits établissements au postulant qui a réussi la formation spéciale. Tout conducteur titulaire du certificat de la formation spéciale doit suivre tous les cinq ans, en vue de renouvellement de son certificat, une formation de recyclage au cours de la dernière année de ladite période. Le programme et les conditions d'organisation de ladite formation, les modalités d'évaluation, les conditions d'agrément des établissements de formation, le modèle et le contenu du certificat de formation ainsi que les modalités de sa délivrance et de son renouvellement sont fixés par voie réglementaire",
+            en: "Nul ne peut conduire les véhicules visés à l'alinéa 2 du présent article s'il n'est titulaire d'un certificat attestant qu'il a suivi une formation spéciale en matière de transport de marchandises dangereuses. L'administration fixe les catégories de véhicules destinés au transport par route de marchandises dangereuses dont les conducteurs doivent être titulaires du certificat de formation, indiqué ci-dessus, en tenant compte du poids maximal autorisé en charge desdits véhicules, de la nature et des quantités de marchandises dangereuses à transporter par ces véhicules ainsi que des conditions de transport. La formation susvisée est dispensée par des établissements agréés par l'administration à cet effet. Le certificat de formation est délivré par lesdits établissements au postulant qui a réussi la formation spéciale. Tout conducteur titulaire du certificat de la formation spéciale doit suivre tous les cinq ans, en vue de renouvellement de son certificat, une formation de recyclage au cours de la dernière année de ladite période. Le programme et les conditions d'organisation de ladite formation, les modalités d'évaluation, les conditions d'agrément des établissements de formation, le modèle et le contenu du certificat de formation ainsi que les modalités de sa délivrance et de son renouvellement sont fixés par voie réglementaire",
           },
         },
       ],
@@ -2000,16 +2038,16 @@ export const SECTION_12_16 = {
     {
       chapter_id: 'tmd_chapitre_v_obligations_generales',
       title: {
-        fr: 'Chapitre V : Obligations (Section I)',
-        en: 'Chapitre V : Obligations (Section I)',
+        fr: "Chapitre V\nDes obligations des intervenants dans le transport par route des marchandises dangereuses\nSection I. - De l'obligation générale de sécurité et d'information",
+        en: "Chapitre V\nDes obligations des intervenants dans le transport par route des marchandises dangereuses\nSection I. - De l'obligation générale de sécurité et d'information",
       },
       articles: [
         {
           article_id: 'tmd_art_22',
           code: { fr: 'Article 22', en: 'Article 22' },
           text: {
-            fr: "Tous les intervenants dans le transport par route de marchandises dangereuses doivent prendre toutes les mesures nécessaires, conformément aux dispositions de la présente loi, selon la nature et l'ampleur des dangers prévisibles afin d'éviter tout dommage aux personnes, aux biens ou à l'environnement du fait du transport par route de marchandises dangereuses, et, le cas échéant, prendre toutes les mesures nécessaires pour en minimiser les effets. Lorsque la sécurité du transport ou la sécurité publique est menacée ou risque d'être menacée lors d'un transport par route de marchandises dangereuses, l'intervenant qui a connaissance de cette menace doit en aviser immédiatement les autorités compétentes ainsi que les autres intervenants dans l'opération de transport concernée et mettre à leur disposition les informations dont il dispose.",
-            en: "Tous les intervenants dans le transport par route de marchandises dangereuses doivent prendre toutes les mesures nécessaires, conformément aux dispositions de la présente loi, selon la nature et l'ampleur des dangers prévisibles afin d'éviter tout dommage aux personnes, aux biens ou à l'environnement du fait du transport par route de marchandises dangereuses, et, le cas échéant, prendre toutes les mesures nécessaires pour en minimiser les effets. Lorsque la sécurité du transport ou la sécurité publique est menacée ou risque d'être menacée lors d'un transport par route de marchandises dangereuses, l'intervenant qui a connaissance de cette menace doit en aviser immédiatement les autorités compétentes ainsi que les autres intervenants dans l'opération de transport concernée et mettre à leur disposition les informations dont il dispose.",
+            fr: "Tous les intervenants dans le transport par route de marchandises dangereuses doivent prendre toutes les mesures nécessaires, conformément aux dispositions de la présente loi, selon la nature et l'ampleur des dangers prévisibles afin d'éviter tout dommage aux personnes, aux biens ou à l'environnement du fait du transport par route de marchandises dangereuses, et, le cas échéant, prendre toutes les mesures\nnécessaires pour en minimiser les effets.\nLorsque la sécurité du transport ou la sécurité publique est menacée ou risque d'être menacée lors d'un transport par route de marchandises dangereuses, l'intervenant qui a connaissance de cette menace doit en aviser immédiatement les autorités compétentes ainsi que les autres intervenants dans l'opération de transport concernée et mettre à leur disposition les informations dont il dispose.",
+            en: "Tous les intervenants dans le transport par route de marchandises dangereuses doivent prendre toutes les mesures nécessaires, conformément aux dispositions de la présente loi, selon la nature et l'ampleur des dangers prévisibles afin d'éviter tout dommage aux personnes, aux biens ou à l'environnement du fait du transport par route de marchandises dangereuses, et, le cas échéant, prendre toutes les mesures\nnécessaires pour en minimiser les effets.\nLorsque la sécurité du transport ou la sécurité publique est menacée ou risque d'être menacée lors d'un transport par route de marchandises dangereuses, l'intervenant qui a connaissance de cette menace doit en aviser immédiatement les autorités compétentes ainsi que les autres intervenants dans l'opération de transport concernée et mettre à leur disposition les informations dont il dispose.",
           },
         },
         {
@@ -2025,24 +2063,24 @@ export const SECTION_12_16 = {
     {
       chapter_id: 'tmd_obligations_transporteur',
       title: {
-        fr: 'Obligations du transporteur',
-        en: 'Obligations du transporteur',
+        fr: 'Section 4. - Des obligations du transporteur',
+        en: 'Section 4. - Des obligations du transporteur',
       },
       articles: [
         {
           article_id: 'tmd_art_26',
           code: { fr: 'Article 26', en: 'Article 26' },
           text: {
-            fr: "Le transporteur doit contracter une assurance complémentaire à l'assurance du véhicule terrestre à moteur utilisé pour le transport par route des marchandises dangereuses, destinée à couvrir sa responsabilité pour les dommages corporels, matériels et environnementaux qui peuvent être causés par lesdites marchandises lors de leur transport par route. Cette assurance est contractée dans les conditions et selon les modalités prévues par la loi n° 17-99 portant code des assurances. Dans le cas où le transport par route des marchandises dangereuses constitue une partie d'une expédition comprenant également un transport par voie maritime, sans rupture de charge, les règles de responsabilité et d'assurance applicables en matière de transport par mer de marchandises dangereuses s'appliquent à l'ensemble de l'expédition sans qu'il y ait à distinguer entre la partie maritime et la partie terrestre de celle-ci.",
-            en: "Le transporteur doit contracter une assurance complémentaire à l'assurance du véhicule terrestre à moteur utilisé pour le transport par route des marchandises dangereuses, destinée à couvrir sa responsabilité pour les dommages corporels, matériels et environnementaux qui peuvent être causés par lesdites marchandises lors de leur transport par route. Cette assurance est contractée dans les conditions et selon les modalités prévues par la loi n° 17-99 portant code des assurances. Dans le cas où le transport par route des marchandises dangereuses constitue une partie d'une expédition comprenant également un transport par voie maritime, sans rupture de charge, les règles de responsabilité et d'assurance applicables en matière de transport par mer de marchandises dangereuses s'appliquent à l'ensemble de l'expédition sans qu'il y ait à distinguer entre la partie maritime et la partie terrestre de celle-ci.",
+            fr: "Le transporteur doit contracter une assurance complémentaire à l'assurance du véhicule terrestre à moteur utilisé pour le transport par route des marchandises dangereuses, destinée à couvrir sa responsabilité pour les dommages corporels, matériels et environnementaux qui peuvent être causés par lesdites marchandises lors de leur transport par route.\nCette assurance est contractée dans les conditions et selon les modalités prévues par la loi n° 17-99 portant code des assurances.\nDans le cas où le transport par route des marchandises dangereuses constitue une partie d'une expédition comprenant également un transport par voie maritime, sans rupture de charge, les règles de responsabilité et d'assurance applicables en matière de transport par mer de marchandises dangereuses s'appliquent à l'ensemble de l'expédition sans qu'il y ait à distinguer entre la partie maritime et la partie\nterrestre de celle-ci.",
+            en: "Le transporteur doit contracter une assurance complémentaire à l'assurance du véhicule terrestre à moteur utilisé pour le transport par route des marchandises dangereuses, destinée à couvrir sa responsabilité pour les dommages corporels, matériels et environnementaux qui peuvent être causés par lesdites marchandises lors de leur transport par route.\nCette assurance est contractée dans les conditions et selon les modalités prévues par la loi n° 17-99 portant code des assurances.\nDans le cas où le transport par route des marchandises dangereuses constitue une partie d'une expédition comprenant également un transport par voie maritime, sans rupture de charge, les règles de responsabilité et d'assurance applicables en matière de transport par mer de marchandises dangereuses s'appliquent à l'ensemble de l'expédition sans qu'il y ait à distinguer entre la partie maritime et la partie\nterrestre de celle-ci.",
           },
         },
         {
           article_id: 'tmd_art_27',
           code: { fr: 'Article 27', en: 'Article 27' },
           text: {
-            fr: "Le transporteur de marchandises dangereuses par route ne doit pas utiliser, pour le transport desdites marchandises, un véhicule comportant plus d'une remorque. Il doit veiller à ce que seul un personnel disposant du certificat de formation spéciale prévu à l'article 21 ci-dessus assure la conduite du véhicule transportant les marchandises dangereuses. Il doit remettre au conducteur la fiche de sécurité prévue par l'article 19 ci-dessus. Avant d'effectuer l'opération de transport par route de marchandises dangereuses, il doit s'assurer que : 1) la marchandise dangereuse, objet du transport, est classée et autorisée au transport par route, conformément aux dispositions de la présente loi ; 2) le véhicule et le chargement ne présentent pas de défauts manifestes ou d'insuffisance des équipements ; 3) le poids maximum autorisé du véhicule n'est pas dépassé ; 4) le véhicule utilisé pour le transport est adapté à la marchandise à transporter et notamment qu'il est construit et équipé conformément aux dispositions de la présente loi ; 5) la copie de la déclaration d'expédition prévue à l'article 20 ci-dessus se trouve à bord du véhicule ; 6) le véhicule porte la signalisation appropriée à la marchandise transportée ; 7) les équipements prescrits dans la fiche de sécurité se trouvent à bord du véhicule ; 8) la citerne porte les marques et la signalisation appropriées ainsi que l'indication de l'échéance des prochaines épreuves de vérification. Le transporteur ne doit pas utiliser une citerne dont la date d'épreuve est dépassée ; 9) l'assurance visée à l'article 26 ci-dessus est en cours de validité et couvre les marchandises dangereuses transportées.",
-            en: "Le transporteur de marchandises dangereuses par route ne doit pas utiliser, pour le transport desdites marchandises, un véhicule comportant plus d'une remorque. Il doit veiller à ce que seul un personnel disposant du certificat de formation spéciale prévu à l'article 21 ci-dessus assure la conduite du véhicule transportant les marchandises dangereuses. Il doit remettre au conducteur la fiche de sécurité prévue par l'article 19 ci-dessus. Avant d'effectuer l'opération de transport par route de marchandises dangereuses, il doit s'assurer que : 1) la marchandise dangereuse, objet du transport, est classée et autorisée au transport par route, conformément aux dispositions de la présente loi ; 2) le véhicule et le chargement ne présentent pas de défauts manifestes ou d'insuffisance des équipements ; 3) le poids maximum autorisé du véhicule n'est pas dépassé ; 4) le véhicule utilisé pour le transport est adapté à la marchandise à transporter et notamment qu'il est construit et équipé conformément aux dispositions de la présente loi ; 5) la copie de la déclaration d'expédition prévue à l'article 20 ci-dessus se trouve à bord du véhicule ; 6) le véhicule porte la signalisation appropriée à la marchandise transportée ; 7) les équipements prescrits dans la fiche de sécurité se trouvent à bord du véhicule ; 8) la citerne porte les marques et la signalisation appropriées ainsi que l'indication de l'échéance des prochaines épreuves de vérification. Le transporteur ne doit pas utiliser une citerne dont la date d'épreuve est dépassée ; 9) l'assurance visée à l'article 26 ci-dessus est en cours de validité et couvre les marchandises dangereuses transportées.",
+            fr: "Le transporteur de marchandises dangereuses par route ne doit pas utiliser, pour le transport desdites marchandises, un véhicule comportant plus d'une remorque. Il doit veiller à ce que seul un personnel disposant du certificat de formation spéciale prévu à l'article 21 cidessus assure la conduite du véhicule transportant les marchandises dangereuses. Il doit remettre au conducteur la fiche de sécurité prévue par l'article 19 ci-dessus. Avant d'effectuer l'opération de transport par route de marchandises dangereuses, il doit s'assurer que : 1) la marchandise dangereuse, objet du transport, est classée et autorisée au transport par route, conformément aux dispositions de la présente loi ; 2) le véhicule et le chargement ne présentent pas de défauts manifestes ou d'insuffisance des équipements ; 3) le poids maximum autorisé du véhicule n'est pas dépassé ; 4) le véhicule utilisé pour le transport est adapté à la marchandise à transporter et notamment qu'il est construit et équipé conformément aux dispositions de la présente loi ; 5) la copie de la déclaration d'expédition prévue à l'article 20 ci-dessus se trouve à bord du véhicule ; 6) le véhicule porte la signalisation appropriée à la marchandise transportée ; les équipements prescrits dans la fiche de sécurité se trouvent à bord du véhicule ; 8) la citerne porte les marques et la signalisation appropriées ainsi que l'indication de l'échéance des prochaines épreuves de vérification. Le transporteur ne doit pas utiliser une citerne dont la date d'épreuve est dépassée ; 9) l'assurance visée à l'article 26 ci-dessus est en cours de validité et couvre les marchandises dangereuses transportées",
+            en: "Le transporteur de marchandises dangereuses par route ne doit pas utiliser, pour le transport desdites marchandises, un véhicule comportant plus d'une remorque. Il doit veiller à ce que seul un personnel disposant du certificat de formation spéciale prévu à l'article 21 cidessus assure la conduite du véhicule transportant les marchandises dangereuses. Il doit remettre au conducteur la fiche de sécurité prévue par l'article 19 ci-dessus. Avant d'effectuer l'opération de transport par route de marchandises dangereuses, il doit s'assurer que : 1) la marchandise dangereuse, objet du transport, est classée et autorisée au transport par route, conformément aux dispositions de la présente loi ; 2) le véhicule et le chargement ne présentent pas de défauts manifestes ou d'insuffisance des équipements ; 3) le poids maximum autorisé du véhicule n'est pas dépassé ; 4) le véhicule utilisé pour le transport est adapté à la marchandise à transporter et notamment qu'il est construit et équipé conformément aux dispositions de la présente loi ; 5) la copie de la déclaration d'expédition prévue à l'article 20 ci-dessus se trouve à bord du véhicule ; 6) le véhicule porte la signalisation appropriée à la marchandise transportée ; les équipements prescrits dans la fiche de sécurité se trouvent à bord du véhicule ; 8) la citerne porte les marques et la signalisation appropriées ainsi que l'indication de l'échéance des prochaines épreuves de vérification. Le transporteur ne doit pas utiliser une citerne dont la date d'épreuve est dépassée ; 9) l'assurance visée à l'article 26 ci-dessus est en cours de validité et couvre les marchandises dangereuses transportées",
           },
         },
       ],
@@ -2050,24 +2088,24 @@ export const SECTION_12_16 = {
     {
       chapter_id: 'tmd_obligations_conducteur',
       title: {
-        fr: 'Obligations du conducteur',
-        en: 'Obligations du conducteur',
+        fr: 'Section 5. - Des obligations du conducteur',
+        en: 'Section 5. - Des obligations du conducteur',
       },
       articles: [
         {
           article_id: 'tmd_art_28',
           code: { fr: 'Article 28', en: 'Article 28' },
           text: {
-            fr: "Tout conducteur d'un véhicule transportant des marchandises dangereuses doit : 1) s'assurer que les documents nécessaires au transport prévus par la présente loi se trouvent à bord du véhicule et qu'ils sont en cours de validité ; 2) afficher dans la cabine de conduite une copie de la fiche de sécurité correspondant à chaque marchandise dangereuse transportée ; 3) respecter les conditions de circulation et de limitation de vitesse prévues aux articles 15, 16 et 18 ci-dessus ainsi que les conditions de transport particulières à la marchandise ; 4) conserver sur le véhicule la signalisation qu'il comportait si ce véhicule n'a pas été nettoyé, ni assaini avant son retour à vide ; 5) s'abstenir de charger dans le véhicule des marchandises pour son propre compte ; 6) Les documents prévus aux 1) et 2) de l'alinéa premier ci-dessus doivent être présentés à toute réquisition de l'un des agents verbalisateurs prévus à l'article 38 de la présente loi.",
-            en: "Tout conducteur d'un véhicule transportant des marchandises dangereuses doit : 1) s'assurer que les documents nécessaires au transport prévus par la présente loi se trouvent à bord du véhicule et qu'ils sont en cours de validité ; 2) afficher dans la cabine de conduite une copie de la fiche de sécurité correspondant à chaque marchandise dangereuse transportée ; 3) respecter les conditions de circulation et de limitation de vitesse prévues aux articles 15, 16 et 18 ci-dessus ainsi que les conditions de transport particulières à la marchandise ; 4) conserver sur le véhicule la signalisation qu'il comportait si ce véhicule n'a pas été nettoyé, ni assaini avant son retour à vide ; 5) s'abstenir de charger dans le véhicule des marchandises pour son propre compte ; 6) Les documents prévus aux 1) et 2) de l'alinéa premier ci-dessus doivent être présentés à toute réquisition de l'un des agents verbalisateurs prévus à l'article 38 de la présente loi.",
+            fr: "Tout conducteur d'un véhicule transportant des marchandises dangereuses doit :\n- 1) s'assurer que les documents nécessaires au transport prévus par la présente loi se trouvent à bord du véhicule et qu'ils sont en cours de validité ;\n- 2) afficher dans la cabine de conduite une copie de la fiche de sécurité correspondant à chaque marchandise dangereuse transportée ;\n- 3) respecter les conditions de circulation et de limitation de vitesse prévues aux articles 15, 16 et 18 ci-dessus ainsi que les conditions de transport particulières à la marchandise ;\n- 4) conserver sur le véhicule la signalisation qu'il comportait si ce véhicule n'a pas été nettoyé, ni assaini avant son retour à vide ;\n- 5) s'abstenir de charger dans le véhicule des marchandises pour son propre compte.\n- 6) Les documents prévus aux 1) et 2) de l'alinéa premier ci- dessus doivent être présentés à toute réquisition de l'un des agents verbalisateurs prévus à l'article 38 de la présente loi.",
+            en: "Tout conducteur d'un véhicule transportant des marchandises dangereuses doit :\n- 1) s'assurer que les documents nécessaires au transport prévus par la présente loi se trouvent à bord du véhicule et qu'ils sont en cours de validité ;\n- 2) afficher dans la cabine de conduite une copie de la fiche de sécurité correspondant à chaque marchandise dangereuse transportée ;\n- 3) respecter les conditions de circulation et de limitation de vitesse prévues aux articles 15, 16 et 18 ci-dessus ainsi que les conditions de transport particulières à la marchandise ;\n- 4) conserver sur le véhicule la signalisation qu'il comportait si ce véhicule n'a pas été nettoyé, ni assaini avant son retour à vide ;\n- 5) s'abstenir de charger dans le véhicule des marchandises pour son propre compte.\n- 6) Les documents prévus aux 1) et 2) de l'alinéa premier ci- dessus doivent être présentés à toute réquisition de l'un des agents verbalisateurs prévus à l'article 38 de la présente loi.",
           },
         },
         {
           article_id: 'tmd_art_29',
           code: { fr: 'Article 29', en: 'Article 29' },
           text: {
-            fr: "En cas d'incident ou d'accident impliquant un véhicule de transport par route de marchandises dangereuses, notamment en cas d'explosion, d'incendie, de fuite ou de menace de fuite suite à un choc, ou en cas de perte ou de vol de marchandises dangereuses survenant en cours de transport, le conducteur doit appliquer les instructions mentionnées dans la fiche de sécurité et prendre les mesures qui y sont indiquées. De même il doit, sans délai, aviser le transporteur et les autorités compétentes les plus proches du lieu de l'incident ou de l'accident survenu. Si, en cours de route, il constate que la sécurité du transport ou la sécurité publique peut être compromise, il doit immobiliser le véhicule. Celui-ci ne peut reprendre la route que si les conditions de sécurité nécessaires à nouveau sont remplies, conformément aux dispositions de la présente loi.",
-            en: "En cas d'incident ou d'accident impliquant un véhicule de transport par route de marchandises dangereuses, notamment en cas d'explosion, d'incendie, de fuite ou de menace de fuite suite à un choc, ou en cas de perte ou de vol de marchandises dangereuses survenant en cours de transport, le conducteur doit appliquer les instructions mentionnées dans la fiche de sécurité et prendre les mesures qui y sont indiquées. De même il doit, sans délai, aviser le transporteur et les autorités compétentes les plus proches du lieu de l'incident ou de l'accident survenu. Si, en cours de route, il constate que la sécurité du transport ou la sécurité publique peut être compromise, il doit immobiliser le véhicule. Celui-ci ne peut reprendre la route que si les conditions de sécurité nécessaires à nouveau sont remplies, conformément aux dispositions de la présente loi.",
+            fr: "En cas d'incident ou d'accident impliquant un véhicule de transport par route de marchandises dangereuses, notamment en cas d'explosion, d'incendie, de fuite ou de menace de fuite suite à un choc, ou en cas de perte ou de vol de marchandises dangereuses survenant en cours de transport, le conducteur doit appliquer les instructions mentionnées dans la fiche de sécurité et prendre les mesures qui y sont indiquées. De même il doit, sans délai, aviser le transporteur et les autorités compétentes les plus proches du lieu de l'incident ou de l'accident survenu. Si, en cours de route, il constate que la sécurité du transport ou la sécurité publique peut être compromise, il doit immobiliser le véhicule. Celui-ci ne peut reprendre la route que si les conditions de sécurité nécessaires sont à nouveau remplies, conformément aux dispositions de la présente loi.",
+            en: "En cas d'incident ou d'accident impliquant un véhicule de transport par route de marchandises dangereuses, notamment en cas d'explosion, d'incendie, de fuite ou de menace de fuite suite à un choc, ou en cas de perte ou de vol de marchandises dangereuses survenant en cours de transport, le conducteur doit appliquer les instructions mentionnées dans la fiche de sécurité et prendre les mesures qui y sont indiquées. De même il doit, sans délai, aviser le transporteur et les autorités compétentes les plus proches du lieu de l'incident ou de l'accident survenu. Si, en cours de route, il constate que la sécurité du transport ou la sécurité publique peut être compromise, il doit immobiliser le véhicule. Celui-ci ne peut reprendre la route que si les conditions de sécurité nécessaires sont à nouveau remplies, conformément aux dispositions de la présente loi.",
           },
         },
         {
@@ -2122,24 +2160,24 @@ export const SECTION_3 = {
           article_id: 'ce_dahir_1914',
           code: { fr: 'Dahir 7 Sept 1914', en: 'Dahir Sep 7, 1914' },
           text: {
-            fr: "Dahir portant réglementation des établissements insalubres, incommodes ou dangereux du 7 Septembre 1914.",
-            en: 'Dahir regulating unhealthy, inconvenient or dangerous establishments of September 7, 1914.',
+            fr: 'Dahir portant réglementation des établissements insalubres, incommodes ou dangereux du 7 Sept 1914',
+            en: 'Dahir portant réglementation des établissements insalubres, incommodes ou dangereux du 7 Sept 1914',
           },
         },
         {
           article_id: 'ce_article_premier_autorisation',
           code: { fr: 'ARTICLE PREMIER', en: 'ARTICLE FIRST' },
           text: {
-            fr: "Autorisation obligatoire pour les établissements qui présentent des causes de danger, d’insalubrité ou d’incommodité.",
-            en: 'Authorization required for establishments presenting danger, unsanitary conditions, or nuisance.',
+            fr: "–\n- Autorisation obligatoire pour les établissements qui présentent des causes de danger, d’insalubrité ou d’incommodité",
+            en: "–\n- Autorisation obligatoire pour les établissements qui présentent des causes de danger, d’insalubrité ou d’incommodité",
           },
         },
         {
           article_id: 'ce_arrete_1933',
           code: { fr: 'Arrêté 13 Oct 1933', en: 'Decree Oct 13, 1933' },
           text: {
-            fr: 'Arrêté du 13 octobre 1933 portant classement des établissements insalubres, incommodes ou dangereux (tableau).',
-            en: 'Decree of October 13, 1933 classifying unhealthy, inconvenient or dangerous establishments (table).',
+            fr: 'Arrêté du 13 octobre 1933 portant classement des établissements insalubres, incommodes ou dangereux: Tableau',
+            en: 'Arrêté du 13 octobre 1933 portant classement des établissements insalubres, incommodes ou dangereux: Tableau',
           },
         },
         {
@@ -2156,10 +2194,8 @@ export const SECTION_3 = {
           article_id: 'ce_arrete_1950',
           code: { fr: 'Arrêté 18 Jan 1950', en: 'Decree Jan 18, 1950' },
           text: {
-            fr:
-              "Arrêté du 18 janvier 1950 interdisant l'installation de certaines industries dans les villes municipales et les centres délimités par arrêté viziriel, avec leurs zones de banlieue ou leurs zones périphériques.",
-            en:
-              'Decree of January 18, 1950 prohibiting the installation of certain industries in municipalities and centers defined by vizierial decree, including their suburban or peripheral areas.',
+            fr: "Arrêté du 18 Janvier 1950 interdisant l'installation de certaines industries dans Ies villes municipales et les centres délimités par arrêté viziriel, avec leurs zones de banlieue ou leurs zones périphériques.",
+            en: "Arrêté du 18 Janvier 1950 interdisant l'installation de certaines industries dans Ies villes municipales et les centres délimités par arrêté viziriel, avec leurs zones de banlieue ou leurs zones périphériques.",
           },
         },
       ],
@@ -2185,56 +2221,172 @@ export const SECTION_2 = {
           article_id: 'rt_art_1_duree',
           code: { fr: 'Article 1', en: 'Article 1' },
           text: {
-            fr: "Durée normale de travail des salariés, est fixée à 44 heures par semaine ou à 2288 heures par année avec répartition hebdomadaire ou annuelle de la durée du travail.",
-            en: 'Normal working hours for employees are set at 44 hours per week or 2,288 hours per year, with weekly or annual distribution of working time.',
+            fr: "- Durée normale de travail des salariés,, est fixée à 44 heures par semaine ou à 2288 heures par année avec répartition hebdomadaire ou annuelle de la durée du travail.",
+            en: "- Durée normale de travail des salariés,, est fixée à 44 heures par semaine ou à 2288 heures par année avec répartition hebdomadaire ou annuelle de la durée du travail.",
           },
         },
         {
           article_id: 'rt_art_2_repartition',
           code: { fr: 'Article 2', en: 'Article 2' },
           text: {
-            fr: "L’employeur peut, lorsqu’il adopte le régime de 44 heures du travail dans les activités non agricoles, répartir cette durée de manière égale ou non égale sur les jours de la semaine, sous réserve du repos hebdomadaire.",
-            en: 'When adopting the 44-hour scheme in non-agricultural activities, the employer may distribute this duration equally or unequally over the days of the week, subject to weekly rest.',
+            fr: "L’employeur peut, lorsqu’il adopte le régime de 44 heures du travail dans les activités non agricoles, répartir cette durée de manière égale ou non égale sur les jours de la semaine, sous réserve du repos hebdomadaire.",
+            en: "L’employeur peut, lorsqu’il adopte le régime de 44 heures du travail dans les activités non agricoles, répartir cette durée de manière égale ou non égale sur les jours de la semaine, sous réserve du repos hebdomadaire.",
           },
         },
         {
           article_id: 'rt_art_3_annuel',
           code: { fr: 'Article 3', en: 'Article 3' },
           text: {
-            fr: "Le régime de répartition annuelle peut être adopté selon les besoins de l’établissement, la nature de son activité, ses conditions techniques et ses ressources humaines et ce, dans les conditions suivantes : - demander l’avis des représentants des salariés ou du comité de l’entreprise, s’il y a lieu ; - mettre en place un programme prévisionnel du changement de la durée de travail, au cours de l’année ou pendant une période déterminée de l’année ; - respecter un délai d’information sur tout changement du programme de répartition de la durée du travail qui ne peut être inférieur à 8 jours.",
-            en: "The annual distribution scheme may be adopted according to the establishment’s needs, the nature of its activity, its technical conditions and human resources, provided that: - the opinion of employee representatives or the works council is sought, where applicable; - a forecast program for changes in working time is put in place over the year or a defined period of the year; - a notice period for any change to the distribution program is respected, which may not be less than 8 days.",
+            fr: "Le régime de répartition annuelle peut être adopté selon les besoins de l’établissement, la nature de son activité, ses conditions techniques et ses ressources humaines et ce, dans les conditions suivantes :\n- demander l’avis des représentants des salariés ou du comité de l’entreprise, s’il y a lieu ;\n- mettre en place un programme prévisionnel du changement de la durée de travail, au cours de l’année ou pendant une période déterminée de l’année ;\n- respecter un délai d’information sur tout changement du programme de répartition de la durée du travail qui ne peut être inférieur à 8 jours.",
+            en: "Le régime de répartition annuelle peut être adopté selon les besoins de l’établissement, la nature de son activité, ses conditions techniques et ses ressources humaines et ce, dans les conditions suivantes :\n- demander l’avis des représentants des salariés ou du comité de l’entreprise, s’il y a lieu ;\n- mettre en place un programme prévisionnel du changement de la durée de travail, au cours de l’année ou pendant une période déterminée de l’année ;\n- respecter un délai d’information sur tout changement du programme de répartition de la durée du travail qui ne peut être inférieur à 8 jours.",
           },
         },
         {
           article_id: 'rt_art_premier_transport_repos',
           code: { fr: 'Article premier', en: 'Article first' },
           text: {
-            fr: "- Mettre à leur disposition, en cas d’absence de moyens de transport publics, des moyens de transport de leurs lieux de résidence vers le lieu de travail et vice-versa ; - Repos d’au moins une demie heure après chaque durée de travail continu de quatre heures ; - Mettre à leur disposition des moyens de repos.",
-            en: '- Provide, in the absence of public transport, means of transport from employees’ residences to the workplace and back; - A rest of at least half an hour after each continuous working period of four hours; - Provide rest facilities.',
+            fr: "- mettre à leur disposition, en cas d’absence de moyens de transport publics, des moyens de transport de leurs lieux de résidence vers le lieu de travail et vice-versa ;\n- Repos d’au moins une demie heure après chaque durée de travail continu de quatre heures.\n- mettre à leur disposition des moyens de repos.",
+            en: "- mettre à leur disposition, en cas d’absence de moyens de transport publics, des moyens de transport de leurs lieux de résidence vers le lieu de travail et vice-versa ;\n- Repos d’au moins une demie heure après chaque durée de travail continu de quatre heures.\n- mettre à leur disposition des moyens de repos.",
           },
         },
         {
           article_id: 'rt_art_1_infirmiers_500_1000',
           code: { fr: 'Article 1', en: 'Article 1' },
           text: {
-            fr: "- 1 seul infirmier pour un effectif entre 500 et 1000 salariés ; - 2 infirmiers pour un effectif entre 1001 et 1500 salariés ; - Concours d'assistante sociale et d'1 infirmier supplémentaire pour plus de 1500 salariés.",
-            en: "- 1 nurse for a workforce between 500 and 1,000 employees; - 2 nurses for a workforce between 1,001 and 1,500 employees; - Assistance of a social worker and 1 additional nurse for more than 1,500 employees.",
+            fr: "- 1 Seul infirmier pour un effecif entre 500 et 1000 Salariés\n- 2 infirmiers pour un effectif entre 1001 et 1500 salariés\n- Concours d'assitante sociale et d'1 infirmier supplémentaire pour plus de 1500 salariés",
+            en: "- 1 Seul infirmier pour un effecif entre 500 et 1000 Salariés\n- 2 infirmiers pour un effectif entre 1001 et 1500 salariés\n- Concours d'assitante sociale et d'1 infirmier supplémentaire pour plus de 1500 salariés",
           },
         },
         {
           article_id: 'rt_art_1_infirmiers_200_2000',
           code: { fr: 'Article 1', en: 'Article 1' },
           text: {
-            fr: "- 1 infirmier pour un effectif entre 200 et 800 ; - Un assistant social et 2 infirmiers pour un effectif entre 801 et 2000 ; - Concours d'assistante sociale et 1 infirmier supplémentaire pour chaque 1500 pour un effectif de plus de 2000 salariés.",
-            en: "- 1 nurse for a workforce between 200 and 800; - A social worker and 2 nurses for a workforce between 801 and 2,000; - Assistance of a social worker and 1 additional nurse for each 1,500, for a workforce of more than 2,000 employees.",
+            fr: "- 1 infirmier pour un effectif entre 200 et 800.\n- Un assistant social et 2 infirmiers pour un effectif entre 801 et 2000.\n- Concours d'assistante sociale et 1 infirmier supplémentaire pour chaque 1500 pour un effectif de plus de 2000 salariés.",
+            en: "- 1 infirmier pour un effectif entre 200 et 800.\n- Un assistant social et 2 infirmiers pour un effectif entre 801 et 2000.\n- Concours d'assistante sociale et 1 infirmier supplémentaire pour chaque 1500 pour un effectif de plus de 2000 salariés.",
           },
         },
         {
           article_id: 'rt_art_2_service_garde',
           code: { fr: 'Article 2', en: 'Article 2' },
           text: {
-            fr: "Un service de garde est assuré par l'infirmier pour les entreprises précitées.",
-            en: 'An on-call service is provided by the nurse for the aforementioned companies.',
+            fr: "Un service de garde est assuré par l'infirmier pour les entreprises précitées",
+            en: "Un service de garde est assuré par l'infirmier pour les entreprises précitées",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'rt_chapitre_i_amenagement_locaux',
+      title: {
+        fr: 'Chapitre I : Aménagement locaux de travail',
+        en: 'Chapitre I : Aménagement locaux de travail',
+      },
+      articles: [
+        {
+          article_id: 'rt_chap1_art_premier',
+          code: { fr: 'Article premier', en: 'Article first' },
+          text: {
+            fr: "- Les bâtiments (lieux de travail) sont des structures et une solidité appropriées au type d'utilisation.\n- Les portes et portails en va-et-vient doivent être transparentes ou posséder des panneaux transparents. avec marquage apposé à hauteur de vue sur les portes transparentes. Les parties transparentes doivent être constituées de matériaux de sécurité ou être protégées contre l'enfoncement de sorte que les travailleurs ne puissent être blessés en cas de bris de ces surfaces.\n- Les portes et portails coulissantes doivent être munis d'un système de sécurité les empêchant de sortir de leur rail et de tomber.\n- Les portes et portails s'ouvrant vers le haut doivent être munis d'un système de sécurité les empêchant de retomber.\n- Les portes et portails automatiques doivent fonctionner sans risque d'accident pour les travailleurs ;\n- Entretien et contrôle régulier de toutes ces portes,  Lorsque leur chute peut présenter un danger pour les salariés, notamment en raison de leurs dimensions, de leur poids ou de leur mode de fixation.\n- La périodicité des contrôles et les interventions sont consignées dans un registre spécial.\n- Signaler ls zones de dangers quand elles sont inévitables (chute de personnes et d'objets) .\n- Limiter l'accès aux personnes non autorisées pour les zones de danger.\n- Mettre en place un matériel de Premier secours  adapté à la nature des risques et facilement accessible. et le signaler",
+            en: "- Les bâtiments (lieux de travail) sont des structures et une solidité appropriées au type d'utilisation.\n- Les portes et portails en va-et-vient doivent être transparentes ou posséder des panneaux transparents. avec marquage apposé à hauteur de vue sur les portes transparentes. Les parties transparentes doivent être constituées de matériaux de sécurité ou être protégées contre l'enfoncement de sorte que les travailleurs ne puissent être blessés en cas de bris de ces surfaces.\n- Les portes et portails coulissantes doivent être munis d'un système de sécurité les empêchant de sortir de leur rail et de tomber.\n- Les portes et portails s'ouvrant vers le haut doivent être munis d'un système de sécurité les empêchant de retomber.\n- Les portes et portails automatiques doivent fonctionner sans risque d'accident pour les travailleurs ;\n- Entretien et contrôle régulier de toutes ces portes,  Lorsque leur chute peut présenter un danger pour les salariés, notamment en raison de leurs dimensions, de leur poids ou de leur mode de fixation.\n- La périodicité des contrôles et les interventions sont consignées dans un registre spécial.\n- Signaler ls zones de dangers quand elles sont inévitables (chute de personnes et d'objets) .\n- Limiter l'accès aux personnes non autorisées pour les zones de danger.\n- Mettre en place un matériel de Premier secours  adapté à la nature des risques et facilement accessible. et le signaler",
+          },
+        },
+        {
+          article_id: 'rt_chap1_art_2',
+          code: { fr: 'Article 2', en: 'Article 2' },
+          text: {
+            fr: "- Faciliter l'accès aux postes de travail et aux locaux de restauration aux salariés handicapés.\n- Signaler et aménager les locaux en fonction de l'handicap",
+            en: "- Faciliter l'accès aux postes de travail et aux locaux de restauration aux salariés handicapés.\n- Signaler et aménager les locaux en fonction de l'handicap",
+          },
+        },
+        {
+          article_id: 'rt_chap1_art_3',
+          code: { fr: 'Article 3', en: 'Article 3' },
+          text: {
+            fr: "- Faciliter et sécuriser la circulation des piétons et des véhicules.(en interne et en externe) Les postes de travail extérieurs doivent être aménagés de telle façon que les salariés :\n- puissent rapidement quitter leur poste de travail en cas de danger ou puissent rapidement être secourus ;\n- soient protégés contre la chute d'objets ;\n- soient protégés contre les mauvaises conditions atmosphériques ;\n- ne soient pas exposés à des niveaux sonores nocifs ou à des émissions de gaz, vapeurs, aérosols de particules solides ou liquides de substances insalubres, gênantes ou dangereuses ;\n- ne puissent glisser ou chuter.",
+            en: "- Faciliter et sécuriser la circulation des piétons et des véhicules.(en interne et en externe) Les postes de travail extérieurs doivent être aménagés de telle façon que les salariés :\n- puissent rapidement quitter leur poste de travail en cas de danger ou puissent rapidement être secourus ;\n- soient protégés contre la chute d'objets ;\n- soient protégés contre les mauvaises conditions atmosphériques ;\n- ne soient pas exposés à des niveaux sonores nocifs ou à des émissions de gaz, vapeurs, aérosols de particules solides ou liquides de substances insalubres, gênantes ou dangereuses ;\n- ne puissent glisser ou chuter.",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'rt_chapitre_ii_section_i_nettoyage',
+      title: {
+        fr: "Chapitre II : Préservation de l'hygiène et de la sécurité des salariés dans les locaux du travail : Section I : Nettoyage et désinfection des locaux du travail",
+        en: "Chapitre II : Préservation de l'hygiène et de la sécurité des salariés dans les locaux du travail : Section I : Nettoyage et désinfection des locaux du travail",
+      },
+      articles: [
+        {
+          article_id: 'rt_art_4_nettoyage',
+          code: { fr: 'Article 4', en: 'Article 4' },
+          text: {
+            fr: "- Locaux du travail constamment propres.\n- Sol nettoyé une fois/jour minimum.\n- Sols nettoyés jour et nuit, avant et aprés clôture\n- Nettoyage permanent et par aspiration ou par tous autres procédés ne soulevant pas de poussières.\n- Nettoyage des murs, plafonds regulièrement\n- Murs des locaux du travail  recouverts d'enduits ou de peinture d'un ton clair ou de chaux.\n- Nivelage des sols constitués de terre battue",
+            en: "- Locaux du travail constamment propres.\n- Sol nettoyé une fois/jour minimum.\n- Sols nettoyés jour et nuit, avant et aprés clôture\n- Nettoyage permanent et par aspiration ou par tous autres procédés ne soulevant pas de poussières.\n- Nettoyage des murs, plafonds regulièrement\n- Murs des locaux du travail  recouverts d'enduits ou de peinture d'un ton clair ou de chaux.\n- Nivelage des sols constitués de terre battue",
+          },
+        },
+        {
+          article_id: 'rt_art_5_sols_murs',
+          code: { fr: 'Article 5', en: 'Article 5' },
+          text: {
+            fr: "- Sol nivelé et impéreméable avec pente d'un Milimètre par mètre dans la direction de la conduite d'évacuation pour : Locaux où l'on utilise des matières organiques périssables ou altérables, manipulation des chiffons souillés, sol humides\n- Murs couverts d'enduit facilitant lavage.\n- Nettoyage et désinfection des murs et sols assez souvent.\n- Nettoyage des locaux où l'on utilise des matières organiques altérables avec appareils mécaniques d'aspiration.\n- Elimination des résidus putréscibles ou déposés dans des récipients métalliques hermétiquement clos, vidés et lavés avec une solution désinfectante au moins une fois par jour\n- Elevation du Plancher pour les sols humides pour éviter que les pieds des salariés soient en contact direct avec l'eau ou les liquides répandus sur le sol ou les dotter de chaussures de sécurité",
+            en: "- Sol nivelé et impéreméable avec pente d'un Milimètre par mètre dans la direction de la conduite d'évacuation pour : Locaux où l'on utilise des matières organiques périssables ou altérables, manipulation des chiffons souillés, sol humides\n- Murs couverts d'enduit facilitant lavage.\n- Nettoyage et désinfection des murs et sols assez souvent.\n- Nettoyage des locaux où l'on utilise des matières organiques altérables avec appareils mécaniques d'aspiration.\n- Elimination des résidus putréscibles ou déposés dans des récipients métalliques hermétiquement clos, vidés et lavés avec une solution désinfectante au moins une fois par jour\n- Elevation du Plancher pour les sols humides pour éviter que les pieds des salariés soient en contact direct avec l'eau ou les liquides répandus sur le sol ou les dotter de chaussures de sécurité",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'rt_section_ii_evacuation_eaux',
+      title: {
+        fr: 'Section II : Evacuation des eaux résiduaires ou de lavage',
+        en: 'Section II : Evacuation des eaux résiduaires ou de lavage',
+      },
+      articles: [
+        {
+          article_id: 'rt_art_6_evacuation',
+          code: { fr: 'Article 6', en: 'Article 6' },
+          text: {
+            fr: "- Protéger les aterliers et locaux contre : les émanations  d'égouts, fosses, fosses d'aisances ou de toute autre source d'infection.\n- Veiller à l'étanchéité des : Conduites d'évacuation des eaux résiduaires ou de lavage et les conduites de vidange des égouts traversant les locaux de travail.\n- Mettre en place des  intercepteur hydraulique nettoyé au moins une fois par jour pour empêcher la communication entre égoût et établissement.\n- Eviers construits en matériaux imperméables, bien joints, avec pente dans la direction du tuyau d'écoulemenent, aménagés de façon à ne dégager aucune odeur.\n- Ventiler efficacement les puits, conduits de gaz, canaux de fumée, fosses d'aisances, cuves ou appareils quelconques pouvant contenir des gaz nocifs avant les travaux",
+            en: "- Protéger les aterliers et locaux contre : les émanations  d'égouts, fosses, fosses d'aisances ou de toute autre source d'infection.\n- Veiller à l'étanchéité des : Conduites d'évacuation des eaux résiduaires ou de lavage et les conduites de vidange des égouts traversant les locaux de travail.\n- Mettre en place des  intercepteur hydraulique nettoyé au moins une fois par jour pour empêcher la communication entre égoût et établissement.\n- Eviers construits en matériaux imperméables, bien joints, avec pente dans la direction du tuyau d'écoulemenent, aménagés de façon à ne dégager aucune odeur.\n- Ventiler efficacement les puits, conduits de gaz, canaux de fumée, fosses d'aisances, cuves ou appareils quelconques pouvant contenir des gaz nocifs avant les travaux",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'rt_section_iii_installations_sanitaires',
+      title: {
+        fr: 'Section III : Les installations sanitaires vestiaires, lavabos, douches et toilettes',
+        en: 'Section III : Les installations sanitaires vestiaires, lavabos, douches et toilettes',
+      },
+      articles: [
+        {
+          article_id: 'rt_art_7_sanitaires',
+          code: { fr: 'Article 7', en: 'Article 7' },
+          text: {
+            fr: "- Mettre à la disposition des salariés les moyens d'assurer leur propreté individuelle :  vestiaires, et des lavabos.\n- Les lavabos : installés dans des locaux spéciaux isolés des locaux du travail et placés à leur proximité.\n- Aménagement des vestiaires pour au moins 10 salariés.\n-Communication entre vestiaires et lavabos placés dans des locaux séparés sans passer par l'extérieur, locaux de travail ou de stockage\n- Sol et les parois des locaux des vestiaires et des lavabos  construis en matériaux faciles à nettoyer et imperméables.\n- Vestiaires et les lavabos  aérés, éclairés et convenablement chauffés et propre.\n- Parois recouvertes de carreaux de faïences ou peinture claire ou chaux.\n- Séparation vestiaires hommes et femmes pour entreprises avec personnel mixte.\n-Vestiaires  pourvus d'un nombre suffisant de sièges et d'armoires individuelles pouvant être fermées avec :\n- des tringles portant un nombre suffisant de cintres ;\n- d'un compartiment réservé aux vêtements de travail souillés de mauvaise odeur ou portant des matières dangereuses, et muni de deux cintres.\n-Parois de ces armoires ne devront comporter aucune aspérité.\n- Armoires nettoyées au moins une fois par semaine.\n- Lavabos  munis en eau potable à raison d'un robinet au moins pour 5 salariés.\n- Mise à la disposition des salariés de savon et des serviettes propres",
+            en: "- Mettre à la disposition des salariés les moyens d'assurer leur propreté individuelle :  vestiaires, et des lavabos.\n- Les lavabos : installés dans des locaux spéciaux isolés des locaux du travail et placés à leur proximité.\n- Aménagement des vestiaires pour au moins 10 salariés.\n-Communication entre vestiaires et lavabos placés dans des locaux séparés sans passer par l'extérieur, locaux de travail ou de stockage\n- Sol et les parois des locaux des vestiaires et des lavabos  construis en matériaux faciles à nettoyer et imperméables.\n- Vestiaires et les lavabos  aérés, éclairés et convenablement chauffés et propre.\n- Parois recouvertes de carreaux de faïences ou peinture claire ou chaux.\n- Séparation vestiaires hommes et femmes pour entreprises avec personnel mixte.\n-Vestiaires  pourvus d'un nombre suffisant de sièges et d'armoires individuelles pouvant être fermées avec :\n- des tringles portant un nombre suffisant de cintres ;\n- d'un compartiment réservé aux vêtements de travail souillés de mauvaise odeur ou portant des matières dangereuses, et muni de deux cintres.\n-Parois de ces armoires ne devront comporter aucune aspérité.\n- Armoires nettoyées au moins une fois par semaine.\n- Lavabos  munis en eau potable à raison d'un robinet au moins pour 5 salariés.\n- Mise à la disposition des salariés de savon et des serviettes propres",
+          },
+        },
+        {
+          article_id: 'rt_art_8_douches',
+          code: { fr: 'Article 8', en: 'Article 8' },
+          text: {
+            fr: "Mise en place de douches, avec sol et paroi facilement nettoyable, température de l'eau réglable",
+            en: "Mise en place de douches, avec sol et paroi facilement nettoyable, température de l'eau réglable",
+          },
+        },
+        {
+          article_id: 'rt_art_9_toilettes',
+          code: { fr: 'Article 9', en: 'Article 9' },
+          text: {
+            fr: "- Toilettes et urinoirs : bien ventilés, éclairées , pas de communication directe avec les locaux de travail, cabine avec porte pleine ayant au moins 1,50 mètre de hauteur avec dispositif de fermeture intérieur et extérieur, chasse d'eau entretenue,\n- Etablissements de plus de 25 salariés : chasse automatique.\n- Sol et parois en matériaux imperméables recouvertes de carreaux de faïence ou de granites,ou de peintures ou de chaux.\n- Une toilette et un urinoir pour 25 salariés et une toilette pour 25 salariées.\n- Etablissements de plus de 50 salariées : Toilettes à siège pour les femmes enceintes.\n- Dans les établissements avec personnel mixte à l'exception des bureaux : Séparation toilettes hommes et femmes.\n- Propreté des toilettes et urinoires\n- Etablissements de plus de 100 salarié : désigner un salarié pour les nettoyer.\n- Evacuation des effluents dans les collecteurs d'égouts publics fosses setiques sauf pour les installations temporaires de chantiers\n- L'emploi de puits absorbants est interdit.",
+            en: "- Toilettes et urinoirs : bien ventilés, éclairées , pas de communication directe avec les locaux de travail, cabine avec porte pleine ayant au moins 1,50 mètre de hauteur avec dispositif de fermeture intérieur et extérieur, chasse d'eau entretenue,\n- Etablissements de plus de 25 salariés : chasse automatique.\n- Sol et parois en matériaux imperméables recouvertes de carreaux de faïence ou de granites,ou de peintures ou de chaux.\n- Une toilette et un urinoir pour 25 salariés et une toilette pour 25 salariées.\n- Etablissements de plus de 50 salariées : Toilettes à siège pour les femmes enceintes.\n- Dans les établissements avec personnel mixte à l'exception des bureaux : Séparation toilettes hommes et femmes.\n- Propreté des toilettes et urinoires\n- Etablissements de plus de 100 salarié : désigner un salarié pour les nettoyer.\n- Evacuation des effluents dans les collecteurs d'égouts publics fosses setiques sauf pour les installations temporaires de chantiers\n- L'emploi de puits absorbants est interdit.",
+          },
+        },
+        {
+          article_id: 'rt_art_10_handicapes',
+          code: { fr: 'Article 10', en: 'Article 10' },
+          text: {
+            fr: "Amélnager des installations sanitaires appropriées aux salariés handicapés.",
+            en: "Amélnager des installations sanitaires appropriées aux salariés handicapés.",
           },
         },
       ],
