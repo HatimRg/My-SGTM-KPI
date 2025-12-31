@@ -51,6 +51,8 @@ export default function VeilleReglementaireForm({ mode }) {
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [selectedProjectId, setSelectedProjectId] = useState('')
 
+  const persistedQuery = useMemo(() => new URLSearchParams(location.search), [location.search])
+
   const projectListPreference = user?.project_list_preference ?? 'code'
   const sortedProjects = useMemo(() => {
     return sortProjects(projects, projectListPreference)
@@ -79,6 +81,53 @@ export default function VeilleReglementaireForm({ mode }) {
 
   const [weekYear, setWeekYear] = useState(() => new Date().getFullYear())
   const [weekNumber, setWeekNumber] = useState(() => getIsoWeek(new Date()))
+
+  useEffect(() => {
+    if (mode === 'resubmit') return
+
+    const projectIdFromQuery = persistedQuery.get('project_id')
+    if (projectIdFromQuery && !selectedProjectId) {
+      setSelectedProjectId(projectIdFromQuery)
+    }
+
+    const weekNumberFromQuery = persistedQuery.get('week_number')
+    if (weekNumberFromQuery && Number.isFinite(Number(weekNumberFromQuery))) {
+      setWeekNumber(Number(weekNumberFromQuery))
+    }
+
+    const weekYearFromQuery = persistedQuery.get('week_year')
+    if (weekYearFromQuery && Number.isFinite(Number(weekYearFromQuery))) {
+      setWeekYear(Number(weekYearFromQuery))
+    }
+  }, [mode, persistedQuery, selectedProjectId])
+
+  useEffect(() => {
+    if (mode === 'resubmit') return
+
+    const nextQuery = new URLSearchParams(location.search)
+
+    if (selectedProjectId) nextQuery.set('project_id', String(selectedProjectId))
+    else nextQuery.delete('project_id')
+
+    if (weekNumber) nextQuery.set('week_number', String(weekNumber))
+    else nextQuery.delete('week_number')
+
+    if (weekYear) nextQuery.set('week_year', String(weekYear))
+    else nextQuery.delete('week_year')
+
+    const nextSearch = nextQuery.toString()
+    const currentSearch = (location.search || '').replace(/^\?/, '')
+
+    if (nextSearch !== currentSearch) {
+      navigate(
+        {
+          pathname: location.pathname,
+          search: nextSearch ? `?${nextSearch}` : '',
+        },
+        { replace: true }
+      )
+    }
+  }, [location.pathname, location.search, mode, navigate, selectedProjectId, weekNumber, weekYear])
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -137,6 +186,35 @@ export default function VeilleReglementaireForm({ mode }) {
     seedFromPrevious()
   }, [mode, params?.id])
 
+  useEffect(() => {
+    const seedFromLatestProjectSubmission = async () => {
+      if (mode === 'resubmit') return
+
+      const projectId = selectedProjectId ? String(selectedProjectId) : ''
+      if (!projectId) return
+
+      try {
+        setLoadingSeed(true)
+
+        const res = await regulatoryWatchService.getLatest({ project_id: projectId })
+        const submission = res.data?.data ?? null
+        const prevSections = submission?.answers?.sections ?? []
+        const prevNonApplicable = (Array.isArray(prevSections) ? prevSections : [])
+          .flatMap((s) => (Array.isArray(s?.articles) ? s.articles : []))
+          .filter((a) => a && a.applicable === false)
+          .map((a) => String(a.article_id))
+
+        setAnswers(makeInitialAnswers({ previousNonApplicableArticleIds: prevNonApplicable }))
+      } catch (e) {
+        toast.error(e.response?.data?.message ?? t('errors.somethingWentWrong'))
+      } finally {
+        setLoadingSeed(false)
+      }
+    }
+
+    seedFromLatestProjectSubmission()
+  }, [mode, selectedProjectId, t])
+
   const sectionScores = useMemo(() => {
     const sections = Array.isArray(answers?.sections) ? answers.sections : []
     return sections.map((s) => ({ section_id: s.section_id, ...computeSectionScore(s) }))
@@ -165,11 +243,15 @@ export default function VeilleReglementaireForm({ mode }) {
   useEffect(() => {
     const clamped = Math.min(Math.max(1, currentPageNumber), totalSections)
     if (clamped !== currentPageNumber) {
-      navigate(`${wizardBasePath}/${clamped}`, { replace: true })
+      navigate(`${wizardBasePath}/${clamped}${location.search || ''}`, { replace: true })
       return
     }
     setCurrentSectionIndex(clamped - 1)
-  }, [currentPageNumber, navigate, totalSections, wizardBasePath])
+  }, [currentPageNumber, location.search, navigate, totalSections, wizardBasePath])
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
+  }, [currentPageNumber])
 
   const currentSectionSchema = useMemo(() => {
     return SECTIONS[currentSectionIndex] ?? null
@@ -260,12 +342,12 @@ export default function VeilleReglementaireForm({ mode }) {
 
   const goPrevious = () => {
     const prevPage = Math.max(1, currentPageNumber - 1)
-    navigate(`${wizardBasePath}/${prevPage}`)
+    navigate(`${wizardBasePath}/${prevPage}${location.search || ''}`)
   }
 
   const goNext = () => {
     const nextPage = Math.min(totalSections, currentPageNumber + 1)
-    navigate(`${wizardBasePath}/${nextPage}`)
+    navigate(`${wizardBasePath}/${nextPage}${location.search || ''}`)
   }
 
   const isLastSection = currentSectionIndex >= totalSections - 1

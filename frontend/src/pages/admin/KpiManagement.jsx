@@ -236,7 +236,7 @@ export default function KpiManagement() {
   const weekOptions = Array.from({ length: 52 }, (_, i) => i + 1)
   
   // Generate year options (current year -2 to +1)
-  const currentYear = new Date().getFullYear()
+  const currentYear = getCurrentWeek().year
   const yearOptions = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1]
 
   const getStatusBadge = (status) => {

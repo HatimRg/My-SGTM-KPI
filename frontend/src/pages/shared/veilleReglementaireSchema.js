@@ -279,6 +279,46 @@ export const SECTION_5 = {
           },
         },
         {
+          article_id: 'al_art_3_passerelles',
+          code: { fr: 'Article 3', en: 'Article 3' },
+          text: {
+            fr: "Appareil avec passerelles, lorsque deux appareils doivent se mouvoir l'un au-dessus de l'autre : a) Une distance verticale de 2 mètres au moins doit séparer les passerelles et tous objets susceptibles de se présenter au-dessus du trajet suivi par l'appareil de levage ; b) Un grillage ou une armature rigide, de résistance mécanique suffisante, formant plafond et obligeant les travailleurs qui se trouvent sur la passerelle à rester en dehors des zones dangereuses, doit être installé.",
+            en: "Appareil avec passerelles, lorsque deux appareils doivent se mouvoir l'un au-dessus de l'autre : a) Une distance verticale de 2 mètres au moins doit séparer les passerelles et tous objets susceptibles de se présenter au-dessus du trajet suivi par l'appareil de levage ; b) Un grillage ou une armature rigide, de résistance mécanique suffisante, formant plafond et obligeant les travailleurs qui se trouvent sur la passerelle à rester en dehors des zones dangereuses, doit être installé.",
+          },
+        },
+        {
+          article_id: 'al_art_5_attestation_mise_service',
+          code: { fr: 'Article 5', en: 'Article 5' },
+          text: {
+            fr: "Attestation de mise en service en cas de changement de chaînes, câbles ou cordages faisant partie d'un appareil (par le fournisseur ou l'organisme compétent l'ayant éprouvé).",
+            en: "Attestation de mise en service en cas de changement de chaînes, câbles ou cordages faisant partie d'un appareil (par le fournisseur ou l'organisme compétent l'ayant éprouvé).",
+          },
+        },
+        {
+          article_id: 'al_art_5_immobilisation_arret',
+          code: { fr: 'Article 5', en: 'Article 5' },
+          text: {
+            fr: "Les appareils de levage montés sur roues, tels que ponts, portiques roulants, monorails, grues, seront immobilisés à l'arrêt par des moyens de calage, d'amarrage ou de freinage.",
+            en: "Les appareils de levage montés sur roues, tels que ponts, portiques roulants, monorails, grues, seront immobilisés à l'arrêt par des moyens de calage, d'amarrage ou de freinage.",
+          },
+        },
+        {
+          article_id: 'al_art_15_interdiction_chiffons',
+          code: { fr: 'Article 15', en: 'Article 15' },
+          text: {
+            fr: "Tout emmagasinage de chiffons, déchets, huiles ou autres matières combustibles dans la cabine de manœuvre est interdit. Des récipients métalliques fermés doivent être placés à l'extérieur des cabines pour recevoir les chiffons ou déchets ; ils seront vidés périodiquement.",
+            en: "Tout emmagasinage de chiffons, déchets, huiles ou autres matières combustibles dans la cabine de manœuvre est interdit. Des récipients métalliques fermés doivent être placés à l'extérieur des cabines pour recevoir les chiffons ou déchets ; ils seront vidés périodiquement.",
+          },
+        },
+        {
+          article_id: 'al_art_16_extincteurs_cabines',
+          code: { fr: 'Article 16', en: 'Article 16' },
+          text: {
+            fr: "Les cabines doivent être munies d'appareils extincteurs d'incendie d'une puissance suffisante.",
+            en: "Les cabines doivent être munies d'appareils extincteurs d'incendie d'une puissance suffisante.",
+          },
+        },
+        {
           article_id: 'al_art_25_interdictions',
           code: { fr: 'Article 25', en: 'Article 25' },
           text: {
@@ -297,11 +337,51 @@ export const SECTION_5 = {
           },
         },
         {
+          article_id: 'al_art_30_entretien_arret',
+          code: { fr: 'Article 30', en: 'Article 30' },
+          text: {
+            fr: "Le graissage, le nettoyage, l'entretien et les réparations des appareils doivent être opérés à l'arrêt.",
+            en: "Le graissage, le nettoyage, l'entretien et les réparations des appareils doivent être opérés à l'arrêt.",
+          },
+        },
+        {
+          article_id: 'al_art_31_epreuve_mise_service',
+          code: { fr: 'Article 31', en: 'Article 31' },
+          text: {
+            fr: "Les appareils seront éprouvés avant leur mise en service.",
+            en: "Les appareils seront éprouvés avant leur mise en service.",
+          },
+        },
+        {
+          article_id: 'al_art_32_examens_periodiques',
+          code: { fr: 'Article 32', en: 'Article 32' },
+          text: {
+            fr: "Les appareils seront examinés à fond une fois au moins tous les douze mois. Vérification des chaînes, câbles, cordages, élingues, palonniers et crochets de suspension. Ils seront vérifiés, en outre, avant d'être remis en service après un arrêt lorsque la dernière inspection normale remontera à plus de trois mois. Ils seront également vérifiés lorsqu'ils auront subi des démontages ou des modifications.",
+            en: "Les appareils seront examinés à fond une fois au moins tous les douze mois. Vérification des chaînes, câbles, cordages, élingues, palonniers et crochets de suspension. Ils seront vérifiés, en outre, avant d'être remis en service après un arrêt lorsque la dernière inspection normale remontera à plus de trois mois. Ils seront également vérifiés lorsqu'ils auront subi des démontages ou des modifications.",
+          },
+        },
+        {
+          article_id: 'al_art_33_techniciens_qualifies',
+          code: { fr: 'Article 33', en: 'Article 33' },
+          text: {
+            fr: "Les épreuves, examens et inspections doivent se faire par des techniciens qualifiés et spécialisés appartenant soit à l'établissement lui-même, ou à un organisme agréé.",
+            en: "Les épreuves, examens et inspections doivent se faire par des techniciens qualifiés et spécialisés appartenant soit à l'établissement lui-même, ou à un organisme agréé.",
+          },
+        },
+        {
           article_id: 'al_art_34_registre',
           code: { fr: 'Article 34', en: 'Article 34' },
           text: {
             fr: "Consigner les résultats des épreuves sur un registre spécial pour l'appareil et l'ensemble de ses éléments.",
             en: 'Record test results in a dedicated register for the device and all its components.',
+          },
+        },
+        {
+          article_id: 'al_art_35_interdiction_conduite_inapte',
+          code: { fr: 'Article 35', en: 'Article 35' },
+          text: {
+            fr: "Il est interdit de confier la conduite des appareils de levage à des ouvriers que leur ignorance ou leur connaissance imparfaite des consignes et des manœuvres, leur état de santé ou leurs aptitudes physiques rendent impropres à remplir ces fonctions.",
+            en: "Il est interdit de confier la conduite des appareils de levage à des ouvriers que leur ignorance ou leur connaissance imparfaite des consignes et des manœuvres, leur état de santé ou leurs aptitudes physiques rendent impropres à remplir ces fonctions.",
           },
         },
         {
@@ -312,6 +392,14 @@ export const SECTION_5 = {
               "Établir des consignes spécifiant les mesures de sécurité en service normal, les précautions contre les chutes d'objets, et la sauvegarde du personnel lors des opérations de visite/graissage/nettoyage/entretien/réparation. Les afficher en arabe et en français.",
             en:
               'Establish instructions specifying safety measures in normal service, precautions to prevent falling objects, and protection of personnel during inspection/lubrication/cleaning/maintenance/repair operations. Display them in Arabic and French.',
+          },
+        },
+        {
+          article_id: 'al_art_37_indication_poids_max',
+          code: { fr: 'Article 37', en: 'Article 37' },
+          text: {
+            fr: "Indiquer les poids maximums des charges que l'appareil peut supporter. Indiquer les poids maximums des charges pour les accessoires, chaînes, câbles, cordages, élingues, palonniers, crochets de suspension.",
+            en: "Indiquer les poids maximums des charges que l'appareil peut supporter. Indiquer les poids maximums des charges pour les accessoires, chaînes, câbles, cordages, élingues, palonniers, crochets de suspension.",
           },
         },
       ],
@@ -418,6 +506,95 @@ export const SECTION_6 = {
               'Any owner/user/repairer of pressure equipment must consult the regional mining service or an approved body before repairs or modifications. It is prohibited to repair equipment that has been condemned by an approved expert or mining engineer.',
           },
         },
+        {
+          article_id: 'ap_art_22_entretien_garnissage_acetylene',
+          code: { fr: 'Article 22', en: 'Article 22' },
+          text: {
+            fr: "Réaliser l'entretien et le garnissage des récipients d'acétylène (pression effective de 1,5 hectopièze au moins en solution d'acétone). Ce délai est porté à trois ans lorsque le garnissage est constitué par une matière poreuse cohérente.",
+            en: "Réaliser l'entretien et le garnissage des récipients d'acétylène (pression effective de 1,5 hectopièze au moins en solution d'acétone). Ce délai est porté à trois ans lorsque le garnissage est constitué par une matière poreuse cohérente.",
+          },
+        },
+        {
+          article_id: 'ap_art_23_acetone_pression',
+          code: { fr: 'Article 23', en: 'Article 23' },
+          text: {
+            fr: "Le poids maximum d'acétone et la pression de chargement doivent être tels que, après chargement et la température étant supposée ramenée à 15° C : 1° le volume occupé par le gaz non dissous soit supérieur à 12 % du volume total du récipient vide de toute substance ; 2° la pression effective mesurée au manomètre n'excède pas 15 hectopièzes.",
+            en: "Le poids maximum d'acétone et la pression de chargement doivent être tels que, après chargement et la température étant supposée ramenée à 15° C : 1° le volume occupé par le gaz non dissous soit supérieur à 12 % du volume total du récipient vide de toute substance ; 2° la pression effective mesurée au manomètre n'excède pas 15 hectopièzes.",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'ap_marques_identite_service',
+      title: {
+        fr: "Titre Premier : Marques d'Identité et de Service",
+        en: "Title One: Identification and service marks",
+      },
+      articles: [
+        {
+          article_id: 'ap_art_3_plaque_identite',
+          code: { fr: 'Article 3', en: 'Article 3' },
+          text: {
+            fr: "Chaque appareil fixe ou mi fixe doit avoir une plaque avec une marque d'identité de service (désignation du gaz, pression max, volume...).",
+            en: "Chaque appareil fixe ou mi fixe doit avoir une plaque avec une marque d'identité de service (désignation du gaz, pression max, volume...).",
+          },
+        },
+        {
+          article_id: 'ap_art_4_gdv',
+          code: { fr: 'Article 4', en: 'Article 4' },
+          text: {
+            fr: "Les récipients mobiles ou mi-fixes en acier contenant ou ayant contenu du gaz obtenu par la distillation de combustibles solides doivent porter dans le métal même l'inscription G.D.V. suivie du poinçon de l'expert chargé de l'épreuve ; cette inscription ne doit sous aucun prétexte être oblitérée ou altérée.",
+            en: "Les récipients mobiles ou mi-fixes en acier contenant ou ayant contenu du gaz obtenu par la distillation de combustibles solides doivent porter dans le métal même l'inscription G.D.V. suivie du poinçon de l'expert chargé de l'épreuve ; cette inscription ne doit sous aucun prétexte être oblitérée ou altérée.",
+          },
+        },
+        {
+          article_id: 'ap_art_8_renouvellement_epreuve',
+          code: { fr: 'Article 8', en: 'Article 8' },
+          text: {
+            fr: "Renouvellement de l'épreuve pour tous les appareils à pression.",
+            en: "Renouvellement de l'épreuve pour tous les appareils à pression.",
+          },
+        },
+        {
+          article_id: 'ap_art_26_robinets_capsules',
+          code: { fr: 'Article 26', en: 'Article 26' },
+          text: {
+            fr: "Les robinets équipant les récipients dits bouteilles 12 kg et les clapets équipant les récipients dits bouteilles 3 kg doivent être munis d'un écrou, d'une capsule ou d'un bouchon, dont la conception est agréée. L'écrou/capsule/bouchon doivent être en matière résistante garantissant l'inviolabilité et l'étanchéité. Ils doivent résister à une pression de 20 bars.",
+            en: "Les robinets équipant les récipients dits bouteilles 12 kg et les clapets équipant les récipients dits bouteilles 3 kg doivent être munis d'un écrou, d'une capsule ou d'un bouchon, dont la conception est agréée. L'écrou/capsule/bouchon doivent être en matière résistante garantissant l'inviolabilité et l'étanchéité. Ils doivent résister à une pression de 20 bars.",
+          },
+        },
+        {
+          article_id: 'ap_art_27_centres_emplisseurs',
+          code: { fr: 'Article 27', en: 'Article 27' },
+          text: {
+            fr: "Tout centre emplisseur est tenu d'acquérir le matériel permettant de doter les récipients de gaz de la capsule ou de l'écrou agréé et d'effectuer cette opération systématiquement sur toutes les bouteilles.",
+            en: "Tout centre emplisseur est tenu d'acquérir le matériel permettant de doter les récipients de gaz de la capsule ou de l'écrou agréé et d'effectuer cette opération systématiquement sur toutes les bouteilles.",
+          },
+        },
+        {
+          article_id: 'ap_art_28_dispositif_limiteur_debit',
+          code: { fr: 'Article 28', en: 'Article 28' },
+          text: {
+            fr: "Les récipients dits bouteilles 12 kg doivent être munis d'un dispositif limiteur de débit incorporé soit à la bouteille, soit à son robinet.",
+            en: "Les récipients dits bouteilles 12 kg doivent être munis d'un dispositif limiteur de débit incorporé soit à la bouteille, soit à son robinet.",
+          },
+        },
+        {
+          article_id: 'ap_art_29_chapeau_anse',
+          code: { fr: 'Article 29', en: 'Article 29' },
+          text: {
+            fr: "Les robinets des récipients dits bouteilles 12 kg doivent être protégés par un chapeau avec anse, vissé sur le corps de la bouteille. Il est interdit de manipuler (excepté lors de l'emplissage) et de transporter toute bouteille de 12 kg non munie de son chapeau.",
+            en: "Les robinets des récipients dits bouteilles 12 kg doivent être protégés par un chapeau avec anse, vissé sur le corps de la bouteille. Il est interdit de manipuler (excepté lors de l'emplissage) et de transporter toute bouteille de 12 kg non munie de son chapeau.",
+          },
+        },
+        {
+          article_id: 'ap_art_30_refus_recipients',
+          code: { fr: 'Article 30', en: 'Article 30' },
+          text: {
+            fr: "Les centres emplisseurs sont tenus de refuser l'enlèvement des récipients non conformes.",
+            en: "Les centres emplisseurs sont tenus de refuser l'enlèvement des récipients non conformes.",
+          },
+        },
       ],
     },
   ],
@@ -426,23 +603,79 @@ export const SECTION_6 = {
 export const SECTION_7 = {
   section_id: 'page_7',
   title: {
-    fr: '7.',
-    en: '7.',
+    fr: '7. Prévention Incendie',
+    en: '7. Fire prevention',
   },
   chapters: [
     {
-      chapter_id: 'p7_placeholder',
+      chapter_id: 'prevention_incendie',
       title: {
         fr: 'Dispositions',
         en: 'Provisions',
       },
       articles: [
         {
-          article_id: 'p7_todo',
-          code: { fr: 'À compléter', en: 'To be completed' },
+          article_id: 'pi_art_premier',
+          code: { fr: 'Article Premier', en: 'Article First' },
           text: {
-            fr: 'Contenu de la page 7 à intégrer (source manquante dans le dépôt).',
-            en: 'Page 7 content must be integrated (source not available in the repository).',
+            fr:
+              "Dispositions applicable pour l'entreposage ou la manipulation de l'éther (oxyde d'éther), du sulfure de carbone et des solutions contenant 30 % au moins de l'un ou l'autre de ces produits.",
+            en:
+              "Dispositions applicable pour l'entreposage ou la manipulation de l'éther (oxyde d'éther), du sulfure de carbone et des solutions contenant 30 % au moins de l'un ou l'autre de ces produits.",
+          },
+        },
+        {
+          article_id: 'pi_art_2_recipients_etanches',
+          code: { fr: 'Article 2', en: 'Article 2' },
+          text: {
+            fr:
+              "Les récipients mobiles de plus de 2 litres contenant les liquides visés à l'article premier, susceptibles d'être entreposés ou manipulés, doivent être étanches, avec enveloppe métallique étanche s'ils sont en verre.",
+            en:
+              "Les récipients mobiles de plus de 2 litres contenant les liquides visés à l'article premier, susceptibles d'être entreposés ou manipulés, doivent être étanches, avec enveloppe métallique étanche s'ils sont en verre.",
+          },
+        },
+        {
+          article_id: 'pi_art_3_affichage_inflammable',
+          code: { fr: 'Article 3', en: 'Article 3' },
+          text: {
+            fr: 'Affichage de la dénomination du liquide contenu dans les récipients avec mention "liquide particulièrement inflammable".',
+            en: 'Affichage de la dénomination du liquide contenu dans les récipients avec mention "liquide particulièrement inflammable".',
+          },
+        },
+        {
+          article_id: 'pi_art_4_quantite_journee',
+          code: { fr: 'Article 4', en: 'Article 4' },
+          text: {
+            fr: "Entreposer juste la quantité nécessaire à la consommation d'une journée. Les récipients vides doivent être bouchés et ne doivent jamais séjourner dans ces locaux.",
+            en: "Entreposer juste la quantité nécessaire à la consommation d'une journée. Les récipients vides doivent être bouchés et ne doivent jamais séjourner dans ces locaux.",
+          },
+        },
+        {
+          article_id: 'pi_art_5_transvasement',
+          code: { fr: 'Article 5', en: 'Article 5' },
+          text: {
+            fr:
+              "Lorsque les récipients ont une capacité supérieure à 20 litres, le transvasement de ces liquides ne peut se faire qu'à l'aide soit d'un dispositif évitant le renversement du récipient (siphons ou vide-touries), soit de pompes ou autres dispositifs étanches.",
+            en:
+              "Lorsque les récipients ont une capacité supérieure à 20 litres, le transvasement de ces liquides ne peut se faire qu'à l'aide soit d'un dispositif évitant le renversement du récipient (siphons ou vide-touries), soit de pompes ou autres dispositifs étanches.",
+          },
+        },
+        {
+          article_id: 'pi_art_6_interdictions_local',
+          code: { fr: 'Article 6', en: 'Article 6' },
+          text: {
+            fr:
+              "Les locaux où sont entreposés, manipulés ou employés ces liquides en quantité supérieure à deux litres ne doivent jamais contenir aucun foyer, aucune flamme, aucun appareil pouvant donner lieu à production extérieure d'étincelles électriques ou présentant des parties susceptibles d'être portées à l'incandescence. Ils ne peuvent être mis en communication directe avec des locaux présentant des dangers d'inflammation du même ordre. Lesdits locaux ne peuvent être éclairés que par des lampes électriques munies d'une double enveloppe ; les conducteurs électriques doivent être installés selon les règles de l'art et de façon à éviter tout court-circuit. Il est interdit d'apporter dans ces locaux une bougie ou une lampe allumée, ou tout autre objet produisant des flammes. Il est également interdit d'y fumer. Cette interdiction doit faire l'objet d'un affichage en français et en arabe, en caractères très apparents, à l'entrée des locaux. Il est interdit de procéder, par un dispositif quelconque, au chauffage des locaux où sont entreposés l'éther, le sulfure de carbone ou les solutions contenant plus de 30 % de l'un ou l'autre de ces produits. Dans les locaux où est manipulé du sulfure de carbone, ne peuvent exister ou être introduits des matières ou objets d'une température supérieure à 120° centigrades.",
+            en:
+              "Les locaux où sont entreposés, manipulés ou employés ces liquides en quantité supérieure à deux litres ne doivent jamais contenir aucun foyer, aucune flamme, aucun appareil pouvant donner lieu à production extérieure d'étincelles électriques ou présentant des parties susceptibles d'être portées à l'incandescence. Ils ne peuvent être mis en communication directe avec des locaux présentant des dangers d'inflammation du même ordre. Lesdits locaux ne peuvent être éclairés que par des lampes électriques munies d'une double enveloppe ; les conducteurs électriques doivent être installés selon les règles de l'art et de façon à éviter tout court-circuit. Il est interdit d'apporter dans ces locaux une bougie ou une lampe allumée, ou tout autre objet produisant des flammes. Il est également interdit d'y fumer. Cette interdiction doit faire l'objet d'un affichage en français et en arabe, en caractères très apparents, à l'entrée des locaux. Il est interdit de procéder, par un dispositif quelconque, au chauffage des locaux où sont entreposés l'éther, le sulfure de carbone ou les solutions contenant plus de 30 % de l'un ou l'autre de ces produits. Dans les locaux où est manipulé du sulfure de carbone, ne peuvent exister ou être introduits des matières ou objets d'une température supérieure à 120° centigrades.",
+          },
+        },
+        {
+          article_id: 'pi_art_7_ventilation',
+          code: { fr: 'Article 7', en: 'Article 7' },
+          text: {
+            fr: "Les locaux visés à l'article précédent doivent être parfaitement ventilés.",
+            en: "Les locaux visés à l'article précédent doivent être parfaitement ventilés.",
           },
         },
       ],
@@ -453,87 +686,31 @@ export const SECTION_7 = {
 export const SECTION_9 = {
   section_id: 'page_9',
   title: {
-    fr: '9. Agents biologiques (extraits)',
-    en: '9. Biological agents (extracts)',
+    fr: '9. Conduite routière',
+    en: '9. Road driving',
   },
   chapters: [
     {
-      chapter_id: 'agents_biologiques',
+      chapter_id: 'conduite_professionnelle',
       title: {
-        fr: 'Agents biologiques (extraits)',
-        en: 'Biological agents (extracts)',
+        fr: 'Chapitre VI : De la conduite professionnelle',
+        en: 'Chapter VI: Professional driving',
       },
       articles: [
         {
-          article_id: 'pc_art_60',
-          code: { fr: 'Article 60', en: 'Article 60' },
+          article_id: 'cr_art_40_autorisation',
+          code: { fr: 'Article 40', en: 'Article 40' },
           text: {
-            fr: "Lors de l’évaluation des risques, l’employeur porte une attention particulière sur les dangers des agents biologiques susceptibles d’être présents dans l’organisme des patients ou de personnes décédées et chez les animaux vivants ou morts, dans les échantillons, les prélèvements et les déchets qui en proviennent.",
-            en: 'When assessing risks, the employer pays particular attention to hazards from biological agents that may be present in patients (or deceased persons) and in live/dead animals, as well as in samples, specimens and related waste.',
+            fr: "Nul ne peut conduire les véhicules cités ci-après, à titre professionnel, s’il n’est pas titulaire d’une autorisation de conducteur professionnel : - Les véhicules dont le poids total en charge dépasse les 3500 Kg, pour le transport de marchandise pour le compte d'autrui ou pour le compte propre. - Les véhicules de transport public de personnes. - Les véhicules dont la conduite nécessite le permis de conduire 'D' ou 'E' pour le transport de personnel ou le transport scolaire. - Les taxis de la première et la deuxième catégorie. - Les autobus de transport urbain. L'autorisation de conduite professionnelle est délivrée par l'administration au demandeur ayant suivi une formation de qualification initiale sous forme de carte désignée par la présente loi \"carte de conducteur professionnel\".",
+            en: "Nul ne peut conduire les véhicules cités ci-après, à titre professionnel, s’il n’est pas titulaire d’une autorisation de conducteur professionnel : - Les véhicules dont le poids total en charge dépasse les 3500 Kg, pour le transport de marchandise pour le compte d'autrui ou pour le compte propre. - Les véhicules de transport public de personnes. - Les véhicules dont la conduite nécessite le permis de conduire 'D' ou 'E' pour le transport de personnel ou le transport scolaire. - Les taxis de la première et la deuxième catégorie. - Les autobus de transport urbain. L'autorisation de conduite professionnelle est délivrée par l'administration au demandeur ayant suivi une formation de qualification initiale sous forme de carte désignée par la présente loi \"carte de conducteur professionnel\".",
           },
         },
         {
-          article_id: 'pc_art_61',
-          code: { fr: 'Article 61', en: 'Article 61' },
+          article_id: 'cr_art_42_formation',
+          code: { fr: 'Article 42', en: 'Article 42' },
           text: {
-            fr: "Les résultats de l’évaluation des risques biologiques sont consignés dans une fiche d’évaluation des risques, mise à la disposition de l’agent chargé de l’inspection du travail.",
-            en: 'Results of the biological risk assessment are recorded in a risk assessment sheet made available to the labor inspection officer.',
-          },
-        },
-        {
-          article_id: 'pc_art_63',
-          code: { fr: 'Article 63', en: 'Article 63' },
-          text: {
-            fr: "Lorsque les résultats de l’évaluation des risques révèlent l’existence d’un risque pour la santé ou la sécurité des salariés, toute exposition à un agent biologique dangereux est évitée.",
-            en: 'If risk assessment shows a health/safety risk, any exposure to a hazardous biological agent must be avoided.',
-          },
-        },
-        {
-          article_id: 'pc_art_65',
-          code: { fr: 'Article 65', en: 'Article 65' },
-          text: {
-            fr: "L’employeur doit établir une consigne de sécurité interdisant l’introduction de nourriture/boissons, articles pour fumeurs, cosmétiques, et mouchoirs non papier dans les lieux de travail où existe un risque de contamination.",
-            en: 'The employer must establish safety instructions prohibiting the introduction of food/drinks, smoking items, cosmetics, and non-paper tissues in workplaces where contamination risk exists.',
-          },
-        },
-        {
-          article_id: 'pc_art_66',
-          code: { fr: 'Article 66', en: 'Article 66' },
-          text: {
-            fr: "Pour les activités impliquant des agents biologiques pathogènes, l’employeur fournit des EPI adaptés, organise le retrait et l’entretien/désinfection, et met à disposition des installations sanitaires et des matériels adaptés pour minimiser les risques de contamination.",
-            en: 'For activities involving pathogenic biological agents, the employer provides adequate PPE, ensures removal and cleaning/disinfection, and provides sanitary facilities and suitable equipment to minimize contamination risks.',
-          },
-        },
-        {
-          article_id: 'pc_art_68',
-          code: { fr: 'Article 68', en: 'Article 68' },
-          text: {
-            fr: "L’employeur prend des mesures pour préserver la santé/sécurité dans les lieux où des salariés peuvent être en contact avec des agents biologiques pathogènes (information sur décontamination/désinfection, procédures d’élimination des déchets contaminés).",
-            en: 'The employer must take measures to protect health/safety where workers may contact pathogenic biological agents (decontamination/disinfection information and safe contaminated-waste handling procedures).',
-          },
-        },
-        {
-          article_id: 'pc_art_70',
-          code: { fr: 'Article 70', en: 'Article 70' },
-          text: {
-            fr: "Dans les laboratoires et procédés industriels utilisant des agents biologiques pathogènes, des mesures de confinement appropriées sont prises selon l’évaluation des risques (au moins niveau groupe 3 en cas de doute).",
-            en: 'In laboratories and industrial processes using pathogenic biological agents, appropriate containment measures must be applied according to the risk assessment (at least group 3 level if uncertain).',
-          },
-        },
-        {
-          article_id: 'pc_art_72',
-          code: { fr: 'Article 72', en: 'Article 72' },
-          text: {
-            fr: "Des instructions écrites (et affiches si nécessaire) doivent être disponibles pour la procédure à suivre en cas d’accident/incident grave impliquant un agent biologique pathogène et lors de la manipulation d’agents du groupe 4.",
-            en: 'Written instructions (and posters if needed) must be available for procedures in case of serious accidents/incidents involving pathogenic agents, and when handling group 4 agents.',
-          },
-        },
-        {
-          article_id: 'pc_art_73',
-          code: { fr: 'Article 73', en: 'Article 73' },
-          text: {
-            fr: "Informer sans délai salariés/médecin du travail/CHS des accidents/incidents ayant pu disséminer un agent biologique dangereux, ainsi que des causes et mesures prises/à prendre.",
-            en: 'Immediately inform workers, the occupational physician and H&S committee of any accident/incident that may have dispersed a hazardous biological agent, including causes and measures taken/to be taken.',
+            fr: "La formation de qualification et formation continue visées aux articles 40 et 41 ci-dessus doivent porter sur : - L'utilisation rationnelle du véhicule en fonction de ses caractéristiques techniques. - L'adoption d'une attitude appropriée en situation d'urgence pour anticiper les dangers et respecter les autres usagers de la voie publique. - L'utilisation des dispositifs de contrôle de sécurité. - L'application des règles de sécurité et l'adaptation du conducteur à l'environnement professionnel de la conduite. - L'acquisition et/ou l'actualisation des connaissances permettant d'appliquer les textes législatifs et réglementaires relatifs aux transports, les règles de la sécurité de la circulation routière ainsi que la législation du travail. - La maîtrise des règles de sécurité lors de chargement/déchargement ainsi que des règles d'arrimage et la prise en compte des dangers des marchandises transportées.",
+            en: "La formation de qualification et formation continue visées aux articles 40 et 41 ci-dessus doivent porter sur : - L'utilisation rationnelle du véhicule en fonction de ses caractéristiques techniques. - L'adoption d'une attitude appropriée en situation d'urgence pour anticiper les dangers et respecter les autres usagers de la voie publique. - L'utilisation des dispositifs de contrôle de sécurité. - L'application des règles de sécurité et l'adaptation du conducteur à l'environnement professionnel de la conduite. - L'acquisition et/ou l'actualisation des connaissances permettant d'appliquer les textes législatifs et réglementaires relatifs aux transports, les règles de la sécurité de la circulation routière ainsi que la législation du travail. - La maîtrise des règles de sécurité lors de chargement/déchargement ainsi que des règles d'arrimage et la prise en compte des dangers des marchandises transportées.",
           },
         },
       ],
@@ -544,63 +721,23 @@ export const SECTION_9 = {
 export const SECTION_10 = {
   section_id: 'page_10',
   title: {
-    fr: '10. BTP (Dispositions générales)',
-    en: '10. Construction (General provisions)',
+    fr: '10. Machines',
+    en: '10. Machines',
   },
   chapters: [
     {
-      chapter_id: 'btp_titre_ii_general',
+      chapter_id: 'machines',
       title: {
-        fr: 'Dispositions générales',
-        en: 'General provisions',
+        fr: 'Dispositions',
+        en: 'Provisions',
       },
       articles: [
         {
-          article_id: 'btp_art_premier',
-          code: { fr: 'Article Premier', en: 'Article First' },
+          article_id: 'm_art_7_notice_instruction',
+          code: { fr: 'Article 7', en: 'Article 7' },
           text: {
-            fr:
-              "Indépendamment des mesures auxquelles ils sont astreints en vertu de la réglementation en vigueur sur la protection, l'hygiène et la salubrité des travailleurs, les chefs des établissements dont le personnel effectue des travaux BTP doivent prendre les mesures particulières de protection et de salubrité prévues.",
-            en:
-              'In addition to general worker protection/hygiene requirements, employers whose staff perform construction works must take the specific protection and health measures provided for.',
-          },
-        },
-        {
-          article_id: 'btp_art_2',
-          code: { fr: 'Article 2', en: 'Article 2' },
-          text: {
-            fr:
-              "Le matériel utilisé sur les chantiers (échafaudages, échelles, passerelles, appareils de manutention/levage, etc.) doit être suffisamment résistant et vérifié avant emploi.",
-            en:
-              'On construction sites, equipment (scaffolds, ladders, walkways, handling/lifting devices, etc.) must be sufficiently strong and checked before use.',
-          },
-        },
-        {
-          article_id: 'btp_art_3',
-          code: { fr: 'Article 3', en: 'Article 3' },
-          text: {
-            fr:
-              "Avant mise en service, les appareils de levage/manutention doivent être vérifiés et essayés; la vérification est renouvelée après démontage/modification/remplacement de pièces et en cas de signalement de mauvais état.",
-            en:
-              'Before use, lifting/handling equipment must be inspected and tested; re-check after dismantling/modification/part replacement and when poor condition is reported.',
-          },
-        },
-        {
-          article_id: 'btp_art_4',
-          code: { fr: 'Article 4', en: 'Article 4' },
-          text: {
-            fr: "Les crochets de suspension doivent empêcher tout décrochement accidentel des fardeaux.",
-            en: 'Suspension hooks must be designed to prevent accidental unhooking of loads.',
-          },
-        },
-        {
-          article_id: 'btp_art_5',
-          code: { fr: 'Article 5', en: 'Article 5' },
-          text: {
-            fr:
-              "Tous les appareils de levage/manutention mus mécaniquement doivent avoir un frein ou dispositif équivalent capable d'arrêter le mouvement; dispositifs de sécurité pour crics.",
-            en:
-              'All mechanically driven lifting/handling devices must have a brake or equivalent stopping device; jacks must include safety measures to prevent crank kickback accidents.',
+            fr: "L’employeur doit s’assurer que tous les appareils ou les machines de même type sont accompagnés d’une notice d’instruction établie par le constructeur et indiquant les conditions de manutention, d’installation, d’utilisation et d’entretien et précisant les mesures d’hygiène et de sécurité à prendre lors de ces opérations, et comporte les plans et schémas nécessaires pour l’entretien et les vérifications techniques d’appareils ou de machines. Pour les appareils portatifs pour emploi à la main, la notice doit en outre mentionner la nature et les caractéristiques des accessoires qui peuvent leur être adaptés.",
+            en: "L’employeur doit s’assurer que tous les appareils ou les machines de même type sont accompagnés d’une notice d’instruction établie par le constructeur et indiquant les conditions de manutention, d’installation, d’utilisation et d’entretien et précisant les mesures d’hygiène et de sécurité à prendre lors de ces opérations, et comporte les plans et schémas nécessaires pour l’entretien et les vérifications techniques d’appareils ou de machines. Pour les appareils portatifs pour emploi à la main, la notice doit en outre mentionner la nature et les caractéristiques des accessoires qui peuvent leur être adaptés.",
           },
         },
       ],
@@ -1875,6 +2012,129 @@ export const SECTION_4 = {
           text: {
             fr: "Premier groupe 1° Locaux où existent des risques particuliers d'explosion ou de dégradation, 2° Locaux où sont entreposées ou manipulées les matières inflammables des catégories suivantes : matières émettant des vapeurs inflammables, matières susceptibles de brûler sans apport d'oxygène, matières dans un état physique de grande division, susceptibles de former avec l'air un mélange explosif ; 3° Installations provisoires de chantiers et emplacements de travail à l'extérieur et à découvert ; 4° Locaux dans lesquels il existe des installations de deuxième ou troisième catégorie, définies à l'article 2 de l'arrêté viziriel précité du 28 juin 1938, quel que soit le nombre de personnes qu'ils occupent ou qu'ils sont susceptibles de recevoir.",
             en: 'First group: 1) Premises where there are particular risks of explosion or deterioration; 2) Premises where flammable materials of the following categories are stored or handled: materials emitting flammable vapors, materials capable of burning without oxygen supply, materials in a highly divided physical state likely to form an explosive mixture with air; 3) Temporary site installations and outdoor/open work locations; 4) Premises in which there are second- or third-category installations, as defined in Article 2 of the above-mentioned vizierial decree of June 28, 1938, regardless of the number of persons they occupy or may receive.',
+          },
+        },
+        {
+          article_id: 'ie_art_19_lampes_incandescence',
+          code: { fr: 'Article 19', en: 'Article 19' },
+          text: {
+            fr: "Mise en place de lampes à incandescences dans les locaux contenant des produits explosifs et locaux d'accumulateurs, avec une ventilation suffisante.",
+            en: "Mise en place de lampes à incandescences dans les locaux contenant des produits explosifs et locaux d'accumulateurs, avec une ventilation suffisante.",
+          },
+        },
+        {
+          article_id: 'ie_art_25_extincteurs_sable',
+          code: { fr: 'Article 25', en: 'Article 25' },
+          text: {
+            fr: "Mise en place de sacs ou seaux remplis de sable ou des extincteurs appropriés pour répondre à un incendie d'origine électrique.",
+            en: "Mise en place de sacs ou seaux remplis de sable ou des extincteurs appropriés pour répondre à un incendie d'origine électrique.",
+          },
+        },
+        {
+          article_id: 'ie_art_33_interdiction_changement_lampes',
+          code: { fr: 'Article 33', en: 'Article 33' },
+          text: {
+            fr: "Interdiction de changement des lampes dans les locaux contenant des produits explosifs.",
+            en: "Interdiction de changement des lampes dans les locaux contenant des produits explosifs.",
+          },
+        },
+        {
+          article_id: 'ie_art_37_verification_terres',
+          code: { fr: 'Article 37', en: 'Article 37' },
+          text: {
+            fr: "Vérification des résistances des terres par une personne qualifiée ou organisme agréé.",
+            en: "Vérification des résistances des terres par une personne qualifiée ou organisme agréé.",
+          },
+        },
+        {
+          article_id: 'ie_art_39_protection_soudure_arc',
+          code: { fr: 'Article 39', en: 'Article 39' },
+          text: {
+            fr: "Doter les opérateurs utilisant la soudure à arc électriques de matériel de protection isolants (écran, lunettes, chaussures).",
+            en: "Doter les opérateurs utilisant la soudure à arc électriques de matériel de protection isolants (écran, lunettes, chaussures).",
+          },
+        },
+        {
+          article_id: 'ie_art_premier_modifications_1938',
+          code: { fr: 'Article Premier', en: 'Article First' },
+          text: {
+            fr: "Les articles 19, 23, 24, 30 et 45 de l'arrêté viziriel susvisé du 28 juin 1938 sont modifiés.",
+            en: "Les articles 19, 23, 24, 30 et 45 de l'arrêté viziriel susvisé du 28 juin 1938 sont modifiés.",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'ie_circuits_secours',
+      title: {
+        fr: 'Section I : Circuits de Secours',
+        en: 'Section I: Emergency circuits',
+      },
+      articles: [
+        {
+          article_id: 'ie_art_2_circuits_secours',
+          code: { fr: 'Article 2', en: 'Article 2' },
+          text: {
+            fr: "Alimenter les circuits de secours par une source indépendante pour ne pas interrompre le fonctionnement en cas de coupure d'électricité.",
+            en: "Alimenter les circuits de secours par une source indépendante pour ne pas interrompre le fonctionnement en cas de coupure d'électricité.",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'ie_circuits_securite',
+      title: {
+        fr: 'Section II : Circuits de Sécurité',
+        en: 'Section II: Safety circuits',
+      },
+      articles: [
+        {
+          article_id: 'ie_art_4_circuit_securite',
+          code: { fr: 'Article 4', en: 'Article 4' },
+          text: {
+            fr: "Constitue un circuit de sécurité l'installation électrique qui assure essentiellement la sécurité du personnel et qui permet : à l'éclairage de sécurité d'éviter la panique, de prendre les mesures de sécurité qui s'imposent et d'assurer l'évacuation des personnes en cas d'interruption accidentelle de l'éclairage normal ; et l'alimentation de tous autres circuits de sécurité.",
+            en: "Constitue un circuit de sécurité l'installation électrique qui assure essentiellement la sécurité du personnel et qui permet : à l'éclairage de sécurité d'éviter la panique, de prendre les mesures de sécurité qui s'imposent et d'assurer l'évacuation des personnes en cas d'interruption accidentelle de l'éclairage normal ; et l'alimentation de tous autres circuits de sécurité.",
+          },
+        },
+        {
+          article_id: 'ie_art_7_alimentation_circuits_securite',
+          code: { fr: 'Article 7', en: 'Article 7' },
+          text: {
+            fr: "L'alimentation des circuits de sécurité doit être indépendante de l'alimentation normale. Elle peut être assurée notamment par une batterie d'accumulateurs, par un groupe électrogène ou par un réseau de distribution.",
+            en: "L'alimentation des circuits de sécurité doit être indépendante de l'alimentation normale. Elle peut être assurée notamment par une batterie d'accumulateurs, par un groupe électrogène ou par un réseau de distribution.",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'ie_eclairage_securite',
+      title: {
+        fr: 'Section III : Dispositions spéciales concernant l’éclairage de sécurité',
+        en: 'Section III: Special provisions for safety lighting',
+      },
+      articles: [
+        {
+          article_id: 'ie_art_9_signaler_eclairage',
+          code: { fr: 'Article 9', en: 'Article 9' },
+          text: {
+            fr: "Signaler l'éclairage de sécurité.",
+            en: "Signaler l'éclairage de sécurité.",
+          },
+        },
+        {
+          article_id: 'ie_art_10_lampes_portatives',
+          code: { fr: 'Article 10', en: 'Article 10' },
+          text: {
+            fr: "Dans les petits établissements où l'évacuation serait reconnue facile à assurer par le seul moyen des lampes électriques portatives, celles-ci pourront constituer l'éclairage de sécurité.",
+            en: "Dans les petits établissements où l'évacuation serait reconnue facile à assurer par le seul moyen des lampes électriques portatives, celles-ci pourront constituer l'éclairage de sécurité.",
+          },
+        },
+        {
+          article_id: 'ie_art_premier_verification_organismes',
+          code: { fr: 'Article Premier', en: 'Article First' },
+          text: {
+            fr: "La vérification des installations électriques doit se faire par des organismes agréés.",
+            en: "La vérification des installations électriques doit se faire par des organismes agréés.",
           },
         },
       ],

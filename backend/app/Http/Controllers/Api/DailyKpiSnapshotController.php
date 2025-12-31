@@ -339,8 +339,8 @@ class DailyKpiSnapshotController extends Controller
         if (!$user) {
             return $this->error('Unauthorized', 401);
         }
-        if (!$user->isAdminLike() && !$user->isResponsable()) {
-            return $this->error('Only admins and responsables can upload KPI data', 403);
+        if (!$user->isAdminLike() && !$user->isResponsable() && !$user->isHseManager()) {
+            return $this->error('Only admins, responsables, and HSE managers can upload KPI data', 403);
         }
 
         $project = Project::findOrFail($request->project_id);
@@ -373,8 +373,8 @@ class DailyKpiSnapshotController extends Controller
         if (!$user) {
             return $this->error('Unauthorized', 401);
         }
-        if (!$user->isAdminLike() && !$user->isResponsable()) {
-            return $this->error('Only admins and responsables can save KPI data', 403);
+        if (!$user->isAdminLike() && !$user->isResponsable() && !$user->isHseManager()) {
+            return $this->error('Only admins, responsables, and HSE managers can save KPI data', 403);
         }
 
         $request->validate([

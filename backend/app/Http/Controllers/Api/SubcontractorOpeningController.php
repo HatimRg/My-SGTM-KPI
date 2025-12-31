@@ -45,11 +45,7 @@ class SubcontractorOpeningController extends Controller
             abort(401);
         }
 
-        if ($user->isAdminLike()) {
-            return;
-        }
-
-        if (!$user->isResponsable()) {
+        if (!$user->isAdminLike() && !$user->isHseManager() && !$user->isResponsable()) {
             abort(403, 'Access denied');
         }
 

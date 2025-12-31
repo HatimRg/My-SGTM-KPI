@@ -332,7 +332,8 @@ function App() {
         <Route path="/kpi/history" element={<KpiHistory />} />
         <Route path="/training" element={<Training />} />
         <Route path="/awareness" element={<AwarenessSession />} />
-        <Route path="/user/sor" element={<SorSubmission />} />
+        <Route path="/deviations" element={<SorSubmission />} />
+        <Route path="/user/sor" element={<Navigate to="/deviations" replace />} />
         <Route path="/work-permits" element={<WorkPermits />} />
         <Route path="/inspections" element={<Inspections />} />
         <Route path="/regulatory-watch" element={<VeilleReglementaireHistory />} />

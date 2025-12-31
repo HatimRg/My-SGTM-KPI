@@ -465,7 +465,11 @@ export default function Workers() {
       const statsRes = await workerService.getStatistics(statsParams, { signal: controller.signal })
       setStatistics(statsRes.data.data)
     } catch (error) {
-      if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') {
+      if (
+        error?.name === 'CanceledError' ||
+        error?.name === 'AbortError' ||
+        error?.code === 'ERR_CANCELED'
+      ) {
         return
       }
       // keep existing statistics in UI if refresh fails
@@ -527,7 +531,11 @@ export default function Workers() {
       setTotalPages(meta.last_page ?? 1)
       setTotalCount(meta.total ?? items.length)
     } catch (error) {
-      if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') {
+      if (
+        error?.name === 'CanceledError' ||
+        error?.name === 'AbortError' ||
+        error?.code === 'ERR_CANCELED'
+      ) {
         return
       }
       toast.error(t('errors.somethingWentWrong'))

@@ -66,8 +66,8 @@ export default function AdminDashboard() {
   const { user } = useAuthStore()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [year, setYear] = useState(new Date().getFullYear())
-  const [compareYear, setCompareYear] = useState(new Date().getFullYear() - 1)
+  const [year, setYear] = useState(getCurrentWeek().year)
+  const [compareYear, setCompareYear] = useState(getCurrentWeek().year - 1)
   const [compareData, setCompareData] = useState(null)
   const [exporting, setExporting] = useState(false)
   const [activeTheme, setActiveTheme] = useState('overview')
@@ -422,7 +422,7 @@ export default function AdminDashboard() {
   
   // Memoize year options to prevent recreation
   const yearOptions = useMemo(() => {
-    return [...Array(5)].map((_, i) => new Date().getFullYear() - i)
+    return [...Array(6)].map((_, i) => getCurrentWeek().year + 1 - i)
   }, [])
 
   // Loading state (after all hooks)

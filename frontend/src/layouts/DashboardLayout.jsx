@@ -243,6 +243,7 @@ export default function DashboardLayout() {
     { to: '/my-projects', icon: FolderKanban, label: t('nav.myProjects') },
     { to: '/kpi/submit', icon: PlusCircle, label: t('kpi.submission') },
     { to: '/kpi/history', icon: History, label: t('kpi.history') },
+    { to: '/deviations', icon: AlertTriangle, label: t('dashboard.themes.deviations') },
     { to: '/training', icon: GraduationCap, label: t('training.navLabel') },
     { to: '/awareness', icon: Users, label: t('awareness.navLabel') },
     { to: '/work-permits', icon: ClipboardList, label: t('workPermits.title') },

@@ -40,7 +40,7 @@ import { useDevStore, DEV_PROJECT_SCOPE } from '../../store/devStore'
 export default function UserDashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [year, setYear] = useState(new Date().getFullYear())
+  const [year, setYear] = useState(getCurrentWeek().year)
   const [selectedProject, setSelectedProject] = useState('all')
   const [selectedPole, setSelectedPole] = useState('')
   const [poles, setPoles] = useState([])
@@ -153,7 +153,7 @@ export default function UserDashboard() {
               className="bg-transparent border-none focus:ring-0 text-sm font-medium dark:text-gray-200"
             >
               {[...Array(5)].map((_, i) => {
-                const y = new Date().getFullYear() - i
+                const y = getCurrentWeek().year + 1 - i
                 return <option key={y} value={y}>{y}</option>
               })}
             </select>
@@ -421,7 +421,7 @@ export default function UserDashboard() {
               className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm font-medium dark:text-gray-200 focus:ring-2 focus:ring-hse-primary"
             >
               {[...Array(5)].map((_, i) => {
-                const y = new Date().getFullYear() - i
+                const y = getCurrentWeek().year + 1 - i
                 return <option key={y} value={y}>{y}</option>
               })}
             </select>

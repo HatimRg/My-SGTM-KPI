@@ -247,6 +247,16 @@ api.interceptors.response.use(
     return response
   },
   (error) => {
+    const isCanceled =
+      axios.isCancel?.(error) ||
+      error?.code === 'ERR_CANCELED' ||
+      error?.name === 'CanceledError' ||
+      error?.name === 'AbortError'
+
+    if (isCanceled) {
+      return Promise.reject(error)
+    }
+
     const { response, config } = error
 
     try {

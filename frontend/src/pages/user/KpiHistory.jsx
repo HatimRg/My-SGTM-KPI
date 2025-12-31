@@ -7,6 +7,7 @@ import { Modal, ConfirmDialog, Select } from '../../components/ui'
 import DatePicker from '../../components/ui/DatePicker'
 import DailyKpiPreview from '../../components/kpi/DailyKpiPreview'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
+import { getCurrentWeek } from '../../utils/weekHelper'
 import {
   FileText,
   Search,
@@ -35,7 +36,7 @@ export default function KpiHistory() {
     project_id: '',
     pole: '',
     status: '',
-    year: new Date().getFullYear()
+    year: getCurrentWeek().year
   })
   const [pagination, setPagination] = useState({ current_page: 1, last_page: 1 })
   const [selectedReport, setSelectedReport] = useState(null)
@@ -272,8 +273,8 @@ export default function KpiHistory() {
               value={filters.year}
               onChange={(e) => setFilters({ ...filters, year: e.target.value })}
             >
-              {[...Array(5)].map((_, i) => {
-                const y = new Date().getFullYear() - i
+              {[...Array(6)].map((_, i) => {
+                const y = getCurrentWeek().year + 1 - i
                 return <option key={y} value={y}>{y}</option>
               })}
             </Select>
