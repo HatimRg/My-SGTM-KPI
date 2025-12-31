@@ -397,23 +397,47 @@ export const projectService = {
   getAll: (params) => api.get('/projects', { params }),
   getAllList: async (params = {}) => {
     const perPage = params.per_page ?? 200
-    let page = 1
-    const all = []
+    const baseParams = { ...(params || {}) }
+    delete baseParams.page
+    delete baseParams.per_page
 
-    let hasMore = true
-    while (hasMore) {
-      const res = await cachedGet('/projects', { ...params, page, per_page: perPage }, 60000)
-      const items = res.data?.data ?? []
-      if (Array.isArray(items)) {
-        all.push(...items)
-      }
-
-      const meta = res.data?.meta
-      hasMore = !!meta && page < meta.last_page
-      if (hasMore) page += 1
+    const listCacheKey = getCacheKey('/projects/allList', { ...baseParams, per_page: perPage })
+    const cached = getFromCache(listCacheKey, 60000)
+    if (cached) {
+      return cached
     }
 
-    return all
+    if (pendingRequests.has(listCacheKey)) {
+      return pendingRequests.get(listCacheKey)
+    }
+
+    const promise = (async () => {
+      let page = 1
+      const all = []
+
+      let hasMore = true
+      while (hasMore) {
+        const res = await cachedGet('/projects', { ...baseParams, page, per_page: perPage }, 60000)
+        const items = res.data?.data ?? []
+        if (Array.isArray(items)) {
+          all.push(...items)
+        }
+
+        const meta = res.data?.meta
+        hasMore = !!meta && page < meta.last_page
+        if (hasMore) page += 1
+      }
+
+      setCache(listCacheKey, all, 60000)
+      pendingRequests.delete(listCacheKey)
+      return all
+    })().catch((error) => {
+      pendingRequests.delete(listCacheKey)
+      throw error
+    })
+
+    pendingRequests.set(listCacheKey, promise)
+    return promise
   },
   getById: (id) => api.get(`/projects/${id}`),
   create: (data) => api.post('/projects', data),
@@ -631,14 +655,14 @@ export const regulatoryWatchService = {
 }
 
 export const workerService = {
-  getAll: (params) => api.get('/workers', { params }),
-  getById: (id) => api.get(`/workers/${id}`),
-  create: (data) => api.post('/workers', data),
-  update: (id, data) => api.put(`/workers/${id}`, data),
-  delete: (id) => api.delete(`/workers/${id}`),
-  getStatistics: (params) => api.get('/workers/statistics', { params }),
-  getEntreprises: () => api.get('/workers/entreprises'),
-  getFonctions: () => api.get('/workers/fonctions'),
+  getAll: (params, config = {}) => api.get('/workers', { ...config, params }),
+  getById: (id, config = {}) => api.get(`/workers/${id}`, { ...config }),
+  create: (data, config = {}) => api.post('/workers', data, config),
+  update: (id, data, config = {}) => api.put(`/workers/${id}`, data, config),
+  delete: (id, config = {}) => api.delete(`/workers/${id}`, { ...config }),
+  getStatistics: (params, config = {}) => api.get('/workers/statistics', { ...config, params }),
+  getEntreprises: () => cachedGet('/workers/entreprises', {}, 300000),
+  getFonctions: () => cachedGet('/workers/fonctions', {}, 300000),
   downloadTemplate: () => api.get('/workers/template', { responseType: 'blob' }),
   export: (params) => api.get('/workers/export', { params, responseType: 'blob' }),
   import: (formData) => api.post('/workers/import', formData, {

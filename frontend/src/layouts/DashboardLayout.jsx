@@ -63,7 +63,6 @@ export default function DashboardLayout() {
   const adminLikeRoles = ['admin', 'pole_director', 'works_director', 'hse_director', 'hr_director']
   const isUserAdminLike = isUserAdmin || (user?.role === 'dev' && !simulatedRole) || adminLikeRoles.includes(effectiveRole)
   const isAdminArea = location.pathname.startsWith('/admin')
-  const isAdminDashboardOnly = effectiveRole === 'hse_manager' && isAdminArea
 
   // Fetch notifications (only when user is authenticated)
   useEffect(() => {
@@ -277,10 +276,6 @@ export default function DashboardLayout() {
     { to: '/hr/ppe', icon: Shield, label: t('ppe.nav') },
   ]
 
-  const hseManagerAdminNavItems = [
-    { to: '/admin', icon: LayoutDashboard, label: t('nav.dashboard') },
-  ]
-
   const getNavItems = () => {
     if (effectiveRole === 'admin') return adminNavItems
     if (effectiveRole === 'pole_director') return directorNavItems
@@ -291,7 +286,7 @@ export default function DashboardLayout() {
     if (effectiveRole === 'supervisor') return supervisorNavItems
     if (effectiveRole === 'hr') return hrNavItems
     if (effectiveRole === 'dev') return userNavItems
-    if (effectiveRole === 'hse_manager') return isAdminDashboardOnly ? hseManagerAdminNavItems : userNavItems
+    if (effectiveRole === 'hse_manager') return userNavItems
     if (effectiveRole === 'responsable') return userNavItems
     return userNavItems
   }

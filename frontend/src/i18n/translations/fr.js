@@ -1640,6 +1640,7 @@ export default {
       empty: 'Aucun EPI distribué',
       issueButton: 'Distribuer des EPI',
       lastIssue: 'Dernière distribution',
+      lastIssuedTitle: 'Dernière distribution par article',
       columns: {
         item: 'Article',
         quantity: 'Qté',

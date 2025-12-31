@@ -7,6 +7,7 @@ use App\Models\Notification;
 use App\Models\PpeItem;
 use App\Models\PpeProjectStock;
 use App\Models\Project;
+use App\Models\User;
 use App\Models\Worker;
 use App\Models\WorkerPpeIssue;
 use App\Services\NotificationService;
@@ -26,10 +27,24 @@ class PpeController extends Controller
         return $user;
     }
 
+    private function normalizeProjectIds($ids): ?array
+    {
+        if ($ids === null) {
+            return null;
+        }
+        if ($ids instanceof \Illuminate\Support\Collection) {
+            return $ids->all();
+        }
+        if ($ids instanceof \Traversable) {
+            return iterator_to_array($ids);
+        }
+        return is_array($ids) ? $ids : null;
+    }
+
     private function ensureWorkerAccess(Request $request, Worker $worker): void
     {
         $user = $this->checkAccess($request);
-        $visibleProjectIds = $user->visibleProjectIds();
+        $visibleProjectIds = $this->normalizeProjectIds($user->visibleProjectIds());
         if ($visibleProjectIds !== null && !in_array((int) $worker->project_id, array_map('intval', $visibleProjectIds), true)) {
             abort(403, 'Access denied');
         }
@@ -320,12 +335,21 @@ class PpeController extends Controller
             return;
         }
 
-        NotificationService::sendToProject(
-            $project,
+        $projectUserIds = $project->users()->pluck('users.id')->toArray();
+        $adminIds = User::query()->where('role', 'admin')->where('is_active', true)->pluck('id')->toArray();
+        $userIds = array_values(array_unique(array_merge($projectUserIds, $adminIds)));
+
+        if ($excludeUserId) {
+            $userIds = array_values(array_filter($userIds, fn ($id) => (int) $id !== (int) $excludeUserId));
+        }
+
+        NotificationService::sendToUsers(
+            $userIds,
             Notification::TYPE_PPE_LOW_STOCK,
             'Stock EPI faible',
             "Stock faible pour {$item->name} : {$stock->stock_quantity} (seuil {$threshold})",
             [
+                'project_id' => $projectId,
                 'icon' => 'alert-triangle',
                 'action_url' => '/admin/ppe',
                 'data' => [
@@ -334,8 +358,7 @@ class PpeController extends Controller
                     'stock_quantity' => (int) $stock->stock_quantity,
                     'low_stock_threshold' => $threshold,
                 ],
-            ],
-            $excludeUserId
+            ]
         );
 
         $stock->update(['low_stock_notified_at' => now()]);

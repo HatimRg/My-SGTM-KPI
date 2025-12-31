@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { projectService, regulatoryWatchService } from '../../services/api'
 import { useLanguage } from '../../i18n'
+import { useAuthStore } from '../../store/authStore'
 import Select from '../../components/ui/Select'
 import { ArrowLeft, CheckCircle, FileText, Loader2, Send, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { SECTIONS, SCHEMA_VERSION, makeInitialAnswers, getLocalized, formatBulletText } from './veilleReglementaireSchema'
+import { getProjectLabel, sortProjects } from '../../utils/projectList'
 
 const getIsoWeek = (date) => {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
@@ -38,6 +40,7 @@ const computeSectionScore = (section) => {
 
 export default function VeilleReglementaireForm({ mode }) {
   const { t, language } = useLanguage()
+  const { user } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
   const params = useParams()
@@ -48,12 +51,31 @@ export default function VeilleReglementaireForm({ mode }) {
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [selectedProjectId, setSelectedProjectId] = useState('')
 
+  const projectListPreference = user?.project_list_preference ?? 'code'
+  const sortedProjects = useMemo(() => {
+    return sortProjects(projects, projectListPreference)
+  }, [projects, projectListPreference])
+
   const [loadingSeed, setLoadingSeed] = useState(mode === 'resubmit')
   const [submitting, setSubmitting] = useState(false)
 
   const [answers, setAnswers] = useState(() => makeInitialAnswers())
 
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0)
+
+  const currentPageNumber = useMemo(() => {
+    const raw = params?.page
+    const parsed = Number.parseInt(String(raw ?? '1'), 10)
+    if (!Number.isFinite(parsed) || parsed < 1) return 1
+    return parsed
+  }, [params?.page])
+
+  const wizardBasePath = useMemo(() => {
+    if (mode === 'resubmit') {
+      return params?.id ? `${basePath}/${params.id}/resubmit` : `${basePath}/resubmit`
+    }
+    return `${basePath}/new`
+  }, [basePath, mode, params?.id])
 
   const [weekYear, setWeekYear] = useState(() => new Date().getFullYear())
   const [weekNumber, setWeekNumber] = useState(() => getIsoWeek(new Date()))
@@ -139,6 +161,15 @@ export default function VeilleReglementaireForm({ mode }) {
   }, [answers])
 
   const totalSections = SECTIONS.length
+
+  useEffect(() => {
+    const clamped = Math.min(Math.max(1, currentPageNumber), totalSections)
+    if (clamped !== currentPageNumber) {
+      navigate(`${wizardBasePath}/${clamped}`, { replace: true })
+      return
+    }
+    setCurrentSectionIndex(clamped - 1)
+  }, [currentPageNumber, navigate, totalSections, wizardBasePath])
 
   const currentSectionSchema = useMemo(() => {
     return SECTIONS[currentSectionIndex] ?? null
@@ -228,11 +259,13 @@ export default function VeilleReglementaireForm({ mode }) {
   }
 
   const goPrevious = () => {
-    setCurrentSectionIndex((prev) => Math.max(0, prev - 1))
+    const prevPage = Math.max(1, currentPageNumber - 1)
+    navigate(`${wizardBasePath}/${prevPage}`)
   }
 
   const goNext = () => {
-    setCurrentSectionIndex((prev) => Math.min(totalSections - 1, prev + 1))
+    const nextPage = Math.min(totalSections, currentPageNumber + 1)
+    navigate(`${wizardBasePath}/${nextPage}`)
   }
 
   const isLastSection = currentSectionIndex >= totalSections - 1
@@ -279,9 +312,9 @@ export default function VeilleReglementaireForm({ mode }) {
               disabled={loadingProjects || loadingSeed}
             >
               <option value="">{loadingProjects ? t('common.loading') : t('common.select')}...</option>
-              {projects.map((p) => (
+              {sortedProjects.map((p) => (
                 <option key={p.id} value={String(p.id)}>
-                  {p.name}
+                  {getProjectLabel(p)}
                 </option>
               ))}
             </Select>

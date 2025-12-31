@@ -1066,7 +1066,7 @@ export default function ViewMachines() {
                       onChange={(e) => {
                         const v = e.target.value
                         setCreateMachineTypeChoice(v)
-                        if (v === '__custom__') {
+                        if (v === '__custom__' || v === 'Autre') {
                           setCreateData((p) => ({ ...p, machine_type: '' }))
                         } else {
                           setCreateData((p) => ({ ...p, machine_type: v }))
@@ -1080,10 +1080,10 @@ export default function ViewMachines() {
                           {mt}
                         </option>
                       ))}
-                      <option value="__custom__">{t('common.custom')}...</option>
+                      <option value="__custom__">Autre...</option>
                     </Select>
 
-                    {createMachineTypeChoice === '__custom__' && (
+                    {(createMachineTypeChoice === '__custom__' || createMachineTypeChoice === 'Autre') && (
                       <input
                         className="input"
                         value={createData.machine_type}
@@ -1616,7 +1616,7 @@ export default function ViewMachines() {
                       onChange={(e) => {
                         const v = e.target.value
                         setEditMachineTypeChoice(v)
-                        if (v === '__custom__') {
+                        if (v === '__custom__' || v === 'Autre') {
                           setEditData((p) => ({ ...p, machine_type: '' }))
                         } else {
                           setEditData((p) => ({ ...p, machine_type: v }))
@@ -1630,10 +1630,10 @@ export default function ViewMachines() {
                           {mt}
                         </option>
                       ))}
-                      <option value="__custom__">{t('common.custom')}...</option>
+                      <option value="__custom__">Autre...</option>
                     </Select>
 
-                    {editMachineTypeChoice === '__custom__' && (
+                    {(editMachineTypeChoice === '__custom__' || editMachineTypeChoice === 'Autre') && (
                       <input
                         className="input"
                         value={editData.machine_type}

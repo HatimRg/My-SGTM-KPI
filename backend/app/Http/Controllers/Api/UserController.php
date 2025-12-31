@@ -15,11 +15,107 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class UserController extends Controller
 {
+    private function isUserManagementAdmin(User $actor): bool
+    {
+        return $actor->isAdminLike();
+    }
+
+    private function assertCanManageUser(User $actor, User $target)
+    {
+        if ($this->isUserManagementAdmin($actor)) {
+            return;
+        }
+
+        if (!$actor->isHseManager()) {
+            abort(403, 'Access denied. User management privileges required.');
+        }
+
+        // HSE managers can manage themselves
+        if ($actor->id === $target->id) {
+            return;
+        }
+
+        // HSE managers can only manage a restricted set of roles
+        if (!in_array((string) $target->role, User::HSE_MANAGER_CREATABLE_ROLES, true)) {
+            abort(403, 'Access denied. You cannot manage this user role.');
+        }
+
+        $visibleProjectIds = $actor->visibleProjectIds();
+        if ($visibleProjectIds === null) {
+            return;
+        }
+
+        $hasSharedProject = $target->projects()->whereIn('projects.id', $visibleProjectIds)->exists();
+        if (!$hasSharedProject) {
+            abort(403, 'Access denied. You cannot manage users outside your projects.');
+        }
+    }
+
+    private function assertProjectIdsAreVisibleToActor(User $actor, array $projectIds)
+    {
+        if ($this->isUserManagementAdmin($actor)) {
+            return;
+        }
+
+        $visibleProjectIds = $actor->visibleProjectIds();
+        if ($visibleProjectIds === null) {
+            return;
+        }
+
+        $allowed = collect($visibleProjectIds)->map(fn ($id) => (int) $id)->all();
+        foreach ($projectIds as $id) {
+            if (!in_array((int) $id, $allowed, true)) {
+                abort(403, 'Access denied. One or more selected projects are outside your scope.');
+            }
+        }
+    }
+
+    private function getAllowedRolesForActor(User $actor): array
+    {
+        if ($this->isUserManagementAdmin($actor)) {
+            // Directors are admin-like but should not be able to create admin/dev users.
+            if ($actor->role !== User::ROLE_ADMIN && !$actor->isDev()) {
+                return [
+                    'hse_manager',
+                    'responsable',
+                    'supervisor',
+                    'hr',
+                    'user',
+                    'pole_director',
+                    'works_director',
+                    'hse_director',
+                    'hr_director',
+                ];
+            }
+
+            return [
+                'admin',
+                'hse_manager',
+                'responsable',
+                'supervisor',
+                'hr',
+                'user',
+                'dev',
+                'pole_director',
+                'works_director',
+                'hse_director',
+                'hr_director',
+            ];
+        }
+
+        if ($actor->isHseManager()) {
+            return User::HSE_MANAGER_CREATABLE_ROLES;
+        }
+
+        return [];
+    }
+
     /**
      * Get all users with pagination and filters
      */
     public function index(Request $request)
     {
+        $actor = $request->user();
         $query = User::query()->with('projects');
 
         // Hide dev users from normal admin views/statistics
@@ -56,6 +152,28 @@ class UserController extends Controller
             });
         }
 
+        // Scope for non-admin user management (HSE manager)
+        if ($actor && !$this->isUserManagementAdmin($actor)) {
+            if ($actor->isHseManager()) {
+                $visibleProjectIds = $actor->visibleProjectIds();
+                if ($visibleProjectIds === null) {
+                    // no-op
+                } elseif (count($visibleProjectIds) === 0) {
+                    $query->whereRaw('1 = 0');
+                } else {
+                    $query->where(function ($q) use ($visibleProjectIds, $actor) {
+                        $q->whereKey($actor->id)
+                          ->orWhere(function ($q2) use ($visibleProjectIds) {
+                              $q2->whereIn('role', User::HSE_MANAGER_CREATABLE_ROLES)
+                                 ->whereHas('projects', function ($qp) use ($visibleProjectIds) {
+                                     $qp->whereIn('projects.id', $visibleProjectIds);
+                                 });
+                          });
+                    });
+                }
+            }
+        }
+
         // Sorting
         $sortBy = $request->get('sort_by', 'created_at');
         $sortOrder = $request->get('sort_order', 'desc');
@@ -72,18 +190,28 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        $actor = $request->user();
         $role = $request->input('role');
+
+        $allowedRoles = $actor ? $this->getAllowedRolesForActor($actor) : [];
+        if (!$actor || count($allowedRoles) === 0) {
+            return $this->error('Access denied. User management privileges required.', 403);
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => PasswordPolicy::rulesForRole($role, true, false),
-            'role' => 'required|in:admin,hse_manager,responsable,supervisor,hr,user,dev,pole_director,works_director,hse_director,hr_director',
+            'role' => ['required', Rule::in($allowedRoles)],
             'pole' => 'nullable|string|max:255|required_if:role,pole_director',
             'phone' => 'nullable|string|max:20',
             'is_active' => 'boolean',
             'project_ids' => 'nullable|array',
             'project_ids.*' => 'exists:projects,id',
         ]);
+
+        $projectIds = $request->role === User::ROLE_POLE_DIRECTOR ? [] : (array) $request->get('project_ids', []);
+        $this->assertProjectIdsAreVisibleToActor($actor, $projectIds);
 
         $user = User::create([
             'name' => $request->name,
@@ -94,11 +222,12 @@ class UserController extends Controller
             'pole' => $request->role === User::ROLE_POLE_DIRECTOR ? $request->pole : null,
             'phone' => $request->phone,
             'is_active' => $request->get('is_active', true),
+            'created_by' => $actor->id,
         ]);
 
         // Assign projects if provided
         if ($request->has('project_ids') && $request->role !== User::ROLE_POLE_DIRECTOR) {
-            $user->projects()->sync($request->project_ids);
+            $user->projects()->sync($projectIds);
         }
 
         $user->load('projects');
@@ -111,6 +240,10 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
+        $actor = request()->user();
+        if ($actor) {
+            $this->assertCanManageUser($actor, $user);
+        }
         $user->load('projects', 'kpiReports');
 
         return $this->success($user);
@@ -121,12 +254,23 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user)
     {
+        $actor = $request->user();
+        if ($actor) {
+            $this->assertCanManageUser($actor, $user);
+        }
+
         $role = $request->has('role') ? $request->input('role') : $user->role;
+        $allowedRoles = $actor ? $this->getAllowedRolesForActor($actor) : [];
+
+        if ($actor && $actor->isHseManager() && $actor->id === $user->id) {
+            // Allow an HSE manager to keep their own role unchanged without validation issues.
+            $allowedRoles = array_values(array_unique(array_merge($allowedRoles, [User::ROLE_HSE_MANAGER])));
+        }
         $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => ['sometimes', 'email', Rule::unique('users')->ignore($user->id)],
             'password' => PasswordPolicy::rulesForRole($role, false, false),
-            'role' => 'sometimes|in:admin,hse_manager,responsable,supervisor,hr,user,dev,pole_director,works_director,hse_director,hr_director',
+            'role' => ['sometimes', Rule::in($allowedRoles)],
             'pole' => 'nullable|string|max:255|required_if:role,pole_director',
             'phone' => 'nullable|string|max:20',
             'is_active' => 'boolean',
@@ -153,7 +297,11 @@ class UserController extends Controller
             if ($roleAfterUpdate === User::ROLE_POLE_DIRECTOR) {
                 $user->projects()->detach();
             } else {
-                $user->projects()->sync($request->project_ids);
+                $projectIds = (array) $request->get('project_ids', []);
+                if ($actor) {
+                    $this->assertProjectIdsAreVisibleToActor($actor, $projectIds);
+                }
+                $user->projects()->sync($projectIds);
             }
         }
 
@@ -182,6 +330,11 @@ class UserController extends Controller
      */
     public function toggleStatus(User $user)
     {
+        $actor = request()->user();
+        if ($actor) {
+            $this->assertCanManageUser($actor, $user);
+        }
+
         if ($user->id === auth()->id()) {
             return $this->error('You cannot deactivate your own account', 403);
         }

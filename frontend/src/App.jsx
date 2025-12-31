@@ -142,6 +142,20 @@ const GuestRoute = ({ children }) => {
   return children
 }
 
+const DashboardHome = () => {
+  const { user } = useAuthStore()
+  const { simulatedRole } = useDevStore()
+
+  const actualRole = user?.role
+  const role = actualRole === 'dev' && simulatedRole ? simulatedRole : actualRole
+
+  if (role === 'hse_manager') {
+    return <AdminDashboard />
+  }
+
+  return <UserDashboard />
+}
+
 function App() {
   const initTheme = useThemeStore((state) => state.initTheme)
   const location = useLocation()
@@ -207,7 +221,7 @@ function App() {
       {/* Admin Routes */}
       <Route
         element={
-          <ProtectedRoute allowedRoles={['admin', 'pole_director', 'works_director', 'hse_director', 'hr_director', 'hse_manager']}>
+          <ProtectedRoute allowedRoles={['admin', 'pole_director', 'works_director', 'hse_director', 'hr_director']}>
             <DashboardLayout />
           </ProtectedRoute>
         }
@@ -233,16 +247,18 @@ function App() {
         <Route path="/admin/work-permits" element={<WorkPermits />} />
         <Route path="/admin/inspections" element={<Inspections />} />
         <Route path="/admin/regulatory-watch" element={<VeilleReglementaireHistory />} />
-        <Route path="/admin/regulatory-watch/new" element={<VeilleReglementaireForm mode="new" />} />
+        <Route path="/admin/regulatory-watch/new" element={<Navigate to="/admin/regulatory-watch/new/1" replace />} />
+        <Route path="/admin/regulatory-watch/new/:page" element={<VeilleReglementaireForm mode="new" />} />
         <Route
           path="/admin/regulatory-watch/:id"
           element={
-            <ProtectedRoute allowedRoles={['hse_director', 'hse_manager', 'responsable']} enforceAllowedRoles>
+            <ProtectedRoute allowedRoles={['admin', 'hse_director', 'hse_manager', 'responsable', 'supervisor']} enforceAllowedRoles>
               <VeilleReglementaireDetails />
             </ProtectedRoute>
           }
         />
         <Route path="/admin/regulatory-watch/:id/resubmit" element={<VeilleReglementaireForm mode="resubmit" />} />
+        <Route path="/admin/regulatory-watch/:id/resubmit/:page" element={<VeilleReglementaireForm mode="resubmit" />} />
         <Route path="/admin/workers" element={<Workers />} />
         <Route path="/admin/ppe" element={<PpeManagement />} />
         <Route path="/admin/qualified-personnel" element={<QualifiedPersonnelRedirect basePath="/admin/workers" />} />
@@ -282,16 +298,18 @@ function App() {
         <Route path="/supervisor/work-permits" element={<WorkPermits />} />
         <Route path="/supervisor/inspections" element={<Inspections />} />
         <Route path="/supervisor/regulatory-watch" element={<VeilleReglementaireHistory />} />
-        <Route path="/supervisor/regulatory-watch/new" element={<VeilleReglementaireForm mode="new" />} />
+        <Route path="/supervisor/regulatory-watch/new" element={<Navigate to="/supervisor/regulatory-watch/new/1" replace />} />
+        <Route path="/supervisor/regulatory-watch/new/:page" element={<VeilleReglementaireForm mode="new" />} />
         <Route
           path="/supervisor/regulatory-watch/:id"
           element={
-            <ProtectedRoute allowedRoles={['hse_director', 'hse_manager', 'responsable']} enforceAllowedRoles>
+            <ProtectedRoute allowedRoles={['admin', 'hse_director', 'hse_manager', 'responsable', 'supervisor']} enforceAllowedRoles>
               <VeilleReglementaireDetails />
             </ProtectedRoute>
           }
         />
         <Route path="/supervisor/regulatory-watch/:id/resubmit" element={<VeilleReglementaireForm mode="resubmit" />} />
+        <Route path="/supervisor/regulatory-watch/:id/resubmit/:page" element={<VeilleReglementaireForm mode="resubmit" />} />
         <Route path="/supervisor/workers" element={<Workers />} />
         <Route path="/supervisor/ppe" element={<PpeManagement />} />
         <Route path="/supervisor/profile" element={<Profile />} />
@@ -305,7 +323,7 @@ function App() {
           </ProtectedRoute>
         }
       >
-        <Route path="/dashboard" element={<UserDashboard />} />
+        <Route path="/dashboard" element={<DashboardHome />} />
         <Route path="/my-projects" element={<MyProjects />} />
         <Route path="/projects/:id" element={<ProjectDetails />} />
         <Route path="/kpi/submit" element={<KpiSubmission />} />
@@ -318,16 +336,18 @@ function App() {
         <Route path="/work-permits" element={<WorkPermits />} />
         <Route path="/inspections" element={<Inspections />} />
         <Route path="/regulatory-watch" element={<VeilleReglementaireHistory />} />
-        <Route path="/regulatory-watch/new" element={<VeilleReglementaireForm mode="new" />} />
+        <Route path="/regulatory-watch/new" element={<Navigate to="/regulatory-watch/new/1" replace />} />
+        <Route path="/regulatory-watch/new/:page" element={<VeilleReglementaireForm mode="new" />} />
         <Route
           path="/regulatory-watch/:id"
           element={
-            <ProtectedRoute allowedRoles={['hse_director', 'hse_manager', 'responsable']} enforceAllowedRoles>
+            <ProtectedRoute allowedRoles={['admin', 'hse_director', 'hse_manager', 'responsable', 'supervisor']} enforceAllowedRoles>
               <VeilleReglementaireDetails />
             </ProtectedRoute>
           }
         />
         <Route path="/regulatory-watch/:id/resubmit" element={<VeilleReglementaireForm mode="resubmit" />} />
+        <Route path="/regulatory-watch/:id/resubmit/:page" element={<VeilleReglementaireForm mode="resubmit" />} />
         <Route path="/workers" element={<Workers />} />
         <Route path="/ppe" element={<PpeManagement />} />
         <Route path="/profile" element={<Profile />} />

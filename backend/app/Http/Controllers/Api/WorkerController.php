@@ -13,6 +13,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Excel as ExcelFormat;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -33,13 +34,27 @@ class WorkerController extends Controller
         return $user;
     }
 
+    private function normalizeProjectIds($ids): ?array
+    {
+        if ($ids === null) {
+            return null;
+        }
+        if ($ids instanceof \Illuminate\Support\Collection) {
+            return $ids->all();
+        }
+        if ($ids instanceof \Traversable) {
+            return iterator_to_array($ids);
+        }
+        return is_array($ids) ? $ids : null;
+    }
+
     /**
      * Ensure the authenticated user can access the worker based on project visibility.
      */
     private function ensureWorkerAccess(Request $request, Worker $worker): void
     {
         $user = $this->checkAccess($request);
-        $visibleProjectIds = $user->visibleProjectIds();
+        $visibleProjectIds = $this->normalizeProjectIds($user->visibleProjectIds());
         if ($visibleProjectIds !== null && !in_array((int) $worker->project_id, array_map('intval', $visibleProjectIds), true)) {
             abort(403, 'Access denied');
         }
@@ -149,7 +164,13 @@ class WorkerController extends Controller
             'nom' => 'sometimes|required|string|max:255',
             'prenom' => 'sometimes|required|string|max:255',
             'fonction' => 'nullable|string|max:255',
-            'cin' => 'sometimes|required|string|max:50',
+            'cin' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('workers', 'cin')->ignore($worker->id),
+            ],
             'date_naissance' => 'nullable|date',
             'entreprise' => 'nullable|string|max:255',
             'project_id' => 'nullable|exists:projects,id',
@@ -300,17 +321,21 @@ class WorkerController extends Controller
     {
         $this->ensureWorkerAccess($request, $worker);
 
-        if (!$worker->image_path || !Storage::disk('public')->exists($worker->image_path)) {
+        try {
+            if (!$worker->image_path || !Storage::disk('public')->exists($worker->image_path)) {
+                abort(404, 'Worker image not found');
+            }
+
+            $path = Storage::disk('public')->path($worker->image_path);
+            $mime = Storage::disk('public')->mimeType($worker->image_path) ?? 'image/jpeg';
+
+            return response()->file($path, [
+                'Content-Type' => $mime,
+                'Cache-Control' => 'public, max-age=86400',
+            ]);
+        } catch (\Throwable $e) {
             abort(404, 'Worker image not found');
         }
-
-        $path = Storage::disk('public')->path($worker->image_path);
-        $mime = Storage::disk('public')->mimeType($worker->image_path) ?? 'image/jpeg';
-
-        return response()->file($path, [
-            'Content-Type' => $mime,
-            'Cache-Control' => 'public, max-age=86400',
-        ]);
     }
 
     /**

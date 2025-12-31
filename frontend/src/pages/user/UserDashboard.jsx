@@ -7,6 +7,7 @@ import {
   FolderKanban,
   FileText,
   Clock,
+  Truck,
   AlertTriangle,
   GraduationCap,
   ClipboardCheck,
@@ -205,9 +206,9 @@ export default function UserDashboard() {
           color="amber"
         />
         <StatCard
-          title={t('kpi.status.draft')}
-          value={stats.draft_reports ?? 0}
-          icon={FileText}
+          title={t('dashboard.activeMachines')}
+          value={stats.active_machines ?? 0}
+          icon={Truck}
           color="purple"
         />
       </div>

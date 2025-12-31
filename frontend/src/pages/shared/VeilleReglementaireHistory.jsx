@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { projectService, regulatoryWatchService } from '../../services/api'
 import { useLanguage } from '../../i18n'
+import { useAuthStore } from '../../store/authStore'
 import Select from '../../components/ui/Select'
 import { FileText, Loader2, PlusCircle, Eye, RotateCcw } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { getProjectLabel, sortProjects } from '../../utils/projectList'
 
 const formatDateTime = (value) => {
   if (!value) return '-'
@@ -21,6 +23,7 @@ const getBasePath = (pathname) => {
 
 export default function VeilleReglementaireHistory() {
   const { t } = useLanguage()
+  const { user } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -29,6 +32,11 @@ export default function VeilleReglementaireHistory() {
   const [projects, setProjects] = useState([])
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [selectedProjectId, setSelectedProjectId] = useState('')
+
+  const projectListPreference = user?.project_list_preference ?? 'code'
+  const sortedProjects = useMemo(() => {
+    return sortProjects(projects, projectListPreference)
+  }, [projects, projectListPreference])
 
   const [loading, setLoading] = useState(true)
   const [avgOverall, setAvgOverall] = useState(null)
@@ -96,7 +104,7 @@ export default function VeilleReglementaireHistory() {
 
         <button
           type="button"
-          onClick={() => navigate(`${basePath}/new`)}
+          onClick={() => navigate(`${basePath}/new/1`)}
           className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto"
         >
           <PlusCircle className="w-4 h-4" />
@@ -114,9 +122,9 @@ export default function VeilleReglementaireHistory() {
               disabled={loadingProjects}
             >
               <option value="">{loadingProjects ? t('common.loading') : t('common.allProjects')}</option>
-              {projects.map((p) => (
+              {sortedProjects.map((p) => (
                 <option key={p.id} value={String(p.id)}>
-                  {p.name}
+                  {getProjectLabel(p)}
                 </option>
               ))}
             </Select>
@@ -162,7 +170,7 @@ export default function VeilleReglementaireHistory() {
                     onClick={() => navigate(`${basePath}/${s.id}`)}
                   >
                     <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {s.project?.name ?? t('common.unknown')}
+                      {getProjectLabel(s.project) || s.project?.name || s.project?.code || t('common.unknown')}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {t('regulatoryWatch.submittedAt')}: {formatDateTime(s.submitted_at)}

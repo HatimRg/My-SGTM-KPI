@@ -744,16 +744,18 @@ export default function UserManagement() {
                   }))
                 }}
               >
-                <option value="hse_manager">{t('users.roles.hse_manager')}</option>
-                <option value="responsable">{t('users.roles.responsable')}</option>
-                <option value="supervisor">{t('users.roles.supervisor')}</option>
-                <option value="user">{t('users.roles.user')}</option>
-                <option value="hr">{t('users.roles.hr')}</option>
-                <option value="admin">{t('users.roles.admin')}</option>
-                <option value="pole_director">{t('users.roles.pole_director')}</option>
-                <option value="works_director">{t('users.roles.works_director')}</option>
-                <option value="hse_director">{t('users.roles.hse_director')}</option>
-                <option value="hr_director">{t('users.roles.hr_director')}</option>
+                <>
+                  <option value="hse_manager">{t('users.roles.hse_manager')}</option>
+                  <option value="responsable">{t('users.roles.responsable')}</option>
+                  <option value="supervisor">{t('users.roles.supervisor')}</option>
+                  <option value="user">{t('users.roles.user')}</option>
+                  <option value="hr">{t('users.roles.hr')}</option>
+                  <option value="admin">{t('users.roles.admin')}</option>
+                  <option value="pole_director">{t('users.roles.pole_director')}</option>
+                  <option value="works_director">{t('users.roles.works_director')}</option>
+                  <option value="hse_director">{t('users.roles.hse_director')}</option>
+                  <option value="hr_director">{t('users.roles.hr_director')}</option>
+                </>
               </Select>
             </div>
             <div>

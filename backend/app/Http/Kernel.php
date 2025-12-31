@@ -43,6 +43,7 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'admin' => \App\Http\Middleware\AdminMiddleware::class,
+        'user_management' => \App\Http\Middleware\UserManagementMiddleware::class,
         'heavy_machinery_access' => \App\Http\Middleware\HeavyMachineryAccessMiddleware::class,
         'cache.api' => \App\Http\Middleware\CacheApiResponse::class,
         'compress' => \App\Http\Middleware\CompressResponse::class,

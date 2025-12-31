@@ -116,6 +116,8 @@ export default function Workers() {
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
   const fetchWorkersRequestId = useRef(0)
+  const workersAbortControllerRef = useRef(null)
+  const statsAbortControllerRef = useRef(null)
 
   const workerImageInputRef = useRef(null)
 
@@ -438,6 +440,12 @@ export default function Workers() {
 
   const fetchStatistics = async () => {
     try {
+      if (statsAbortControllerRef.current) {
+        statsAbortControllerRef.current.abort()
+      }
+      const controller = new AbortController()
+      statsAbortControllerRef.current = controller
+
       const statsParams = {
         search: debouncedSearchTerm ? debouncedSearchTerm : undefined,
         pole: selectedPole ? selectedPole : undefined,
@@ -454,9 +462,12 @@ export default function Workers() {
         is_active: true,
       }
 
-      const statsRes = await workerService.getStatistics(statsParams)
+      const statsRes = await workerService.getStatistics(statsParams, { signal: controller.signal })
       setStatistics(statsRes.data.data)
     } catch (error) {
+      if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') {
+        return
+      }
       // keep existing statistics in UI if refresh fails
     }
   }
@@ -464,6 +475,12 @@ export default function Workers() {
   const fetchWorkers = async () => {
     try {
       setLoading(true)
+      if (workersAbortControllerRef.current) {
+        workersAbortControllerRef.current.abort()
+      }
+      const controller = new AbortController()
+      workersAbortControllerRef.current = controller
+
       const requestId = fetchWorkersRequestId.current + 1
       fetchWorkersRequestId.current = requestId
       const params = {
@@ -483,7 +500,7 @@ export default function Workers() {
         expired_filter: expiredFilter ? expiredFilter : undefined,
         is_active: true, // Only show active workers
       }
-      const res = await workerService.getAll(params)
+      const res = await workerService.getAll(params, { signal: controller.signal })
 
       if (requestId !== fetchWorkersRequestId.current) {
         return
@@ -510,6 +527,9 @@ export default function Workers() {
       setTotalPages(meta.last_page ?? 1)
       setTotalCount(meta.total ?? items.length)
     } catch (error) {
+      if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') {
+        return
+      }
       toast.error(t('errors.somethingWentWrong'))
     } finally {
       setLoading(false)

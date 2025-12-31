@@ -16,6 +16,29 @@ use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 
 class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle, WithEvents
 {
+    private const MACHINE_TYPES = [
+        'Grue mobile',
+        'Grue a tour',
+        'Pelle sur chenille',
+        'Pelle sur pneu',
+        'Mini pelle',
+        'Chargeuse',
+        'Mini chargeuse',
+        'Compresseur',
+        'Compacteur',
+        'Rouleaux vibrant',
+        'Chariot élévateur',
+        'Nacelle articulé',
+        'Nacelle télescopique',
+        'Nacelle ciseaux',
+        'Bulldozer',
+        'Camion a benne',
+        'Camion citerne à eau',
+        'Camion citerne à gasoil',
+        'Tractopelle',
+        'Autre',
+    ];
+
     protected int $dataRows;
     protected array $projectCodes;
 
@@ -56,6 +79,30 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
         return [
             AfterSheet::class => function (AfterSheet $event) use ($dataRows, $projectCodes) {
                 $sheet = $event->sheet->getDelegate();
+
+                $spreadsheet = $sheet->getParent();
+                $listsSheet = new Worksheet($spreadsheet, 'Lists');
+                $spreadsheet->addSheet($listsSheet);
+                $listsSheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
+
+                $machineTypes = self::MACHINE_TYPES;
+                sort($machineTypes, SORT_NATURAL | SORT_FLAG_CASE);
+                $machineTypes = array_values(array_filter(array_map('trim', $machineTypes), fn ($v) => $v !== ''));
+
+                $rowIndex = 1;
+                foreach ($machineTypes as $type) {
+                    $listsSheet->setCellValue('A' . $rowIndex, $type);
+                    $rowIndex++;
+                }
+                $machineTypesLastRow = max(1, count($machineTypes));
+
+                $projectCodes = array_values(array_filter(array_map('trim', $projectCodes), fn ($v) => $v !== ''));
+                $rowIndex = 1;
+                foreach ($projectCodes as $code) {
+                    $listsSheet->setCellValue('B' . $rowIndex, $code);
+                    $rowIndex++;
+                }
+                $projectCodesLastRow = max(1, count($projectCodes));
 
                 $primaryOrange = 'F97316';
                 $darkOrange = 'EA580C';
@@ -139,6 +186,16 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                     $activeValidation->setFormula1('"ACTIF,INACTIF"');
                     $sheet->setCellValue("G{$row}", 'ACTIF');
 
+                    $typeValidation = $sheet->getCell("C{$row}")->getDataValidation();
+                    $typeValidation->setType(DataValidation::TYPE_LIST);
+                    $typeValidation->setErrorStyle(DataValidation::STYLE_INFORMATION);
+                    $typeValidation->setAllowBlank(false);
+                    $typeValidation->setShowDropDown(true);
+                    $typeValidation->setShowErrorMessage(true);
+                    $typeValidation->setErrorTitle('Machine type');
+                    $typeValidation->setError('Select a machine type from the list, or type a new value if needed.');
+                    $typeValidation->setFormula1("='Lists'!\$A\$1:\$A\${machineTypesLastRow}");
+
                     if (!empty($projectCodes)) {
                         $projectValidation = $sheet->getCell("F{$row}")->getDataValidation();
                         $projectValidation->setType(DataValidation::TYPE_LIST);
@@ -146,10 +203,7 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                         $projectValidation->setAllowBlank(true);
                         $projectValidation->setShowDropDown(true);
 
-                        $csv = implode(',', $projectCodes);
-                        if (strlen($csv) <= 250) {
-                            $projectValidation->setFormula1('"' . $csv . '"');
-                        }
+                        $projectValidation->setFormula1("='Lists'!\$B\$1:\$B\${projectCodesLastRow}");
                     }
                 }
 
@@ -160,7 +214,6 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                 $sheet->getPageSetup()->setFitToWidth(1);
                 $sheet->getPageSetup()->setPrintArea("A1:G{$lastRow}");
 
-                $spreadsheet = $sheet->getParent();
                 $spreadsheet->setActiveSheetIndex(0);
             },
         ];

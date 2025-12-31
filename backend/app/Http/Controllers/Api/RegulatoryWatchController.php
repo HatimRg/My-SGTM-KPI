@@ -59,8 +59,8 @@ class RegulatoryWatchController extends Controller
         $user = $request->user();
 
         $role = (string) ($user ? $user->role : '');
-        $allowedRoles = ['hse_director', 'hse_manager', 'responsable'];
-        if (!in_array($role, $allowedRoles, true)) {
+        $allowedRoles = ['hse_director', 'hse_manager', 'responsable', 'supervisor'];
+        if (!$user || (!$user->isAdminLike() && !in_array($role, $allowedRoles, true))) {
             return $this->error('Access denied', 403);
         }
 

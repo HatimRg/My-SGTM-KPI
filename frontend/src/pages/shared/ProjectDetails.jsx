@@ -4,6 +4,7 @@ import { projectService } from '../../services/api'
 import { useAuthStore } from '../../store/authStore'
 import { useLanguage } from '../../i18n'
 import MemberManagement from '../../components/MemberManagement'
+import ZonesManager from '../../components/zones/ZonesManager'
 import {
   FolderKanban,
   MapPin,
@@ -36,13 +37,14 @@ export default function ProjectDetails() {
   const [project, setProject] = useState(null)
   const [trends, setTrends] = useState([])
   const [loading, setLoading] = useState(true)
+  const [zonesOpen, setZonesOpen] = useState(false)
   const { isAdmin, user } = useAuthStore()
   
   // Check if this is an HSE Officer route
   const isSorRoute = location.pathname.startsWith('/sor')
   const isHseOfficer = user?.role === 'user'
-  const isHseManager = user?.role === 'responsable'
-  const canManageTeam = isAdmin() || isHseManager
+  const canManageTeam = isAdmin() || user?.role === 'hse_manager' || user?.role === 'responsable'
+  const canManageZones = isAdmin() || user?.role === 'hse_manager' || user?.role === 'responsable'
 
   useEffect(() => {
     fetchProject()
@@ -153,6 +155,33 @@ export default function ProjectDetails() {
           )}
         </div>
 
+        <div className="flex items-center justify-between gap-3 mt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {(Array.isArray(project.zones) ? project.zones : []).slice(0, 6).map((zone) => (
+              <span
+                key={zone}
+                className="text-xs px-2 py-1 rounded-full bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
+              >
+                {zone}
+              </span>
+            ))}
+            {(Array.isArray(project.zones) ? project.zones : []).length > 6 && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                +{(project.zones?.length ?? 0) - 6}
+              </span>
+            )}
+            {(Array.isArray(project.zones) ? project.zones : []).length === 0 && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">{t('common.noData')}</span>
+            )}
+          </div>
+
+          {canManageZones && (
+            <button type="button" className="btn-secondary" onClick={() => setZonesOpen(true)}>
+              {t('projects.manageZones')}
+            </button>
+          )}
+        </div>
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
           {project.location && (
             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
@@ -184,6 +213,15 @@ export default function ProjectDetails() {
       {/* Member Management - For HSE Managers and Admins */}
       {canManageTeam && project && (
         <MemberManagement projectId={project.id} projectName={project.name} />
+      )}
+
+      {project && (
+        <ZonesManager
+          projectId={project.id}
+          projectName={project.name}
+          isOpen={zonesOpen}
+          onClose={() => setZonesOpen(false)}
+        />
       )}
 
       {/* KPI Summary Cards */}

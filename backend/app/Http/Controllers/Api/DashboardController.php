@@ -126,6 +126,23 @@ class DashboardController extends Controller
             'total_reports' => (clone $totalReportsQuery)->count(),
         ];
 
+        if ($user && $user->isHseManager() && !$user->isAdminLike()) {
+            if ($projectIdsForPole !== null && count($projectIdsForPole) === 0) {
+                $stats['total_users'] = 0;
+                $stats['active_users'] = 0;
+            } else {
+                $userIdsSubquery = DB::table('project_user')
+                    ->select('user_id')
+                    ->when($projectIdsForPole !== null, function ($q) use ($projectIdsForPole) {
+                        return $q->whereIn('project_id', $projectIdsForPole);
+                    })
+                    ->distinct();
+
+                $stats['total_users'] = (int) User::query()->whereIn('id', $userIdsSubquery)->count();
+                $stats['active_users'] = (int) User::query()->active()->whereIn('id', $userIdsSubquery)->count();
+            }
+        }
+
         $kpiQuery = KpiReport::where('report_year', $year)->approved();
         if ($projectIdsForPole !== null) {
             $kpiQuery->whereIn('project_id', $projectIdsForPole);
@@ -652,6 +669,17 @@ class DashboardController extends Controller
             })->values();
         }
 
+        $activeMachinesQuery = Machine::query()
+            ->whereNotNull('project_id')
+            ->where('is_active', true);
+        if ($effectiveProjectIds !== null) {
+            if (count($effectiveProjectIds) === 0) {
+                $activeMachinesQuery->whereRaw('1 = 0');
+            } else {
+                $activeMachinesQuery->whereIn('project_id', $effectiveProjectIds);
+            }
+        }
+
         // User statistics
         $stats = [
             'assigned_projects' => $projects->count(),
@@ -664,6 +692,7 @@ class DashboardController extends Controller
             'draft_reports' => KpiReport::where('submitted_by', $user->id)
                 ->where('status', 'draft')
                 ->count(),
+            'active_machines' => (clone $activeMachinesQuery)->count(),
         ];
 
         $kpiSummaryQuery = KpiReport::whereIn('project_id', $effectiveProjectIds)
