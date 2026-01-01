@@ -2327,8 +2327,8 @@ export const SECTION_2 = {
           article_id: 'rt_art_5_sols_murs',
           code: { fr: 'Article 5', en: 'Article 5' },
           text: {
-            fr: "- Sol nivelé et impéreméable avec pente d'un Milimètre par mètre dans la direction de la conduite d'évacuation pour : Locaux où l'on utilise des matières organiques périssables ou altérables, manipulation des chiffons souillés, sol humides\n- Murs couverts d'enduit facilitant lavage.\n- Nettoyage et désinfection des murs et sols assez souvent.\n- Nettoyage des locaux où l'on utilise des matières organiques altérables avec appareils mécaniques d'aspiration.\n- Elimination des résidus putréscibles ou déposés dans des récipients métalliques hermétiquement clos, vidés et lavés avec une solution désinfectante au moins une fois par jour\n- Elevation du Plancher pour les sols humides pour éviter que les pieds des salariés soient en contact direct avec l'eau ou les liquides répandus sur le sol ou les dotter de chaussures de sécurité",
-            en: "- Sol nivelé et impéreméable avec pente d'un Milimètre par mètre dans la direction de la conduite d'évacuation pour : Locaux où l'on utilise des matières organiques périssables ou altérables, manipulation des chiffons souillés, sol humides\n- Murs couverts d'enduit facilitant lavage.\n- Nettoyage et désinfection des murs et sols assez souvent.\n- Nettoyage des locaux où l'on utilise des matières organiques altérables avec appareils mécaniques d'aspiration.\n- Elimination des résidus putréscibles ou déposés dans des récipients métalliques hermétiquement clos, vidés et lavés avec une solution désinfectante au moins une fois par jour\n- Elevation du Plancher pour les sols humides pour éviter que les pieds des salariés soient en contact direct avec l'eau ou les liquides répandus sur le sol ou les dotter de chaussures de sécurité",
+            fr: "- Sol nivelé et impéreméable avec pente d'un Milimètre par mètre dans la direction de la conduite d'évacuation pour : Locaux où l'on utilise des matières organiques périssables ou altérables, manipulation des chiffons souillés, sol humides\n- Murs couverts d'enduit facilitant lavage.\n-Nettoyage et désinfection des murs et sols assez souvent.\n- Nettoyage des locaux où l'on utilise des matières organiques altérables avec appareils mécaniques d'aspiration.\n- Elimination des résidus putréscibles ou déposés dans des récipients métalliques hermétiquement clos, vidés et lavés avec une solution désinfectante au moins une fois par jour\n- Elevation du Plancher pour les sols humides pour éviter que les pieds des salariés soient en contact direct avec l'eau ou les liquides répandus sur le sol ou les dotter de chaussures de sécurité",
+            en: "- Sol nivelé et impéreméable avec pente d'un Milimètre par mètre dans la direction de la conduite d'évacuation pour : Locaux où l'on utilise des matières organiques périssables ou altérables, manipulation des chiffons souillés, sol humides\n- Murs couverts d'enduit facilitant lavage.\n-Nettoyage et désinfection des murs et sols assez souvent.\n- Nettoyage des locaux où l'on utilise des matières organiques altérables avec appareils mécaniques d'aspiration.\n- Elimination des résidus putréscibles ou déposés dans des récipients métalliques hermétiquement clos, vidés et lavés avec une solution désinfectante au moins une fois par jour\n- Elevation du Plancher pour les sols humides pour éviter que les pieds des salariés soient en contact direct avec l'eau ou les liquides répandus sur le sol ou les dotter de chaussures de sécurité",
           },
         },
       ],
@@ -2377,16 +2377,328 @@ export const SECTION_2 = {
           article_id: 'rt_art_9_toilettes',
           code: { fr: 'Article 9', en: 'Article 9' },
           text: {
-            fr: "- Toilettes et urinoirs : bien ventilés, éclairées , pas de communication directe avec les locaux de travail, cabine avec porte pleine ayant au moins 1,50 mètre de hauteur avec dispositif de fermeture intérieur et extérieur, chasse d'eau entretenue,\n- Etablissements de plus de 25 salariés : chasse automatique.\n- Sol et parois en matériaux imperméables recouvertes de carreaux de faïence ou de granites,ou de peintures ou de chaux.\n- Une toilette et un urinoir pour 25 salariés et une toilette pour 25 salariées.\n- Etablissements de plus de 50 salariées : Toilettes à siège pour les femmes enceintes.\n- Dans les établissements avec personnel mixte à l'exception des bureaux : Séparation toilettes hommes et femmes.\n- Propreté des toilettes et urinoires\n- Etablissements de plus de 100 salarié : désigner un salarié pour les nettoyer.\n- Evacuation des effluents dans les collecteurs d'égouts publics fosses setiques sauf pour les installations temporaires de chantiers\n- L'emploi de puits absorbants est interdit.",
-            en: "- Toilettes et urinoirs : bien ventilés, éclairées , pas de communication directe avec les locaux de travail, cabine avec porte pleine ayant au moins 1,50 mètre de hauteur avec dispositif de fermeture intérieur et extérieur, chasse d'eau entretenue,\n- Etablissements de plus de 25 salariés : chasse automatique.\n- Sol et parois en matériaux imperméables recouvertes de carreaux de faïence ou de granites,ou de peintures ou de chaux.\n- Une toilette et un urinoir pour 25 salariés et une toilette pour 25 salariées.\n- Etablissements de plus de 50 salariées : Toilettes à siège pour les femmes enceintes.\n- Dans les établissements avec personnel mixte à l'exception des bureaux : Séparation toilettes hommes et femmes.\n- Propreté des toilettes et urinoires\n- Etablissements de plus de 100 salarié : désigner un salarié pour les nettoyer.\n- Evacuation des effluents dans les collecteurs d'égouts publics fosses setiques sauf pour les installations temporaires de chantiers\n- L'emploi de puits absorbants est interdit.",
+            fr: "- Toilettes et urinoirs : bien ventilés, éclairées , pas de communication directe avec les locaux de travail, cabine avec porte pleine ayant au moins 1,50 mètre de hauteur avec dispositif de fermeture intérieur et extérieur, chasse d'eau entretenue,\n-Etablissements de plus de 25 salariés : chasse automatique.\n- Sol et parois en matériaux imperméables recouvertes de carreaux de faïence ou de granites, ou de peintures ou de chaux.\n- Une toilette et un urinoir pour 25 salariés et une toilette pour 25 salariées.\n- Etablissements de plus de 50 salariées : Toilettes à siège pour les femmes enceintes.\n- Dans les établissements avec personnel mixte à l'exception des bureaux : Séparation toilettes hommes et femmes.\n- Propreté des toilettes et urinaires\n-Etablissements de plus de 100 salarié : désigner un salarié pour les nettoyer.\n- Evacuation des effluents dans les collecteurs d'égouts publics fosses septiques sauf pour les installations temporaires de chantiers\n- L'emploi de puits absorbants est interdit.",
+            en: "- Toilettes et urinoirs : bien ventilés, éclairées , pas de communication directe avec les locaux de travail, cabine avec porte pleine ayant au moins 1,50 mètre de hauteur avec dispositif de fermeture intérieur et extérieur, chasse d'eau entretenue,\n-Etablissements de plus de 25 salariés : chasse automatique.\n- Sol et parois en matériaux imperméables recouvertes de carreaux de faïence ou de granites, ou de peintures ou de chaux.\n- Une toilette et un urinoir pour 25 salariés et une toilette pour 25 salariées.\n- Etablissements de plus de 50 salariées : Toilettes à siège pour les femmes enceintes.\n- Dans les établissements avec personnel mixte à l'exception des bureaux : Séparation toilettes hommes et femmes.\n- Propreté des toilettes et urinaires\n-Etablissements de plus de 100 salarié : désigner un salarié pour les nettoyer.\n- Evacuation des effluents dans les collecteurs d'égouts publics fosses septiques sauf pour les installations temporaires de chantiers\n- L'emploi de puits absorbants est interdit.",
           },
         },
         {
           article_id: 'rt_art_10_handicapes',
           code: { fr: 'Article 10', en: 'Article 10' },
           text: {
-            fr: "Amélnager des installations sanitaires appropriées aux salariés handicapés.",
-            en: "Amélnager des installations sanitaires appropriées aux salariés handicapés.",
+            fr: 'Aménager des installations sanitaires appropriées aux salariés handicapés.',
+            en: 'Aménager des installations sanitaires appropriées aux salariés handicapés.',
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'rt_chapitre_iii_section_i_aeration_chauffage',
+      title: {
+        fr: 'Section I : Aération et chauffage : Chapitre III : Ambiances des locaux du travail Aération, chauffage, éclairage des locaux du travail et la prévention contre les risques dus au bruit',
+        en: 'Section I : Aération et chauffage : Chapitre III : Ambiances des locaux du travail Aération, chauffage, éclairage des locaux du travail et la prévention contre les risques dus au bruit',
+      },
+      articles: [
+        {
+          article_id: 'rt_art_11',
+          code: { fr: 'Article 11', en: 'Article 11' },
+          text: {
+            fr: "- Renouvellement de l'air des locaux fermés  où les salariés sont appelés à séjourner, pour un atmosphère propre  et pour éviter les élévations exagérées de la température, les odeurs désagréables et les condensations.",
+            en: "- Renouvellement de l'air des locaux fermés  où les salariés sont appelés à séjourner, pour un atmosphère propre  et pour éviter les élévations exagérées de la température, les odeurs désagréables et les condensations.",
+          },
+        },
+        {
+          article_id: 'rt_art_12',
+          code: { fr: 'Article 12', en: 'Article 12' },
+          text: {
+            fr: "- Evacuation des poussières et gaz incommodes, insalubres ou toxiques par des installations de captage et de ventilation.\n- Installation de dispositif d'avertissement automatique pour signaler toute défaillance des installations de captage.",
+            en: "- Evacuation des poussières et gaz incommodes, insalubres ou toxiques par des installations de captage et de ventilation.\n- Installation de dispositif d'avertissement automatique pour signaler toute défaillance des installations de captage.",
+          },
+        },
+        {
+          article_id: 'rt_art_13',
+          code: { fr: 'Article 13', en: 'Article 13' },
+          text: {
+            fr: "-Dotter les salariés de masques de protection si le captage est impossible (masques entretenus et désinfectés avant réutilisation par un nouvel utilisateur)",
+            en: "-Dotter les salariés de masques de protection si le captage est impossible (masques entretenus et désinfectés avant réutilisation par un nouvel utilisateur)",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'rt_chapitre_iii_section_ii_chauffage_eclairage',
+      title: {
+        fr: 'Section II. - Chauffage et éclairage des locaux du travail',
+        en: 'Section II. - Chauffage et éclairage des locaux du travail',
+      },
+      articles: [
+        {
+          article_id: 'rt_art_14',
+          code: { fr: 'Article 14', en: 'Article 14' },
+          text: {
+            fr: "- Chauffage des locaux fermés pour maintenir une température convenable et ne donner lieu à aucune émanation délétère.\n-Les gardiens de chantier doivent disposer d'un abri qui les protége contre le froid.\n- Eclairage naturel suffisant\n- Mesurer les niveaux d'éclairement des locaux où il y a présence de salariés\nLocaux affectes au travail et leurs dépendances valeurs minimales d'éclairement\n- Voies de circulation intérieure ........................................ 40 lux\n- Escaliers et entrepôts .................................................. 60 lux\n- Locaux de travail, services sanitaires ............................... 120 lux\n- Locaux aveugles affectés à un travail permanent .................. 200 lux\nEspaces extérieurs Valeurs minimales d'éclairement\n- Zones et voies de circulation extérieures .............. 10 lux\n- Espaces extérieurs où sont effectués des travaux à caractère permanent ........................................ 40 lux\n- Adapter le niveau d'éclairement à la nature du travail\n-En cas d'éclairage artificiel, dans un même local et pour les locaux contigus en communication., entre celui de la zone de travail et le rapport des niveaux d'éclairement, l'éclairement général doit être compris entre 1 et 5.\n-Protection des postes de travail contre les rayons solaires\n- Mettre en place des  dispositions de protection contre l'éblouissement et la fatigue visuelle.\n- Entretenir lLes organes de commande d'éclairage",
+            en: "- Chauffage des locaux fermés pour maintenir une température convenable et ne donner lieu à aucune émanation délétère.\n-Les gardiens de chantier doivent disposer d'un abri qui les protége contre le froid.\n- Eclairage naturel suffisant\n- Mesurer les niveaux d'éclairement des locaux où il y a présence de salariés\nLocaux affectes au travail et leurs dépendances valeurs minimales d'éclairement\n- Voies de circulation intérieure ........................................ 40 lux\n- Escaliers et entrepôts .................................................. 60 lux\n- Locaux de travail, services sanitaires ............................... 120 lux\n- Locaux aveugles affectés à un travail permanent .................. 200 lux\nEspaces extérieurs Valeurs minimales d'éclairement\n- Zones et voies de circulation extérieures .............. 10 lux\n- Espaces extérieurs où sont effectués des travaux à caractère permanent ........................................ 40 lux\n- Adapter le niveau d'éclairement à la nature du travail\n-En cas d'éclairage artificiel, dans un même local et pour les locaux contigus en communication., entre celui de la zone de travail et le rapport des niveaux d'éclairement, l'éclairement général doit être compris entre 1 et 5.\n-Protection des postes de travail contre les rayons solaires\n- Mettre en place des  dispositions de protection contre l'éblouissement et la fatigue visuelle.\n- Entretenir lLes organes de commande d'éclairage",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'rt_chapitre_iii_section_iii_bruit',
+      title: {
+        fr: 'Section III : Prévention contre les risques résultant du bruit :',
+        en: 'Section III : Prévention contre les risques résultant du bruit :',
+      },
+      articles: [
+        {
+          article_id: 'rt_art_16',
+          code: { fr: 'Article 16', en: 'Article 16' },
+          text: {
+            fr: "Mesurer le niveau de bruit pour identifier les salariés pour lesquels l'exposition sonore quotidienne atteint ou dépasse le niveau de 85 dB ou pour lesquels la pression acoustique de crête atteint ou dépasse le niveau de 135 dB.\n- Renouveler le mesurage en cas modification des installations ou des modes de travail est susceptible d'entraîner une élévation des niveaux de bruit.\n- Consigner les résultats de mesure\n- Conserver les résultats pendant 10 ans.",
+            en: "Mesurer le niveau de bruit pour identifier les salariés pour lesquels l'exposition sonore quotidienne atteint ou dépasse le niveau de 85 dB ou pour lesquels la pression acoustique de crête atteint ou dépasse le niveau de 135 dB.\n- Renouveler le mesurage en cas modification des installations ou des modes de travail est susceptible d'entraîner une élévation des niveaux de bruit.\n- Consigner les résultats de mesure\n- Conserver les résultats pendant 10 ans.",
+          },
+        },
+        {
+          article_id: 'rt_art_17',
+          code: { fr: 'Article 17', en: 'Article 17' },
+          text: {
+            fr: "- établir un programme de mesurage du bruit, ou procéder à l'organisation du travail pour réduire l'exposition au bruit. Lorsque l'exposition sonore quotidienne subie par un salarié dépasse le niveau de 85 dB ou lorsque la pression acoustique de crête dépasse 135 dB",
+            en: "- établir un programme de mesurage du bruit, ou procéder à l'organisation du travail pour réduire l'exposition au bruit. Lorsque l'exposition sonore quotidienne subie par un salarié dépasse le niveau de 85 dB ou lorsque la pression acoustique de crête dépasse 135 dB",
+          },
+        },
+        {
+          article_id: 'rt_art_18',
+          code: { fr: 'Article 18', en: 'Article 18' },
+          text: {
+            fr: "- Mettre à la disposition des salariés des protecteurs auditifs adaptés quand l'exposition sonore quotidienne dépasse 85 dB ou lorsque la pression acoustique de crête dépasse le niveau de 135 dB.\n- Lorsque le port des protecteurs individuels est susceptible d'entraîner un risque d'accident, toutes mesures appropriées, notamment l'emploi de signaux d'avertissement adéquats, doivent être prises",
+            en: "- Mettre à la disposition des salariés des protecteurs auditifs adaptés quand l'exposition sonore quotidienne dépasse 85 dB ou lorsque la pression acoustique de crête dépasse le niveau de 135 dB.\n- Lorsque le port des protecteurs individuels est susceptible d'entraîner un risque d'accident, toutes mesures appropriées, notamment l'emploi de signaux d'avertissement adéquats, doivent être prises",
+          },
+        },
+        {
+          article_id: 'rt_art_19',
+          code: { fr: 'Article 19', en: 'Article 19' },
+          text: {
+            fr: "- Réaliser un examen médicale pour les salariés qui seront affectés à des travaux avec un niveau d'exposition sonore supérieur à 85 dB\n- Les salariés exposés à un niveau supérieur à 85 dB subissent une surveillance médicale particulière.\n- Les résultats de ces examens médicaux doivent être conservés pendant dix ans après la cessation de l'exposition du salarié au bruit.\n- Si le salarié change d'établissement, un extrait de ces résultats est transmis au médecin du travail du nouvel établissement à la demande du salarié.",
+            en: "- Réaliser un examen médicale pour les salariés qui seront affectés à des travaux avec un niveau d'exposition sonore supérieur à 85 dB\n- Les salariés exposés à un niveau supérieur à 85 dB subissent une surveillance médicale particulière.\n- Les résultats de ces examens médicaux doivent être conservés pendant dix ans après la cessation de l'exposition du salarié au bruit.\n- Si le salarié change d'établissement, un extrait de ces résultats est transmis au médecin du travail du nouvel établissement à la demande du salarié.",
+          },
+        },
+        {
+          article_id: 'rt_art_20',
+          code: { fr: 'Article 20', en: 'Article 20' },
+          text: {
+            fr: "Réaliser une sensibilisation quand le niveau sonore dépasse 85 dB sur :\n- les risques résultant, de l'exposition au bruit au sens de l'ouïe ;\n- les moyens mis en œuvre pour prévenir ces risques ;\n- l'obligation de se conformer aux mesures de prévention et de protection prévues par le règlement intérieur de l'établissement\n- le port et les modalités d'utilisation des protecteurs individuels ;\n- le rôle de la surveillance médicale de la fonction auditive.",
+            en: "Réaliser une sensibilisation quand le niveau sonore dépasse 85 dB sur :\n- les risques résultant, de l'exposition au bruit au sens de l'ouïe ;\n- les moyens mis en œuvre pour prévenir ces risques ;\n- l'obligation de se conformer aux mesures de prévention et de protection prévues par le règlement intérieur de l'établissement\n- le port et les modalités d'utilisation des protecteurs individuels ;\n- le rôle de la surveillance médicale de la fonction auditive.",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'rt_chapitre_iv_section_i_repas',
+      title: {
+        fr: "Chapitre IV : Les locaux réservés aux repas et les locaux réservés à l'hébergement des salariés : Section I : Les locaux réservés à la prise de repas.",
+        en: "Chapitre IV : Les locaux réservés aux repas et les locaux réservés à l'hébergement des salariés : Section I : Les locaux réservés à la prise de repas.",
+      },
+      articles: [
+        {
+          article_id: 'rt_art_21',
+          code: { fr: 'Article 21', en: 'Article 21' },
+          text: {
+            fr: "- Prise de repas dans les locaux réservés, selon règlement intérieur.\n- Mettre en place un local de restauration à partir de 25 salariés. Avec.avec eau potable fraiche et chaude pour chaque 10 salariés, réfrigérateur, installation pour réchauffer les plats.\n- Mettre en place un local de pause de repas hygiénique pour moins de 25 salariés.\n- nettoyage régulier de ces locaux.\n- analyser l'eau potable qui ne provient pas de réseau de distribution publique.",
+            en: "- Prise de repas dans les locaux réservés, selon règlement intérieur.\n- Mettre en place un local de restauration à partir de 25 salariés. Avec.avec eau potable fraiche et chaude pour chaque 10 salariés, réfrigérateur, installation pour réchauffer les plats.\n- Mettre en place un local de pause de repas hygiénique pour moins de 25 salariés.\n- nettoyage régulier de ces locaux.\n- analyser l'eau potable qui ne provient pas de réseau de distribution publique.",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'rt_chapitre_iv_section_ii_hebergement',
+      title: {
+        fr: "Section II : Les locaux réservés à l'hébergement des salariés",
+        en: "Section II : Les locaux réservés à l'hébergement des salariés",
+      },
+      articles: [
+        {
+          article_id: 'rt_art_22',
+          code: { fr: 'Article 22', en: 'Article 22' },
+          text: {
+            fr: "- Locaux pour l'hébergement : 6 mètres carrées et 15 mètres cubes pour chaque salarié. Les parties des locaux d'une hauteur inférieure à 1,90 mètre ne sont pas considérées comme surfaces habitables.\n- interdiction d'héberger les salariés dans les locaux affectés à un usage industriel ou commercial.\n- Locaux aéré, propre avec fermeture\n- Chaque couple a le droit d'avoir une chambre.\n- Les pièces à usage de dortoir ne doivent être occupées que par des salariés du même sexe (6 max) avec des lits de 80 cm au moins.",
+            en: "- Locaux pour l'hébergement : 6 mètres carrées et 15 mètres cubes pour chaque salarié. Les parties des locaux d'une hauteur inférieure à 1,90 mètre ne sont pas considérées comme surfaces habitables.\n- interdiction d'héberger les salariés dans les locaux affectés à un usage industriel ou commercial.\n- Locaux aéré, propre avec fermeture\n- Chaque couple a le droit d'avoir une chambre.\n- Les pièces à usage de dortoir ne doivent être occupées que par des salariés du même sexe (6 max) avec des lits de 80 cm au moins.",
+          },
+        },
+        {
+          article_id: 'rt_art_24',
+          code: { fr: 'Article 24', en: 'Article 24' },
+          text: {
+            fr: "- Mise à disposition des salariés de serviettes, du savon et des lavabos à eau potable à raison d'un lavabo par trois salariés.\n- Des toilettes et des urinoirs doivent être installés à proximité des locaux réservés à l'hébergement des salariés\n- Des douches, à température réglable, doivent être installées à proximité des locaux réservés à l'hébergement des salariés dans des cabines individuelles, à raison d'une cabine pour 6 salariés.",
+            en: "- Mise à disposition des salariés de serviettes, du savon et des lavabos à eau potable à raison d'un lavabo par trois salariés.\n- Des toilettes et des urinoirs doivent être installés à proximité des locaux réservés à l'hébergement des salariés\n- Des douches, à température réglable, doivent être installées à proximité des locaux réservés à l'hébergement des salariés dans des cabines individuelles, à raison d'une cabine pour 6 salariés.",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'rt_chapitre_v_incendies',
+      title: {
+        fr: 'Chapitre V : Prévention contre les incendies',
+        en: 'Chapitre V : Prévention contre les incendies',
+      },
+      articles: [
+        {
+          article_id: 'rt_art_25',
+          code: { fr: 'Article 25', en: 'Article 25' },
+          text: {
+            fr: "Classement des matières inflammables\n- Premier groupe : Les produits facilement inflammables : Comprend les matières émettant des vapeurs inflammables, les matières susceptibles de brûler sans apport d'oxygène, les matières dans un état physique présente de grandes divisions, susceptibles de former avec l'air un mélange explosif.\n- Deuxième groupe: Les produits extrêmement inflammables : Comprend les autres matières susceptibles de prendre feu presque instantanément au contact d'une flamme ou d'une étincelle et de propager rapidement l'incendie.\n-Troisième groupe : Les produits comburants : Comprend les matières combustibles moins inflammables que le premier et le deuxième groupe précités.",
+            en: "Classement des matières inflammables\n- Premier groupe : Les produits facilement inflammables : Comprend les matières émettant des vapeurs inflammables, les matières susceptibles de brûler sans apport d'oxygène, les matières dans un état physique présente de grandes divisions, susceptibles de former avec l'air un mélange explosif.\n- Deuxième groupe: Les produits extrêmement inflammables : Comprend les autres matières susceptibles de prendre feu presque instantanément au contact d'une flamme ou d'une étincelle et de propager rapidement l'incendie.\n-Troisième groupe : Les produits comburants : Comprend les matières combustibles moins inflammables que le premier et le deuxième groupe précités.",
+          },
+        },
+        {
+          article_id: 'rt_art_26',
+          code: { fr: 'Article 26', en: 'Article 26' },
+          text: {
+            fr: "Locaux où sont entreposées où manipulées des produits facilement inflammables :\n- Eclairage par des lampes électriques munies d'une double enveloppe ou par des lampes extérieures derrière un verre dormant.\n- Pas de foyer, pas de flamme, ou appareil produisant des étincelles.\n- Ventilation de ces locaux\n- Affichage en arabe et en Français de l'interdiction de fumer",
+            en: "Locaux où sont entreposées où manipulées des produits facilement inflammables :\n- Eclairage par des lampes électriques munies d'une double enveloppe ou par des lampes extérieures derrière un verre dormant.\n- Pas de foyer, pas de flamme, ou appareil produisant des étincelles.\n- Ventilation de ces locaux\n- Affichage en arabe et en Français de l'interdiction de fumer",
+          },
+        },
+        {
+          article_id: 'rt_art_27',
+          code: { fr: 'Article 27', en: 'Article 27' },
+          text: {
+            fr: "Locaux où sont entreposés ou manipulés des produits facilement ou extrêmement inflammables ou des produits comburants,\n- Aucun poste habituel de travail ne doit se trouver à plus de 10 mètres d'une issue.\n- Si les fenêtres de ces locaux sont munies de grilles ou de grillages, ceux-ci doivent s’ouvrir très facilement de l’intérieur.\n- Pas de stockage des produits facilement ou extrêmement inflammables dans les escaliers, passages et couloirs ou sous les escaliers et des issues des locaux de travail et bâtiments.\n- Les récipients mobiles contenant des produits facilement ou extrêmement inflammables doivent être étanches. ou avec enveloppe métallique étanche s'ils sont en verre.\n- Les chiffons, cotons et papiers imprégnés de liquides inflammables ou de matières grasses doivent être, après usage, enfermés dans des récipients métalliques clos et étanches.",
+            en: "Locaux où sont entreposés ou manipulés des produits facilement ou extrêmement inflammables ou des produits comburants,\n- Aucun poste habituel de travail ne doit se trouver à plus de 10 mètres d'une issue.\n- Si les fenêtres de ces locaux sont munies de grilles ou de grillages, ceux-ci doivent s’ouvrir très facilement de l’intérieur.\n- Pas de stockage des produits facilement ou extrêmement inflammables dans les escaliers, passages et couloirs ou sous les escaliers et des issues des locaux de travail et bâtiments.\n- Les récipients mobiles contenant des produits facilement ou extrêmement inflammables doivent être étanches. ou avec enveloppe métallique étanche s'ils sont en verre.\n- Les chiffons, cotons et papiers imprégnés de liquides inflammables ou de matières grasses doivent être, après usage, enfermés dans des récipients métalliques clos et étanches.",
+          },
+        },
+        {
+          article_id: 'rt_art_28',
+          code: { fr: 'Article 28', en: 'Article 28' },
+          text: {
+            fr: "Mise en place d'issues et dégagements pour évacuation en cas d'incendie\n- Dégagements toujours libres, Aucun objet, marchandises ou matériel ne doit faire obstacle à la circulation des personnes ou réduire la largeur des dégagements, éviter les culs-de-sac.\n- 2 issues min pour chaque 100 , une unité par 500 personnes.\n- La largeur des dégagements de 80 cm min\n- Largeur des dégagements de 21 et 100 ne doit pas être inférieure à 1,50 mètre.\n- Entre 101 et 300, cette largeur ne doit pas être inférieure à 2 mètres.\n- Entre 301 et 500, elle ne doit pas être inférieure à 2,50 mètres.\n- Elle augmentera de 50 centimètres par 100 personnes lorsque le nombre de personnes dépasse 500.",
+            en: "Mise en place d'issues et dégagements pour évacuation en cas d'incendie\n- Dégagements toujours libres, Aucun objet, marchandises ou matériel ne doit faire obstacle à la circulation des personnes ou réduire la largeur des dégagements, éviter les culs-de-sac.\n- 2 issues min pour chaque 100 , une unité par 500 personnes.\n- La largeur des dégagements de 80 cm min\n- Largeur des dégagements de 21 et 100 ne doit pas être inférieure à 1,50 mètre.\n- Entre 101 et 300, cette largeur ne doit pas être inférieure à 2 mètres.\n- Entre 301 et 500, elle ne doit pas être inférieure à 2,50 mètres.\n- Elle augmentera de 50 centimètres par 100 personnes lorsque le nombre de personnes dépasse 500.",
+          },
+        },
+        {
+          article_id: 'rt_art_29',
+          code: { fr: 'Article 29', en: 'Article 29' },
+          text: {
+            fr: "- Ouverture des portes d'évacuation de plus de 20 personnes, et des portes des locaux où sont entreposés des produits facilement ou extrêmement inflammables vers l'extérieur si elles ne donnent pas accès sur la voie publique.",
+            en: "- Ouverture des portes d'évacuation de plus de 20 personnes, et des portes des locaux où sont entreposés des produits facilement ou extrêmement inflammables vers l'extérieur si elles ne donnent pas accès sur la voie publique.",
+          },
+        },
+        {
+          article_id: 'rt_art_30',
+          code: { fr: 'Article 30', en: 'Article 30' },
+          text: {
+            fr: "- Signalisation du chemin de la sortie.\n-Signalisation des \"Sorties de secours\"\n- Mise en place d'éclairage de sécurité",
+            en: "- Signalisation du chemin de la sortie.\n-Signalisation des \"Sorties de secours\"\n- Mise en place d'éclairage de sécurité",
+          },
+        },
+        {
+          article_id: 'rt_art_31',
+          code: { fr: 'Article 31', en: 'Article 31' },
+          text: {
+            fr: "- Mettre en place les mesures nécessaires pour maîtriser tout départ de feu.\n- Avoir un nombre suffisant d'extincteurs, maintenus en bon état de fonctionnement, d'une puissance suffisante et utilisant un produit approprié au type de feu.\n- Consulter un service d'incendie compétent et agrée pour la détermination du type et du nombre des équipements nécessaires.\n- Le matériel de lutte contre l'incendie doit être entretenu et tenu en bon état.\n- Extincteurs accessible, judicieusement repartit, signalé de manière efficace et facilement utilisable.",
+            en: "- Mettre en place les mesures nécessaires pour maîtriser tout départ de feu.\n- Avoir un nombre suffisant d'extincteurs, maintenus en bon état de fonctionnement, d'une puissance suffisante et utilisant un produit approprié au type de feu.\n- Consulter un service d'incendie compétent et agrée pour la détermination du type et du nombre des équipements nécessaires.\n- Le matériel de lutte contre l'incendie doit être entretenu et tenu en bon état.\n- Extincteurs accessible, judicieusement repartit, signalé de manière efficace et facilement utilisable.",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'rt_chapitre_vi_accidents',
+      title: {
+        fr: 'Chapitre VI : Prévention des accidents du travail',
+        en: 'Chapitre VI : Prévention des accidents du travail',
+      },
+      articles: [
+        {
+          article_id: 'rt_art_32',
+          code: { fr: 'Article 32', en: 'Article 32' },
+          text: {
+            fr: "Les passerelles, planchers en encorbellement plates-formes en surélévation ainsi que leurs moyens d'y accéder, doivent être construits, installés ou protégés de telle façon que les salariés ne soient pas exposés aux chutes.",
+            en: "Les passerelles, planchers en encorbellement plates-formes en surélévation ainsi que leurs moyens d'y accéder, doivent être construits, installés ou protégés de telle façon que les salariés ne soient pas exposés aux chutes.",
+          },
+        },
+        {
+          article_id: 'rt_art_33',
+          code: { fr: 'Article 33', en: 'Article 33' },
+          text: {
+            fr: "- Les échelles de service doivent être munies de leurs échelons disposées ou fixées de façon à ne pouvoir ni glisser, ni basculer. Leurs échelons devront être rigides, équidistants et soit encastrés, soit emboîtés dans les montants, hauteur max 5 m\n- Les échelles reliant les étages doivent être chevauchées et un palier de protection sera établi à chaque étage.\n-Interdit d'utiliser les échelles pour le transport de fardeaux pesant plus de 50 kilogrammes.\n-Les montants des échelles doubles doivent, pendant l'emploi de celle-ci, être immobilisés ou reliés par un dispositif rigide.\n- Les ponts volants ou les passerelles réservés au chargement ou le déchargement des navires ou bateaux doivent être munis de garde-corps des deux côtés. Leurs éléments doivent constituer un ensemble rigide.",
+            en: "- Les échelles de service doivent être munies de leurs échelons disposées ou fixées de façon à ne pouvoir ni glisser, ni basculer. Leurs échelons devront être rigides, équidistants et soit encastrés, soit emboîtés dans les montants, hauteur max 5 m\n- Les échelles reliant les étages doivent être chevauchées et un palier de protection sera établi à chaque étage.\n-Interdit d'utiliser les échelles pour le transport de fardeaux pesant plus de 50 kilogrammes.\n-Les montants des échelles doubles doivent, pendant l'emploi de celle-ci, être immobilisés ou reliés par un dispositif rigide.\n- Les ponts volants ou les passerelles réservés au chargement ou le déchargement des navires ou bateaux doivent être munis de garde-corps des deux côtés. Leurs éléments doivent constituer un ensemble rigide.",
+          },
+        },
+        {
+          article_id: 'rt_art_34',
+          code: { fr: 'Article 34', en: 'Article 34' },
+          text: {
+            fr: "- Interdiction d'accès aux locaux de machines à part pour le personnel d'entretien (Affichage en Arabe et en Français)\n-Les passages entre les machines, mécanismes, : Largeur de 80 centimètres min\n- Nivelage des sols",
+            en: "- Interdiction d'accès aux locaux de machines à part pour le personnel d'entretien (Affichage en Arabe et en Français)\n-Les passages entre les machines, mécanismes, : Largeur de 80 centimètres min\n- Nivelage des sols",
+          },
+        },
+        {
+          article_id: 'rt_art_35',
+          code: { fr: 'Article 35', en: 'Article 35' },
+          text: {
+            fr: "- Protection des cuves, bassins ou réservoirs pour éviter les risques de chute, de débordement, d'éclaboussement ainsi que contre les dangers de déversement par rupture des parois des cuves, bassins, réservoirs et bonbonnes contenant des produits susceptibles de provoquer des brûlures d'origine thermique ou chimique.\n- Visites périodiques des cuves, bassins et réservoirs contenant des produits corrosifs doivent avoir lieu au moins une fois par an. par une personne qualifiée sous la responsabilité de l'employeur\n- Conserver la date et les résultats des visites",
+            en: "- Protection des cuves, bassins ou réservoirs pour éviter les risques de chute, de débordement, d'éclaboussement ainsi que contre les dangers de déversement par rupture des parois des cuves, bassins, réservoirs et bonbonnes contenant des produits susceptibles de provoquer des brûlures d'origine thermique ou chimique.\n- Visites périodiques des cuves, bassins et réservoirs contenant des produits corrosifs doivent avoir lieu au moins une fois par an. par une personne qualifiée sous la responsabilité de l'employeur\n- Conserver la date et les résultats des visites",
+          },
+        },
+        {
+          article_id: 'rt_art_36',
+          code: { fr: 'Article 36', en: 'Article 36' },
+          text: {
+            fr: "- Les bouteilles contenant des gaz comprimés ou dissous, doivent être soit placées sur chariot, soit immobilisées au poste d'utilisation ou en parc.\n-Les bouteilles vides doivent être posées horizontalement si elles ne sont pas immobilisées.\n- Port de lunettes spéciales à verre teintés pour les travaux de soudure\n- Afficher l'obligation de port des EPI.(En arabe et en Français)",
+            en: "- Les bouteilles contenant des gaz comprimés ou dissous, doivent être soit placées sur chariot, soit immobilisées au poste d'utilisation ou en parc.\n-Les bouteilles vides doivent être posées horizontalement si elles ne sont pas immobilisées.\n- Port de lunettes spéciales à verre teintés pour les travaux de soudure\n- Afficher l'obligation de port des EPI.(En arabe et en Français)",
+          },
+        },
+        {
+          article_id: 'rt_art_37',
+          code: { fr: 'Article 37', en: 'Article 37' },
+          text: {
+            fr: "- Fosses d'entretiens et de vidange des véhicules avec escalier d'accès à chacune de leur extrémité, dégagés quand les véhicules seront en place.\n-Le véhicule en stationnement sur la fosse doit être disposé de façon à pouvoir être déplacé rapidement en cas de besoin.\n-Un extincteur doit être installé dans chaque fosse.",
+            en: "- Fosses d'entretiens et de vidange des véhicules avec escalier d'accès à chacune de leur extrémité, dégagés quand les véhicules seront en place.\n-Le véhicule en stationnement sur la fosse doit être disposé de façon à pouvoir être déplacé rapidement en cas de besoin.\n-Un extincteur doit être installé dans chaque fosse.",
+          },
+        },
+        {
+          article_id: 'rt_art_38',
+          code: { fr: 'Article 38', en: 'Article 38' },
+          text: {
+            fr: "- Stockage d'objets lourds en évitant les risques de chute (caisses, sacs, planches, balles de crin végétal, briques et autres matériaux ou objets...)\n-Passage interdit entre les piles sauf si elles se touchent entre elles.\n- Afficher l'interdiction de passage (Arabe et Français)\n- L'accès au sommet des empilements doit se faire par le biais d'un plat penchant constitué par deux madriers au moins soigneusement entretoisés.",
+            en: "- Stockage d'objets lourds en évitant les risques de chute (caisses, sacs, planches, balles de crin végétal, briques et autres matériaux ou objets...)\n-Passage interdit entre les piles sauf si elles se touchent entre elles.\n- Afficher l'interdiction de passage (Arabe et Français)\n- L'accès au sommet des empilements doit se faire par le biais d'un plat penchant constitué par deux madriers au moins soigneusement entretoisés.",
+          },
+        },
+        {
+          article_id: 'rt_art_39',
+          code: { fr: 'Article 39', en: 'Article 39' },
+          text: {
+            fr: "Il est interdit aux salariés portant des vêtements non ajustés ou flottants de s'installer prés des machines ou des pièces mobiles de machines",
+            en: "Il est interdit aux salariés portant des vêtements non ajustés ou flottants de s'installer prés des machines ou des pièces mobiles de machines",
+          },
+        },
+        {
+          article_id: 'rt_art_40',
+          code: { fr: 'Article 40', en: 'Article 40' },
+          text: {
+            fr: "L'employeur est tenu d'afficher le règlement intérieur de l'établissement dans les locaux où se font le recrutement et la paie des salariés et de veiller à son exécution.",
+            en: "L'employeur est tenu d'afficher le règlement intérieur de l'établissement dans les locaux où se font le recrutement et la paie des salariés et de veiller à son exécution.",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'rt_medecin_maladies',
+      title: {
+        fr: 'Dispositions',
+        en: 'Dispositions',
+      },
+      articles: [
+        {
+          article_id: 'rt_art_medecin_missions',
+          code: { fr: 'Article 1- Article 4', en: 'Article 1- Article 4' },
+          text: {
+            fr: 'Missions du Médecin',
+            en: 'Missions du Médecin',
+          },
+        },
+        {
+          article_id: 'rt_art_premier_tableau_maladies',
+          code: { fr: 'Article premier', en: 'Article first' },
+          text: {
+            fr: "Le tableau (annexe N°1) fixant la liste des maladies professionnelles, annexé à l'arrêté susvisé N° 919-99 du ramadan 1420 (23 décembre 1999) est abrogé et remplacé par les tableaux des maladies professionnelles (annexe N°1), annexés au présent arrêté.",
+            en: "Le tableau (annexe N°1) fixant la liste des maladies professionnelles, annexé à l'arrêté susvisé N° 919-99 du ramadan 1420 (23 décembre 1999) est abrogé et remplacé par les tableaux des maladies professionnelles (annexe N°1), annexés au présent arrêté.",
           },
         },
       ],
