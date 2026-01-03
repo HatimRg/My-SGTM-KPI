@@ -45,16 +45,22 @@ export default function AuthLayout() {
     document.head.appendChild(sgtmLogoLink)
 
     return () => {
-      if (link.parentNode) {
-        link.parentNode.removeChild(link)
+      try {
+        link.remove()
+      } catch {
+        // ignore
       }
 
-      if (appLogoLink.parentNode) {
-        appLogoLink.parentNode.removeChild(appLogoLink)
+      try {
+        appLogoLink.remove()
+      } catch {
+        // ignore
       }
 
-      if (sgtmLogoLink.parentNode) {
-        sgtmLogoLink.parentNode.removeChild(sgtmLogoLink)
+      try {
+        sgtmLogoLink.remove()
+      } catch {
+        // ignore
       }
     }
   }, [])

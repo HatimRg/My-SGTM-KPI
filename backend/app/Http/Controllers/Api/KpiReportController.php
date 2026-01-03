@@ -10,11 +10,52 @@ use App\Models\Notification;
 use App\Services\NotificationService;
 use App\Helpers\WeekHelper;
 use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class KpiReportController extends Controller
 {
+    private function kpiReportColumns(): array
+    {
+        static $columns = null;
+        if ($columns !== null) {
+            return $columns;
+        }
+
+        try {
+            $columns = Schema::getColumnListing('kpi_reports');
+        } catch (\Throwable $e) {
+            $columns = [];
+        }
+
+        return $columns;
+    }
+
+    private function missingKpiReportColumns(array $required): array
+    {
+        $existing = array_flip($this->kpiReportColumns());
+        $missing = [];
+        foreach ($required as $col) {
+            if (!isset($existing[$col])) {
+                $missing[] = $col;
+            }
+        }
+        return $missing;
+    }
+
+    private function filterToKpiReportColumns(array $data): array
+    {
+        $columns = array_flip($this->kpiReportColumns());
+        if (empty($columns)) {
+            return $data;
+        }
+        return array_intersect_key($data, $columns);
+    }
+
     /**
      * Get all KPI reports with pagination and filters
      */
@@ -88,6 +129,23 @@ class KpiReportController extends Controller
     {
         $user = $request->user();
 
+        $missing = $this->missingKpiReportColumns([
+            'project_id',
+            'submitted_by',
+            'report_date',
+            'report_month',
+            'report_year',
+            'week_number',
+            'start_date',
+            'end_date',
+            'status',
+        ]);
+        if (!empty($missing)) {
+            return $this->error('Server misconfigured: missing database columns for KPI reports. Please run backend migrations.', 500, [
+                'missing_columns' => $missing,
+            ]);
+        }
+
         $request->validate([
             'project_id' => 'required|exists:projects,id',
             'report_date' => 'required|date',
@@ -139,83 +197,123 @@ class KpiReportController extends Controller
             return $this->error('You do not have access to this project', 403);
         }
 
-        // Check for existing report for same week/year
-        $existingReport = KpiReport::where('project_id', $request->project_id)
-            ->where('week_number', $request->week_number)
-            ->where('report_year', $request->report_year)
-            ->first();
-
-        if ($existingReport) {
-            return $this->error('A report already exists for this week and year', 422);
-        }
-
-        $reportData = $request->all();
-        $reportData['submitted_by'] = $user->id;
-        $reportData['status'] = $request->get('status', 'draft');
-        $reportData['submission_count'] = 1;
-
-        // Auto-fill metrics from daily KPI snapshots when available.
-        // Responsable encodes daily data; here we aggregate it for the week.
         try {
-            $aggregated = DailyKpiSnapshot::aggregateForWeek(
-                $request->project_id,
-                (int) $request->week_number,
-                (int) $request->report_year
-            );
+            // Check for existing report for same week/year
+            $existingReport = KpiReport::where('project_id', $request->project_id)
+                ->where('week_number', $request->week_number)
+                ->where('report_year', $request->report_year)
+                ->first();
 
-            if (!empty($aggregated)) {
-                $autoFields = [
-                    // Core safety
-                    'accidents',
-                    'near_misses',
-                    'first_aid_cases',
-                    'lost_workdays',
-                    'hours_worked',
+            if ($existingReport) {
+                return $this->error('A report already exists for this week and year', 422);
+            }
 
-                    // Inspections
-                    'inspections_completed',
+            $reportData = $this->filterToKpiReportColumns($request->all());
+            $reportData['submitted_by'] = $user->id;
+            $reportData['status'] = $request->get('status', 'draft');
 
-                    // Training & toolbox talks
-                    'training_hours',
-                    'toolbox_talks',
+            if (in_array('submission_count', $this->kpiReportColumns(), true)) {
+                $reportData['submission_count'] = 1;
+            }
 
-                    // Work permits
-                    'work_permits',
+            // Auto-fill metrics from daily KPI snapshots when available.
+            // Responsable encodes daily data; here we aggregate it for the week.
+            try {
+                $aggregated = DailyKpiSnapshot::aggregateForWeek(
+                    $request->project_id,
+                    (int) $request->week_number,
+                    (int) $request->report_year
+                );
 
-                    // Compliance
-                    'hse_compliance_rate',
-                    'medical_compliance_rate',
+                if (!empty($aggregated)) {
+                    $autoFields = [
+                        'accidents',
+                        'near_misses',
+                        'first_aid_cases',
+                        'lost_workdays',
+                        'hours_worked',
+                        'inspections_completed',
+                        'training_hours',
+                        'toolbox_talks',
+                        'work_permits',
+                        'hse_compliance_rate',
+                        'medical_compliance_rate',
+                        'noise_monitoring',
+                        'water_consumption',
+                        'electricity_consumption',
+                    ];
 
-                    // Environment
-                    'noise_monitoring',
-                    'water_consumption',
-                    'electricity_consumption',
-                ];
-
-                foreach ($autoFields as $field) {
-                    if ((!isset($reportData[$field]) || $reportData[$field] === null) && array_key_exists($field, $aggregated)) {
-                        $reportData[$field] = $aggregated[$field];
+                    foreach ($autoFields as $field) {
+                        if ((!isset($reportData[$field]) || $reportData[$field] === null) && array_key_exists($field, $aggregated)) {
+                            $reportData[$field] = $aggregated[$field];
+                        }
                     }
                 }
+            } catch (\Throwable $e) {
+                // ignore
             }
+
+            if ($reportData['status'] === 'submitted' && in_array('last_submitted_at', $this->kpiReportColumns(), true)) {
+                $reportData['last_submitted_at'] = now();
+            }
+
+            $report = KpiReport::create($reportData);
+
+            // Notify admins if submitted
+            if ($report->status === 'submitted') {
+                try {
+                    $this->notifyAdminsOfSubmission($report, $project);
+                } catch (\Throwable $e) {
+                    Log::warning('KPI report created but admin notification failed', [
+                        'error' => $e->getMessage(),
+                        'kpi_report_id' => $report->id,
+                        'project_id' => $project->id,
+                    ]);
+                }
+            }
+
+            $report->load(['project', 'submitter']);
+
+            return $this->success($report, 'KPI report created successfully', 201);
+        } catch (QueryException $e) {
+            $sqlState = $e->errorInfo[0] ?? null;
+            $driverCode = $e->errorInfo[1] ?? null;
+
+            // MySQL duplicate entry
+            if ($sqlState === '23000' && (int) $driverCode === 1062) {
+                return $this->error('A report already exists for this week and year', 422);
+            }
+
+            $errorId = (string) Str::uuid();
+            Log::error('KPI report store failed (query exception)', [
+                'error_id' => $errorId,
+                'error' => $e->getMessage(),
+                'sql_state' => $sqlState,
+                'driver_code' => $driverCode,
+                'project_id' => $request->project_id,
+                'week_number' => $request->week_number,
+                'report_year' => $request->report_year,
+                'user_id' => $user?->id,
+            ]);
+
+            return $this->error('Server error while creating KPI report. Please contact administrator.', 500, [
+                'error_id' => $errorId,
+            ]);
         } catch (\Throwable $e) {
-            // Fail silently – KPI can still be created manually
+            $errorId = (string) Str::uuid();
+            Log::error('KPI report store failed', [
+                'error_id' => $errorId,
+                'error' => $e->getMessage(),
+                'project_id' => $request->project_id,
+                'week_number' => $request->week_number,
+                'report_year' => $request->report_year,
+                'user_id' => $user?->id,
+            ]);
+
+            return $this->error('Server error while creating KPI report. Please contact administrator.', 500, [
+                'error_id' => $errorId,
+            ]);
         }
-        
-        if ($reportData['status'] === 'submitted') {
-            $reportData['last_submitted_at'] = now();
-        }
-
-        $report = KpiReport::create($reportData);
-
-        // Notify admins if submitted
-        if ($report->status === 'submitted') {
-            $this->notifyAdminsOfSubmission($report, $project);
-        }
-
-        $report->load(['project', 'submitter']);
-
-        return $this->success($report, 'KPI report created successfully', 201);
     }
 
     /**
@@ -259,6 +357,18 @@ class KpiReportController extends Controller
     {
         $user = $request->user();
 
+        $missing = $this->missingKpiReportColumns([
+            'project_id',
+            'week_number',
+            'report_year',
+            'status',
+        ]);
+        if (!empty($missing)) {
+            return $this->error('Server misconfigured: missing database columns for KPI reports. Please run backend migrations.', 500, [
+                'missing_columns' => $missing,
+            ]);
+        }
+
         // Only allow editing of draft/rejected reports or if admin
         if (!$user->isAdminLike() && !in_array($kpiReport->status, ['draft', 'rejected'])) {
             return $this->error('Cannot edit an approved or submitted report', 403);
@@ -300,7 +410,51 @@ class KpiReportController extends Controller
             'status' => 'nullable|in:draft,submitted',
         ]);
 
-        $kpiReport->update($request->all());
+        try {
+            $updateData = $this->filterToKpiReportColumns($request->all());
+
+            if (($updateData['status'] ?? null) === 'submitted') {
+                if (in_array('last_submitted_at', $this->kpiReportColumns(), true)) {
+                    $updateData['last_submitted_at'] = now();
+                }
+                if (in_array('submission_count', $this->kpiReportColumns(), true)) {
+                    $updateData['submission_count'] = ((int) ($kpiReport->submission_count ?? 0)) + 1;
+                }
+            }
+
+            $kpiReport->update($updateData);
+        } catch (QueryException $e) {
+            $sqlState = $e->errorInfo[0] ?? null;
+            $driverCode = $e->errorInfo[1] ?? null;
+
+            if ($sqlState === '23000' && (int) $driverCode === 1062) {
+                return $this->error('A report already exists for this week and year', 422);
+            }
+
+            $errorId = (string) Str::uuid();
+            Log::error('KPI report update failed (query exception)', [
+                'error_id' => $errorId,
+                'error' => $e->getMessage(),
+                'sql_state' => $sqlState,
+                'driver_code' => $driverCode,
+                'kpi_report_id' => $kpiReport->id,
+                'user_id' => $user?->id,
+            ]);
+            return $this->error('Server error while updating KPI report. Please contact administrator.', 500, [
+                'error_id' => $errorId,
+            ]);
+        } catch (\Throwable $e) {
+            $errorId = (string) Str::uuid();
+            Log::error('KPI report update failed', [
+                'error_id' => $errorId,
+                'error' => $e->getMessage(),
+                'kpi_report_id' => $kpiReport->id,
+                'user_id' => $user?->id,
+            ]);
+            return $this->error('Server error while updating KPI report. Please contact administrator.', 500, [
+                'error_id' => $errorId,
+            ]);
+        }
 
         // Notify admins if just submitted
         if ($request->get('status') === 'submitted' && $kpiReport->wasChanged('status')) {
@@ -332,7 +486,11 @@ class KpiReportController extends Controller
             return $this->error('Access denied', 403);
         }
 
-        $kpiReport->delete();
+        if ($kpiReport->status === 'draft') {
+            $kpiReport->forceDelete();
+        } else {
+            $kpiReport->delete();
+        }
 
         return $this->success(null, 'KPI report deleted successfully');
     }

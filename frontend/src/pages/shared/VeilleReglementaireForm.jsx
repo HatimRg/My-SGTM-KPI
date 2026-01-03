@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { projectService, regulatoryWatchService } from '../../services/api'
 import { useLanguage } from '../../i18n'
@@ -8,6 +8,14 @@ import { ArrowLeft, CheckCircle, FileText, Loader2, Send, XCircle } from 'lucide
 import toast from 'react-hot-toast'
 import { SECTIONS, SCHEMA_VERSION, makeInitialAnswers, getLocalized, formatBulletText } from './veilleReglementaireSchema'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
+
+const safeParseJson = (value) => {
+  try {
+    return JSON.parse(value)
+  } catch {
+    return null
+  }
+}
 
 const getIsoWeek = (date) => {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
@@ -58,10 +66,13 @@ export default function VeilleReglementaireForm({ mode }) {
     return sortProjects(projects, projectListPreference)
   }, [projects, projectListPreference])
 
-  const [loadingSeed, setLoadingSeed] = useState(mode === 'resubmit')
+  const [loadingSeed, setLoadingSeed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const [answers, setAnswers] = useState(() => makeInitialAnswers())
+
+  const draftHydratedRef = useRef({ done: false, key: '' })
+  const skipSeedRef = useRef(false)
 
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0)
 
@@ -81,6 +92,58 @@ export default function VeilleReglementaireForm({ mode }) {
 
   const [weekYear, setWeekYear] = useState(() => new Date().getFullYear())
   const [weekNumber, setWeekNumber] = useState(() => getIsoWeek(new Date()))
+
+  const draftStorageKey = useMemo(() => {
+    const userId = user?.id ? String(user.id) : 'anonymous'
+    const submissionId = params?.id ? String(params.id) : ''
+    return `regulatory_watch_draft:${mode}:${userId}:${submissionId || 'new'}`
+  }, [mode, params?.id, user?.id])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    if (draftHydratedRef.current.done && draftHydratedRef.current.key === draftStorageKey) return
+    draftHydratedRef.current.done = true
+    draftHydratedRef.current.key = draftStorageKey
+
+    try {
+      const raw = window.sessionStorage.getItem(draftStorageKey)
+      if (!raw) return
+      const parsed = safeParseJson(raw)
+      if (!parsed || typeof parsed !== 'object') return
+
+      if (parsed.schema_version !== SCHEMA_VERSION) return
+      if (mode === 'resubmit' && String(parsed.submission_id || '') !== String(params?.id || '')) return
+
+      if (parsed.selectedProjectId) setSelectedProjectId(String(parsed.selectedProjectId))
+      if (parsed.weekYear && Number.isFinite(Number(parsed.weekYear))) setWeekYear(Number(parsed.weekYear))
+      if (parsed.weekNumber && Number.isFinite(Number(parsed.weekNumber))) setWeekNumber(Number(parsed.weekNumber))
+
+      if (parsed.answers && typeof parsed.answers === 'object') {
+        setAnswers(parsed.answers)
+        skipSeedRef.current = true
+        setLoadingSeed(false)
+      }
+    } catch {}
+  }, [draftStorageKey, mode, params?.id])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    try {
+      const payload = {
+        schema_version: SCHEMA_VERSION,
+        mode,
+        submission_id: mode === 'resubmit' ? String(params?.id || '') : null,
+        selectedProjectId: selectedProjectId ? String(selectedProjectId) : '',
+        weekYear,
+        weekNumber,
+        answers,
+        updated_at: Date.now(),
+      }
+      window.sessionStorage.setItem(draftStorageKey, JSON.stringify(payload))
+    } catch {}
+  }, [answers, draftStorageKey, mode, params?.id, selectedProjectId, weekNumber, weekYear])
 
   useEffect(() => {
     if (mode === 'resubmit') return
@@ -149,6 +212,10 @@ export default function VeilleReglementaireForm({ mode }) {
   useEffect(() => {
     const seedFromPrevious = async () => {
       if (mode !== 'resubmit') return
+      if (skipSeedRef.current) {
+        setLoadingSeed(false)
+        return
+      }
       const submissionId = params?.id
       if (!submissionId) return
 
@@ -189,9 +256,16 @@ export default function VeilleReglementaireForm({ mode }) {
   useEffect(() => {
     const seedFromLatestProjectSubmission = async () => {
       if (mode === 'resubmit') return
+      if (skipSeedRef.current) {
+        setLoadingSeed(false)
+        return
+      }
 
       const projectId = selectedProjectId ? String(selectedProjectId) : ''
-      if (!projectId) return
+      if (!projectId) {
+        setLoadingSeed(false)
+        return
+      }
 
       try {
         setLoadingSeed(true)
@@ -326,6 +400,10 @@ export default function VeilleReglementaireForm({ mode }) {
       const res = await regulatoryWatchService.submit(payload)
       toast.success(t('regulatoryWatch.submitSuccess'))
 
+      try {
+        window.sessionStorage.removeItem(draftStorageKey)
+      } catch {}
+
       const submission = res.data?.data
       if (submission?.id) {
         navigate(`${basePath}/${submission.id}`)
@@ -375,7 +453,7 @@ export default function VeilleReglementaireForm({ mode }) {
           <button
             type="button"
             onClick={isLastSection ? handleSubmit : goNext}
-            disabled={submitting || !selectedProjectId || loadingSeed}
+            disabled={submitting || !selectedProjectId || (isLastSection && loadingSeed)}
             className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : isLastSection ? <Send className="w-4 h-4" /> : null}
@@ -591,7 +669,7 @@ export default function VeilleReglementaireForm({ mode }) {
                 type="button"
                 className="btn-secondary"
                 onClick={goPrevious}
-                disabled={currentSectionIndex === 0 || loadingSeed || submitting}
+                disabled={currentSectionIndex === 0 || submitting}
               >
                 {t('common.previous')}
               </button>
@@ -600,7 +678,7 @@ export default function VeilleReglementaireForm({ mode }) {
                 type="button"
                 className="btn-primary"
                 onClick={isLastSection ? handleSubmit : goNext}
-                disabled={submitting || !selectedProjectId || loadingSeed}
+                disabled={submitting || !selectedProjectId || (isLastSection && loadingSeed)}
               >
                 {isLastSection ? t('common.submit') : t('common.next')}
               </button>

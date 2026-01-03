@@ -422,8 +422,21 @@ export default function KpiSubmission() {
     }
   }
 
-  const handleClearDraft = () => {
+  const handleClearDraft = async () => {
+    try {
+      if (existingReportId) {
+        await kpiService.delete(existingReportId)
+      }
+    } catch (error) {
+      const message = error?.response?.data?.message ?? t('errors.somethingWentWrong')
+      toast.error(message)
+      return
+    }
+
     localStorage.removeItem(DRAFT_STORAGE_KEY)
+    setExistingReportId(null)
+    setIsEditMode(false)
+    setRejectionInfo(null)
     setFormData(getDefaultFormData(''))
     setCurrentStep(0)
     toast.success(t('common.success'))

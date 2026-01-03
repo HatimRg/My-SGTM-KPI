@@ -6,24 +6,52 @@ use App\Models\Notification;
 use App\Models\User;
 use App\Models\Project;
 use App\Models\WorkerTraining;
+use Illuminate\Support\Facades\Schema;
 
 class NotificationService
 {
+    private static function notificationTableSupports(): array
+    {
+        static $supports = null;
+        if ($supports !== null) {
+            return $supports;
+        }
+
+        $supports = [
+            'project_id' => Schema::hasColumn('notifications', 'project_id'),
+            'icon' => Schema::hasColumn('notifications', 'icon'),
+            'action_url' => Schema::hasColumn('notifications', 'action_url'),
+        ];
+
+        return $supports;
+    }
+
     /**
      * Send notification to a specific user
      */
     public static function sendToUser(User $user, string $type, string $title, string $message, array $options = []): Notification
     {
-        return Notification::create([
+        $supports = self::notificationTableSupports();
+
+        $payload = [
             'user_id' => $user->id,
-            'project_id' => $options['project_id'] ?? null,
             'type' => $type,
             'title' => $title,
             'message' => $message,
-            'icon' => $options['icon'] ?? null,
-            'action_url' => $options['action_url'] ?? null,
             'data' => $options['data'] ?? null,
-        ]);
+        ];
+
+        if ($supports['project_id']) {
+            $payload['project_id'] = $options['project_id'] ?? null;
+        }
+        if ($supports['icon']) {
+            $payload['icon'] = $options['icon'] ?? null;
+        }
+        if ($supports['action_url']) {
+            $payload['action_url'] = $options['action_url'] ?? null;
+        }
+
+        return Notification::create($payload);
     }
 
     /**
@@ -31,17 +59,27 @@ class NotificationService
      */
     public static function sendToUsers(array $userIds, string $type, string $title, string $message, array $options = []): void
     {
+        $supports = self::notificationTableSupports();
         foreach ($userIds as $userId) {
-            Notification::create([
+            $payload = [
                 'user_id' => $userId,
-                'project_id' => $options['project_id'] ?? null,
                 'type' => $type,
                 'title' => $title,
                 'message' => $message,
-                'icon' => $options['icon'] ?? null,
-                'action_url' => $options['action_url'] ?? null,
                 'data' => $options['data'] ?? null,
-            ]);
+            ];
+
+            if ($supports['project_id']) {
+                $payload['project_id'] = $options['project_id'] ?? null;
+            }
+            if ($supports['icon']) {
+                $payload['icon'] = $options['icon'] ?? null;
+            }
+            if ($supports['action_url']) {
+                $payload['action_url'] = $options['action_url'] ?? null;
+            }
+
+            Notification::create($payload);
         }
     }
 

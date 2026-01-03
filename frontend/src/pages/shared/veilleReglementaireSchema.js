@@ -20,8 +20,8 @@ export const SECTION_1 = {
           article_id: '281',
           code: { fr: 'Article 281', en: 'Article 281' },
           text: {
-            fr: "- Locaux propres\n- Bonne conditions d'hygiène, de propreté et de salubrité nécessaire à la santé des salariés pour prévention incendie, éclairage, eau potable chauffage, l'aération, l'insonorisation, la ventilation, l'eau potable, les fosses d'aisances,\n- l'évacuation des eaux résiduaires et de lavage, les poussières et vapeurs, les vestiaires, la toilette et le couchage des salariés.\n- Approvisionnement normal en eau potable des chantiers et y assurer des logements salubres et des conditions d'hygiène satisfaisantes pour les salariés.",
-            en: "- Locaux propres\n- Bonne conditions d'hygiène, de propreté et de salubrité nécessaire à la santé des salariés pour prévention incendie, éclairage, eau potable chauffage, l'aération, l'insonorisation, la ventilation, l'eau potable, les fosses d'aisances,\n- l'évacuation des eaux résiduaires et de lavage, les poussières et vapeurs, les vestiaires, la toilette et le couchage des salariés.\n- Approvisionnement normal en eau potable des chantiers et y assurer des logements salubres et des conditions d'hygiène satisfaisantes pour les salariés.",
+            fr: "-Locaux propres\n-Bonne conditions d'hygiène, de propreté et de salubrité nécessaire à la santé des salariés pour  prévention incendie, éclairage, eau potable chauffage, l'aération, l'insonorisation, la ventilation, l'eau potable, les fosses d'aisances,\n- l'évacuation des eaux résiduaires et de lavage, les poussières et vapeurs, les vestiaires, la toilette et le couchage des salariés.\n-Approvisionnement normal en eau potable des chantiers et y assurer des logements salubres et des conditions d'hygiène satisfaisantes pour les salariés.",
+            en: "-Locaux propres\n-Bonne conditions d'hygiène, de propreté et de salubrité nécessaire à la santé des salariés pour  prévention incendie, éclairage, eau potable chauffage, l'aération, l'insonorisation, la ventilation, l'eau potable, les fosses d'aisances,\n- l'évacuation des eaux résiduaires et de lavage, les poussières et vapeurs, les vestiaires, la toilette et le couchage des salariés.\n-Approvisionnement normal en eau potable des chantiers et y assurer des logements salubres et des conditions d'hygiène satisfaisantes pour les salariés.",
           },
         },
         {
@@ -52,8 +52,8 @@ export const SECTION_1 = {
           article_id: '285',
           code: { fr: 'Article 285', en: 'Article 285' },
           text: {
-            fr: "- Obligation de clôture des puits, trappes ou ouvertures de descente.\n- Obligation de mise en place de barrières de protection/cloisons pour les moteurs.\n- Les escaliers doivent être solides et munis de fortes rampes.\n- Les échafaudages doivent être munis de garde-corps rigides d'au moins 90 cm de haut.",
-            en: "- Obligation de clôture des puits, trappes ou ouvertures de descente.\n- Obligation de mise en place de barrières de protection/cloisons pour les moteurs.\n- Les escaliers doivent être solides et munis de fortes rampes.\n- Les échafaudages doivent être munis de garde-corps rigides d'au moins 90 cm de haut.",
+            fr: "- Obligation de clôture des puits, trappes ou ouvertures de descente.\n- Obligation de mise en place de barrières de protection/cloisons pour les moteurs.\n-  Les escaliers doivent être solides et munis de fortes rampes.\n- Les échafaudages doivent être munis de garde-corps rigides d'au moins 90 cm de haut.",
+            en: "- Obligation de clôture des puits, trappes ou ouvertures de descente.\n- Obligation de mise en place de barrières de protection/cloisons pour les moteurs.\n-  Les escaliers doivent être solides et munis de fortes rampes.\n- Les échafaudages doivent être munis de garde-corps rigides d'au moins 90 cm de haut.",
           },
         },
         {
@@ -68,8 +68,8 @@ export const SECTION_1 = {
           article_id: '287',
           code: { fr: 'Article 287', en: 'Article 287' },
           text: {
-            fr: "- Interdiction d'utilisation de produits ou substances, d'appareils ou de machines reconnus par l'autorité compétente comme étant susceptibles de porter atteinte à leur santé ou de compromettre leur sécurité.\n- Interdiction de permettre à ses salariés l'utilisation, dans des conditions contraires à celles fixées par voie réglementaire, de produits ou substances,d'appareils ou de machines susceptibles de porter atteinte à leur santé ou de compromettre leur sécurité.",
-            en: "- Interdiction d'utilisation de produits ou substances, d'appareils ou de machines reconnus par l'autorité compétente comme étant susceptibles de porter atteinte à leur santé ou de compromettre leur sécurité.\n- Interdiction de permettre à ses salariés l'utilisation, dans des conditions contraires à celles fixées par voie réglementaire, de produits ou substances,d'appareils ou de machines susceptibles de porter atteinte à leur santé ou de compromettre leur sécurité.",
+            fr: "- Interdiction d'utilisation  de produits ou substances, d'appareils ou de machines reconnus par l'autorité compétente comme étant susceptibles de porter atteinte à leur santé ou de compromettre leur sécurité.\n- Interdiction de  permettre à ses salariés l'utilisation, dans des conditions contraires à celles fixées par voie réglementaire, de produits ou substances,d'appareils ou de machines susceptibles de porter atteinte à leur santé ou de compromettre leur sécurité.",
+            en: "- Interdiction d'utilisation  de produits ou substances, d'appareils ou de machines reconnus par l'autorité compétente comme étant susceptibles de porter atteinte à leur santé ou de compromettre leur sécurité.\n- Interdiction de  permettre à ses salariés l'utilisation, dans des conditions contraires à celles fixées par voie réglementaire, de produits ou substances,d'appareils ou de machines susceptibles de porter atteinte à leur santé ou de compromettre leur sécurité.",
           },
         },
         {
@@ -84,8 +84,8 @@ export const SECTION_1 = {
           article_id: '289',
           code: { fr: 'Article 289', en: 'Article 289' },
           text: {
-            fr: "- informer les salariés des dispositions légales concernant la protection des dangers que peuvent constituer les machines.\n- Afficher un avis lisible indiquant les dangers résultant de l'utilisation des machines ainsi que les précautions à prendre.\n- Interdiction d'utiliser des machines sans dispostifs de protection\n- Interdiction de rendre inopérants les dispostifs de protection\n- interdiction de demander à un salarié d'effectuer le transport manuel des charges dont le poids est susceptible de compromettre sa santé ou sa sécurité.",
-            en: "- informer les salariés des dispositions légales concernant la protection des dangers que peuvent constituer les machines.\n- Afficher un avis lisible indiquant les dangers résultant de l'utilisation des machines ainsi que les précautions à prendre.\n- Interdiction d'utiliser des machines sans dispostifs de protection\n- Interdiction de rendre inopérants les dispostifs de protection\n- interdiction de demander à un salarié d'effectuer le transport manuel des charges dont le poids est susceptible de compromettre sa santé ou sa sécurité.",
+            fr: "-  informer les salariés des dispositions légales concernant la protection des dangers que peuvent constituer les machines.\n- Afficher un avis lisible indiquant les dangers résultant de l'utilisation des machines ainsi que les précautions à\nprendre.\n- Interdiction d'utiliser des machines sans dispostifs de protection  \n- Interdiction de rendre inopérants les dispostifs de protection\n- interdiction de demander à un salarié d'effectuer le transport manuel des charges dont le poids est susceptible de compromettre sa santé ou sa sécurité.",
+            en: "-  informer les salariés des dispositions légales concernant la protection des dangers que peuvent constituer les machines.\n- Afficher un avis lisible indiquant les dangers résultant de l'utilisation des machines ainsi que les précautions à\nprendre.\n- Interdiction d'utiliser des machines sans dispostifs de protection  \n- Interdiction de rendre inopérants les dispostifs de protection\n- interdiction de demander à un salarié d'effectuer le transport manuel des charges dont le poids est susceptible de compromettre sa santé ou sa sécurité.",
           },
         },
         {
@@ -109,7 +109,7 @@ export const SECTION_1 = {
     {
       chapter_id: 'ch2',
       title: {
-        fr: 'Chapitre II : Dispositions relatives au transport des colis d\'un poids supérieur à une tonne',
+        fr: 'Chapitre II : Des dispositions relatives au transport des colis d\'un poids supérieur à une tonne',
         en: 'Chapter II: Provisions relating to transport of packages weighing more than one tonne',
       },
       articles: [
@@ -126,7 +126,7 @@ export const SECTION_1 = {
     {
       chapter_id: 'ch3',
       title: {
-        fr: 'Chapitre III : Services médicaux du travail',
+        fr: 'Chapitre III : Des services médicaux du travail',
         en: 'Chapter III: Occupational medical services',
       },
       articles: [
@@ -142,16 +142,16 @@ export const SECTION_1 = {
           article_id: '305',
           code: { fr: 'Article 305', en: 'Article 305' },
           text: {
-            fr: "- Constituer soit des services médicaux du travail indépendants ou communs inter-entreprises",
-            en: "- Constituer soit des services médicaux du travail indépendants ou communs inter-entreprises",
+            fr: "-  Constituer soit des services médicaux du travail indépendants ou communs inter-entreprises",
+            en: "-  Constituer soit des services médicaux du travail indépendants ou communs inter-entreprises",
           },
         },
         {
           article_id: '310',
           code: { fr: 'Article 310', en: 'Article 310' },
           text: {
-            fr: "- Médecin de travail titulaire d'un diplôme en médecine du travail et inscrit au tableau de l'Ordre des médecins avec l'autorisation d'exercer la médecine.",
-            en: "- Médecin de travail titulaire d'un diplôme en médecine du travail et inscrit au tableau de l'Ordre des médecins avec l'autorisation d'exercer la médecine.",
+            fr: "- Médecin de travail titulaire d'un diplôme  en médecine du travail et inscrit au tableau de l'Ordre des médecins avec l'autorisation d'exercer la médecine.",
+            en: "- Médecin de travail titulaire d'un diplôme  en médecine du travail et inscrit au tableau de l'Ordre des médecins avec l'autorisation d'exercer la médecine.",
           },
         },
         {
@@ -182,8 +182,8 @@ export const SECTION_1 = {
           article_id: '327',
           code: { fr: 'Article 327', en: 'Article 327' },
           text: {
-            fr: "- Réalisation d'examen médical pour 1° tout salarié, avant l'embauchage ou, au plus tard, avant l'expiration de la période d'essai ; 2° tout salarié, à raison d'une fois au moins tous les douze mois, pour les salariés ayant atteint ou dépassé 18 ans et tous les six mois pour ceux ayant moins de 18 ans ; 3° tout salarié exposé à un danger quelconque, la femme enceinte, la mère d'un enfant de moins de deux ans, les mutilés et les handicapés suivant une fréquence dont le médecin du travail reste juge ;\n- Tout salarié dans les cas suivants : 5° après une absence de plus de trois semaines pour cause d'accident autre que l'accident du travail ou de maladie autre que professionnelle ; 6°-après une absence pour cause d'accident du travail ou de maladie professionnelle ; 7°en cas d'absences répétées pour raison de santé.",
-            en: "- Réalisation d'examen médical pour 1° tout salarié, avant l'embauchage ou, au plus tard, avant l'expiration de la période d'essai ; 2° tout salarié, à raison d'une fois au moins tous les douze mois, pour les salariés ayant atteint ou dépassé 18 ans et tous les six mois pour ceux ayant moins de 18 ans ; 3° tout salarié exposé à un danger quelconque, la femme enceinte, la mère d'un enfant de moins de deux ans, les mutilés et les handicapés suivant une fréquence dont le médecin du travail reste juge ;\n- Tout salarié dans les cas suivants : 5° après une absence de plus de trois semaines pour cause d'accident autre que l'accident du travail ou de maladie autre que professionnelle ; 6°-après une absence pour cause d'accident du travail ou de maladie professionnelle ; 7°en cas d'absences répétées pour raison de santé.",
+            fr: "- Réalisation d'examen médical pour\n1° tout salarié, avant l'embauchage ou, au plus tard, avant l'expiration de la période d'essai ;\n2° tout salarié, à raison d'une fois au moins tous les douze mois, pour les salariés ayant atteint ou dépassé 18 ans et tous les six mois pour ceux ayant moins de 18 ans ;\n3° tout salarié exposé à un danger quelconque, la femme enceinte, la mère d'un enfant de moins de deux ans, les mutilés et les handicapés suivant une fréquence dont le médecin du travail reste juge ;\n- Tout salarié dans les cas suivants :\n5° après une absence de plus de trois semaines pour cause d'accident autre que l'accident du travail ou de maladie autre que professionnelle ;\n6°-après une absence pour cause d'accident du travail ou de maladie professionnelle ;\n7°en cas d'absences répétées pour raison de santé.",
+            en: "- Réalisation d'examen médical pour\n1° tout salarié, avant l'embauchage ou, au plus tard, avant l'expiration de la période d'essai ;\n2° tout salarié, à raison d'une fois au moins tous les douze mois, pour les salariés ayant atteint ou dépassé 18 ans et tous les six mois pour ceux ayant moins de 18 ans ;\n3° tout salarié exposé à un danger quelconque, la femme enceinte, la mère d'un enfant de moins de deux ans, les mutilés et les handicapés suivant une fréquence dont le médecin du travail reste juge ;\n- Tout salarié dans les cas suivants :\n5° après une absence de plus de trois semaines pour cause d'accident autre que l'accident du travail ou de maladie autre que professionnelle ;\n6°-après une absence pour cause d'accident du travail ou de maladie professionnelle ;\n7°en cas d'absences répétées pour raison de santé.",
           },
         },
         {
@@ -223,8 +223,8 @@ export const SECTION_1 = {
           article_id: '339',
           code: { fr: 'Article 339', en: 'Article 339' },
           text: {
-            fr: "Le comité de sécurité et d'hygiène se réunit sur convocation de son président:\n- une fois chaque trimestre et chaque fois qu'il est nécessaire.\n- à la suite de tout accident ayant entraîné ou qui aurait pu entraîner des conséquences graves.",
-            en: "Le comité de sécurité et d'hygiène se réunit sur convocation de son président:\n- une fois chaque trimestre et chaque fois qu'il est nécessaire.\n- à la suite de tout accident ayant entraîné ou qui aurait pu entraîner des conséquences graves.",
+            fr: "Le comité de sécurité et d'hygiène se réunit sur convocation de son président:\n-  une fois chaque trimestre et chaque fois qu'il est nécessaire.\n- à la suite de tout accident ayant entraîné ou qui aurait pu entraîner des conséquences graves.",
+            en: "Le comité de sécurité et d'hygiène se réunit sur convocation de son président:\n-  une fois chaque trimestre et chaque fois qu'il est nécessaire.\n- à la suite de tout accident ayant entraîné ou qui aurait pu entraîner des conséquences graves.",
           },
         },
         {
@@ -247,16 +247,16 @@ export const SECTION_1 = {
           article_id: '342',
           code: { fr: 'Article 342', en: 'Article 342' },
           text: {
-            fr: "Le comité de sécurité et d'hygiène doit établir un rapport annuel à la fin de chaque année grégorienne sur l'évolution des risques professionnels dans l'entreprise. Ce rapport, doit être adressé par l'employeur à l'agent chargé de l'inspection du travail et au médecin chargé de l'inspection du travail au plus tard dans les 90 jours qui suivent l'année au titre de laquelle il a été établi.",
-            en: "Le comité de sécurité et d'hygiène doit établir un rapport annuel à la fin de chaque année grégorienne sur l'évolution des risques professionnels dans l'entreprise. Ce rapport, doit être adressé par l'employeur à l'agent chargé de l'inspection du travail et au médecin chargé de l'inspection du travail au plus tard dans les 90 jours qui suivent l'année au titre de laquelle il a été établi.",
+            fr: "Le comité de sécurité et d'hygiène doit établir un rapport annuel à la fin de\nchaque année grégorienne sur l'évolution des risques professionnels dans l'entreprise.\nCe rapport, doit être adressé par l'employeur à\nl'agent chargé de l'inspection du travail et au médecin chargé de l'inspection du travail au plus\ntard dans les 90 jours qui suivent l'année au titre de laquelle il a été établi.",
+            en: "Le comité de sécurité et d'hygiène doit établir un rapport annuel à la fin de\nchaque année grégorienne sur l'évolution des risques professionnels dans l'entreprise.\nCe rapport, doit être adressé par l'employeur à\nl'agent chargé de l'inspection du travail et au médecin chargé de l'inspection du travail au plus\ntard dans les 90 jours qui suivent l'année au titre de laquelle il a été établi.",
           },
         },
         {
           article_id: '343',
           code: { fr: 'Article 343', en: 'Article 343' },
           text: {
-            fr: "le CHS consigne sur un registre spécial qui doit être tenu à la disposition des agents chargés de l'inspection du travail et du médecin chargé de l'inspection du travail :\n- les procès-verbaux des réunions du comité de sécurité et d'hygiène en cas d'accidents graves ;\n- le rapport annuel sur l'évolution des risques professionnels dans l'entreprise ;\n- le programme annuel de prévention contre les risques professionnels.",
-            en: "le CHS consigne sur un registre spécial qui doit être tenu à la disposition des agents chargés de l'inspection du travail et du médecin chargé de l'inspection du travail :\n- les procès-verbaux des réunions du comité de sécurité et d'hygiène en cas d'accidents graves ;\n- le rapport annuel sur l'évolution des risques professionnels dans l'entreprise ;\n- le programme annuel de prévention contre les risques professionnels.",
+            fr: "le CHS consigne sur un registre spécial qui doit être tenu à la disposition des\nagents chargés de l'inspection du travail et du médecin chargé de l'inspection du travail :\n- les procès-verbaux des réunions du comité de sécurité et d'hygiène en cas d'accidents graves ;\n- le rapport annuel sur l'évolution des risques professionnels dans l'entreprise ;\n- le programme annuel de prévention contre les risques professionnels.",
+            en: "le CHS consigne sur un registre spécial qui doit être tenu à la disposition des\nagents chargés de l'inspection du travail et du médecin chargé de l'inspection du travail :\n- les procès-verbaux des réunions du comité de sécurité et d'hygiène en cas d'accidents graves ;\n- le rapport annuel sur l'évolution des risques professionnels dans l'entreprise ;\n- le programme annuel de prévention contre les risques professionnels.",
           },
         },
       ],
@@ -2211,10 +2211,18 @@ export const SECTION_2 = {
   },
   chapters: [
     {
+      chapter_id: 'rt_dahir_29_dec_2014_at',
+      title: {
+        fr: 'Dahir 29 Décembre 2014  : Réparation des Accidents de travail',
+        en: 'Dahir 29 Décembre 2014  : Réparation des Accidents de travail',
+      },
+      articles: [],
+    },
+    {
       chapter_id: 'rt_general',
       title: {
-        fr: 'Dispositions générales',
-        en: 'General provisions',
+        fr: '>>> Décret du 29 Décembre 2004 : Durée de travail (Art 184)\n\n>>> Décret 29 Décembre 2004 : Travaux de nuit des femmes\n\n>>> Décret 13 juillet 2005 (art 315 et 316 du code de travail)',
+        en: '>>> Décret du 29 Décembre 2004 : Durée de travail (Art 184)\n\n>>> Décret 29 Décembre 2004 : Travaux de nuit des femmes\n\n>>> Décret 13 juillet 2005 (art 315 et 316 du code de travail)',
       },
       articles: [
         {
@@ -2271,6 +2279,47 @@ export const SECTION_2 = {
           text: {
             fr: "Un service de garde est assuré par l'infirmier pour les entreprises précitées",
             en: "Un service de garde est assuré par l'infirmier pour les entreprises précitées",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'rt_decret_22_mars_2010_csh',
+      title: {
+        fr: "Décret 22 Mars 2010 fixant le modèle du rapport annuel que doit établir le comité sécurité et hygiène (C.S.H), à la fin de chaque année grégorienne sur l'évolution des risques professionnels dans l'entreprise",
+        en: "Décret 22 Mars 2010 fixant le modèle du rapport annuel que doit établir le comité sécurité et hygiène (C.S.H), à la fin de chaque année grégorienne sur l'évolution des risques professionnels dans l'entreprise",
+      },
+      articles: [],
+    },
+    {
+      chapter_id: 'rt_decret_16_nov_2010_travaux_interdits',
+      title: {
+        fr: ">>> Décret du 16 novembre 2010 : Liste des travaux auxquels il est interdit d'occuper certaines catégories de personnes.",
+        en: ">>> Décret du 16 novembre 2010 : Liste des travaux auxquels il est interdit d'occuper certaines catégories de personnes.",
+      },
+      articles: [
+        {
+          article_id: 'rt_decret_16nov2010_art_2',
+          code: { fr: 'ART. 2.', en: 'ART. 2.' },
+          text: {
+            fr: "Il est interdit d'employer les mineurs de moins de 18 ans et les personnes handicapées dans les travaux dangereux ci-après:\n1) les travaux de graissage, de nettoyage pendant l'opération de visite ou de réparation des appareils mécaniques\nen marche;\n2) utilisation des machines, actionnées à la main ou par un moteur mécanique, dont les parties dangereuses ne disposent pas d'organes protecteurs nécessaires;\n3) services des robinets à vapeur;\n4) laminage et étirage de la verge de tréfilerie;\n5) travaux dont l'exécution nécessite: -le montage d'échafaudages volants en bois 011 en métal, pour la réfection ou le nettoyage des maisons;\n-le montage d'échafaudages fixes, en bois ou en métal, utilisés dans les industries du bâtiment et des travaux publics;\n6) travaux effectués sur les toitures;\n7) les travaux de démolition;\n8) fonte du verre;\n9) utilisation des machines dans les verreries où s'effectue\nla fabrication des bouteilles par des procédés mécaniques ;\n10) étirage des tubes et baguettes du verre;\n11) tout travailles exposant aux rayonnements ionisants ;\n3) les travaux effectués dans les tanneries ;\n14) les travaux de production de l'électricité, et toute force motrice de toute sorte, de transformation et de transmission ;\n15) les travaux de ramassage et de traitement des ordures ;\n16) la fabrication et transport des explosifs;\n17) la fabrication, manipulation des pesticides, insecticides et des herbicides;\n18) les travaux de terrassement;\n19) les travaux effectués dans l'air comprimé;\n20) les travaux de peintures dangereux contenant le plomb et l'hexane ;\n21) les travaux où sont utilisés des produits d'amiante ou contenant du benzène ;\n22) les travaux d'abattage des animaux dans les abattoirs;\n23) confection, manutention et vente d'écrits, imprimés, affiches, dessins, gravures, peinture, emblèmes, images ou autres, objets dont la vente, l'offre, l'exposition, l'affichage ou la distribution sont réprimés par le code pénal du fait qu'ils sont contraires aux bonnes mœurs ou sont de nature à blesser la moralité des enfants même s'ils ne sont pas incriminés par le code précité;\n24) les travaux effectués dans les bars, dans les débits de boisson et dans les salles de jeu ;\n25) les travaux ou activités exposant à. des agents biologiques dangereux;\n26) les travaux effectués dans une atmosphère de chaleur, de froid ou d'humidité extrêmes ;\n27) les travaux effectués par les peigneuses à main dans l'industrie du crin végétal';\n28) les travaux effectués par les machines utilisées dans les industries de bois ;\n29) les travaux effectués avec des cisailles mécaniques\ntranchantes ainsi que tout travail fait à l'aide des presses de toute\nnature autres que celles actionnées à la main ;\n30) le travail à la tâche\n31) les différents travaux souterrains;\n32) tout autre travail susceptible de causer des maladies professionnelles telles que fixées par l'arrêté du ministre du développement social, de la solidarité, de l'emploi et la formation professionnelle n° 919-99 du 14 ramadan 1420 (23 décembre 1999) ;\n33) tout travail effectué dans des conditions marquées par le bruit et les vibrations nuisibles.",
+            en: "Il est interdit d'employer les mineurs de moins de 18 ans et les personnes handicapées dans les travaux dangereux ci-après:\n1) les travaux de graissage, de nettoyage pendant l'opération de visite ou de réparation des appareils mécaniques\nen marche;\n2) utilisation des machines, actionnées à la main ou par un moteur mécanique, dont les parties dangereuses ne disposent pas d'organes protecteurs nécessaires;\n3) services des robinets à vapeur;\n4) laminage et étirage de la verge de tréfilerie;\n5) travaux dont l'exécution nécessite: -le montage d'échafaudages volants en bois 011 en métal, pour la réfection ou le nettoyage des maisons;\n-le montage d'échafaudages fixes, en bois ou en métal, utilisés dans les industries du bâtiment et des travaux publics;\n6) travaux effectués sur les toitures;\n7) les travaux de démolition;\n8) fonte du verre;\n9) utilisation des machines dans les verreries où s'effectue\nla fabrication des bouteilles par des procédés mécaniques ;\n10) étirage des tubes et baguettes du verre;\n11) tout travailles exposant aux rayonnements ionisants ;\n3) les travaux effectués dans les tanneries ;\n14) les travaux de production de l'électricité, et toute force motrice de toute sorte, de transformation et de transmission ;\n15) les travaux de ramassage et de traitement des ordures ;\n16) la fabrication et transport des explosifs;\n17) la fabrication, manipulation des pesticides, insecticides et des herbicides;\n18) les travaux de terrassement;\n19) les travaux effectués dans l'air comprimé;\n20) les travaux de peintures dangereux contenant le plomb et l'hexane ;\n21) les travaux où sont utilisés des produits d'amiante ou contenant du benzène ;\n22) les travaux d'abattage des animaux dans les abattoirs;\n23) confection, manutention et vente d'écrits, imprimés, affiches, dessins, gravures, peinture, emblèmes, images ou autres, objets dont la vente, l'offre, l'exposition, l'affichage ou la distribution sont réprimés par le code pénal du fait qu'ils sont contraires aux bonnes mœurs ou sont de nature à blesser la moralité des enfants même s'ils ne sont pas incriminés par le code précité;\n24) les travaux effectués dans les bars, dans les débits de boisson et dans les salles de jeu ;\n25) les travaux ou activités exposant à. des agents biologiques dangereux;\n26) les travaux effectués dans une atmosphère de chaleur, de froid ou d'humidité extrêmes ;\n27) les travaux effectués par les peigneuses à main dans l'industrie du crin végétal';\n28) les travaux effectués par les machines utilisées dans les industries de bois ;\n29) les travaux effectués avec des cisailles mécaniques\ntranchantes ainsi que tout travail fait à l'aide des presses de toute\nnature autres que celles actionnées à la main ;\n30) le travail à la tâche\n31) les différents travaux souterrains;\n32) tout autre travail susceptible de causer des maladies professionnelles telles que fixées par l'arrêté du ministre du développement social, de la solidarité, de l'emploi et la formation professionnelle n° 919-99 du 14 ramadan 1420 (23 décembre 1999) ;\n33) tout travail effectué dans des conditions marquées par le bruit et les vibrations nuisibles.",
+          },
+        },
+        {
+          article_id: 'rt_decret_16nov2010_art_3',
+          code: { fr: 'AR.T. 3.', en: 'AR.T. 3.' },
+          text: {
+            fr: "Il est interdit d'employer tout enfant âgé de moins de dix huit ans dans des travaux suivants qui consistent à porter, pousser ou trainer des charges d'un poids supérieur à ceux prévus dans le présent article:\n1) Port de fardeaux:\nPersonnel masculin:\n• les enfants âgés de 15 ans : 15 kg;\n• les enfants âgés de 16 à 17 ans : 20 kg.\nPersonnel féminin:\n• les filles âgées de 15 ans : 8 kg ;\n• les filles âgées de 16 à 17 ans : 10 kg.\n2) Les charges à pousser ou à traîner :\nPousser ou traîner des wagonnets circulant sur voie ferrée:\n• les enfants âgés de 15 ans révolus à 18 ans : 500 kg y compris le poids du véhicule;\n• les filles âgées de 15 ans: 300 kg Y compris le poids du véhicule.\nPousser ou traiter une brouette:\n• les garçons: 40 kg ;\n• les filles : 25 kg.\nPousser ou traîner une véhicule à trois ou quatre roues:\n• les garçons et filles: 60 kg.\nPousser ou traîner une charrette à bras à deux roues:\n• les garçons âgés de 15 à 18 ans : 130 kg Y compris le poids du véhicule;\n• les filles âgées de 15 à 18 ans: 80 kg Y compris le poids du véhicule.\nPousser ou traîner un tricycle porteurs à pédales :\nPersonnel masculin:\n• de moins de 16 ans: 50 kg Y compris le poids du véhicule;\n• de moins de 18 ans: 75 kg Y compris le poids du véhicule;\nPersonnel féminin:\n• de moins de 16 ans: 25 kg Y compris le poids du véhicule;\n• de moins de 18 ans : 50 kg Y compris le poids du véhicule.",
+            en: "Il est interdit d'employer tout enfant âgé de moins de dix huit ans dans des travaux suivants qui consistent à porter, pousser ou trainer des charges d'un poids supérieur à ceux prévus dans le présent article:\n1) Port de fardeaux:\nPersonnel masculin:\n• les enfants âgés de 15 ans : 15 kg;\n• les enfants âgés de 16 à 17 ans : 20 kg.\nPersonnel féminin:\n• les filles âgées de 15 ans : 8 kg ;\n• les filles âgées de 16 à 17 ans : 10 kg.\n2) Les charges à pousser ou à traîner :\nPousser ou traîner des wagonnets circulant sur voie ferrée:\n• les enfants âgés de 15 ans révolus à 18 ans : 500 kg y compris le poids du véhicule;\n• les filles âgées de 15 ans: 300 kg Y compris le poids du véhicule.\nPousser ou traiter une brouette:\n• les garçons: 40 kg ;\n• les filles : 25 kg.\nPousser ou traîner une véhicule à trois ou quatre roues:\n• les garçons et filles: 60 kg.\nPousser ou traîner une charrette à bras à deux roues:\n• les garçons âgés de 15 à 18 ans : 130 kg Y compris le poids du véhicule;\n• les filles âgées de 15 à 18 ans: 80 kg Y compris le poids du véhicule.\nPousser ou traîner un tricycle porteurs à pédales :\nPersonnel masculin:\n• de moins de 16 ans: 50 kg Y compris le poids du véhicule;\n• de moins de 18 ans: 75 kg Y compris le poids du véhicule;\nPersonnel féminin:\n• de moins de 16 ans: 25 kg Y compris le poids du véhicule;\n• de moins de 18 ans : 50 kg Y compris le poids du véhicule.",
+          },
+        },
+        {
+          article_id: 'rt_decret_16nov2010_art_4',
+          code: { fr: 'ART. 4.', en: 'ART. 4.' },
+          text: {
+            fr: "Il est interdit d'employer les femmes dans:\n1. les carrières et les travaux souterrains effectués dans les mines.\nToutefois, cette interdiction ne s'applique pas aux femmes qui:\n- occupent des postes de direction;\n- sont occupées dans les services sanitaires et sociaux ;\n- sont appelées, occasionnellement, à descendre dans les mines pour l'exercice des travaux à caractère non manuel;\n2. les travaux les exposant au risque de chute ou de glissage ainsi que les travaux en position accroupie ou penchée constante;\n3. les travaux ou activités utilisant l'amiante et le benzène et toute autre activité les exposant aux agents chimiques dangereux.\n Il est également interdit de charger la femme enceinte ou allaitante de :\n- soulever des charges dépassant cinq kilos;\n- travaux la mettant en contact avec des substances chimiques contenant le plomb ou des agents biologiques tels que le toxoplasme ou le virus de la rubéole.",
+            en: "Il est interdit d'employer les femmes dans:\n1. les carrières et les travaux souterrains effectués dans les mines.\nToutefois, cette interdiction ne s'applique pas aux femmes qui:\n- occupent des postes de direction;\n- sont occupées dans les services sanitaires et sociaux ;\n- sont appelées, occasionnellement, à descendre dans les mines pour l'exercice des travaux à caractère non manuel;\n2. les travaux les exposant au risque de chute ou de glissage ainsi que les travaux en position accroupie ou penchée constante;\n3. les travaux ou activités utilisant l'amiante et le benzène et toute autre activité les exposant aux agents chimiques dangereux.\n Il est également interdit de charger la femme enceinte ou allaitante de :\n- soulever des charges dépassant cinq kilos;\n- travaux la mettant en contact avec des substances chimiques contenant le plomb ou des agents biologiques tels que le toxoplasme ou le virus de la rubéole.",
           },
         },
       ],
@@ -2679,10 +2728,43 @@ export const SECTION_2 = {
       ],
     },
     {
+      chapter_id: 'rt_arrete_22nov2010_305_330',
+      title: {
+        fr: '>>> Arrêté du 22 novembre 2010 pris pour l\'application des articles 305 et 330 du code du travail',
+        en: '>>> Arrêté du 22 novembre 2010 pris pour l\'application des articles 305 et 330 du code du travail',
+      },
+      articles: [
+        {
+          article_id: 'rt_arrete_22nov2010_305_330_art_2',
+          code: { fr: 'ART. 2.', en: 'ART. 2.' },
+          text: {
+            fr: "-  Obtention de l'attestation de conformité du service médical (valable 5 ans, renouvellement 3 mois avant expiration)",
+            en: "-  Obtention de l'attestation de conformité du service médical (valable 5 ans, renouvellement 3 mois avant expiration)",
+          },
+        },
+        {
+          article_id: 'rt_arrete_22nov2010_305_330_art_3',
+          code: { fr: 'ART. 3.', en: 'ART. 3.' },
+          text: {
+            fr: "Locaux réservés au service médical  :\na) Services médicaux indépendants au sein de l'établissement :\n•  moins de 500 salariés : 2 pièces de 16 mètres carrés chacune ;\n•  entre 500 et 1000 salariés : 3 pièces de 16 mètres carrés chacune ;\n• plus de 1000 salariés : une salle d'attente, un cabinet médical, une salle de pansements, la surface de chacune de ces pièces est de 16 mètres carrés,trois cabines de déshabillage dont la surface est de 4 mètres carrés chacune, une petite salle de repos de 8 mètres carrés.\n- service Médical avec deux médecins à temps plein, il devra y avoir un second cabinet médical.\n-Installation d'eau courante, avoir un éclairage et un chauffage suffisants et être aménagés de telle sorte qu'aucun bruit ne puisse gêner les examens médicaux.\nb) Services médicaux interentreprises à l'extérieur de l’établissement :\n- examens médicaux  dans un centre avec l'ensemble des équipements prévus au point a) ci-dessus, pour 1000 salariés et plus.\n- une pièce sera réservée à l'usage d'un poste de secours.\nDans les deux cas précités, les examens pourront avoir lieu dans des camions dispensaires aménagés suivant les normes en vigueur.",
+            en: "Locaux réservés au service médical  :\na) Services médicaux indépendants au sein de l'établissement :\n•  moins de 500 salariés : 2 pièces de 16 mètres carrés chacune ;\n•  entre 500 et 1000 salariés : 3 pièces de 16 mètres carrés chacune ;\n• plus de 1000 salariés : une salle d'attente, un cabinet médical, une salle de pansements, la surface de chacune de ces pièces est de 16 mètres carrés,trois cabines de déshabillage dont la surface est de 4 mètres carrés chacune, une petite salle de repos de 8 mètres carrés.\n- service Médical avec deux médecins à temps plein, il devra y avoir un second cabinet médical.\n-Installation d'eau courante, avoir un éclairage et un chauffage suffisants et être aménagés de telle sorte qu'aucun bruit ne puisse gêner les examens médicaux.\nb) Services médicaux interentreprises à l'extérieur de l’établissement :\n- examens médicaux  dans un centre avec l'ensemble des équipements prévus au point a) ci-dessus, pour 1000 salariés et plus.\n- une pièce sera réservée à l'usage d'un poste de secours.\nDans les deux cas précités, les examens pourront avoir lieu dans des camions dispensaires aménagés suivant les normes en vigueur.",
+          },
+        },
+        {
+          article_id: 'rt_arrete_22nov2010_305_330_art_4',
+          code: { fr: 'ART. 4. —', en: 'ART. 4. —' },
+          text: {
+            fr: "- Dans le cas d'un service médical du travail interentreprises est organisé en plusieurs centres médicaux: 5 médecins max à temps complet\n- Affichage des noms des médecins avec l'indication des lieux où ils peuvent être joints.\nDans les services médicaux  interentreprises, les examens médicaux ont lieu soit :\n— dans l'un des centres fixes ;\n— dans un centre mobile ;\n— dans les locaux équipés à l'intérieur de l'entreprise.\nCes locaux doivent répondre aux conditions de santé et de sécurité.\n- Pas plus d'1 seul médecin à temps plein ou partiel si le nombre de salariés n'exige pas plus",
+            en: "- Dans le cas d'un service médical du travail interentreprises est organisé en plusieurs centres médicaux: 5 médecins max à temps complet\n- Affichage des noms des médecins avec l'indication des lieux où ils peuvent être joints.\nDans les services médicaux  interentreprises, les examens médicaux ont lieu soit :\n— dans l'un des centres fixes ;\n— dans un centre mobile ;\n— dans les locaux équipés à l'intérieur de l'entreprise.\nCes locaux doivent répondre aux conditions de santé et de sécurité.\n- Pas plus d'1 seul médecin à temps plein ou partiel si le nombre de salariés n'exige pas plus",
+          },
+        },
+      ],
+    },
+    {
       chapter_id: 'rt_medecin_maladies',
       title: {
-        fr: 'Dispositions',
-        en: 'Dispositions',
+        fr: '>>> Arrêté du 16 juillet 2012 : article 327 du Code du travail.',
+        en: '>>> Arrêté du 16 juillet 2012 : article 327 du Code du travail.',
       },
       articles: [
         {
@@ -2694,11 +2776,44 @@ export const SECTION_2 = {
           },
         },
         {
+          article_id: 'rt_art_5_dossier_medical',
+          code: { fr: 'ART. 5. -', en: 'ART. 5. -' },
+          text: {
+            fr: "-  Le médecin doit constituer un dossier médical\n- Etablir, en double exemplaire, une fiche d'aptitude après chaque visite médicale.",
+            en: "-  Le médecin doit constituer un dossier médical\n- Etablir, en double exemplaire, une fiche d'aptitude après chaque visite médicale.",
+          },
+        },
+        {
+          article_id: 'rt_annexe_i_16_juillet_2012_surveillance',
+          code: { fr: 'Annexe I 16 juillet 2012', en: 'Annexe I 16 juillet 2012' },
+          text: {
+            fr: "Liste indicative des travaux nécessitant une surveillance médicale particulière\n• Application des peintures et vernis par pulvérisation ;\n• Travaux effectués en air comprimé et en milieu hyperbare ;\n• Emploi d'outils pneumatiques à main, transmettant des vibrations ;\n• Travaux effectués dans les égouts ;\n• Travaux effectués dans les abattoirs, travaux d'équarrissage ;\n• Manipulation, chargement, déchargement, transport soit des peaux brutes, poils, crins, soies de porc, laine, os ou autres dépouilles animales, soit de sacs, enveloppes ou récipients contenant ou ayant contenu de telles dépouilles, à l'exclusion des os dégélatinés ou dégraissés et des déchets de tannerie chaulés ;\n• Collecte et traitement des ordures ;\n• Travaux exposant à de hautes températures, à des poussières ou émanations toxiques et concernant le traitement et l'extraction des minerais, la production des métaux et les verreries ;\n• Travaux de bâtiment, de construction (plomberie, plâtrerie, carrelage, marbre  ) et de démolition (retrait de matières contenant de l'amiante) ;\n• Travail de nuit ou travail en équipes alternantes\n• Travaux souterrains :\n• Travaux en atmosphère chaude et humide ;\n• Travaux au contact des animaux ;\n• Travail en service aérien ;\n• Travaux exposant au :\n- Fluor et ses composés ;\n- Béryllium ;\n- Cadmium ;\n- Fer ;\n- Chlore ;\n- Cobalt :\n- Nickel ;\n- Glycols ;\n- Formol (l'aldéhyde formique et ses polymères)\n- Brome ;\n- Chlorure de vinyle ;\n- Iode ;\n- Isocyanates organiques ;\n- Bis chlorthal éther ;\n- Phosphore et composés, notamment les esters  phosphorique& pyrophosphoriques, thiophosphoriques,  ainsi que  ie& autres composés organiques du phosphore ;\n- Arsenic et ses composés ;\n- Sulfure de carbone ;\n- Oxychlorure de carbone ;\n- Acide chromique, chromates,  bichrornates akalins, à l'exception de  leurs solutions aqueuses diluées ;\n- Bioxyde de manganèse ;\n- Plomb et ses composés ;\n- Mercure et ses composés ;\n- Glucine et ses sels ;\n- Benzène et homologues ;\n- Hexanes aromatiques ;\n- Résines époxy ;\n- Phénols et naphtols\n- Dérivés halogénés, nitrés et aminés  des hydrocarbures  et de leurs dérivés ;\n- Brais, goudrons et huiles minérales ;\n- Poussières de bois ;\n- Rayons X et substances radioactives ;\n- Niveau de bruit > 85 dB (A) ;",
+            en: "Liste indicative des travaux nécessitant une surveillance médicale particulière\n• Application des peintures et vernis par pulvérisation ;\n• Travaux effectués en air comprimé et en milieu hyperbare ;\n• Emploi d'outils pneumatiques à main, transmettant des vibrations ;\n• Travaux effectués dans les égouts ;\n• Travaux effectués dans les abattoirs, travaux d'équarrissage ;\n• Manipulation, chargement, déchargement, transport soit des peaux brutes, poils, crins, soies de porc, laine, os ou autres dépouilles animales, soit de sacs, enveloppes ou récipients contenant ou ayant contenu de telles dépouilles, à l'exclusion des os dégélatinés ou dégraissés et des déchets de tannerie chaulés ;\n• Collecte et traitement des ordures ;\n• Travaux exposant à de hautes températures, à des poussières ou émanations toxiques et concernant le traitement et l'extraction des minerais, la production des métaux et les verreries ;\n• Travaux de bâtiment, de construction (plomberie, plâtrerie, carrelage, marbre  ) et de démolition (retrait de matières contenant de l'amiante) ;\n• Travail de nuit ou travail en équipes alternantes\n• Travaux souterrains :\n• Travaux en atmosphère chaude et humide ;\n• Travaux au contact des animaux ;\n• Travail en service aérien ;\n• Travaux exposant au :\n- Fluor et ses composés ;\n- Béryllium ;\n- Cadmium ;\n- Fer ;\n- Chlore ;\n- Cobalt :\n- Nickel ;\n- Glycols ;\n- Formol (l'aldéhyde formique et ses polymères)\n- Brome ;\n- Chlorure de vinyle ;\n- Iode ;\n- Isocyanates organiques ;\n- Bis chlorthal éther ;\n- Phosphore et composés, notamment les esters  phosphorique& pyrophosphoriques, thiophosphoriques,  ainsi que  ie& autres composés organiques du phosphore ;\n- Arsenic et ses composés ;\n- Sulfure de carbone ;\n- Oxychlorure de carbone ;\n- Acide chromique, chromates,  bichrornates akalins, à l'exception de  leurs solutions aqueuses diluées ;\n- Bioxyde de manganèse ;\n- Plomb et ses composés ;\n- Mercure et ses composés ;\n- Glucine et ses sels ;\n- Benzène et homologues ;\n- Hexanes aromatiques ;\n- Résines époxy ;\n- Phénols et naphtols\n- Dérivés halogénés, nitrés et aminés  des hydrocarbures  et de leurs dérivés ;\n- Brais, goudrons et huiles minérales ;\n- Poussières de bois ;\n- Rayons X et substances radioactives ;\n- Niveau de bruit > 85 dB (A) ;",
+          },
+        },
+        {
           article_id: 'rt_art_premier_tableau_maladies',
           code: { fr: 'Article premier', en: 'Article first' },
           text: {
             fr: "Le tableau (annexe N°1) fixant la liste des maladies professionnelles, annexé à l'arrêté susvisé N° 919-99 du ramadan 1420 (23 décembre 1999) est abrogé et remplacé par les tableaux des maladies professionnelles (annexe N°1), annexés au présent arrêté.",
             en: "Le tableau (annexe N°1) fixant la liste des maladies professionnelles, annexé à l'arrêté susvisé N° 919-99 du ramadan 1420 (23 décembre 1999) est abrogé et remplacé par les tableaux des maladies professionnelles (annexe N°1), annexés au présent arrêté.",
+          },
+        },
+      ],
+    },
+    {
+      chapter_id: 'rt_arrete_22nov2010_temps_min_medecins',
+      title: {
+        fr: '>>> Arrêté du 22 novembre 2010 fixant le temps minimum que le ou les médecins du travail doivent consacrer aux salariés.',
+        en: '>>> Arrêté du 22 novembre 2010 fixant le temps minimum que le ou les médecins du travail doivent consacrer aux salariés.',
+      },
+      articles: [
+        {
+          article_id: 'rt_arrete_22nov2010_temps_min_article_premier',
+          code: { fr: 'ARTICLE PREMIER. —', en: 'ARTICLE PREMIER. —' },
+          text: {
+            fr: "Le temps minimum que le ou les médecins du travail doivent consacrer aux salariés :\na) dans les entreprises ne présentant aucun risque pour la santé des salariés : une heure par mois pour 20 salariés ou 10 salariés de moins de 18 ans ;\nb) dans les entreprises où les salariés doivent être soumis à une surveillance médicale particulière : une heure par mois pour 10 salariés.",
+            en: "Le temps minimum que le ou les médecins du travail doivent consacrer aux salariés :\na) dans les entreprises ne présentant aucun risque pour la santé des salariés : une heure par mois pour 20 salariés ou 10 salariés de moins de 18 ans ;\nb) dans les entreprises où les salariés doivent être soumis à une surveillance médicale particulière : une heure par mois pour 10 salariés.",
           },
         },
       ],
