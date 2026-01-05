@@ -345,7 +345,7 @@ export default function VeilleReglementaire() {
                   : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
 
                 return (
-                  <div key={a.article_id} className={`rounded-xl border ${containerClass} p-3`}> 
+                  <div key={`${section.section_id}:${a.article_id}`} className={`rounded-xl border ${containerClass} p-3`}> 
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                       <div className="flex-1">
                         <div className="font-medium text-gray-900 dark:text-gray-100">{a.code}</div>

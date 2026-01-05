@@ -163,7 +163,7 @@ export default function DatePicker({ value, onChange, placeholder, className = '
             <div className="grid grid-cols-3 gap-1">
               {months.map((month, i) => (
                 <button
-                  key={month}
+                  key={i}
                   type="button"
                   onClick={() => handleMonthSelect(i)}
                   className={`py-2 text-xs rounded transition-colors
@@ -176,8 +176,8 @@ export default function DatePicker({ value, onChange, placeholder, className = '
           ) : (
             <>
               <div className="grid grid-cols-7 gap-0.5 mb-1">
-                {days.map(day => (
-                  <div key={day} className="text-center text-[10px] font-medium text-gray-500 dark:text-gray-400 py-0.5">{day}</div>
+                {days.map((day, i) => (
+                  <div key={i} className="text-center text-[10px] font-medium text-gray-500 dark:text-gray-400 py-0.5">{day}</div>
                 ))}
               </div>
               <div className="grid grid-cols-7 gap-0.5">

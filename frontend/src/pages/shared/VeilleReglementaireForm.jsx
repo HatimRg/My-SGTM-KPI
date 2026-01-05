@@ -565,7 +565,7 @@ export default function VeilleReglementaireForm({ mode }) {
                         const displayText = formatBulletText(getLocalized(schemaArticle.text, language))
 
                         return (
-                          <div key={schemaArticle.article_id} className={`rounded-xl border ${containerClass} p-3`}>
+                          <div key={`${currentSectionSchema.section_id}:${chapter.chapter_id}:${schemaArticle.article_id}`} className={`rounded-xl border ${containerClass} p-3`}>
                             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                               <div className="flex-1">
                                 <div className="font-medium text-gray-900 dark:text-gray-100">{getLocalized(schemaArticle.code, language)}</div>

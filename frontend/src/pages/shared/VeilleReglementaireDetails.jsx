@@ -207,7 +207,7 @@ export default function VeilleReglementaireDetails() {
 
                     return (
                       <div
-                        key={a.article_id}
+                        key={`${section.section_id}:${a.article_id}`}
                         className={`rounded-xl border p-3 ${cardTone} ${a.applicable === false ? 'opacity-80' : ''}`}
                       >
                         <div className="flex items-start justify-between gap-3">
