@@ -49,13 +49,13 @@ const MetricCard = memo(function MetricCard({ title, value, icon: Icon, color, t
   )
 })
 
-const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends, projectPerformance, inspectionData, sorData }) {
+const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends, projectPerformance, inspectionData, sorData, regulatoryWatch }) {
   const t = useTranslation()
 
   // Compliance metrics
   const complianceMetrics = useMemo(() => {
     const totalInspections = kpiSummary?.total_inspections ?? 0
-    const hseCompliance = Number(kpiSummary?.avg_hse_compliance ?? 0).toFixed(1)
+    const hseCompliance = Number(regulatoryWatch?.avg_overall_score ?? 0).toFixed(1)
     const medicalCompliance = Number(kpiSummary?.avg_medical_compliance ?? 0).toFixed(1)
 
     const totalSor = sorData?.stats?.total ?? 0
@@ -68,7 +68,7 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
       medicalCompliance,
       auditScore,
     }
-  }, [kpiSummary, sorData])
+  }, [kpiSummary, sorData, regulatoryWatch])
 
   // Compliance trends data
   const complianceTrends = useMemo(() => {

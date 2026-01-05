@@ -88,6 +88,9 @@ const mockDashboardData = {
           submitter: { name: 'John Doe' },
         },
       ],
+      regulatory_watch: {
+        avg_overall_score: 88.5,
+      },
     },
   },
 }

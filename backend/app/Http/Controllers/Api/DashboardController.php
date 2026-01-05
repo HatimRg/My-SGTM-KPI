@@ -12,6 +12,7 @@ use App\Models\SorReport;
 use App\Models\WorkPermit;
 use App\Models\Inspection;
 use App\Models\Machine;
+use App\Models\RegulatoryWatchSubmission;
 use App\Helpers\WeekHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -586,6 +587,24 @@ class DashboardController extends Controller
             ->orderBy('week_number')
             ->get();
 
+        $regulatoryWatchAvg = null;
+        if ($projectIdsForPole !== null && count($projectIdsForPole) === 0) {
+            $regulatoryWatchAvg = null;
+        } else {
+            $regulatoryWatchQuery = RegulatoryWatchSubmission::query()->where('week_year', $year);
+            if ($projectIdsForPole !== null) {
+                $regulatoryWatchQuery->whereIn('project_id', $projectIdsForPole);
+            }
+            if ($projectId) {
+                $regulatoryWatchQuery->where('project_id', $projectId);
+            }
+            if ($week && $week >= 1 && $week <= 53) {
+                $regulatoryWatchQuery->where('week_number', $week);
+            }
+            $value = (clone $regulatoryWatchQuery)->whereNotNull('overall_score')->avg('overall_score');
+            $regulatoryWatchAvg = $value !== null ? round((float) $value, 2) : null;
+        }
+
         return $this->success([
             'projects' => $allProjectsForStatus,
             'stats' => $stats,
@@ -631,6 +650,9 @@ class DashboardController extends Controller
                 'stats' => $inspectionStats,
                 'by_nature' => $inspectionsByNature,
                 'by_week' => $inspectionsByWeek,
+            ],
+            'regulatory_watch' => [
+                'avg_overall_score' => $regulatoryWatchAvg,
             ],
         ]);
     }

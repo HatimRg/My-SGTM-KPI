@@ -550,6 +550,7 @@ export default function AdminDashboard() {
           projectPerformance={filteredProjectPerformance} 
           inspectionData={inspectionData}
           sorData={sorData}
+          regulatoryWatch={data?.regulatory_watch}
         />
       )}
       {activeTheme === 'deviations' && (
