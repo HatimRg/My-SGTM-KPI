@@ -14,9 +14,6 @@ import {
   ChevronLeft,
   Check,
   Building2,
-  Users,
-  Zap,
-  Droplets
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -306,52 +303,6 @@ export default function KpiSubmission() {
     return () => clearTimeout(timeoutId)
   }, [formData, isEditMode])
 
-  // Auto-populate data when project and week are selected
-  const [autoPopulating, setAutoPopulating] = useState(false)
-  
-  const handleAutoPopulate = async () => {
-    if (!formData.project_id || !formData.week_number || !formData.report_year) {
-      toast.error(t('kpi.selectProjectAndWeek'))
-      return
-    }
-
-    setAutoPopulating(true)
-    try {
-      const response = await kpiService.getAutoPopulatedData({
-        project_id: formData.project_id,
-        week: formData.week_number,
-        year: formData.report_year,
-      })
-      
-      const { data, sources } = response.data.data
-      
-      // Update form with auto-populated data
-      setFormData(prev => ({
-        ...prev,
-        ...data,
-      }))
-      
-      // Show summary of what was populated
-      const sourceSummary = []
-      if (sources.sor_reports > 0) sourceSummary.push(`${sources.sor_reports} écarts`)
-      if (sources.trainings > 0) sourceSummary.push(`${sources.trainings} formations`)
-      if (sources.awareness_sessions > 0) sourceSummary.push(`${sources.awareness_sessions} sensibilisations`)
-      if (sources.work_permits > 0) sourceSummary.push(`${sources.work_permits} permis`)
-      if (sources.inspections > 0) sourceSummary.push(`${sources.inspections} inspections`)
-      
-      if (sourceSummary.length > 0) {
-        toast.success(`${t('kpi.autoPopulated')}: ${sourceSummary.join(', ')}`)
-      } else {
-        toast.info(t('kpi.noDataToPopulate'))
-      }
-    } catch (error) {
-      console.error('Auto-populate error:', error)
-      toast.error(t('errors.somethingWentWrong'))
-    } finally {
-      setAutoPopulating(false)
-    }
-  }
-
   const handleSaveDraft = async () => {
     if (!formData.project_id) {
       toast.error(t('kpi.projectInfo.selectProject'))
@@ -443,12 +394,15 @@ export default function KpiSubmission() {
   }
 
   const nextStep = () => {
-    // Validate before leaving step 1
     if (currentStep === 0 && !formData.project_id) {
       toast.error(t('kpi.projectInfo.selectProject'))
       return
     }
     if (currentStep === 0 && !formData.week_number) {
+      toast.error(t('kpi.submissionPage.selectWeekRequired'))
+      return
+    }
+    if (currentStep === 0 && (!formData.start_date || !formData.end_date)) {
       toast.error(t('kpi.submissionPage.selectWeekRequired'))
       return
     }
@@ -467,9 +421,12 @@ export default function KpiSubmission() {
   }
 
   const goToStep = (index) => {
-    // Don't allow skipping to later steps without project selection
     if (index > 0 && !formData.project_id) {
       toast.error(t('kpi.projectInfo.selectProject'))
+      return
+    }
+    if (index > 0 && (!formData.week_number || !formData.start_date || !formData.end_date)) {
+      toast.error(t('kpi.submissionPage.selectWeekRequired'))
       return
     }
     setCurrentStep(index)
@@ -589,35 +546,6 @@ export default function KpiSubmission() {
               selectedPole={selectedPole}
               onPoleChange={(val) => setSelectedPole(val)}
             />
-            
-            {/* Auto-populate button */}
-            {formData.project_id && formData.week_number && (
-              <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium text-green-900 dark:text-green-300">{t('kpi.autoPopulateTitle')}</h4>
-                    <p className="text-sm text-green-700 dark:text-green-400">{t('kpi.autoPopulateDesc')}</p>
-                  </div>
-                  <button
-                    onClick={handleAutoPopulate}
-                    disabled={autoPopulating}
-                    className="btn btn-primary flex items-center gap-2"
-                  >
-                    {autoPopulating ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        {t('common.loading')}
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="w-4 h-4" />
-                        {t('kpi.autoPopulate')}
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
           </>
         )}
         

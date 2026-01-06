@@ -17,4 +17,4 @@ Route::get('/api', function () {
 // Handle all other routes - serve the frontend (React Router)
 Route::get('/{path?}', function () {
     return view('welcome');
-})->where('path', '^(?!api).*')->fallback();
+})->where('path', '^(?!api|storage).*')->fallback();

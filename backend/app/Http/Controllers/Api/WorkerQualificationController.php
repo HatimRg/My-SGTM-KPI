@@ -257,4 +257,79 @@ class WorkerQualificationController extends Controller
 
         return $this->success(null, 'Worker qualification deleted successfully');
     }
+
+    public function viewCertificate(Request $request, WorkerQualification $workerQualification)
+    {
+        $user = $this->checkAccess($request);
+
+        $workerQualification->load(['worker']);
+        $worker = $workerQualification->worker;
+
+        if ($worker && $worker->project_id) {
+            $project = Project::findOrFail($worker->project_id);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'Access denied');
+            }
+        } elseif (!$user->hasGlobalProjectScope()) {
+            abort(403, 'Access denied');
+        }
+
+        $path = $workerQualification->certificate_path;
+        if (!$path || !Storage::disk('public')->exists($path)) {
+            abort(404, 'File not found');
+        }
+
+        $filename = basename($path);
+
+        return response()->stream(function () use ($path) {
+            $stream = Storage::disk('public')->readStream($path);
+            if ($stream === false) {
+                return;
+            }
+            fpassthru($stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+        ]);
+    }
+
+    public function downloadCertificate(Request $request, WorkerQualification $workerQualification)
+    {
+        $user = $this->checkAccess($request);
+
+        $workerQualification->load(['worker']);
+        $worker = $workerQualification->worker;
+
+        if ($worker && $worker->project_id) {
+            $project = Project::findOrFail($worker->project_id);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'Access denied');
+            }
+        } elseif (!$user->hasGlobalProjectScope()) {
+            abort(403, 'Access denied');
+        }
+
+        $path = $workerQualification->certificate_path;
+        if (!$path || !Storage::disk('public')->exists($path)) {
+            abort(404, 'File not found');
+        }
+
+        $filename = basename($path);
+
+        return response()->streamDownload(function () use ($path) {
+            $stream = Storage::disk('public')->readStream($path);
+            if ($stream === false) {
+                return;
+            }
+            fpassthru($stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }, $filename, [
+            'Content-Type' => 'application/pdf',
+        ]);
+    }
 }

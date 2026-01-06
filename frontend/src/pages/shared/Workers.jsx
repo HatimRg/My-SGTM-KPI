@@ -6,6 +6,7 @@ import api, {
   workerTrainingService,
   workerQualificationService,
   workerMedicalAptitudeService,
+  workerSanctionService,
   ppeService,
 } from '../../services/api'
 import { useLanguage } from '../../i18n'
@@ -115,6 +116,9 @@ export default function Workers() {
   const location = useLocation()
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
+
+  const canCreateSanctions = ['hse_manager', 'responsable', 'supervisor', 'user'].includes(user?.role)
+  const canDeleteSanctions = user?.role === 'hse_manager'
   const fetchWorkersRequestId = useRef(0)
   const workersAbortControllerRef = useRef(null)
   const statsAbortControllerRef = useRef(null)
@@ -157,6 +161,12 @@ export default function Workers() {
     return String(nature)
   }
 
+  const getSanctionTypeLabel = (sanction) => {
+    const type = sanction?.sanction_type
+    if (!type) return '-'
+    return t(`workers.details.sanctions.types.${type}`)
+  }
+
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [detailsWorker, setDetailsWorker] = useState(null)
   const [detailsTab, setDetailsTab] = useState('trainings')
@@ -173,12 +183,19 @@ export default function Workers() {
   const [workerPpeIssues, setWorkerPpeIssues] = useState([])
   const [loadingWorkerPpeIssues, setLoadingWorkerPpeIssues] = useState(false)
 
+  const [workerSanctions, setWorkerSanctions] = useState([])
+  const [loadingWorkerSanctions, setLoadingWorkerSanctions] = useState(false)
+
   const [ppeProjectItems, setPpeProjectItems] = useState([])
   const [loadingPpeProjectItems, setLoadingPpeProjectItems] = useState(false)
 
   const [ppeIssueModalOpen, setPpeIssueModalOpen] = useState(false)
   const [ppeIssuing, setPpeIssuing] = useState(false)
   const [ppeIssueForm, setPpeIssueForm] = useState({ ppe_item_id: '', ppe_other: '', quantity: 1, received_at: '' })
+
+  const [sanctionModalOpen, setSanctionModalOpen] = useState(false)
+  const [sanctionSaving, setSanctionSaving] = useState(false)
+  const [sanctionForm, setSanctionForm] = useState({ sanction_date: '', sanction_type: '', reason: '', mise_a_pied_days: '', document: null })
 
   const [trainingModalOpen, setTrainingModalOpen] = useState(false)
   const [trainingSaving, setTrainingSaving] = useState(false)
@@ -822,6 +839,29 @@ export default function Workers() {
     return map
   }, [workerPpeIssues])
 
+  const avertissementCountBySanctionId = useMemo(() => {
+    const sorted = [...workerSanctions].sort((a, b) => {
+      const da = a?.sanction_date ? new Date(`${a.sanction_date}T00:00:00`).getTime() : 0
+      const db = b?.sanction_date ? new Date(`${b.sanction_date}T00:00:00`).getTime() : 0
+      if (da !== db) return da - db
+      return Number(a?.id ?? 0) - Number(b?.id ?? 0)
+    })
+
+    let count = 0
+    const map = {}
+    for (const s of sorted) {
+      if (s?.sanction_type === 'mise_a_pied') {
+        count = 0
+        continue
+      }
+      if (s?.sanction_type === 'avertissement') {
+        count += 1
+        map[s.id] = count
+      }
+    }
+    return map
+  }, [workerSanctions])
+
   const addYearsToDate = (dateStr, years) => {
     if (!dateStr) return ''
     const d = new Date(`${dateStr}T00:00:00`)
@@ -833,12 +873,62 @@ export default function Workers() {
     return `${yyyy}-${mm}-${dd}`
   }
 
+  const getWorkerTrainingCertificateViewUrl = (tr) => (tr?.id ? `/api/worker-trainings/${tr.id}/certificate/view` : null)
+  const getWorkerTrainingCertificateDownloadUrl = (tr) => (tr?.id ? `/api/worker-trainings/${tr.id}/certificate/download` : null)
+  const getWorkerQualificationCertificateViewUrl = (q) => (q?.id ? `/api/worker-qualifications/${q.id}/certificate/view` : null)
+  const getWorkerQualificationCertificateDownloadUrl = (q) => (q?.id ? `/api/worker-qualifications/${q.id}/certificate/download` : null)
+  const getWorkerMedicalCertificateViewUrl = (m) => (m?.id ? `/api/worker-medical-aptitudes/${m.id}/certificate/view` : null)
+  const getWorkerMedicalCertificateDownloadUrl = (m) => (m?.id ? `/api/worker-medical-aptitudes/${m.id}/certificate/download` : null)
+  const getWorkerSanctionDocumentViewUrl = (s) => (s?.id ? `/api/worker-sanctions/${s.id}/document/view` : null)
+  const getWorkerSanctionDocumentDownloadUrl = (s) => (s?.id ? `/api/worker-sanctions/${s.id}/document/download` : null)
+
   const normalizeApiPath = (url) => {
     if (!url) return null
     if (typeof url !== 'string') return null
     if (url.startsWith('/api/')) return url.slice(4)
     if (url.startsWith('api/')) return url.slice(3)
+    if (url.startsWith('/storage/')) return url
+    if (url.startsWith('storage/')) return `/${url}`
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      try {
+        const u = new URL(url)
+        if (u.pathname.startsWith('/storage/')) {
+          return `${u.pathname}${u.search}`
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
     return url
+  }
+
+  const downloadFromUrl = async (url, fallbackFilename = 'document.pdf') => {
+    if (!url) return
+    try {
+      const path = normalizeApiPath(url)
+      const res = await api.get(path, { responseType: 'blob' })
+      const blob = res.data
+
+      let filename = fallbackFilename
+      const contentDisposition = res.headers?.['content-disposition']
+      if (typeof contentDisposition === 'string') {
+        const m = /filename="?([^";]+)"?/i.exec(contentDisposition)
+        if (m && m[1]) {
+          filename = m[1]
+        }
+      }
+
+      const objectUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+    } catch (e) {
+      toast.error(e.response?.data?.message ?? t('errors.somethingWentWrong'))
+    }
   }
 
   const closePreview = () => {
@@ -862,14 +952,24 @@ export default function Workers() {
       previewIsObjectUrl.current = false
       setPreviewUrl(null)
 
-      if (typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/storage/'))) {
+      if (typeof url === 'string' && url.startsWith('blob:')) {
         setPreviewUrl(url)
         return
       }
 
       const path = normalizeApiPath(url)
-      const res = await api.get(path, { responseType: 'blob' })
-      const objectUrl = URL.createObjectURL(res.data)
+      let blob
+      if (typeof path === 'string' && path.startsWith('/storage/')) {
+        const resp = await fetch(path)
+        if (!resp.ok) {
+          throw new Error(`Failed to fetch: ${resp.status}`)
+        }
+        blob = await resp.blob()
+      } else {
+        const res = await api.get(path, { responseType: 'blob' })
+        blob = res.data
+      }
+      const objectUrl = URL.createObjectURL(blob)
       previewIsObjectUrl.current = true
       setPreviewUrl(objectUrl)
     } catch (e) {
@@ -956,6 +1056,23 @@ export default function Workers() {
     }
   }
 
+  const fetchDetailsSanctions = async (workerId) => {
+    if (!workerId) return
+    try {
+      setLoadingWorkerSanctions(true)
+      const res = await workerSanctionService.getAll({ worker_id: workerId, per_page: 100 })
+      const payload = res.data
+      const data = payload.data ?? payload
+      const items = Array.isArray(data) ? data : (data.data ?? [])
+      setWorkerSanctions(Array.isArray(items) ? items : [])
+    } catch (e) {
+      setWorkerSanctions([])
+      toast.error(e.response?.data?.message ?? t('errors.somethingWentWrong'))
+    } finally {
+      setLoadingWorkerSanctions(false)
+    }
+  }
+
   const fetchPpeProjectItems = async (projectId) => {
     if (!projectId) {
       setPpeProjectItems([])
@@ -1023,6 +1140,7 @@ export default function Workers() {
       fetchDetailsQualifications(worker.id),
       fetchDetailsMedicalAptitudes(worker.id),
       fetchDetailsPpeIssues(worker.id),
+      fetchDetailsSanctions(worker.id),
       fetchPpeProjectItems(worker.project_id ?? worker.project?.id),
       fetchWorkerImage(worker.id),
     ])
@@ -1036,9 +1154,12 @@ export default function Workers() {
     setWorkerQualifications([])
     setWorkerMedicalAptitudes([])
     setWorkerPpeIssues([])
+    setWorkerSanctions([])
     setPpeProjectItems([])
     setPpeIssueModalOpen(false)
     setPpeIssueForm({ ppe_item_id: '', ppe_other: '', quantity: 1, received_at: '' })
+    setSanctionModalOpen(false)
+    setSanctionForm({ sanction_date: '', sanction_type: '', reason: '', mise_a_pied_days: '', document: null })
     if (workerImageUrl && workerImageIsObjectUrl.current) {
       URL.revokeObjectURL(workerImageUrl)
     }
@@ -2111,6 +2232,19 @@ export default function Workers() {
                     <Shield className="w-4 h-4" />
                     {t('ppe.workerTab.title')}
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDetailsTab('sanctions')}
+                    className={`px-3 py-2 text-sm border rounded-t-lg flex items-center gap-2 ${
+                      detailsTab === 'sanctions'
+                        ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 border-b-white dark:border-b-gray-900 text-hse-primary'
+                        : 'border-transparent text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    {t('workers.details.tabs.sanctions')}
+                  </button>
                 </div>
               </div>
 
@@ -2155,22 +2289,29 @@ export default function Workers() {
                                       <button
                                         type="button"
                                         className="btn-outline btn-sm flex items-center gap-2"
-                                        onClick={() => openPreviewFromUrl(tr.certificate_url, tr)}
+                                        onClick={() =>
+                                          openPreviewFromUrl(getWorkerTrainingCertificateViewUrl(tr), {
+                                            ...tr,
+                                            download_url: getWorkerTrainingCertificateDownloadUrl(tr),
+                                          })
+                                        }
                                       >
                                         <Eye className="w-4 h-4" />
                                         {t('common.view')}
                                       </button>
                                     )}
                                     {tr.certificate_url && (
-                                      <a
-                                        href={tr.certificate_url}
-                                        download
+                                      <button
+                                        type="button"
                                         className="btn-outline btn-sm flex items-center gap-2"
-                                        onClick={(e) => e.stopPropagation()}
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          downloadFromUrl(getWorkerTrainingCertificateDownloadUrl(tr), 'certificate.pdf')
+                                        }}
                                       >
                                         <Download className="w-4 h-4" />
                                         {t('common.download')}
-                                      </a>
+                                      </button>
                                     )}
                                     <button type="button" className="btn-outline btn-sm flex items-center gap-2" onClick={() => openTrainingModal(tr)}>
                                       <Pencil className="w-4 h-4" />
@@ -2238,22 +2379,29 @@ export default function Workers() {
                                       <button
                                         type="button"
                                         className="btn-outline btn-sm flex items-center gap-2"
-                                        onClick={() => openPreviewFromUrl(q.certificate_url, q)}
+                                        onClick={() =>
+                                          openPreviewFromUrl(getWorkerQualificationCertificateViewUrl(q), {
+                                            ...q,
+                                            download_url: getWorkerQualificationCertificateDownloadUrl(q),
+                                          })
+                                        }
                                       >
                                         <Eye className="w-4 h-4" />
                                         {t('common.view')}
                                       </button>
                                     )}
                                     {q.certificate_url && (
-                                      <a
-                                        href={q.certificate_url}
-                                        download
+                                      <button
+                                        type="button"
                                         className="btn-outline btn-sm flex items-center gap-2"
-                                        onClick={(e) => e.stopPropagation()}
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          downloadFromUrl(getWorkerQualificationCertificateDownloadUrl(q), 'certificate.pdf')
+                                        }}
                                       >
                                         <Download className="w-4 h-4" />
                                         {t('common.download')}
-                                      </a>
+                                      </button>
                                     )}
                                     <button type="button" className="btn-outline btn-sm flex items-center gap-2" onClick={() => openQualificationModal(q)}>
                                       <Pencil className="w-4 h-4" />
@@ -2326,22 +2474,29 @@ export default function Workers() {
                                       <button
                                         type="button"
                                         className="btn-outline btn-sm flex items-center gap-2"
-                                        onClick={() => openPreviewFromUrl(m.certificate_url, m)}
+                                        onClick={() =>
+                                          openPreviewFromUrl(getWorkerMedicalCertificateViewUrl(m), {
+                                            ...m,
+                                            download_url: getWorkerMedicalCertificateDownloadUrl(m),
+                                          })
+                                        }
                                       >
                                         <Eye className="w-4 h-4" />
                                         {t('common.view')}
                                       </button>
                                     )}
                                     {m.certificate_url && (
-                                      <a
-                                        href={m.certificate_url}
-                                        download
+                                      <button
+                                        type="button"
                                         className="btn-outline btn-sm flex items-center gap-2"
-                                        onClick={(e) => e.stopPropagation()}
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          downloadFromUrl(getWorkerMedicalCertificateDownloadUrl(m), 'certificate.pdf')
+                                        }}
                                       >
                                         <Download className="w-4 h-4" />
                                         {t('common.download')}
-                                      </a>
+                                      </button>
                                     )}
                                     <button type="button" className="btn-outline btn-sm flex items-center gap-2" onClick={() => openMedicalModal(m)}>
                                       <Pencil className="w-4 h-4" />
@@ -2457,6 +2612,132 @@ export default function Workers() {
                     </div>
                   </div>
                 )}
+
+                {detailsTab === 'sanctions' && (
+                  <div className="space-y-3">
+                    <div className="flex justify-end">
+                      {canCreateSanctions && (
+                        <button
+                          type="button"
+                          className="btn-primary flex items-center gap-2"
+                          onClick={() => {
+                            setSanctionForm({
+                              sanction_date: new Date().toISOString().slice(0, 10),
+                              sanction_type: '',
+                              reason: '',
+                              mise_a_pied_days: '',
+                              document: null,
+                            })
+                            setSanctionModalOpen(true)
+                          }}
+                        >
+                          <PlusCircle className="w-4 h-4" />
+                          {t('common.add')}
+                        </button>
+                      )}
+                    </div>
+
+                    {loadingWorkerSanctions ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin text-hse-primary" />
+                      </div>
+                    ) : workerSanctions.length === 0 ? (
+                      <div className="text-sm text-gray-600 dark:text-gray-300">{t('workers.details.sanctions.empty')}</div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-gray-200 dark:border-gray-700 text-left">
+                              <th className="py-2 pr-3 font-medium text-gray-500 dark:text-gray-400">{t('workers.details.sanctions.date')}</th>
+                              <th className="py-2 pr-3 font-medium text-gray-500 dark:text-gray-400">{t('workers.details.sanctions.type')}</th>
+                              <th className="py-2 pr-3 font-medium text-gray-500 dark:text-gray-400">{t('common.project')}</th>
+                              <th className="py-2 pr-3 font-medium text-gray-500 dark:text-gray-400">{t('workers.details.sanctions.reason')}</th>
+                              <th className="py-2 pr-3 font-medium text-gray-500 dark:text-gray-400">{t('common.actions')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[...workerSanctions]
+                              .sort((a, b) => {
+                                const da = a?.sanction_date ? new Date(`${a.sanction_date}T00:00:00`).getTime() : 0
+                                const db = b?.sanction_date ? new Date(`${b.sanction_date}T00:00:00`).getTime() : 0
+                                if (da !== db) return db - da
+                                return Number(b?.id ?? 0) - Number(a?.id ?? 0)
+                              })
+                              .map((s) => (
+                                <tr key={s.id} className="border-b border-gray-100 dark:border-gray-800">
+                                  <td className="py-2 pr-3 text-gray-700 dark:text-gray-200 whitespace-nowrap">{formatDate(s.sanction_date)}</td>
+                                  <td className="py-2 pr-3 text-gray-900 dark:text-gray-100">
+                                    <div className="font-medium">{getSanctionTypeLabel(s)}</div>
+                                    {s.sanction_type === 'mise_a_pied' && s.mise_a_pied_days ? (
+                                      <div className="text-[11px] text-gray-500 dark:text-gray-400">{s.mise_a_pied_days}j</div>
+                                    ) : null}
+                                    {s.sanction_type === 'avertissement' && avertissementCountBySanctionId[s.id] ? (
+                                      <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                                        {t('workers.details.sanctions.successiveAvertissement')} {avertissementCountBySanctionId[s.id]}
+                                      </div>
+                                    ) : null}
+                                  </td>
+                                  <td className="py-2 pr-3 text-gray-700 dark:text-gray-200">{s.project?.name ?? '-'}</td>
+                                  <td className="py-2 pr-3 text-gray-700 dark:text-gray-200">{s.reason ?? ''}</td>
+                                  <td className="py-2 pr-3">
+                                    <div className="flex flex-wrap gap-2">
+                                      {s.document_url && (
+                                        <button
+                                          type="button"
+                                          className="btn-outline btn-sm flex items-center gap-2"
+                                          onClick={() =>
+                                            openPreviewFromUrl(getWorkerSanctionDocumentViewUrl(s), {
+                                              ...s,
+                                              download_url: getWorkerSanctionDocumentDownloadUrl(s),
+                                            })
+                                          }
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                          {t('common.view')}
+                                        </button>
+                                      )}
+                                      {s.document_url && (
+                                        <button
+                                          type="button"
+                                          className="btn-outline btn-sm flex items-center gap-2"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            downloadFromUrl(getWorkerSanctionDocumentDownloadUrl(s), 'document.pdf')
+                                          }}
+                                        >
+                                          <Download className="w-4 h-4" />
+                                          {t('common.download')}
+                                        </button>
+                                      )}
+                                      {canDeleteSanctions && (
+                                        <button
+                                          type="button"
+                                          className="btn-danger btn-sm flex items-center gap-2"
+                                          onClick={async () => {
+                                            if (!s?.id || !detailsWorker?.id) return
+                                            try {
+                                              await workerSanctionService.delete(s.id)
+                                              toast.success(t('success.deleted'))
+                                              await fetchDetailsSanctions(detailsWorker.id)
+                                            } catch (e) {
+                                              toast.error(e.response?.data?.message ?? t('errors.somethingWentWrong'))
+                                            }
+                                          }}
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                          {t('common.delete')}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -2554,6 +2835,140 @@ export default function Workers() {
               <button type="submit" disabled={ppeIssuing} className="btn-primary btn-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                 {ppeIssuing && <Loader2 className="w-4 h-4 animate-spin" />}
                 {t('ppe.issue.submit')}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {sanctionModalOpen && detailsWorker && canCreateSanctions && (
+        <Modal
+          isOpen={sanctionModalOpen}
+          onClose={() => setSanctionModalOpen(false)}
+          title={t('workers.details.sanctions.addTitle')}
+          size="lg"
+        >
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!detailsWorker?.id) return
+              if (!sanctionForm.sanction_date || !sanctionForm.sanction_type || !String(sanctionForm.reason ?? '').trim()) return
+              if (sanctionForm.sanction_type === 'mise_a_pied' && !Number(sanctionForm.mise_a_pied_days)) return
+              if (!sanctionForm.document) return
+
+              try {
+                setSanctionSaving(true)
+                await workerSanctionService.create({
+                  worker_id: detailsWorker.id,
+                  sanction_date: sanctionForm.sanction_date,
+                  sanction_type: sanctionForm.sanction_type,
+                  reason: String(sanctionForm.reason ?? '').trim(),
+                  mise_a_pied_days:
+                    sanctionForm.sanction_type === 'mise_a_pied' ? Number(sanctionForm.mise_a_pied_days) : undefined,
+                  document: sanctionForm.document,
+                })
+                toast.success(t('success.saved'))
+                setSanctionModalOpen(false)
+                setSanctionForm({ sanction_date: '', sanction_type: '', reason: '', mise_a_pied_days: '', document: null })
+                await fetchDetailsSanctions(detailsWorker.id)
+              } catch (e2) {
+                toast.error(e2.response?.data?.message ?? t('errors.somethingWentWrong'))
+              } finally {
+                setSanctionSaving(false)
+              }
+            }}
+            className="space-y-4"
+          >
+            <div>
+              <label className="label text-xs">{t('workers.details.sanctions.date')}</label>
+              <DatePicker
+                value={sanctionForm.sanction_date}
+                onChange={(value) => setSanctionForm((prev) => ({ ...prev, sanction_date: value }))}
+                placeholder={t('workers.selectDate')}
+              />
+            </div>
+
+            <div>
+              <label className="label text-xs">{t('workers.details.sanctions.type')}</label>
+              <Select
+                value={sanctionForm.sanction_type}
+                onChange={(e) => setSanctionForm((prev) => ({ ...prev, sanction_type: e.target.value }))}
+              >
+                <option value="">{t('common.select')}</option>
+                <option value="mise_a_pied">{t('workers.details.sanctions.types.mise_a_pied')}</option>
+                <option value="avertissement">{t('workers.details.sanctions.types.avertissement')}</option>
+                <option value="rappel_a_lordre">{t('workers.details.sanctions.types.rappel_a_lordre')}</option>
+                <option value="blame">{t('workers.details.sanctions.types.blame')}</option>
+              </Select>
+            </div>
+
+            {sanctionForm.sanction_type === 'mise_a_pied' && (
+              <div>
+                <label className="label text-xs">{t('workers.details.sanctions.miseAPiedDays')}</label>
+                <input
+                  type="number"
+                  min={1}
+                  className="input"
+                  value={sanctionForm.mise_a_pied_days}
+                  onChange={(e) => setSanctionForm((prev) => ({ ...prev, mise_a_pied_days: e.target.value }))}
+                  required
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="label text-xs">{t('workers.details.sanctions.reason')}</label>
+              <textarea
+                className="input min-h-[96px]"
+                value={sanctionForm.reason}
+                onChange={(e) => setSanctionForm((prev) => ({ ...prev, reason: e.target.value }))}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="label text-xs">{t('workers.details.sanctions.document')}</label>
+              <label className="flex items-center justify-between border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-xs cursor-pointer hover:border-hse-primary hover:bg-hse-primary/5">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-gray-500" />
+                  <span className="text-gray-700 dark:text-gray-200">
+                    {sanctionForm.document ? sanctionForm.document.name : t('workers.details.common.choosePdf')}
+                  </span>
+                </div>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file && file.type !== 'application/pdf') {
+                      toast.error(t('workers.details.common.pdfOnly'))
+                      return
+                    }
+                    setSanctionForm((prev) => ({ ...prev, document: file ?? null }))
+                  }}
+                />
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+              <button type="button" onClick={() => setSanctionModalOpen(false)} className="btn-outline btn-sm">
+                {t('common.cancel')}
+              </button>
+              <button
+                type="submit"
+                disabled={
+                  sanctionSaving ||
+                  !sanctionForm.sanction_date ||
+                  !sanctionForm.sanction_type ||
+                  !String(sanctionForm.reason ?? '').trim() ||
+                  (sanctionForm.sanction_type === 'mise_a_pied' && !Number(sanctionForm.mise_a_pied_days)) ||
+                  !sanctionForm.document
+                }
+                className="btn-primary btn-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sanctionSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                {t('common.save')}
               </button>
             </div>
           </form>
@@ -2931,14 +3346,20 @@ export default function Workers() {
                 </div>
               )}
             </div>
-            {typeof activePreview?.certificate_url === 'string' && activePreview.certificate_url && (
+            {(typeof activePreview?.download_url === 'string' && activePreview.download_url) ||
+            (typeof activePreview?.certificate_url === 'string' && activePreview.certificate_url) ||
+            (typeof activePreview?.document_url === 'string' && activePreview.document_url) ? (
               <div className="flex justify-end">
-                <a href={activePreview.certificate_url} download className="btn-primary inline-flex items-center gap-2 text-sm">
+                <button
+                  type="button"
+                  className="btn-primary inline-flex items-center gap-2 text-sm"
+                  onClick={() => downloadFromUrl(activePreview.download_url ?? (activePreview.certificate_url ?? activePreview.document_url), 'document.pdf')}
+                >
                   <Download className="w-4 h-4" />
                   {t('common.download')}
-                </a>
+                </button>
               </div>
-            )}
+            ) : null}
           </div>
         </Modal>
       )}

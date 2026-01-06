@@ -234,4 +234,79 @@ class WorkerMedicalAptitudeController extends Controller
 
         return $this->success(null, 'Worker medical aptitude deleted successfully');
     }
+
+    public function viewCertificate(Request $request, WorkerMedicalAptitude $workerMedicalAptitude)
+    {
+        $user = $this->checkAccess($request);
+
+        $workerMedicalAptitude->load(['worker']);
+        $worker = $workerMedicalAptitude->worker;
+
+        if ($worker && $worker->project_id) {
+            $project = Project::findOrFail($worker->project_id);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'Access denied');
+            }
+        } elseif (!$user->hasGlobalProjectScope()) {
+            abort(403, 'Access denied');
+        }
+
+        $path = $workerMedicalAptitude->certificate_path;
+        if (!$path || !Storage::disk('public')->exists($path)) {
+            abort(404, 'File not found');
+        }
+
+        $filename = basename($path);
+
+        return response()->stream(function () use ($path) {
+            $stream = Storage::disk('public')->readStream($path);
+            if ($stream === false) {
+                return;
+            }
+            fpassthru($stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+        ]);
+    }
+
+    public function downloadCertificate(Request $request, WorkerMedicalAptitude $workerMedicalAptitude)
+    {
+        $user = $this->checkAccess($request);
+
+        $workerMedicalAptitude->load(['worker']);
+        $worker = $workerMedicalAptitude->worker;
+
+        if ($worker && $worker->project_id) {
+            $project = Project::findOrFail($worker->project_id);
+            if (!$user->canAccessProject($project)) {
+                abort(403, 'Access denied');
+            }
+        } elseif (!$user->hasGlobalProjectScope()) {
+            abort(403, 'Access denied');
+        }
+
+        $path = $workerMedicalAptitude->certificate_path;
+        if (!$path || !Storage::disk('public')->exists($path)) {
+            abort(404, 'File not found');
+        }
+
+        $filename = basename($path);
+
+        return response()->streamDownload(function () use ($path) {
+            $stream = Storage::disk('public')->readStream($path);
+            if ($stream === false) {
+                return;
+            }
+            fpassthru($stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }, $filename, [
+            'Content-Type' => 'application/pdf',
+        ]);
+    }
 }

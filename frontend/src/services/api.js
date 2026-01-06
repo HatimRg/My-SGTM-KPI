@@ -225,6 +225,24 @@ export const workerMedicalAptitudeService = {
   delete: (id) => api.delete(`/worker-medical-aptitudes/${id}`),
 }
 
+export const workerSanctionService = {
+  getAll: (params) => api.get('/worker-sanctions', { params }),
+  getById: (id) => api.get(`/worker-sanctions/${id}`),
+  create: (data) => {
+    const formData = new FormData()
+    Object.keys(data).forEach((key) => {
+      const value = data[key]
+      if (value !== null && value !== undefined && value !== '') {
+        formData.append(key, value)
+      }
+    })
+    return api.post('/worker-sanctions', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  delete: (id) => api.delete(`/worker-sanctions/${id}`),
+}
+
 export const awarenessService = {
   getAll: (params) => api.get('/awareness-sessions', { params }),
   getById: (id) => api.get(`/awareness-sessions/${id}`),

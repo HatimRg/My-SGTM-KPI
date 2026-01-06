@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\WorkerController;
 use App\Http\Controllers\Api\WorkerTrainingController;
 use App\Http\Controllers\Api\WorkerQualificationController;
 use App\Http\Controllers\Api\WorkerMedicalAptitudeController;
+use App\Http\Controllers\Api\WorkerSanctionController;
 use App\Http\Controllers\Api\PpeController;
 use App\Http\Controllers\Api\RegulatoryWatchController;
 use App\Http\Controllers\Api\SubcontractorOpeningController;
@@ -284,6 +285,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [WorkerTrainingController::class, 'index']);
         Route::get('/other-labels', [WorkerTrainingController::class, 'otherLabels']);
         Route::post('/', [WorkerTrainingController::class, 'store']);
+        Route::get('/{workerTraining}/certificate/view', [WorkerTrainingController::class, 'viewCertificate']);
+        Route::get('/{workerTraining}/certificate/download', [WorkerTrainingController::class, 'downloadCertificate']);
         Route::get('/{workerTraining}', [WorkerTrainingController::class, 'show']);
         Route::put('/{workerTraining}', [WorkerTrainingController::class, 'update']);
         Route::delete('/{workerTraining}', [WorkerTrainingController::class, 'destroy']);
@@ -292,6 +295,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('worker-qualifications')->group(function () {
         Route::get('/', [WorkerQualificationController::class, 'index']);
         Route::post('/', [WorkerQualificationController::class, 'store']);
+        Route::get('/{workerQualification}/certificate/view', [WorkerQualificationController::class, 'viewCertificate']);
+        Route::get('/{workerQualification}/certificate/download', [WorkerQualificationController::class, 'downloadCertificate']);
         Route::get('/{workerQualification}', [WorkerQualificationController::class, 'show']);
         Route::put('/{workerQualification}', [WorkerQualificationController::class, 'update']);
         Route::delete('/{workerQualification}', [WorkerQualificationController::class, 'destroy']);
@@ -300,9 +305,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('worker-medical-aptitudes')->group(function () {
         Route::get('/', [WorkerMedicalAptitudeController::class, 'index']);
         Route::post('/', [WorkerMedicalAptitudeController::class, 'store']);
+        Route::get('/{workerMedicalAptitude}/certificate/view', [WorkerMedicalAptitudeController::class, 'viewCertificate']);
+        Route::get('/{workerMedicalAptitude}/certificate/download', [WorkerMedicalAptitudeController::class, 'downloadCertificate']);
         Route::get('/{workerMedicalAptitude}', [WorkerMedicalAptitudeController::class, 'show']);
         Route::put('/{workerMedicalAptitude}', [WorkerMedicalAptitudeController::class, 'update']);
         Route::delete('/{workerMedicalAptitude}', [WorkerMedicalAptitudeController::class, 'destroy']);
+    });
+
+    Route::prefix('worker-sanctions')->group(function () {
+        Route::get('/', [WorkerSanctionController::class, 'index']);
+        Route::post('/', [WorkerSanctionController::class, 'store']);
+        Route::get('/{workerSanction}/document/view', [WorkerSanctionController::class, 'viewDocument']);
+        Route::get('/{workerSanction}/document/download', [WorkerSanctionController::class, 'downloadDocument']);
+        Route::get('/{workerSanction}', [WorkerSanctionController::class, 'show']);
+        Route::delete('/{workerSanction}', [WorkerSanctionController::class, 'destroy']);
     });
 
     // PPE / EPI Management (same access rules as Workers)

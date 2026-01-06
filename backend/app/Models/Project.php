@@ -90,8 +90,12 @@ class Project extends Model
 
     public function scopeAssignedTo($query, User $user)
     {
-        return $query->whereHas('users', function ($q) use ($user) {
-            $q->where('users.id', $user->id);
+        return $query->where(function ($q) use ($user) {
+            $q->whereHas('users', function ($qq) use ($user) {
+                $qq->where('users.id', $user->id);
+            })->orWhereHas('teamMembers', function ($qq) use ($user) {
+                $qq->where('users.id', $user->id);
+            });
         });
     }
 

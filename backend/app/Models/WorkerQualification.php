@@ -44,7 +44,15 @@ class WorkerQualification extends Model
             return null;
         }
 
-        return Storage::disk('public')->url($this->certificate_path);
+        $url = Storage::disk('public')->url($this->certificate_path);
+        if (is_string($url) && str_starts_with($url, 'http')) {
+            $parsed = parse_url($url);
+            $path = $parsed['path'] ?? null;
+            $query = isset($parsed['query']) ? ('?' . $parsed['query']) : '';
+            return $path ? ($path . $query) : $url;
+        }
+
+        return $url;
     }
 
     public function getStatusAttribute(): string

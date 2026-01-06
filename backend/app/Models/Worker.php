@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\WorkerTraining;
 use App\Models\WorkerQualification;
 use App\Models\WorkerMedicalAptitude;
+use App\Models\WorkerSanction;
 
 class Worker extends Model
 {
@@ -80,6 +81,11 @@ class Worker extends Model
     public function medicalAptitudes()
     {
         return $this->hasMany(WorkerMedicalAptitude::class);
+    }
+
+    public function sanctions()
+    {
+        return $this->hasMany(WorkerSanction::class);
     }
 
     /**

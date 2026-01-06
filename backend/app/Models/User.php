@@ -86,6 +86,7 @@ class User extends Authenticatable
         self::ROLE_HSE_MANAGER,
         self::ROLE_RESPONSABLE,
         self::ROLE_SUPERVISOR,
+        self::ROLE_USER,
         self::ROLE_HR,
         self::ROLE_POLE_DIRECTOR,
         self::ROLE_WORKS_DIRECTOR,
@@ -150,7 +151,9 @@ class User extends Authenticatable
         }
 
         // assigned
-        return $this->projects()->pluck('projects.id');
+        $assigned = $this->projects()->pluck('projects.id');
+        $team = $this->teamProjects()->pluck('projects.id');
+        return $assigned->merge($team)->unique()->values();
     }
 
     public function canAccessProject(Project $project): bool
