@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useDevStore, DEV_PROJECT_SCOPE } from '../store/devStore'
@@ -55,6 +55,9 @@ export default function DashboardLayout() {
   const { t } = useLanguage()
   const navigate = useNavigate()
   const location = useLocation()
+
+  const sidebarNavRef = useRef(null)
+  const heavyMachineryLastLinkRef = useRef(null)
 
   const isUserAdmin = isAdmin()
 
@@ -298,6 +301,24 @@ export default function DashboardLayout() {
     return location.pathname.startsWith('/heavy-machinery')
   })
 
+  useEffect(() => {
+    if (!heavyMachineryOpen) return
+    const navEl = sidebarNavRef.current
+    const targetEl = heavyMachineryLastLinkRef.current
+    if (!navEl || !targetEl) return
+
+    // Defer until submenu is mounted
+    const id = window.setTimeout(() => {
+      try {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      } catch {
+        // ignore
+      }
+    }, 0)
+
+    return () => window.clearTimeout(id)
+  }, [heavyMachineryOpen])
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Mobile sidebar backdrop */}
@@ -340,7 +361,7 @@ export default function DashboardLayout() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-thin">
+          <nav ref={sidebarNavRef} className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-thin">
             <div className="mb-4">
               <span className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 {isAdminArea ? t('nav.administration') : t('nav.dashboard')}
@@ -402,6 +423,7 @@ export default function DashboardLayout() {
                         isActive ? 'sidebar-link-active' : 'sidebar-link'
                       }
                       onClick={() => setSidebarOpen(false)}
+                      ref={heavyMachineryLastLinkRef}
                     >
                       <span>{t('heavyMachinery.expiredDocumentation.nav')}</span>
                     </NavLink>

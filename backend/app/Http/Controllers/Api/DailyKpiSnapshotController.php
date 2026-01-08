@@ -8,6 +8,8 @@ use App\Models\DailyKpiSnapshot;
 use App\Models\Project;
 use App\Models\Training;
 use App\Models\AwarenessSession;
+use App\Models\RegulatoryWatchSubmission;
+use App\Models\WorkerSanction;
 use App\Exports\DailyKpiTemplateExport;
 use App\Imports\DailyKpiTemplateImport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -261,6 +263,13 @@ class DailyKpiSnapshotController extends Controller
         // Fetch auto-fill values from system data
         $dates = WeekHelper::getWeekDates($weekNumber, $year);
         $startDate = $dates['start'];
+        $regulatoryScore = RegulatoryWatchSubmission::query()
+            ->where('project_id', $projectId)
+            ->where('week_year', $year)
+            ->where('week_number', $weekNumber)
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('id')
+            ->value('overall_score');
         $autoFillValues = [];
 
         for ($i = 0; $i < 7; $i++) {
@@ -296,6 +305,11 @@ class DailyKpiSnapshotController extends Controller
                 ->whereDate('inspection_date', $dateString)
                 ->count();
 
+            $sanctions = WorkerSanction::query()
+                ->where('project_id', $projectId)
+                ->where('sanction_date', $dateString)
+                ->count();
+
             // All values must be 0 if no data, never null or empty
             $autoFillValues[] = [
                 'entry_date' => $dateString,
@@ -305,6 +319,8 @@ class DailyKpiSnapshotController extends Controller
                     'heures_formation' => (float) ($trainingHours ?? 0) + $tbmHours,
                     'permis_travail' => (int) $workPermits,
                     'inspections' => (int) $inspections,
+                    'mesures_disciplinaires' => (int) $sanctions,
+                    'conformite_hse' => $regulatoryScore !== null ? (float) $regulatoryScore : null,
                 ],
             ];
         }
@@ -583,6 +599,14 @@ class DailyKpiSnapshotController extends Controller
         $startDate = $dates['start'];
         $endDate = $dates['end'];
 
+        $regulatoryScore = RegulatoryWatchSubmission::query()
+            ->where('project_id', $projectId)
+            ->where('week_year', $year)
+            ->where('week_number', $weekNumber)
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('id')
+            ->value('overall_score');
+
         $dailyValues = [];
 
         // Loop through each day of the week
@@ -621,6 +645,11 @@ class DailyKpiSnapshotController extends Controller
                 ->whereDate('commence_date', $dateString)
                 ->count();
 
+            $sanctions = WorkerSanction::query()
+                ->where('project_id', $projectId)
+                ->where('sanction_date', $dateString)
+                ->count();
+
             $dailyValues[] = [
                 'entry_date' => $dateString,
                 'day_name' => $currentDate->englishDayOfWeek,
@@ -630,6 +659,8 @@ class DailyKpiSnapshotController extends Controller
                     'heures_formation' => (float) $totalTrainingHours,  // Training hours
                     'permis_travail' => $workPermits,      // Work permits
                     'inspections' => (int) $inspections,    // Inspections
+                    'mesures_disciplinaires' => (int) $sanctions,
+                    'conformite_hse' => $regulatoryScore !== null ? (float) $regulatoryScore : null,
                 ],
             ];
         }

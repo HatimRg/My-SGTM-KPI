@@ -107,7 +107,7 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
 
         // KPI rows (18 indicators) with field keys for auto-fill
         // Fields that should show 0 when no data (auto-filled from system)
-        $autoFillFields = ['releve_ecarts', 'sensibilisation', 'heures_formation', 'permis_travail', 'inspections'];
+        $autoFillFields = ['releve_ecarts', 'sensibilisation', 'heures_formation', 'permis_travail', 'inspections', 'mesures_disciplinaires'];
         
         $kpiFields = [
             ['label' => 'Effectif', 'key' => 'effectif'],

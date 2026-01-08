@@ -54,27 +54,48 @@ class PpeController extends Controller
     {
         $user = $this->checkAccess($request);
 
-        $projectId = (int) $request->get('project_id');
-        if (!$projectId) {
-            return $this->error('project_id is required', 422);
-        }
+        $projectId = $request->get('project_id');
+        $projectId = $projectId !== null && $projectId !== '' ? (int) $projectId : null;
 
-        $project = Project::findOrFail($projectId);
-        if (!$user->canAccessProject($project)) {
-            return $this->error('Access denied', 403);
-        }
+        if ($projectId) {
+            $project = Project::findOrFail($projectId);
+            if (!$user->canAccessProject($project)) {
+                return $this->error('Access denied', 403);
+            }
 
-        $query = PpeItem::query()
-            ->leftJoin('ppe_project_stocks as pps', function ($join) use ($projectId) {
-                $join->on('pps.ppe_item_id', '=', 'ppe_items.id')
-                    ->where('pps.project_id', '=', $projectId);
-            })
-            ->select([
-                'ppe_items.*',
-                DB::raw('COALESCE(pps.stock_quantity, 0) as stock_quantity'),
-                DB::raw('COALESCE(pps.low_stock_threshold, 0) as low_stock_threshold'),
-            ])
-            ->orderBy('ppe_items.name');
+            $query = PpeItem::query()
+                ->leftJoin('ppe_project_stocks as pps', function ($join) use ($projectId) {
+                    $join->on('pps.ppe_item_id', '=', 'ppe_items.id')
+                        ->where('pps.project_id', '=', $projectId);
+                })
+                ->select([
+                    'ppe_items.*',
+                    DB::raw('COALESCE(pps.stock_quantity, 0) as stock_quantity'),
+                    DB::raw('COALESCE(pps.low_stock_threshold, 0) as low_stock_threshold'),
+                ])
+                ->orderBy('ppe_items.name');
+        } else {
+            // Global view across all projects the user can see
+            $visibleProjectIds = $this->normalizeProjectIds($user->visibleProjectIds());
+            if ($visibleProjectIds !== null && empty($visibleProjectIds)) {
+                return $this->success([]);
+            }
+
+            $query = PpeItem::query()
+                ->leftJoin('ppe_project_stocks as pps', function ($join) use ($visibleProjectIds) {
+                    $join->on('pps.ppe_item_id', '=', 'ppe_items.id');
+                    if ($visibleProjectIds !== null) {
+                        $join->whereIn('pps.project_id', array_map('intval', $visibleProjectIds));
+                    }
+                })
+                ->groupBy('ppe_items.id')
+                ->select([
+                    'ppe_items.*',
+                    DB::raw('COALESCE(SUM(pps.stock_quantity), 0) as stock_quantity'),
+                    DB::raw('COALESCE(SUM(pps.low_stock_threshold), 0) as low_stock_threshold'),
+                ])
+                ->orderBy('ppe_items.name');
+        }
 
         if ($request->filled('search')) {
             $search = $request->get('search');

@@ -16,6 +16,14 @@ export default function PpeManagement() {
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [selectedProjectId, setSelectedProjectId] = useState('')
 
+  const canSelectAllProjects =
+    user?.role === 'admin' ||
+    user?.role === 'dev' ||
+    user?.role === 'hse_manager' ||
+    user?.role === 'hse_director'
+  const isAllProjectsSelected = selectedProjectId === 'all'
+  const hasSpecificProjectSelected = Boolean(selectedProjectId) && !isAllProjectsSelected
+
   const [items, setItems] = useState([])
   const [loadingItems, setLoadingItems] = useState(true)
   const [search, setSearch] = useState('')
@@ -74,7 +82,7 @@ export default function PpeManagement() {
       }
 
       const res = await ppeService.getItems({
-        project_id: Number(selectedProjectId),
+        project_id: hasSpecificProjectSelected ? Number(selectedProjectId) : undefined,
         search: debouncedSearch ? debouncedSearch : undefined,
       })
       setItems(res.data?.data ?? [])
@@ -147,7 +155,7 @@ export default function PpeManagement() {
   }
 
   const openIssue = () => {
-    if (!selectedProjectId) {
+    if (!hasSpecificProjectSelected) {
       toast.error(t('ppe.projectRequired'))
       return
     }
@@ -174,7 +182,7 @@ export default function PpeManagement() {
       setWorkerSearching(true)
       const res = await workerService.getAll({
         search: query,
-        project_id: selectedProjectId ? Number(selectedProjectId) : undefined,
+        project_id: hasSpecificProjectSelected ? Number(selectedProjectId) : undefined,
         is_active: true,
         per_page: 10,
       })
@@ -269,6 +277,7 @@ export default function PpeManagement() {
               disabled={loadingProjects}
             >
               <option value="">{t('common.select')}</option>
+              {canSelectAllProjects && <option value="all">{t('common.allProjects')}</option>}
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.code ? `${p.code} - ${p.name}` : p.name}
@@ -284,7 +293,7 @@ export default function PpeManagement() {
               type="button"
               className="btn-outline btn-sm"
               onClick={() => {
-                if (!selectedProjectId) {
+                if (!hasSpecificProjectSelected) {
                   toast.error(t('ppe.projectRequired'))
                   return
                 }
@@ -383,7 +392,7 @@ export default function PpeManagement() {
           <form
             onSubmit={async (e) => {
               e.preventDefault()
-              if (!selectedProjectId) {
+              if (!hasSpecificProjectSelected) {
                 toast.error(t('ppe.projectRequired'))
                 return
               }

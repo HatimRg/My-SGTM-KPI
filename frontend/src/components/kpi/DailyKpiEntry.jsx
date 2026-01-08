@@ -194,6 +194,8 @@ export default function DailyKpiEntry({ projectId, weekNumber, year, onDataConfi
         heures_formation: getNextValue(day, autoValues, 'heures_formation'),
         permis_travail: getNextValue(day, autoValues, 'permis_travail'),
         inspections: getNextValue(day, autoValues, 'inspections'),
+        mesures_disciplinaires: getNextValue(day, autoValues, 'mesures_disciplinaires'),
+        conformite_hse: getNextValue(day, autoValues, 'conformite_hse'),
         // Apply work hours formula: effectif × 10
         heures_travaillees: (() => {
           const eff = Number(day.effectif)
