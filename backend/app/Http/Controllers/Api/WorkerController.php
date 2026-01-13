@@ -88,6 +88,7 @@ class WorkerController extends Controller
             'is_active' => $request->has('is_active') && $request->get('is_active') !== ''
                 ? filter_var($request->get('is_active'), FILTER_VALIDATE_BOOLEAN)
                 : null,
+            'sanction' => $request->get('sanction'),
             // New advanced filters
             'training_type' => $request->get('training_type'),
             'training_label' => $request->get('training_label'),
@@ -387,6 +388,7 @@ class WorkerController extends Controller
             'is_active' => ($request->has('is_active') && $request->get('is_active') !== '')
                 ? filter_var($request->get('is_active'), FILTER_VALIDATE_BOOLEAN)
                 : null,
+            'sanction' => $request->get('sanction'),
             // New advanced filters
             'training_type' => $request->get('training_type'),
             'training_label' => $request->get('training_label'),
@@ -564,6 +566,7 @@ class WorkerController extends Controller
             'is_active' => $request->has('is_active') && $request->get('is_active') !== ''
                 ? filter_var($request->get('is_active'), FILTER_VALIDATE_BOOLEAN)
                 : null,
+            'sanction' => $request->get('sanction'),
             'training_type' => $request->get('training_type'),
             'training_label' => $request->get('training_label'),
             'training_presence' => $request->get('training_presence'),

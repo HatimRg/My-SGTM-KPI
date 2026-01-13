@@ -44,10 +44,10 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
             $name = trim((string) $name);
             $role = $this->normalizeRole($role);
 
-            if ($role === User::ROLE_POLE_DIRECTOR) {
+            if ($role === User::ROLE_POLE_DIRECTOR || $role === User::ROLE_REGIONAL_HSE_MANAGER) {
                 $pole = $pole !== null ? trim((string) $pole) : null;
                 if ($pole === null || $pole === '') {
-                    $this->rowErrors[] = ['email' => $email, 'error' => 'POLE required for Directeur de pôle'];
+                    $this->rowErrors[] = ['email' => $email, 'error' => 'POLE required for Directeur de pôle / Regional HSE Manager'];
                     return null;
                 }
             } else {
@@ -60,7 +60,7 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
             }
             $this->seenEmails[$email] = true;
 
-            $allowedRoles = ['admin', 'hse_manager', 'responsable', 'supervisor', 'hr', 'user', 'dev', 'pole_director', 'works_director', 'hse_director', 'hr_director'];
+            $allowedRoles = ['admin', 'hse_manager', 'regional_hse_manager', 'responsable', 'supervisor', 'hr', 'user', 'dev', 'pole_director', 'works_director', 'hse_director', 'hr_director'];
             if (!in_array($role, $allowedRoles, true)) {
                 $this->rowErrors[] = ['email' => $email, 'error' => 'Invalid role'];
                 return null;
@@ -84,7 +84,7 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
 
             $projectCodesRaw = $this->getColumnValue($row, ['project_codes', 'projects', 'projets', 'project_codes ']);
             $projectIds = [];
-            if ($projectCodesRaw && $role !== User::ROLE_POLE_DIRECTOR) {
+            if ($projectCodesRaw && !in_array($role, [User::ROLE_POLE_DIRECTOR, User::ROLE_REGIONAL_HSE_MANAGER], true)) {
                 $codes = array_filter(array_map('trim', preg_split('/[,;]+/', (string) $projectCodesRaw)));
                 if (!empty($codes)) {
                     $projects = Project::whereIn('code', $codes)->pluck('id', 'code');
@@ -114,7 +114,7 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
                 }
                 $existing->update($data);
 
-                if ($role === User::ROLE_POLE_DIRECTOR) {
+                if (in_array($role, [User::ROLE_POLE_DIRECTOR, User::ROLE_REGIONAL_HSE_MANAGER], true)) {
                     $existing->projects()->detach();
                 } elseif (!empty($projectIds)) {
                     $existing->projects()->syncWithoutDetaching($projectIds);
@@ -192,7 +192,7 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
         $raw = trim((string) $value);
         $rawLower = strtolower($raw);
 
-        $allowedRoles = ['admin', 'hse_manager', 'responsable', 'supervisor', 'hr', 'user', 'dev', 'pole_director', 'works_director', 'hse_director', 'hr_director'];
+        $allowedRoles = ['admin', 'hse_manager', 'regional_hse_manager', 'responsable', 'supervisor', 'hr', 'user', 'dev', 'pole_director', 'works_director', 'hse_director', 'hr_director'];
         if (in_array($rawLower, $allowedRoles, true)) {
             return $rawLower;
         }
@@ -201,6 +201,7 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
         $map = [
             'administrateur' => 'admin',
             'manager hse' => 'hse_manager',
+            'regional hse manager' => 'regional_hse_manager',
             'responsable hse' => 'responsable',
             'superviseur hse' => 'supervisor',
             'animateur hse' => 'user',

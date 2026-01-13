@@ -118,6 +118,15 @@ export const trainingService = {
 export const workerTrainingService = {
   getAll: (params) => api.get('/worker-trainings', { params }),
   getOtherLabels: (params) => api.get('/worker-trainings/other-labels', { params }),
+  downloadMassTemplate: () => api.get('/worker-trainings/mass/template', { responseType: 'blob' }),
+  massImport: ({ excel, zip }) => {
+    const formData = new FormData()
+    if (excel) formData.append('excel', excel)
+    if (zip) formData.append('zip', zip)
+    return api.post('/worker-trainings/mass/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
   getById: (id) => api.get(`/worker-trainings/${id}`),
   create: (data) => {
     const formData = new FormData()
@@ -663,6 +672,15 @@ export const dailyKpiService = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   bulkSave: (data) => api.post('/daily-kpi/bulk-save', data),
+}
+
+export const dailyEffectifService = {
+  upsert: (data) => api.post('/daily-effectif', data),
+  entry: (params) => api.get('/daily-effectif/entry', { params }),
+  list: (params) => api.get('/daily-effectif/list', { params }),
+  series: (params) => api.get('/daily-effectif/series', { params }),
+  history: (params) => api.get('/daily-effectif/history', { params }),
+  byProject: (params) => api.get('/daily-effectif/by-project', { params }),
 }
 
 export const inspectionService = {

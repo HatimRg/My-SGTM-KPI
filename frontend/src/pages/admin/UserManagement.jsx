@@ -94,13 +94,15 @@ export default function UserManagement() {
       ? data.project_ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
       : []
 
+    const isPoleScopedRole = data.role === 'pole_director' || data.role === 'regional_hse_manager'
+
     const payload = {
       ...data,
       name: (data.name ?? '').trim(),
       email: (data.email ?? '').trim(),
       phone: (data.phone ?? '').trim() || null,
-      pole: data.role === 'pole_director' ? ((data.pole ?? '').trim() || null) : null,
-      project_ids: data.role === 'pole_director' ? [] : normalizedProjectIds,
+      pole: isPoleScopedRole ? ((data.pole ?? '').trim() || null) : null,
+      project_ids: isPoleScopedRole ? [] : normalizedProjectIds,
     }
 
     if (isEdit && !payload.password) {
@@ -232,7 +234,7 @@ export default function UserManagement() {
         role: user.role,
         pole: user.pole ?? '',
         phone: user.phone ?? '',
-        project_ids: user.role === 'pole_director' ? [] : (user.projects?.map(p => p.id) ?? [])
+        project_ids: (user.role === 'pole_director' || user.role === 'regional_hse_manager') ? [] : (user.projects?.map(p => p.id) ?? [])
       })
     } else {
       setEditingUser(null)
@@ -479,6 +481,7 @@ export default function UserManagement() {
               <option value="hse_director">{t('users.roles.hse_director')}</option>
               <option value="hr_director">{t('users.roles.hr_director')}</option>
               <option value="hse_manager">{t('users.roles.hse_manager')}</option>
+              <option value="regional_hse_manager">{t('users.roles.regional_hse_manager')}</option>
               <option value="responsable">{t('users.roles.responsable')}</option>
               <option value="supervisor">{t('users.roles.supervisor')}</option>
               <option value="user">{t('users.roles.user')}</option>
@@ -736,16 +739,18 @@ export default function UserManagement() {
                 value={formData.role}
                 onChange={(e) => {
                   const nextRole = e.target.value
+                  const nextRoleIsPoleScoped = nextRole === 'pole_director' || nextRole === 'regional_hse_manager'
                   setFormData((prev) => ({
                     ...prev,
                     role: nextRole,
-                    pole: nextRole === 'pole_director' ? prev.pole : '',
-                    project_ids: nextRole === 'pole_director' ? [] : prev.project_ids,
+                    pole: nextRoleIsPoleScoped ? prev.pole : '',
+                    project_ids: nextRoleIsPoleScoped ? [] : prev.project_ids,
                   }))
                 }}
               >
                 <>
                   <option value="hse_manager">{t('users.roles.hse_manager')}</option>
+                  <option value="regional_hse_manager">{t('users.roles.regional_hse_manager')}</option>
                   <option value="responsable">{t('users.roles.responsable')}</option>
                   <option value="supervisor">{t('users.roles.supervisor')}</option>
                   <option value="user">{t('users.roles.user')}</option>
@@ -769,7 +774,7 @@ export default function UserManagement() {
             </div>
           </div>
 
-          {formData.role === 'pole_director' && (
+          {(formData.role === 'pole_director' || formData.role === 'regional_hse_manager') && (
             <div>
               <label className="label">{t('users.form.pole')}</label>
               <Select
@@ -787,7 +792,7 @@ export default function UserManagement() {
             </div>
           )}
 
-          {formData.role !== 'pole_director' && (
+          {formData.role !== 'pole_director' && formData.role !== 'regional_hse_manager' && (
             <div>
               <label className="label">{t('users.form.assignProjects')}</label>
               <div className="max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg p-2 space-y-1 bg-white dark:bg-gray-700">

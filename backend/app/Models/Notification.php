@@ -46,6 +46,9 @@ class Notification extends Model
 
     const TYPE_PPE_LOW_STOCK = 'ppe_low_stock';
 
+    const TYPE_EFFECTIF_MISSING = 'effectif_missing';
+    const TYPE_DAILY_EFFECTIF_MISSING = 'daily_effectif_missing';
+
     // Relationships
     public function user()
     {

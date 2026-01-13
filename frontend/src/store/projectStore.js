@@ -9,6 +9,7 @@ export const useProjectStore = create((set, get) => ({
   hasLoaded: false,
   error: null,
   lastScope: null,
+  lastUserKey: null,
 
   // Fetch and cache projects list. By default, loads up to 100 projects.
   fetchProjects: async (params, options = {}) => {
@@ -19,10 +20,17 @@ export const useProjectStore = create((set, get) => ({
     const scope = isDev ? useDevStore.getState?.()?.projectScope : null
     const normalizedScope = isDev && scope === DEV_PROJECT_SCOPE.ASSIGNED ? DEV_PROJECT_SCOPE.ASSIGNED : DEV_PROJECT_SCOPE.ALL
 
-    const { lastScope } = get()
+    const currentUserKey = authUser ? `${authUser.id ?? 'na'}:${authUser.role ?? 'na'}:${isDev ? normalizedScope : ''}` : null
+    const { lastUserKey, lastScope } = get()
+
+    const userChanged = lastUserKey !== currentUserKey
+    if (userChanged) {
+      set({ projects: [], hasLoaded: false, error: null, lastScope: null, lastUserKey: currentUserKey })
+    }
+
     const scopeChanged = isDev && lastScope && lastScope !== normalizedScope
 
-    if (!options.force && !scopeChanged && hasLoaded && projects.length > 0) {
+    if (!options.force && !userChanged && !scopeChanged && hasLoaded && projects.length > 0) {
       return projects
     }
     if (isLoading) {

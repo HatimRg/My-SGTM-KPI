@@ -145,6 +145,7 @@ class Worker extends Model
      * - training_type, training_label, training_presence (has|missing), training_expiry (any|valid|expired)
      * - qualification_type, qualification_presence (has|missing), qualification_expiry (any|valid|expired)
      * - medical_presence (has|missing), medical_status (apte|inapte|any), medical_expiry (any|valid|expired)
+     * - sanction (any|none|<sanction_type>)
      * - expired_filter (any|only_expired|without_expired): checks expiry across trainings/qualifications/medical.
      */
     public function scopeApplyFilters($query, array $filters)
@@ -185,6 +186,20 @@ class Worker extends Model
 
         if (array_key_exists('is_active', $filters) && $filters['is_active'] !== null) {
             $query->where('is_active', (bool) $filters['is_active']);
+        }
+
+        // Sanctions filter
+        if (!empty($filters['sanction'])) {
+            $sanction = (string) $filters['sanction'];
+            if ($sanction === 'none') {
+                $query->whereDoesntHave('sanctions');
+            } elseif ($sanction === 'any') {
+                $query->whereHas('sanctions');
+            } else {
+                $query->whereHas('sanctions', function ($q) use ($sanction) {
+                    $q->where('sanction_type', $sanction);
+                });
+            }
         }
 
         // Trainings filter (by training_type and optional label)

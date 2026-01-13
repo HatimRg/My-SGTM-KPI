@@ -20,6 +20,7 @@ export default function PpeManagement() {
     user?.role === 'admin' ||
     user?.role === 'dev' ||
     user?.role === 'hse_manager' ||
+    user?.role === 'regional_hse_manager' ||
     user?.role === 'hse_director'
   const isAllProjectsSelected = selectedProjectId === 'all'
   const hasSpecificProjectSelected = Boolean(selectedProjectId) && !isAllProjectsSelected

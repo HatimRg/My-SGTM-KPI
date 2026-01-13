@@ -63,7 +63,7 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => PasswordPolicy::rulesForRole($role, true, true),
-            'role' => 'required|in:admin,hse_manager,responsable,supervisor,hr,user,dev,pole_director,works_director,hse_director,hr_director',
+            'role' => 'required|in:admin,hse_manager,regional_hse_manager,responsable,supervisor,hr,user,dev,pole_director,works_director,hse_director,hr_director',
             'phone' => 'nullable|string|max:20',
         ]);
 

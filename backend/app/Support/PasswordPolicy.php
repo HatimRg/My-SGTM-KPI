@@ -10,6 +10,7 @@ class PasswordPolicy
         return in_array($r, [
             'admin',
             'hse_manager',
+            'regional_hse_manager',
             'dev',
             'pole_director',
             'works_director',

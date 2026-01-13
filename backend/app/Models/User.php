@@ -58,6 +58,7 @@ class User extends Authenticatable
     // Role constants
     const ROLE_ADMIN = 'admin';
     const ROLE_HSE_MANAGER = 'hse_manager';
+    const ROLE_REGIONAL_HSE_MANAGER = 'regional_hse_manager';
     const ROLE_RESPONSABLE = 'responsable';
     const ROLE_USER = 'user';
     const ROLE_SUPERVISOR = 'supervisor';
@@ -84,6 +85,7 @@ class User extends Authenticatable
     // Roles that can access workers management
     const WORKERS_ACCESS_ROLES = [
         self::ROLE_HSE_MANAGER,
+        self::ROLE_REGIONAL_HSE_MANAGER,
         self::ROLE_RESPONSABLE,
         self::ROLE_SUPERVISOR,
         self::ROLE_USER,
@@ -175,7 +177,12 @@ class User extends Authenticatable
 
     public function isHseManager(): bool
     {
-        return $this->role === self::ROLE_HSE_MANAGER;
+        return in_array($this->role, [self::ROLE_HSE_MANAGER, self::ROLE_REGIONAL_HSE_MANAGER], true);
+    }
+
+    public function isRegionalHseManager(): bool
+    {
+        return $this->role === self::ROLE_REGIONAL_HSE_MANAGER;
     }
 
     public function isResponsable(): bool
@@ -219,7 +226,7 @@ class User extends Authenticatable
      */
     public function canAccessWorkPermits(): bool
     {
-        return $this->isAdminLike() || $this->isHseManager() || $this->isResponsable() || $this->isSupervisor();
+        return $this->isAdminLike() || $this->isHseManager() || $this->isRegionalHseManager() || $this->isResponsable() || $this->isSupervisor();
     }
 
     // Relationships
@@ -273,7 +280,7 @@ class User extends Authenticatable
 
     public function scopeHseManagers($query)
     {
-        return $query->where('role', self::ROLE_HSE_MANAGER);
+        return $query->whereIn('role', [self::ROLE_HSE_MANAGER, self::ROLE_REGIONAL_HSE_MANAGER]);
     }
 
     public function scopeHseOfficers($query)

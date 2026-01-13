@@ -117,6 +117,11 @@ export default function Workers() {
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
 
+  const massTrainingsExcelRef = useRef(null)
+  const massTrainingsZipRef = useRef(null)
+
+  const isHrReadOnly = user?.role === 'hr' || user?.role === 'hr_director'
+
   const canCreateSanctions = ['hse_manager', 'responsable', 'supervisor', 'user'].includes(user?.role)
   const canDeleteSanctions = user?.role === 'hse_manager'
   const fetchWorkersRequestId = useRef(0)
@@ -272,6 +277,10 @@ export default function Workers() {
   const filtersButtonRef = useRef(null)
   const filtersMenuRef = useRef(null)
 
+  const [addWorkerMenuOpen, setAddWorkerMenuOpen] = useState(false)
+  const addWorkerMenuButtonRef = useRef(null)
+  const addWorkerMenuRef = useRef(null)
+
   const [selectedTrainingType, setSelectedTrainingType] = useState('')
   const [selectedTrainingPresence, setSelectedTrainingPresence] = useState('has')
   const [selectedQualificationType, setSelectedQualificationType] = useState('')
@@ -279,6 +288,8 @@ export default function Workers() {
   const [selectedMedicalPresence, setSelectedMedicalPresence] = useState('')
   const [selectedMedicalStatus, setSelectedMedicalStatus] = useState('')
   const [expiredFilter, setExpiredFilter] = useState('')
+
+  const [selectedSanctionFilter, setSelectedSanctionFilter] = useState('')
 
   const [poles, setPoles] = useState([])
 
@@ -300,10 +311,16 @@ export default function Workers() {
   // Modals
   const [showModal, setShowModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [showMassDocsModal, setShowMassDocsModal] = useState(false)
+  const [massDocsCategory, setMassDocsCategory] = useState('trainings')
   const [editingWorker, setEditingWorker] = useState(null)
   const [saving, setSaving] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importFile, setImportFile] = useState(null)
+  const [massTrainingsExcel, setMassTrainingsExcel] = useState(null)
+  const [massTrainingsZip, setMassTrainingsZip] = useState(null)
+  const [massTrainingsImporting, setMassTrainingsImporting] = useState(false)
+  const [massTrainingsResult, setMassTrainingsResult] = useState(null)
   const [confirmWorker, setConfirmWorker] = useState(null)
   const [showBulkConfirm, setShowBulkConfirm] = useState(false)
 
@@ -365,6 +382,7 @@ export default function Workers() {
     selectedMedicalPresence,
     selectedMedicalStatus,
     expiredFilter,
+    selectedSanctionFilter,
   ])
 
   useEffect(() => {
@@ -382,6 +400,7 @@ export default function Workers() {
     selectedMedicalPresence,
     selectedMedicalStatus,
     expiredFilter,
+    selectedSanctionFilter,
   ])
 
   // Close the filter dropdown on outside click / ESC.
@@ -409,6 +428,32 @@ export default function Workers() {
       document.removeEventListener('mousedown', onMouseDown)
     }
   }, [filtersOpen])
+
+  // Close the add-worker dropdown on outside click / ESC.
+  useEffect(() => {
+    if (!addWorkerMenuOpen) return
+
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setAddWorkerMenuOpen(false)
+    }
+
+    const onMouseDown = (e) => {
+      const btn = addWorkerMenuButtonRef.current
+      const menu = addWorkerMenuRef.current
+      const target = e.target
+
+      if (btn && btn.contains(target)) return
+      if (menu && menu.contains(target)) return
+      setAddWorkerMenuOpen(false)
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('mousedown', onMouseDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('mousedown', onMouseDown)
+    }
+  }, [addWorkerMenuOpen])
 
   useEffect(() => {
     const fetchPoles = async () => {
@@ -469,6 +514,7 @@ export default function Workers() {
         project_id: selectedProject ? selectedProject : undefined,
         entreprise: selectedEntreprise ? selectedEntreprise : undefined,
         fonction: selectedFonction ? selectedFonction : undefined,
+        sanction: selectedSanctionFilter ? selectedSanctionFilter : undefined,
         training_type: selectedTrainingType ? selectedTrainingType : undefined,
         training_presence: selectedTrainingType ? selectedTrainingPresence : undefined,
         qualification_type: selectedQualificationType ? selectedQualificationType : undefined,
@@ -512,6 +558,7 @@ export default function Workers() {
         project_id: selectedProject ? selectedProject : undefined,
         entreprise: selectedEntreprise ? selectedEntreprise : undefined,
         fonction: selectedFonction ? selectedFonction : undefined,
+        sanction: selectedSanctionFilter ? selectedSanctionFilter : undefined,
         training_type: selectedTrainingType ? selectedTrainingType : undefined,
         training_presence: selectedTrainingType ? selectedTrainingPresence : undefined,
         qualification_type: selectedQualificationType ? selectedQualificationType : undefined,
@@ -561,10 +608,13 @@ export default function Workers() {
     }
   }
 
-  // Count HSE team members (function contains 'HSE')
-  const hseTeamCount = statistics?.hse_team ?? workers.filter(w => 
-    w.fonction?.toLowerCase().includes('hse')
-  ).length
+  // Count HSE team members (function contains keywords)
+  const hseTeamCount = statistics?.hse_team ?? workers.filter((w) => {
+    const fonction = String(w?.fonction ?? '').toLowerCase()
+    if (!fonction) return false
+    const keywords = ['animateur', 'animatrice', 'hse', 'coordinateur', 'coordinatrice']
+    return keywords.some((k) => fonction.includes(k))
+  }).length
 
   const inductionHseCount = statistics?.induction_hse ?? 0
   const workAtHeightCount = statistics?.travail_en_hauteur ?? 0
@@ -697,6 +747,56 @@ export default function Workers() {
     }
   }
 
+  const handleDownloadMassTrainingsTemplate = async () => {
+    try {
+      const res = await workerTrainingService.downloadMassTemplate()
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', 'worker_trainings_mass_template.xlsx')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (error) {
+      toast.error(error.response?.data?.message ?? t('errors.somethingWentWrong'))
+    }
+  }
+
+  const closeMassDocsModal = () => {
+    setShowMassDocsModal(false)
+    setMassDocsCategory('trainings')
+    setMassTrainingsExcel(null)
+    setMassTrainingsZip(null)
+    setMassTrainingsResult(null)
+    setMassTrainingsImporting(false)
+    if (massTrainingsExcelRef.current) massTrainingsExcelRef.current.value = ''
+    if (massTrainingsZipRef.current) massTrainingsZipRef.current.value = ''
+  }
+
+  const handleMassTrainingsImport = async () => {
+    if (!massTrainingsExcel || !massTrainingsZip) return
+
+    setMassTrainingsImporting(true)
+    setMassTrainingsResult(null)
+    try {
+      const res = await workerTrainingService.massImport({ excel: massTrainingsExcel, zip: massTrainingsZip })
+      const result = res.data?.data ?? res.data
+      setMassTrainingsResult(result)
+
+      const imported = result?.imported ?? 0
+      const failed = result?.failed_count ?? 0
+      toast.success(t('workers.massDocs.trainings.importSuccess', { imported, failed }))
+
+      if (result?.failed_rows_url) {
+        await downloadFromUrl(result.failed_rows_url, 'worker_trainings_failed_rows.xlsx')
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message ?? t('errors.somethingWentWrong'))
+    } finally {
+      setMassTrainingsImporting(false)
+    }
+  }
+
   const handleExport = async () => {
     try {
       const searchValue = debouncedSearchTerm
@@ -708,6 +808,7 @@ export default function Workers() {
         project_id: selectedProject ? selectedProject : undefined,
         entreprise: selectedEntreprise ? selectedEntreprise : undefined,
         fonction: selectedFonction ? selectedFonction : undefined,
+        sanction: selectedSanctionFilter ? selectedSanctionFilter : undefined,
         training_type: selectedTrainingType ? selectedTrainingType : undefined,
         training_presence: selectedTrainingType ? selectedTrainingPresence : undefined,
         qualification_type: selectedQualificationType ? selectedQualificationType : undefined,
@@ -739,6 +840,7 @@ export default function Workers() {
       if (selectedQualificationType) filters.push(`qualification:${selectedQualificationType}-${selectedQualificationPresence}`)
       if (selectedMedicalPresence) filters.push(`medical:${selectedMedicalPresence}${selectedMedicalStatus ? `-${selectedMedicalStatus}` : ''}`)
       if (expiredFilter) filters.push(`expired:${expiredFilter}`)
+      if (selectedSanctionFilter) filters.push(`sanction:${selectedSanctionFilter}`)
 
       const filterPart = (filters.length ? filters.join(', ') : 'active')
       const now = new Date()
@@ -1135,15 +1237,17 @@ export default function Workers() {
     setDetailsWorker(worker)
     setDetailsOpen(true)
     setDetailsTab('trainings')
-    await Promise.all([
-      fetchDetailsTrainings(worker.id),
-      fetchDetailsQualifications(worker.id),
-      fetchDetailsMedicalAptitudes(worker.id),
-      fetchDetailsPpeIssues(worker.id),
-      fetchDetailsSanctions(worker.id),
-      fetchPpeProjectItems(worker.project_id ?? worker.project?.id),
-      fetchWorkerImage(worker.id),
-    ])
+    await Promise.all(
+      [
+        fetchDetailsTrainings(worker.id),
+        fetchDetailsQualifications(worker.id),
+        fetchDetailsMedicalAptitudes(worker.id),
+        !isHrReadOnly ? fetchDetailsPpeIssues(worker.id) : null,
+        fetchDetailsSanctions(worker.id),
+        !isHrReadOnly ? fetchPpeProjectItems(worker.project_id ?? worker.project?.id) : null,
+        fetchWorkerImage(worker.id),
+      ].filter(Boolean),
+    )
   }
 
   const closeWorkerDetails = () => {
@@ -1471,22 +1575,66 @@ export default function Workers() {
           <p className="text-gray-600 dark:text-gray-400">{t('workers.subtitle')}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button onClick={handleDownloadTemplate} className="btn-outline btn-sm flex items-center gap-2">
-            <FileSpreadsheet className="w-4 h-4" />
-            {t('workers.downloadTemplate')}
-          </button>
-          <button onClick={() => setShowImportModal(true)} className="btn-outline btn-sm flex items-center gap-2">
-            <Upload className="w-4 h-4" />
-            {t('workers.import')}
-          </button>
           <button onClick={handleExport} className="btn-outline btn-sm flex items-center gap-2">
             <Download className="w-4 h-4" />
             {t('workers.export')}
           </button>
-          <button onClick={() => handleOpenModal()} className="btn-primary btn-sm flex items-center gap-2">
-            <UserPlus className="w-4 h-4" />
-            {t('workers.addWorker')}
-          </button>
+          <div className="relative">
+            <button
+              ref={addWorkerMenuButtonRef}
+              type="button"
+              onClick={() => setAddWorkerMenuOpen((v) => !v)}
+              className="btn-primary btn-sm flex items-center gap-2"
+            >
+              <UserPlus className="w-4 h-4" />
+              {t('workers.addWorker')}
+              <ChevronDown className="w-4 h-4" />
+            </button>
+
+            {addWorkerMenuOpen && (
+              <div
+                ref={addWorkerMenuRef}
+                role="menu"
+                className="absolute right-0 mt-2 w-56 z-[70] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg overflow-hidden"
+              >
+                <button
+                  type="button"
+                  className="w-full px-3 py-2 text-sm text-left hover:bg-gray-50 dark:hover:bg-gray-800"
+                  onClick={() => {
+                    setAddWorkerMenuOpen(false)
+                    handleOpenModal()
+                  }}
+                >
+                  {t('workers.addOneWorker')}
+                </button>
+
+                <button
+                  type="button"
+                  className="w-full px-3 py-2 text-sm text-left hover:bg-gray-50 dark:hover:bg-gray-800"
+                  onClick={() => {
+                    setAddWorkerMenuOpen(false)
+                    setShowImportModal(true)
+                  }}
+                >
+                  {t('workers.massAdd')}
+                </button>
+
+                {!isHrReadOnly && (
+                  <button
+                    type="button"
+                    className="w-full px-3 py-2 text-sm text-left hover:bg-gray-50 dark:hover:bg-gray-800"
+                    onClick={() => {
+                      setAddWorkerMenuOpen(false)
+                      setMassDocsCategory('trainings')
+                      setShowMassDocsModal(true)
+                    }}
+                  >
+                    {t('workers.massDocs.open')}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1779,6 +1927,26 @@ export default function Workers() {
                       <option value="without_expired">{t('workers.filters.expiredWithout')}</option>
                     </Select>
                   </div>
+
+                  <div>
+                    <label className="label text-xs">{t('workers.filters.sanctions')}</label>
+                    <Select
+                      value={selectedSanctionFilter}
+                      onChange={(e) => {
+                        setSelectedSanctionFilter(e.target.value)
+                        setCurrentPage(1)
+                      }}
+                      className="py-1.5 text-sm"
+                    >
+                      <option value="">{t('common.all')}</option>
+                      <option value="any">{t('workers.filters.sanctionsAny')}</option>
+                      <option value="none">{t('workers.filters.sanctionsNone')}</option>
+                      <option value="mise_a_pied">{t('workers.details.sanctions.types.mise_a_pied')}</option>
+                      <option value="avertissement">{t('workers.details.sanctions.types.avertissement')}</option>
+                      <option value="rappel_a_lordre">{t('workers.details.sanctions.types.rappel_a_lordre')}</option>
+                      <option value="blame">{t('workers.details.sanctions.types.blame')}</option>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-end gap-2 mt-3 border-t border-gray-200 dark:border-gray-700 pt-3">
@@ -1796,6 +1964,7 @@ export default function Workers() {
                       setSelectedMedicalPresence('')
                       setSelectedMedicalStatus('')
                       setExpiredFilter('')
+                      setSelectedSanctionFilter('')
                       setCurrentPage(1)
                     }}
                     className="btn-outline btn-sm"
@@ -2220,18 +2389,20 @@ export default function Workers() {
                     {t('workers.details.tabs.medical')}
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setDetailsTab('ppe')}
-                    className={`px-3 py-2 text-sm border rounded-t-lg flex items-center gap-2 ${
-                      detailsTab === 'ppe'
-                        ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 border-b-white dark:border-b-gray-900 text-hse-primary'
-                        : 'border-transparent text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
-                    }`}
-                  >
-                    <Shield className="w-4 h-4" />
-                    {t('ppe.workerTab.title')}
-                  </button>
+                  {!isHrReadOnly && (
+                    <button
+                      type="button"
+                      onClick={() => setDetailsTab('ppe')}
+                      className={`px-3 py-2 text-sm border rounded-t-lg flex items-center gap-2 ${
+                        detailsTab === 'ppe'
+                          ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 border-b-white dark:border-b-gray-900 text-hse-primary'
+                          : 'border-transparent text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                      }`}
+                    >
+                      <Shield className="w-4 h-4" />
+                      {t('ppe.workerTab.title')}
+                    </button>
+                  )}
 
                   <button
                     type="button"
@@ -2252,10 +2423,12 @@ export default function Workers() {
                 {detailsTab === 'trainings' && (
                   <div className="space-y-3">
                     <div className="flex justify-end">
-                      <button type="button" className="btn-primary flex items-center gap-2" onClick={() => openTrainingModal(null)}>
-                        <PlusCircle className="w-4 h-4" />
-                        {t('common.add')}
-                      </button>
+                      {!isHrReadOnly && (
+                        <button type="button" className="btn-primary flex items-center gap-2" onClick={() => openTrainingModal(null)}>
+                          <PlusCircle className="w-4 h-4" />
+                          {t('common.add')}
+                        </button>
+                      )}
                     </div>
 
                     {loadingWorkerTrainings ? (
@@ -2313,14 +2486,18 @@ export default function Workers() {
                                         {t('common.download')}
                                       </button>
                                     )}
-                                    <button type="button" className="btn-outline btn-sm flex items-center gap-2" onClick={() => openTrainingModal(tr)}>
-                                      <Pencil className="w-4 h-4" />
-                                      {t('common.edit')}
-                                    </button>
-                                    <button type="button" className="btn-danger btn-sm flex items-center gap-2" onClick={() => removeWorkerTraining(tr)}>
-                                      <Trash2 className="w-4 h-4" />
-                                      {t('common.delete')}
-                                    </button>
+                                    {!isHrReadOnly && (
+                                      <button type="button" className="btn-outline btn-sm flex items-center gap-2" onClick={() => openTrainingModal(tr)}>
+                                        <Pencil className="w-4 h-4" />
+                                        {t('common.edit')}
+                                      </button>
+                                    )}
+                                    {!isHrReadOnly && (
+                                      <button type="button" className="btn-danger btn-sm flex items-center gap-2" onClick={() => removeWorkerTraining(tr)}>
+                                        <Trash2 className="w-4 h-4" />
+                                        {t('common.delete')}
+                                      </button>
+                                    )}
                                   </div>
                                 </td>
                               </tr>
@@ -2335,10 +2512,12 @@ export default function Workers() {
                 {detailsTab === 'qualifications' && (
                   <div className="space-y-3">
                     <div className="flex justify-end">
-                      <button type="button" className="btn-primary flex items-center gap-2" onClick={() => openQualificationModal(null)}>
-                        <PlusCircle className="w-4 h-4" />
-                        {t('common.add')}
-                      </button>
+                      {!isHrReadOnly && (
+                        <button type="button" className="btn-primary flex items-center gap-2" onClick={() => openQualificationModal(null)}>
+                          <PlusCircle className="w-4 h-4" />
+                          {t('common.add')}
+                        </button>
+                      )}
                     </div>
 
                     {loadingWorkerQualifications ? (
@@ -2403,14 +2582,18 @@ export default function Workers() {
                                         {t('common.download')}
                                       </button>
                                     )}
-                                    <button type="button" className="btn-outline btn-sm flex items-center gap-2" onClick={() => openQualificationModal(q)}>
-                                      <Pencil className="w-4 h-4" />
-                                      {t('common.edit')}
-                                    </button>
-                                    <button type="button" className="btn-danger btn-sm flex items-center gap-2" onClick={() => removeWorkerQualification(q)}>
-                                      <Trash2 className="w-4 h-4" />
-                                      {t('common.delete')}
-                                    </button>
+                                    {!isHrReadOnly && (
+                                      <button type="button" className="btn-outline btn-sm flex items-center gap-2" onClick={() => openQualificationModal(q)}>
+                                        <Pencil className="w-4 h-4" />
+                                        {t('common.edit')}
+                                      </button>
+                                    )}
+                                    {!isHrReadOnly && (
+                                      <button type="button" className="btn-danger btn-sm flex items-center gap-2" onClick={() => removeWorkerQualification(q)}>
+                                        <Trash2 className="w-4 h-4" />
+                                        {t('common.delete')}
+                                      </button>
+                                    )}
                                   </div>
                                 </td>
                               </tr>
@@ -2425,10 +2608,12 @@ export default function Workers() {
                 {detailsTab === 'medical' && (
                   <div className="space-y-3">
                     <div className="flex justify-end">
-                      <button type="button" className="btn-primary flex items-center gap-2" onClick={() => openMedicalModal(null)}>
-                        <PlusCircle className="w-4 h-4" />
-                        {t('common.add')}
-                      </button>
+                      {!isHrReadOnly && (
+                        <button type="button" className="btn-primary flex items-center gap-2" onClick={() => openMedicalModal(null)}>
+                          <PlusCircle className="w-4 h-4" />
+                          {t('common.add')}
+                        </button>
+                      )}
                     </div>
 
                     {loadingWorkerMedicalAptitudes ? (
@@ -2498,14 +2683,18 @@ export default function Workers() {
                                         {t('common.download')}
                                       </button>
                                     )}
-                                    <button type="button" className="btn-outline btn-sm flex items-center gap-2" onClick={() => openMedicalModal(m)}>
-                                      <Pencil className="w-4 h-4" />
-                                      {t('common.edit')}
-                                    </button>
-                                    <button type="button" className="btn-danger btn-sm flex items-center gap-2" onClick={() => removeWorkerMedical(m)}>
-                                      <Trash2 className="w-4 h-4" />
-                                      {t('common.delete')}
-                                    </button>
+                                    {!isHrReadOnly && (
+                                      <button type="button" className="btn-outline btn-sm flex items-center gap-2" onClick={() => openMedicalModal(m)}>
+                                        <Pencil className="w-4 h-4" />
+                                        {t('common.edit')}
+                                      </button>
+                                    )}
+                                    {!isHrReadOnly && (
+                                      <button type="button" className="btn-danger btn-sm flex items-center gap-2" onClick={() => removeWorkerMedical(m)}>
+                                        <Trash2 className="w-4 h-4" />
+                                        {t('common.delete')}
+                                      </button>
+                                    )}
                                   </div>
                                 </td>
                               </tr>
@@ -2517,7 +2706,7 @@ export default function Workers() {
                   </div>
                 )}
 
-                {detailsTab === 'ppe' && (
+                {!isHrReadOnly && detailsTab === 'ppe' && (
                   <div className="space-y-3">
                     <div className="flex justify-end">
                       <button
@@ -3363,6 +3552,147 @@ export default function Workers() {
           </div>
         </Modal>
       )}
+
+      <Modal isOpen={showMassDocsModal} onClose={closeMassDocsModal} title={t('workers.massDocs.title')} size="md">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400">{t('workers.massDocs.help')}</p>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setMassDocsCategory('trainings')}
+              className={massDocsCategory === 'trainings' ? 'btn-primary btn-sm' : 'btn-outline btn-sm'}
+            >
+              {t('workers.massDocs.categories.trainings')}
+            </button>
+            <button type="button" disabled className="btn-outline btn-sm opacity-50 cursor-not-allowed">
+              {t('workers.massDocs.categories.qualifications')}
+            </button>
+            <button type="button" disabled className="btn-outline btn-sm opacity-50 cursor-not-allowed">
+              {t('workers.massDocs.categories.medical')}
+            </button>
+            <button type="button" disabled className="btn-outline btn-sm opacity-50 cursor-not-allowed">
+              {t('workers.massDocs.categories.sanctions')}
+            </button>
+          </div>
+
+          {massDocsCategory === 'trainings' && (
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={handleDownloadMassTrainingsTemplate}
+                className="w-full btn-outline flex items-center justify-center gap-2"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                {t('workers.massDocs.trainings.downloadTemplate')}
+              </button>
+
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center">
+                <input
+                  ref={massTrainingsExcelRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={(e) => setMassTrainingsExcel(e.target.files?.[0] ?? null)}
+                  className="hidden"
+                />
+                {massTrainingsExcel ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <FileSpreadsheet className="w-5 h-5 text-green-500" />
+                    <span className="text-sm font-medium">{massTrainingsExcel.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMassTrainingsExcel(null)
+                        if (massTrainingsExcelRef.current) massTrainingsExcelRef.current.value = ''
+                      }}
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => massTrainingsExcelRef.current?.click()}
+                    className="text-hse-primary hover:underline"
+                  >
+                    {t('workers.massDocs.trainings.chooseExcel')}
+                  </button>
+                )}
+              </div>
+
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center">
+                <input
+                  ref={massTrainingsZipRef}
+                  type="file"
+                  accept=".zip,application/zip"
+                  onChange={(e) => setMassTrainingsZip(e.target.files?.[0] ?? null)}
+                  className="hidden"
+                />
+                {massTrainingsZip ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <PackagePlus className="w-5 h-5 text-green-500" />
+                    <span className="text-sm font-medium">{massTrainingsZip.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMassTrainingsZip(null)
+                        if (massTrainingsZipRef.current) massTrainingsZipRef.current.value = ''
+                      }}
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => massTrainingsZipRef.current?.click()}
+                    className="text-hse-primary hover:underline"
+                  >
+                    {t('workers.massDocs.trainings.chooseZip')}
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleMassTrainingsImport}
+                disabled={!massTrainingsExcel || !massTrainingsZip || massTrainingsImporting}
+                className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {massTrainingsImporting && <Loader2 className="w-4 h-4 animate-spin" />}
+                <Upload className="w-4 h-4" />
+                {t('workers.massDocs.trainings.import')}
+              </button>
+
+              {massTrainingsResult && (
+                <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-gray-700 dark:text-gray-200">
+                      {t('workers.massDocs.trainings.result', {
+                        imported: massTrainingsResult?.imported ?? 0,
+                        failed: massTrainingsResult?.failed_count ?? 0,
+                      })}
+                    </div>
+                    {Array.isArray(massTrainingsResult?.zip_errors) && massTrainingsResult.zip_errors.length > 0 ? (
+                      <div className="text-xs text-amber-700 dark:text-amber-300">
+                        {t('workers.massDocs.trainings.zipErrorsCount', { count: massTrainingsResult.zip_errors.length })}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
+            <button type="button" onClick={closeMassDocsModal} className="btn-outline">
+              {t('common.cancel')}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Import Modal */}
       <Modal

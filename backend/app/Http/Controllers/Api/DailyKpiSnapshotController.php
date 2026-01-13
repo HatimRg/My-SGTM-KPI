@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Helpers\WeekHelper;
+use App\Models\DailyEffectifEntry;
 use App\Models\DailyKpiSnapshot;
 use App\Models\Project;
 use App\Models\Training;
@@ -131,6 +132,22 @@ class DailyKpiSnapshotController extends Controller
 
         if (!array_key_exists('sensibilisation', $validated) || $validated['sensibilisation'] === null) {
             $validated['sensibilisation'] = $tbmCount;
+        }
+
+        // Auto-fill effectif from DailyEffectifEntry when not provided
+        if (!array_key_exists('effectif', $validated) || $validated['effectif'] === null) {
+            $effectifEntry = DailyEffectifEntry::query()
+                ->where('project_id', $validated['project_id'])
+                ->where('entry_date', $entryDate->toDateString())
+                ->first();
+            if ($effectifEntry) {
+                $validated['effectif'] = (int) $effectifEntry->effectif;
+            }
+        }
+
+        // Work hours formula: effectif × 10
+        if ((!array_key_exists('heures_travaillees', $validated) || $validated['heures_travaillees'] === null) && isset($validated['effectif'])) {
+            $validated['heures_travaillees'] = (float) (((int) $validated['effectif']) * 10);
         }
 
         $snapshot = DailyKpiSnapshot::updateOrCreate(
@@ -436,6 +453,20 @@ class DailyKpiSnapshotController extends Controller
                 }
             }
 
+            if (!array_key_exists('effectif', $data)) {
+                $effectifEntry = DailyEffectifEntry::query()
+                    ->where('project_id', $request->project_id)
+                    ->where('entry_date', $entryDate->toDateString())
+                    ->first();
+                if ($effectifEntry) {
+                    $data['effectif'] = (int) $effectifEntry->effectif;
+                }
+            }
+
+            if (!array_key_exists('heures_travaillees', $data) && array_key_exists('effectif', $data)) {
+                $data['heures_travaillees'] = (float) (((int) $data['effectif']) * 10);
+            }
+
             $snapshot = DailyKpiSnapshot::updateOrCreate(
                 [
                     'project_id' => $request->project_id,
@@ -614,6 +645,14 @@ class DailyKpiSnapshotController extends Controller
             $currentDate = $startDate->copy()->addDays($i);
             $dateString = $currentDate->format('Y-m-d');
 
+            $effectifEntry = DailyEffectifEntry::query()
+                ->where('project_id', $projectId)
+                ->where('entry_date', $dateString)
+                ->first();
+
+            $effectif = $effectifEntry ? (int) $effectifEntry->effectif : null;
+            $workHours = $effectif !== null ? (float) ($effectif * 10) : null;
+
             // 1. Deviations (SOR Reports) per day
             $deviations = \App\Models\SorReport::where('project_id', $projectId)
                 ->whereDate('observation_date', $dateString)
@@ -654,6 +693,8 @@ class DailyKpiSnapshotController extends Controller
                 'entry_date' => $dateString,
                 'day_name' => $currentDate->englishDayOfWeek,
                 'auto_values' => [
+                    'effectif' => $effectif,
+                    'heures_travaillees' => $workHours,
                     'releve_ecarts' => $deviations,        // Deviation tracking
                     'sensibilisation' => $tbmCount,        // TBM/TBT count
                     'heures_formation' => (float) $totalTrainingHours,  // Training hours

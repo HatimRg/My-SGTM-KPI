@@ -199,7 +199,7 @@ export default function DashboardLayout() {
   const isHseOfficer = effectiveRole === 'user'
   const isSupervisor = effectiveRole === 'supervisor'
   const isResponsable = effectiveRole === 'responsable'
-  const isHseManager = effectiveRole === 'hse_manager'
+  const isHseManager = effectiveRole === 'hse_manager' || effectiveRole === 'regional_hse_manager'
   const isHR = effectiveRole === 'hr'
   const isHrDirector = effectiveRole === 'hr_director'
 
@@ -209,6 +209,7 @@ export default function DashboardLayout() {
     { to: '/admin/projects', icon: FolderKanban, label: t('projects.title') },
     { to: '/admin/kpi', icon: ClipboardCheck, label: t('kpi.title') },
     { to: '/admin/kpi-history', icon: History, label: t('kpi.history') },
+    { to: '/admin/effectif', icon: Users, label: t('effectif.title') },
     { to: '/admin/training', icon: GraduationCap, label: t('training.navLabel') },
     { to: '/admin/awareness', icon: Users, label: t('awareness.navLabel') },
     { to: '/admin/sor', icon: AlertTriangle, label: t('sor.title') },
@@ -237,8 +238,8 @@ export default function DashboardLayout() {
 
   const hrDirectorNavItems = [
     { to: '/admin', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { to: '/admin/effectif', icon: Users, label: t('effectif.title') },
     { to: '/admin/workers', icon: HardHat, label: t('workers.title') },
-    { to: '/admin/ppe', icon: Shield, label: t('ppe.nav') },
   ]
 
   const userNavItems = [
@@ -277,7 +278,7 @@ export default function DashboardLayout() {
 
   const hrNavItems = [
     { to: '/hr/workers', icon: HardHat, label: t('workers.title') },
-    { to: '/hr/ppe', icon: Shield, label: t('ppe.nav') },
+    { to: '/hr/effectif', icon: Users, label: t('effectif.title') },
   ]
 
   const getNavItems = () => {
@@ -290,7 +291,7 @@ export default function DashboardLayout() {
     if (effectiveRole === 'supervisor') return supervisorNavItems
     if (effectiveRole === 'hr') return hrNavItems
     if (effectiveRole === 'dev') return userNavItems
-    if (effectiveRole === 'hse_manager') return userNavItems
+    if (effectiveRole === 'hse_manager' || effectiveRole === 'regional_hse_manager') return userNavItems
     if (effectiveRole === 'responsable') return userNavItems
     return userNavItems
   }
@@ -509,6 +510,7 @@ export default function DashboardLayout() {
                             <option value="">{t('devTools.none')}</option>
                             <option value="admin">admin</option>
                             <option value="hse_manager">hse_manager</option>
+                            <option value="regional_hse_manager">regional_hse_manager</option>
                             <option value="responsable">responsable</option>
                             <option value="supervisor">supervisor</option>
                             <option value="user">user</option>

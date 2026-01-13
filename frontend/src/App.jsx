@@ -43,6 +43,8 @@ const PpeManagement = lazy(() => import('./pages/shared/PpeManagement'))
 const Notifications = lazy(() => import('./pages/shared/Notifications'))
 const SubcontractorOpenings = lazy(() => import('./pages/shared/SubcontractorOpenings'))
 const SubcontractorOpeningDetails = lazy(() => import('./pages/shared/SubcontractorOpeningDetails'))
+const EffectifSubmission = lazy(() => import('./pages/shared/EffectifSubmission'))
+const EffectifAnalytics = lazy(() => import('./pages/shared/EffectifAnalytics'))
 const VeilleReglementaireHistory = lazy(() => import('./pages/shared/VeilleReglementaireHistory'))
 const VeilleReglementaireDetails = lazy(() => import('./pages/shared/VeilleReglementaireDetails'))
 const VeilleReglementaireForm = lazy(() => import('./pages/shared/VeilleReglementaireForm'))
@@ -149,7 +151,7 @@ const DashboardHome = () => {
   const actualRole = user?.role
   const role = actualRole === 'dev' && simulatedRole ? simulatedRole : actualRole
 
-  if (role === 'hse_manager') {
+  if (role === 'hse_manager' || role === 'regional_hse_manager') {
     return <AdminDashboard />
   }
 
@@ -241,6 +243,14 @@ function App() {
         <Route path="/admin/projects/:id" element={<ProjectDetails />} />
         <Route path="/admin/kpi" element={<KpiManagement />} />
         <Route path="/admin/kpi-history" element={<KpiHistory />} />
+        <Route
+          path="/admin/effectif"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'hr_director', 'dev']} enforceAllowedRoles>
+              <EffectifAnalytics />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/admin/training" element={<Training />} />
         <Route path="/admin/awareness" element={<AwarenessSession />} />
         <Route path="/admin/sor" element={<SorSubmission />} />
@@ -252,7 +262,7 @@ function App() {
         <Route
           path="/admin/regulatory-watch/:id"
           element={
-            <ProtectedRoute allowedRoles={['admin', 'hse_director', 'hse_manager', 'responsable', 'supervisor']} enforceAllowedRoles>
+            <ProtectedRoute allowedRoles={['admin', 'hse_director', 'hse_manager', 'regional_hse_manager', 'responsable', 'supervisor']} enforceAllowedRoles>
               <VeilleReglementaireDetails />
             </ProtectedRoute>
           }
@@ -260,7 +270,14 @@ function App() {
         <Route path="/admin/regulatory-watch/:id/resubmit" element={<VeilleReglementaireForm mode="resubmit" />} />
         <Route path="/admin/regulatory-watch/:id/resubmit/:page" element={<VeilleReglementaireForm mode="resubmit" />} />
         <Route path="/admin/workers" element={<Workers />} />
-        <Route path="/admin/ppe" element={<PpeManagement />} />
+        <Route
+          path="/admin/ppe"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'dev', 'pole_director', 'works_director', 'hse_director']} enforceAllowedRoles>
+              <PpeManagement />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/admin/qualified-personnel" element={<QualifiedPersonnelRedirect basePath="/admin/workers" />} />
         <Route path="/admin/subcontractors" element={<SubcontractorOpenings />} />
         <Route path="/admin/subcontractors/openings/:id" element={<SubcontractorOpeningDetails />} />
@@ -303,7 +320,7 @@ function App() {
         <Route
           path="/supervisor/regulatory-watch/:id"
           element={
-            <ProtectedRoute allowedRoles={['admin', 'hse_director', 'hse_manager', 'responsable', 'supervisor']} enforceAllowedRoles>
+            <ProtectedRoute allowedRoles={['admin', 'hse_director', 'hse_manager', 'regional_hse_manager', 'responsable', 'supervisor']} enforceAllowedRoles>
               <VeilleReglementaireDetails />
             </ProtectedRoute>
           }
@@ -311,14 +328,21 @@ function App() {
         <Route path="/supervisor/regulatory-watch/:id/resubmit" element={<VeilleReglementaireForm mode="resubmit" />} />
         <Route path="/supervisor/regulatory-watch/:id/resubmit/:page" element={<VeilleReglementaireForm mode="resubmit" />} />
         <Route path="/supervisor/workers" element={<Workers />} />
-        <Route path="/supervisor/ppe" element={<PpeManagement />} />
+        <Route
+          path="/supervisor/ppe"
+          element={
+            <ProtectedRoute allowedRoles={['supervisor']} enforceAllowedRoles>
+              <PpeManagement />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/supervisor/profile" element={<Profile />} />
       </Route>
 
       {/* User Routes (Responsable HSE) */}
       <Route
         element={
-          <ProtectedRoute allowedRoles={['hse_manager', 'responsable']}>
+          <ProtectedRoute allowedRoles={['hse_manager', 'regional_hse_manager', 'responsable']}>
             <DashboardLayout />
           </ProtectedRoute>
         }
@@ -342,7 +366,7 @@ function App() {
         <Route
           path="/regulatory-watch/:id"
           element={
-            <ProtectedRoute allowedRoles={['admin', 'hse_director', 'hse_manager', 'responsable', 'supervisor']} enforceAllowedRoles>
+            <ProtectedRoute allowedRoles={['admin', 'hse_director', 'hse_manager', 'regional_hse_manager', 'responsable', 'supervisor']} enforceAllowedRoles>
               <VeilleReglementaireDetails />
             </ProtectedRoute>
           }
@@ -350,7 +374,14 @@ function App() {
         <Route path="/regulatory-watch/:id/resubmit" element={<VeilleReglementaireForm mode="resubmit" />} />
         <Route path="/regulatory-watch/:id/resubmit/:page" element={<VeilleReglementaireForm mode="resubmit" />} />
         <Route path="/workers" element={<Workers />} />
-        <Route path="/ppe" element={<PpeManagement />} />
+        <Route
+          path="/ppe"
+          element={
+            <ProtectedRoute allowedRoles={['hse_manager', 'regional_hse_manager', 'responsable']} enforceAllowedRoles>
+              <PpeManagement />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/profile" element={<Profile />} />
         <Route path="/subcontractors" element={<SubcontractorOpenings />} />
         <Route path="/subcontractors/openings/:id" element={<SubcontractorOpeningDetails />} />
@@ -366,14 +397,14 @@ function App() {
       >
         <Route path="/hr" element={<Workers />} />
         <Route path="/hr/workers" element={<Workers />} />
-        <Route path="/hr/ppe" element={<PpeManagement />} />
+        <Route path="/hr/effectif" element={<EffectifSubmission />} />
         <Route path="/hr/profile" element={<Profile />} />
       </Route>
 
       {/* Legacy Qualified Personnel (Worker Trainings) - migrated to Workers */}
       <Route
         element={
-          <ProtectedRoute allowedRoles={['hse_manager', 'responsable', 'supervisor', 'hr']}>
+          <ProtectedRoute allowedRoles={['hse_manager', 'regional_hse_manager', 'responsable', 'supervisor', 'hr']}>
             <DashboardLayout />
           </ProtectedRoute>
         }
@@ -395,7 +426,7 @@ function App() {
       {/* Heavy Machinery Tracking - available for all authenticated roles except HR and HR Director */}
       <Route
         element={
-          <ProtectedRoute allowedRoles={['admin', 'dev', 'hse_manager', 'responsable', 'supervisor', 'user', 'pole_director', 'works_director', 'hse_director']}>
+          <ProtectedRoute allowedRoles={['admin', 'dev', 'hse_manager', 'regional_hse_manager', 'responsable', 'supervisor', 'user', 'pole_director', 'works_director', 'hse_director']}>
             <DashboardLayout />
           </ProtectedRoute>
         }

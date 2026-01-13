@@ -77,6 +77,7 @@ class UserController extends Controller
             if ($actor->role !== User::ROLE_ADMIN && !$actor->isDev()) {
                 return [
                     'hse_manager',
+                    'regional_hse_manager',
                     'responsable',
                     'supervisor',
                     'hr',
@@ -91,6 +92,7 @@ class UserController extends Controller
             return [
                 'admin',
                 'hse_manager',
+                'regional_hse_manager',
                 'responsable',
                 'supervisor',
                 'hr',
@@ -203,14 +205,16 @@ class UserController extends Controller
             'email' => 'required|email|unique:users,email',
             'password' => PasswordPolicy::rulesForRole($role, true, false),
             'role' => ['required', Rule::in($allowedRoles)],
-            'pole' => 'nullable|string|max:255|required_if:role,pole_director',
+            'pole' => 'nullable|string|max:255|required_if:role,pole_director,regional_hse_manager',
             'phone' => 'nullable|string|max:20',
             'is_active' => 'boolean',
             'project_ids' => 'nullable|array',
             'project_ids.*' => 'exists:projects,id',
         ]);
 
-        $projectIds = $request->role === User::ROLE_POLE_DIRECTOR ? [] : (array) $request->get('project_ids', []);
+        $projectIds = in_array($request->role, [User::ROLE_POLE_DIRECTOR, User::ROLE_REGIONAL_HSE_MANAGER], true)
+            ? []
+            : (array) $request->get('project_ids', []);
         $this->assertProjectIdsAreVisibleToActor($actor, $projectIds);
 
         $user = User::create([
@@ -219,14 +223,14 @@ class UserController extends Controller
             'password' => $request->password, // Will be hashed by model mutator
             'must_change_password' => true,
             'role' => $request->role,
-            'pole' => $request->role === User::ROLE_POLE_DIRECTOR ? $request->pole : null,
+            'pole' => in_array($request->role, [User::ROLE_POLE_DIRECTOR, User::ROLE_REGIONAL_HSE_MANAGER], true) ? $request->pole : null,
             'phone' => $request->phone,
             'is_active' => $request->get('is_active', true),
             'created_by' => $actor->id,
         ]);
 
         // Assign projects if provided
-        if ($request->has('project_ids') && $request->role !== User::ROLE_POLE_DIRECTOR) {
+        if ($request->has('project_ids') && !in_array($request->role, [User::ROLE_POLE_DIRECTOR, User::ROLE_REGIONAL_HSE_MANAGER], true)) {
             $user->projects()->sync($projectIds);
         }
 
@@ -266,12 +270,16 @@ class UserController extends Controller
             // Allow an HSE manager to keep their own role unchanged without validation issues.
             $allowedRoles = array_values(array_unique(array_merge($allowedRoles, [User::ROLE_HSE_MANAGER])));
         }
+
+        if ($actor && $actor->isRegionalHseManager() && $actor->id === $user->id) {
+            $allowedRoles = array_values(array_unique(array_merge($allowedRoles, [User::ROLE_REGIONAL_HSE_MANAGER])));
+        }
         $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => ['sometimes', 'email', Rule::unique('users')->ignore($user->id)],
             'password' => PasswordPolicy::rulesForRole($role, false, false),
             'role' => ['sometimes', Rule::in($allowedRoles)],
-            'pole' => 'nullable|string|max:255|required_if:role,pole_director',
+            'pole' => 'nullable|string|max:255|required_if:role,pole_director,regional_hse_manager',
             'phone' => 'nullable|string|max:20',
             'is_active' => 'boolean',
             'project_ids' => 'nullable|array',
@@ -280,7 +288,7 @@ class UserController extends Controller
 
         $data = $request->only(['name', 'email', 'role', 'phone', 'is_active', 'pole']);
 
-        if ($request->has('role') && $request->role !== User::ROLE_POLE_DIRECTOR) {
+        if ($request->has('role') && !in_array($request->role, [User::ROLE_POLE_DIRECTOR, User::ROLE_REGIONAL_HSE_MANAGER], true)) {
             $data['pole'] = null;
         }
 
@@ -294,7 +302,7 @@ class UserController extends Controller
         // Update project assignments if provided
         if ($request->has('project_ids')) {
             $roleAfterUpdate = $request->has('role') ? $request->role : $user->role;
-            if ($roleAfterUpdate === User::ROLE_POLE_DIRECTOR) {
+            if (in_array($roleAfterUpdate, [User::ROLE_POLE_DIRECTOR, User::ROLE_REGIONAL_HSE_MANAGER], true)) {
                 $user->projects()->detach();
             } else {
                 $projectIds = (array) $request->get('project_ids', []);
@@ -349,7 +357,7 @@ class UserController extends Controller
      */
     public function assignProjects(Request $request, User $user)
     {
-        if ($user->role === User::ROLE_POLE_DIRECTOR) {
+        if (in_array($user->role, [User::ROLE_POLE_DIRECTOR, User::ROLE_REGIONAL_HSE_MANAGER], true)) {
             return $this->error('Pole Director users are scoped by pole and cannot be assigned individual projects.', 422);
         }
 

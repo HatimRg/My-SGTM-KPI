@@ -3,15 +3,36 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Exports\WorkerTrainingsMassFailedRowsExport;
+use App\Exports\WorkerTrainingsMassTemplateExport;
+use App\Imports\WorkerTrainingsMassImport;
+use App\Models\User;
 use App\Models\WorkerTraining;
 use App\Models\Project;
 use App\Models\Worker;
+use App\Services\WorkerTrainingMassImportService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Maatwebsite\Excel\Excel as ExcelFormat;
+use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
+use ZipArchive;
 
 class WorkerTrainingController extends Controller
 {
     private const EXPIRING_DAYS = 30;
+
+    private function checkMassImportAccess(Request $request)
+    {
+        $user = $this->checkAccess($request);
+        if ($user->role === User::ROLE_HR || $user->role === User::ROLE_HR_DIRECTOR) {
+            abort(403, 'Access denied');
+        }
+        return $user;
+    }
 
     private function checkAccess(Request $request)
     {
@@ -20,6 +41,94 @@ class WorkerTrainingController extends Controller
             abort(403, 'You do not have access to worker trainings');
         }
         return $user;
+    }
+
+    private function normalizeCin($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_string($value)) {
+            $value = trim($value);
+            if ($value === '') {
+                return null;
+            }
+
+            if (preg_match('/^[0-9]+\.0+$/', $value)) {
+                $value = preg_replace('/\.0+$/', '', $value);
+            }
+
+            if (stripos($value, 'e') !== false && is_numeric($value)) {
+                $value = sprintf('%.0f', (float) $value);
+            }
+
+            return trim($value);
+        }
+
+        if (is_int($value)) {
+            return (string) $value;
+        }
+
+        if (is_float($value)) {
+            return sprintf('%.0f', $value);
+        }
+
+        $v = trim((string) $value);
+        return $v === '' ? null : $v;
+    }
+
+    private function parseDate($value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            if ($value instanceof \DateTime) {
+                return $value->format('Y-m-d');
+            }
+
+            if (is_numeric($value)) {
+                return Carbon::instance(ExcelDate::excelToDateTimeObject($value))->format('Y-m-d');
+            }
+
+            $formats = ['Y-m-d', 'd/m/Y', 'd-m-Y', 'd.m.Y', 'm/d/Y'];
+            foreach ($formats as $format) {
+                try {
+                    return Carbon::createFromFormat($format, trim((string) $value))->format('Y-m-d');
+                } catch (\Exception $e) {
+                }
+            }
+
+            return Carbon::parse($value)->format('Y-m-d');
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    private function isRowEmpty(array $row): bool
+    {
+        foreach ($row as $v) {
+            if ($v !== null && trim((string) $v) !== '') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private function getColumnValue(array $row, array $possibleNames)
+    {
+        foreach ($possibleNames as $name) {
+            if (isset($row[$name]) && $row[$name] !== null && $row[$name] !== '') {
+                return $row[$name];
+            }
+            $spaceName = str_replace('_', ' ', $name);
+            if (isset($row[$spaceName]) && $row[$spaceName] !== null && $row[$spaceName] !== '') {
+                return $row[$spaceName];
+            }
+        }
+        return null;
     }
 
     public function index(Request $request)
@@ -192,6 +301,42 @@ class WorkerTrainingController extends Controller
         $training->load(['worker.project']);
 
         return $this->success($training, 'Worker training created successfully', 201);
+    }
+
+    public function massTemplate(Request $request)
+    {
+        $this->checkMassImportAccess($request);
+
+        if (!class_exists(ZipArchive::class) || !extension_loaded('zip')) {
+            return $this->error('ZipArchive extension is required to generate Excel templates', 500);
+        }
+
+        $filename = 'worker_trainings_mass_template.xlsx';
+        $contents = Excel::raw(new WorkerTrainingsMassTemplateExport(), ExcelFormat::XLSX);
+
+        return response($contents, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    public function massImport(Request $request)
+    {
+        $user = $this->checkMassImportAccess($request);
+
+        $validated = $request->validate([
+            'excel' => 'required|file',
+            'zip' => 'required|file',
+        ]);
+
+        try {
+            $service = new WorkerTrainingMassImportService();
+            $result = $service->handle($user, $validated['excel'], $validated['zip']);
+
+            return $this->success($result, 'Import completed');
+        } catch (\Throwable $e) {
+            return $this->error($e->getMessage() ?: 'Import failed', 500);
+        }
     }
 
     public function show(Request $request, WorkerTraining $workerTraining)

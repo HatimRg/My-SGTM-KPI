@@ -121,7 +121,7 @@ export default function AuthLayout() {
             
             <div className="grid grid-cols-3 gap-6">
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-                <div className="text-3xl font-bold">{stats.hse_compliance != null ? `${stats.hse_compliance}%` : ''}</div>
+                <div className="text-3xl font-bold">{stats.hse_compliance != null ? `${Number(stats.hse_compliance).toFixed(1)}%` : ''}</div>
                 <div className="text-sm text-white/70">{t('auth.publicStats.hseCompliance')}</div>
               </div>
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">

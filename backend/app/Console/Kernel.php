@@ -11,6 +11,10 @@ class Kernel extends ConsoleKernel
     {
         $schedule->command('worker-trainings:check-expiry')->dailyAt('06:00');
 
+        $schedule->command('daily-effectif:check-missing')
+            ->dailyAt('00:30')
+            ->timezone('Africa/Casablanca');
+
         $schedule->command('db:backup')
             ->dailyAt('01:00')
             ->timezone('Africa/Casablanca');

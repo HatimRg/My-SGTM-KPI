@@ -88,9 +88,17 @@ class PpeController extends Controller
                         $join->whereIn('pps.project_id', array_map('intval', $visibleProjectIds));
                     }
                 })
-                ->groupBy('ppe_items.id')
+                ->groupBy([
+                    'ppe_items.id',
+                    'ppe_items.name',
+                    'ppe_items.is_system',
+                    'ppe_items.created_by',
+                ])
                 ->select([
-                    'ppe_items.*',
+                    'ppe_items.id',
+                    'ppe_items.name',
+                    'ppe_items.is_system',
+                    'ppe_items.created_by',
                     DB::raw('COALESCE(SUM(pps.stock_quantity), 0) as stock_quantity'),
                     DB::raw('COALESCE(SUM(pps.low_stock_threshold), 0) as low_stock_threshold'),
                 ])

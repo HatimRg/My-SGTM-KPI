@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\TrainingController;
 use App\Http\Controllers\Api\AwarenessSessionController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DailyKpiSnapshotController;
+use App\Http\Controllers\Api\DailyEffectifController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\WorkPermitController;
@@ -177,6 +178,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{dailyKpiSnapshot}', [DailyKpiSnapshotController::class, 'destroy']);
     });
 
+    // Daily Effectif entries (per-project, per-day headcount)
+    Route::prefix('daily-effectif')->group(function () {
+        Route::post('/', [DailyEffectifController::class, 'upsert']);
+        Route::get('/entry', [DailyEffectifController::class, 'entry']);
+        Route::get('/list', [DailyEffectifController::class, 'list']);
+        Route::get('/series', [DailyEffectifController::class, 'series']);
+        Route::get('/history', [DailyEffectifController::class, 'history']);
+        Route::get('/by-project', [DailyEffectifController::class, 'byProject']);
+    });
+
     // Notifications
     Route::prefix('notifications')->group(function () {
         Route::get('/', [NotificationController::class, 'index']);
@@ -284,6 +295,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('worker-trainings')->group(function () {
         Route::get('/', [WorkerTrainingController::class, 'index']);
         Route::get('/other-labels', [WorkerTrainingController::class, 'otherLabels']);
+        Route::get('/mass/template', [WorkerTrainingController::class, 'massTemplate']);
+        Route::post('/mass/import', [WorkerTrainingController::class, 'massImport']);
         Route::post('/', [WorkerTrainingController::class, 'store']);
         Route::get('/{workerTraining}/certificate/view', [WorkerTrainingController::class, 'viewCertificate']);
         Route::get('/{workerTraining}/certificate/download', [WorkerTrainingController::class, 'downloadCertificate']);

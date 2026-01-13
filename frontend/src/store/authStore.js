@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import api from '../services/api'
+import { invalidateCache } from '../utils/apiCache'
+import { clearApiCache } from '../services/api'
 
 export const useAuthStore = create(
   persist(
@@ -13,6 +15,8 @@ export const useAuthStore = create(
       login: async (email, password) => {
         set({ isLoading: true })
         try {
+          invalidateCache()
+          clearApiCache()
           const response = await api.post('/auth/login', { email, password })
           const { user, token } = response.data.data
 
@@ -39,6 +43,8 @@ export const useAuthStore = create(
         } catch (error) {
           console.error('Logout error:', error)
         } finally {
+          invalidateCache()
+          clearApiCache()
           set({
             user: null,
             token: null,

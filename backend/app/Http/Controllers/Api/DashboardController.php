@@ -31,9 +31,9 @@ class DashboardController extends Controller
         
         return $this->success(Cache::remember('public_stats_' . $year, 300, function () use ($year) {
             // HSE Compliance from KPI reports
-            $hseCompliance = KpiReport::where('report_year', $year)
-                ->approved()
-                ->avg('hse_compliance_rate') ?? 0;
+            $hseCompliance = RegulatoryWatchSubmission::where('week_year', $year)
+                ->whereNotNull('overall_score')
+                ->avg('overall_score') ?? 0;
             
             // Total training hours from Training table
             $trainingHours = Training::where('week_year', $year)->sum('training_hours') ?? 0;
@@ -44,7 +44,7 @@ class DashboardController extends Controller
                 ->sum('accidents_fatal') ?? 0;
             
             return [
-                'hse_compliance' => round($hseCompliance, 1),
+                'hse_compliance' => round((float) $hseCompliance, 1),
                 'training_hours' => (int) $trainingHours,
                 'fatal_accidents' => (int) $fatalAccidents,
                 'year' => $year,

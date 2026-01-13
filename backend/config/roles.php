@@ -30,6 +30,10 @@ return [
             'admin_routes' => false,
             'project_scope' => 'assigned',
         ],
+        'regional_hse_manager' => [
+            'admin_routes' => false,
+            'project_scope' => 'pole',
+        ],
         'responsable' => [
             'admin_routes' => false,
             'project_scope' => 'assigned',
@@ -44,7 +48,7 @@ return [
         ],
         'hr' => [
             'admin_routes' => false,
-            'project_scope' => 'all',
+            'project_scope' => 'assigned',
         ],
     ],
 ];
