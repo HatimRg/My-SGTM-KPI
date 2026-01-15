@@ -91,6 +91,7 @@ class UserController extends Controller
 
             return [
                 'admin',
+                'consultation',
                 'hse_manager',
                 'regional_hse_manager',
                 'responsable',
@@ -225,6 +226,7 @@ class UserController extends Controller
             'role' => $request->role,
             'pole' => in_array($request->role, [User::ROLE_POLE_DIRECTOR, User::ROLE_REGIONAL_HSE_MANAGER], true) ? $request->pole : null,
             'phone' => $request->phone,
+            'preferred_language' => $request->role === User::ROLE_CONSULTATION ? 'fr' : null,
             'is_active' => $request->get('is_active', true),
             'created_by' => $actor->id,
         ]);
@@ -287,6 +289,10 @@ class UserController extends Controller
         ]);
 
         $data = $request->only(['name', 'email', 'role', 'phone', 'is_active', 'pole']);
+
+        if ($request->has('role') && $request->role === User::ROLE_CONSULTATION) {
+            $data['preferred_language'] = 'fr';
+        }
 
         if ($request->has('role') && !in_array($request->role, [User::ROLE_POLE_DIRECTOR, User::ROLE_REGIONAL_HSE_MANAGER], true)) {
             $data['pole'] = null;

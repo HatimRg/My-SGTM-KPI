@@ -11,6 +11,7 @@ use App\Models\WorkerTraining;
 use App\Models\Project;
 use App\Models\Worker;
 use App\Services\WorkerTrainingMassImportService;
+use App\Services\MassImportProgressService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -327,14 +328,31 @@ class WorkerTrainingController extends Controller
         $validated = $request->validate([
             'excel' => 'required|file',
             'zip' => 'required|file',
+            'progress_id' => 'nullable|string|max:120',
         ]);
+
+        $progressId = $validated['progress_id'] ?? null;
+        $progress = $progressId ? new MassImportProgressService() : null;
+        if ($progress && $progressId) {
+            $progress->init($progressId);
+        }
 
         try {
             $service = new WorkerTrainingMassImportService();
-            $result = $service->handle($user, $validated['excel'], $validated['zip']);
+            $result = $service->handle($user, $validated['excel'], $validated['zip'], $progressId);
+
+            if ($progress && $progressId) {
+                $progress->complete($progressId, [
+                    'imported' => (int) ($result['imported'] ?? 0),
+                    'failed' => (int) ($result['failed_count'] ?? 0),
+                ]);
+            }
 
             return $this->success($result, 'Import completed');
         } catch (\Throwable $e) {
+            if ($progress && $progressId) {
+                $progress->fail($progressId, $e->getMessage() ?: 'Import failed');
+            }
             return $this->error($e->getMessage() ?: 'Import failed', 500);
         }
     }

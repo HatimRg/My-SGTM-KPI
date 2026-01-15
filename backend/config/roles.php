@@ -6,6 +6,10 @@ return [
             'admin_routes' => true,
             'project_scope' => 'all',
         ],
+        'consultation' => [
+            'admin_routes' => true,
+            'project_scope' => 'all',
+        ],
         'dev' => [
             'admin_routes' => true,
             'project_scope' => 'all',

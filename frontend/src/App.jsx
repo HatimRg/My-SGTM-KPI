@@ -60,7 +60,7 @@ const ProtectedRoute = ({ children, adminOnly = false, allowedRoles = [], enforc
   const { simulatedRole } = useDevStore()
   const location = useLocation()
 
-  const adminLikeRoles = ['admin', 'pole_director', 'works_director', 'hse_director', 'hr_director']
+  const adminLikeRoles = ['admin', 'consultation', 'pole_director', 'works_director', 'hse_director', 'hr_director']
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
@@ -118,7 +118,7 @@ const GuestRoute = ({ children }) => {
   const { isAuthenticated, user } = useAuthStore()
   const { simulatedRole } = useDevStore()
 
-  const adminLikeRoles = ['admin', 'pole_director', 'works_director', 'hse_director', 'hr_director']
+  const adminLikeRoles = ['admin', 'consultation', 'pole_director', 'works_director', 'hse_director', 'hr_director']
 
   if (isAuthenticated) {
     if (user?.must_change_password) {
@@ -223,12 +223,26 @@ function App() {
       {/* Admin Routes */}
       <Route
         element={
-          <ProtectedRoute allowedRoles={['admin', 'pole_director', 'works_director', 'hse_director', 'hr_director']}>
+          <ProtectedRoute allowedRoles={['admin', 'consultation', 'pole_director', 'works_director', 'hse_director', 'hr_director']}>
             <DashboardLayout />
           </ProtectedRoute>
         }
       >
         <Route path="/admin" element={<AdminDashboard />} />
+      </Route>
+
+      <Route
+        element={
+          <ProtectedRoute
+            allowedRoles={['admin', 'consultation', 'dev', 'pole_director', 'works_director', 'hse_director', 'hr_director', 'hse_manager', 'regional_hse_manager']}
+            enforceAllowedRoles
+          >
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/admin/kpi" element={<KpiManagement />} />
+        <Route path="/admin/kpi-history" element={<KpiHistory />} />
       </Route>
 
       <Route
@@ -241,8 +255,6 @@ function App() {
         <Route path="/admin/users" element={<UserManagement />} />
         <Route path="/admin/projects" element={<ProjectManagement />} />
         <Route path="/admin/projects/:id" element={<ProjectDetails />} />
-        <Route path="/admin/kpi" element={<KpiManagement />} />
-        <Route path="/admin/kpi-history" element={<KpiHistory />} />
         <Route
           path="/admin/effectif"
           element={

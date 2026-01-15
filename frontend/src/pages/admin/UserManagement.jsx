@@ -476,6 +476,7 @@ export default function UserManagement() {
             >
               <option value="">{t('users.allRoles')}</option>
               <option value="admin">{t('users.roles.admin')}</option>
+              <option value="consultation">{t('users.roles.consultation')}</option>
               <option value="pole_director">{t('users.roles.pole_director')}</option>
               <option value="works_director">{t('users.roles.works_director')}</option>
               <option value="hse_director">{t('users.roles.hse_director')}</option>
@@ -756,6 +757,7 @@ export default function UserManagement() {
                   <option value="user">{t('users.roles.user')}</option>
                   <option value="hr">{t('users.roles.hr')}</option>
                   <option value="admin">{t('users.roles.admin')}</option>
+                  <option value="consultation">{t('users.roles.consultation')}</option>
                   <option value="pole_director">{t('users.roles.pole_director')}</option>
                   <option value="works_director">{t('users.roles.works_director')}</option>
                   <option value="hse_director">{t('users.roles.hse_director')}</option>

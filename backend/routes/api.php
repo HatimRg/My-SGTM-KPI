@@ -20,6 +20,8 @@ use App\Http\Controllers\Api\WorkerTrainingController;
 use App\Http\Controllers\Api\WorkerQualificationController;
 use App\Http\Controllers\Api\WorkerMedicalAptitudeController;
 use App\Http\Controllers\Api\WorkerSanctionController;
+use App\Http\Controllers\Api\MassImportProgressController;
+use App\Http\Controllers\Api\ImportFilesController;
 use App\Http\Controllers\Api\PpeController;
 use App\Http\Controllers\Api\RegulatoryWatchController;
 use App\Http\Controllers\Api\SubcontractorOpeningController;
@@ -60,6 +62,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/profile', [AuthController::class, 'updateProfile']);
         Route::post('/change-password', [AuthController::class, 'changePassword']);
     });
+
+    Route::get('/mass-import/progress/{progressId}', [MassImportProgressController::class, 'show']);
+
+    Route::get('/imports/failed-rows/{filename}', [ImportFilesController::class, 'downloadFailedRows']);
 
     Route::prefix('bootstrap')->group(function () {
         Route::get('/template', [BootstrapController::class, 'template']);
@@ -155,12 +161,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{kpiReport}', [KpiReportController::class, 'show']);
         Route::put('/{kpiReport}', [KpiReportController::class, 'update']);
         Route::delete('/{kpiReport}', [KpiReportController::class, 'destroy']);
-        
-        // Admin only
-        Route::middleware('admin')->group(function () {
-            Route::post('/{kpiReport}/approve', [KpiReportController::class, 'approve']);
-            Route::post('/{kpiReport}/reject', [KpiReportController::class, 'reject']);
-        });
+
+        Route::post('/{kpiReport}/approve', [KpiReportController::class, 'approve']);
+        Route::post('/{kpiReport}/reject', [KpiReportController::class, 'reject']);
     });
 
     // Daily KPI snapshots (per-project, per-day values)
@@ -307,6 +310,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('worker-qualifications')->group(function () {
         Route::get('/', [WorkerQualificationController::class, 'index']);
+        Route::get('/mass/template', [WorkerQualificationController::class, 'massTemplate']);
+        Route::post('/mass/import', [WorkerQualificationController::class, 'massImport']);
         Route::post('/', [WorkerQualificationController::class, 'store']);
         Route::get('/{workerQualification}/certificate/view', [WorkerQualificationController::class, 'viewCertificate']);
         Route::get('/{workerQualification}/certificate/download', [WorkerQualificationController::class, 'downloadCertificate']);
@@ -317,6 +322,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('worker-medical-aptitudes')->group(function () {
         Route::get('/', [WorkerMedicalAptitudeController::class, 'index']);
+        Route::get('/mass/template', [WorkerMedicalAptitudeController::class, 'massTemplate']);
+        Route::post('/mass/import', [WorkerMedicalAptitudeController::class, 'massImport']);
         Route::post('/', [WorkerMedicalAptitudeController::class, 'store']);
         Route::get('/{workerMedicalAptitude}/certificate/view', [WorkerMedicalAptitudeController::class, 'viewCertificate']);
         Route::get('/{workerMedicalAptitude}/certificate/download', [WorkerMedicalAptitudeController::class, 'downloadCertificate']);
@@ -327,6 +334,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('worker-sanctions')->group(function () {
         Route::get('/', [WorkerSanctionController::class, 'index']);
+        Route::get('/mass/template', [WorkerSanctionController::class, 'massTemplate']);
+        Route::post('/mass/import', [WorkerSanctionController::class, 'massImport']);
         Route::post('/', [WorkerSanctionController::class, 'store']);
         Route::get('/{workerSanction}/document/view', [WorkerSanctionController::class, 'viewDocument']);
         Route::get('/{workerSanction}/document/download', [WorkerSanctionController::class, 'downloadDocument']);

@@ -63,7 +63,7 @@ export default function DashboardLayout() {
 
   const isDev = user?.role === 'dev'
   const effectiveRole = isDev && simulatedRole ? simulatedRole : user?.role
-  const adminLikeRoles = ['admin', 'pole_director', 'works_director', 'hse_director', 'hr_director']
+  const adminLikeRoles = ['admin', 'consultation', 'pole_director', 'works_director', 'hse_director', 'hr_director']
   const isUserAdminLike = isUserAdmin || (user?.role === 'dev' && !simulatedRole) || adminLikeRoles.includes(effectiveRole)
   const isAdminArea = location.pathname.startsWith('/admin')
 
@@ -283,6 +283,7 @@ export default function DashboardLayout() {
 
   const getNavItems = () => {
     if (effectiveRole === 'admin') return adminNavItems
+    if (effectiveRole === 'consultation') return adminNavItems
     if (effectiveRole === 'pole_director') return directorNavItems
     if (effectiveRole === 'works_director') return directorNavItems
     if (effectiveRole === 'hse_director') return directorNavItems

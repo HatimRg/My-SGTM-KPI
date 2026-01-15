@@ -7,7 +7,14 @@ import { useLanguage } from '../../i18n'
 import PasswordStrength, { checkPasswordAgainstPolicy, getPasswordPolicy } from '../../components/ui/PasswordStrength'
 
 function roleHomePath(role) {
-  if (role === 'admin' || role === 'pole_director' || role === 'works_director' || role === 'hse_director' || role === 'hr_director') {
+  if (
+    role === 'admin' ||
+    role === 'consultation' ||
+    role === 'pole_director' ||
+    role === 'works_director' ||
+    role === 'hse_director' ||
+    role === 'hr_director'
+  ) {
     return '/admin'
   }
   if (role === 'user' || role === 'animateur') return '/sor'

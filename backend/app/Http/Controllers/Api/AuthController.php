@@ -46,6 +46,7 @@ class AuthController extends Controller
                 'role' => $user->role,
                 'pole' => $user->pole,
                 'avatar' => $user->avatar,
+                'preferred_language' => $user->preferred_language,
                 'project_list_preference' => $user->project_list_preference ?? 'code',
                 'must_change_password' => (bool) $user->must_change_password,
             ],
@@ -63,7 +64,7 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => PasswordPolicy::rulesForRole($role, true, true),
-            'role' => 'required|in:admin,hse_manager,regional_hse_manager,responsable,supervisor,hr,user,dev,pole_director,works_director,hse_director,hr_director',
+            'role' => 'required|in:admin,consultation,hse_manager,regional_hse_manager,responsable,supervisor,hr,user,dev,pole_director,works_director,hse_director,hr_director',
             'phone' => 'nullable|string|max:20',
         ]);
 
@@ -74,6 +75,7 @@ class AuthController extends Controller
             'must_change_password' => true,
             'role' => $request->role,
             'phone' => $request->phone,
+            'preferred_language' => $request->role === User::ROLE_CONSULTATION ? 'fr' : null,
             'is_active' => true,
         ]);
 
@@ -106,6 +108,7 @@ class AuthController extends Controller
             'pole' => $user->pole,
             'phone' => $user->phone,
             'avatar' => $user->avatar,
+            'preferred_language' => $user->preferred_language,
             'project_list_preference' => $user->project_list_preference ?? 'code',
             'must_change_password' => (bool) $user->must_change_password,
             'is_active' => $user->is_active,
@@ -141,6 +144,7 @@ class AuthController extends Controller
             'pole' => $user->pole,
             'phone' => $user->phone,
             'avatar' => $user->avatar,
+            'preferred_language' => $user->preferred_language,
             'project_list_preference' => $user->project_list_preference ?? 'code',
             'must_change_password' => (bool) $user->must_change_password,
             'is_active' => $user->is_active,
@@ -205,7 +209,7 @@ class AuthController extends Controller
         $request->validate([
             'token' => 'required',
             'email' => 'required|email',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => 'required|string|confirmed',
         ]);
 
         $role = User::where('email', $request->email)->value('role');

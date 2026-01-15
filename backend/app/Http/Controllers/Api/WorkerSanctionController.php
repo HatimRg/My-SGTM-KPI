@@ -3,14 +3,33 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Exports\WorkerSanctionsMassTemplateExport;
 use App\Models\Project;
+use App\Models\User;
 use App\Models\Worker;
-use App\Models\WorkerSanction;
+use App\Services\WorkerSanctionMassImportService;
+use App\Services\MassImportProgressService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Maatwebsite\Excel\Excel as ExcelFormat;
+use Maatwebsite\Excel\Facades\Excel;
+use ZipArchive;
 
 class WorkerSanctionController extends Controller
 {
+    private function checkMassImportAccess(Request $request)
+    {
+        $user = $this->checkAccess($request);
+        if ($user->role === User::ROLE_HR || $user->role === User::ROLE_HR_DIRECTOR) {
+            abort(403, 'Access denied');
+        }
+        if (!$this->canCreate($request)) {
+            abort(403, 'Access denied');
+        }
+        return $user;
+    }
+
     private function checkAccess(Request $request)
     {
         $user = $request->user();
@@ -112,6 +131,59 @@ class WorkerSanctionController extends Controller
         $item->load(['worker.project', 'project:id,name,code', 'creator:id,name']);
 
         return $this->success($item, 'Worker sanction created successfully', 201);
+    }
+
+    public function massTemplate(Request $request)
+    {
+        $this->checkMassImportAccess($request);
+
+        if (!class_exists(ZipArchive::class) || !extension_loaded('zip')) {
+            return $this->error('ZipArchive extension is required to generate Excel templates', 500);
+        }
+
+        $filename = 'worker_sanctions_mass_template.xlsx';
+        $contents = Excel::raw(new WorkerSanctionsMassTemplateExport(), ExcelFormat::XLSX);
+
+        return response($contents, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    public function massImport(Request $request)
+    {
+        $user = $this->checkMassImportAccess($request);
+
+        $validated = $request->validate([
+            'excel' => 'required|file',
+            'zip' => 'required|file',
+            'progress_id' => 'nullable|string|max:120',
+        ]);
+
+        $progressId = $validated['progress_id'] ?? null;
+        $progress = $progressId ? new MassImportProgressService() : null;
+        if ($progress && $progressId) {
+            $progress->init($progressId);
+        }
+
+        try {
+            $service = new WorkerSanctionMassImportService();
+            $result = $service->handle($user, $validated['excel'], $validated['zip'], $progressId);
+
+            if ($progress && $progressId) {
+                $progress->complete($progressId, [
+                    'imported' => (int) ($result['imported'] ?? 0),
+                    'failed' => (int) ($result['failed_count'] ?? 0),
+                ]);
+            }
+
+            return $this->success($result, 'Import completed');
+        } catch (\Throwable $e) {
+            if ($progress && $progressId) {
+                $progress->fail($progressId, $e->getMessage() ?: 'Import failed');
+            }
+            return $this->error($e->getMessage() ?: 'Import failed', 500);
+        }
     }
 
     public function show(Request $request, WorkerSanction $workerSanction)

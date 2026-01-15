@@ -60,7 +60,7 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
             }
             $this->seenEmails[$email] = true;
 
-            $allowedRoles = ['admin', 'hse_manager', 'regional_hse_manager', 'responsable', 'supervisor', 'hr', 'user', 'dev', 'pole_director', 'works_director', 'hse_director', 'hr_director'];
+            $allowedRoles = ['admin', 'consultation', 'hse_manager', 'regional_hse_manager', 'responsable', 'supervisor', 'hr', 'user', 'dev', 'pole_director', 'works_director', 'hse_director', 'hr_director'];
             if (!in_array($role, $allowedRoles, true)) {
                 $this->rowErrors[] = ['email' => $email, 'error' => 'Invalid role'];
                 return null;
@@ -108,6 +108,9 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
                     'phone' => $phone,
                     'is_active' => $isActive,
                 ];
+                if ($role === User::ROLE_CONSULTATION) {
+                    $data['preferred_language'] = 'fr';
+                }
                 if ($password) {
                     $data['password'] = $password;
                     $data['must_change_password'] = true;
@@ -135,6 +138,7 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
                     'role' => $role,
                     'pole' => $pole,
                     'phone' => $phone,
+                    'preferred_language' => $role === User::ROLE_CONSULTATION ? 'fr' : null,
                     'is_active' => $isActive,
                 ]);
 
@@ -192,7 +196,7 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
         $raw = trim((string) $value);
         $rawLower = strtolower($raw);
 
-        $allowedRoles = ['admin', 'hse_manager', 'regional_hse_manager', 'responsable', 'supervisor', 'hr', 'user', 'dev', 'pole_director', 'works_director', 'hse_director', 'hr_director'];
+        $allowedRoles = ['admin', 'consultation', 'hse_manager', 'regional_hse_manager', 'responsable', 'supervisor', 'hr', 'user', 'dev', 'pole_director', 'works_director', 'hse_director', 'hr_director'];
         if (in_array($rawLower, $allowedRoles, true)) {
             return $rawLower;
         }
@@ -200,6 +204,7 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
         $key = $this->normalizeString($raw);
         $map = [
             'administrateur' => 'admin',
+            'consultation' => 'consultation',
             'manager hse' => 'hse_manager',
             'regional hse manager' => 'regional_hse_manager',
             'responsable hse' => 'responsable',

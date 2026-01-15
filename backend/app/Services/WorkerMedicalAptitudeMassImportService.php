@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
-use App\Exports\WorkerTrainingsMassFailedRowsExport;
-use App\Imports\WorkerTrainingsMassImport;
+use App\Exports\WorkerMedicalAptitudesMassFailedRowsExport;
+use App\Imports\WorkerMedicalAptitudesMassImport;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\Worker;
-use App\Models\WorkerTraining;
+use App\Models\WorkerMedicalAptitude;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -17,8 +17,10 @@ use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use ZipArchive;
 
-class WorkerTrainingMassImportService
+class WorkerMedicalAptitudeMassImportService
 {
+    private array $allowedAptitudeStatuses = ['apte', 'inapte'];
+
     public function handle(User $user, UploadedFile $excelFile, UploadedFile $zipFile, ?string $progressId = null): array
     {
         if (!class_exists(ZipArchive::class) || !extension_loaded('zip')) {
@@ -75,7 +77,7 @@ class WorkerTrainingMassImportService
             $pdfByCin[$cin] = $name;
         }
 
-        $import = new WorkerTrainingsMassImport();
+        $import = new WorkerMedicalAptitudesMassImport();
         Excel::import($import, $excelFile);
         $rows = $import->getRows();
 
@@ -130,57 +132,69 @@ class WorkerTrainingMassImportService
             $rowFailed = false;
 
             $cin = null;
-            $trainingType = null;
-            $trainingDate = null;
+            $aptitudeStatus = null;
+            $examNature = null;
+            $ableToRaw = null;
+            $examDate = null;
             $expiryDate = null;
 
             try {
                 $cin = $this->normalizeCin($this->getColumnValue($row, ['cin', 'cni', 'numero_cin', 'id']));
-                $trainingType = $this->getColumnValue($row, ['type_formation', 'training_type', 'type']);
-                $trainingDate = $this->parseDate($this->getColumnValue($row, ['date_formation', 'training_date', 'date']));
+                $aptitudeStatus = $this->getColumnValue($row, ['aptitude_status', 'status']);
+                $examNature = $this->getColumnValue($row, ['exam_nature', 'nature']);
+                $ableToRaw = $this->getColumnValue($row, ['able_to', 'apte_a', 'ableto']);
+                $examDate = $this->parseDate($this->getColumnValue($row, ['exam_date', 'date_examen', 'date']));
                 $expiryDate = $this->parseDate($this->getColumnValue($row, ['date_expiration', 'expiry_date', 'expiration_date']));
 
-                $trainingType = $trainingType !== null ? trim((string) $trainingType) : null;
+                $aptitudeStatus = $aptitudeStatus !== null ? trim((string) $aptitudeStatus) : null;
+                $examNature = $examNature !== null ? trim((string) $examNature) : null;
+                $ableToRaw = $ableToRaw !== null ? trim((string) $ableToRaw) : null;
 
                 if (!$cin) {
-                    $failedRows[] = $this->failRow(null, $trainingType, $trainingDate, $expiryDate, 'Missing CIN');
+                    $failedRows[] = $this->failRow(null, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Missing CIN');
                     $rowFailed = true;
                     continue;
                 }
 
                 if (isset($seenCins[$cin])) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Duplicate CIN in Excel');
+                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Duplicate CIN in Excel');
                     $rowFailed = true;
                     continue;
                 }
                 $seenCins[$cin] = true;
 
-                if (!$trainingType) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Missing training_type');
+                if (!$aptitudeStatus) {
+                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Missing aptitude_status');
                     $rowFailed = true;
                     continue;
                 }
 
-                if ($trainingType === 'other') {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Training type other is not supported in mass import');
+                if (!in_array($aptitudeStatus, $this->allowedAptitudeStatuses, true)) {
+                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Invalid aptitude_status');
                     $rowFailed = true;
                     continue;
                 }
 
-                if (!$trainingDate) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Invalid or missing training_date');
+                if (!$examNature) {
+                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Missing exam_nature');
                     $rowFailed = true;
                     continue;
                 }
 
-                if ($expiryDate && Carbon::parse($expiryDate)->lt(Carbon::parse($trainingDate))) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'expiry_date must be after or equal to training_date');
+                if (!$examDate) {
+                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Invalid or missing exam_date');
+                    $rowFailed = true;
+                    continue;
+                }
+
+                if ($expiryDate && Carbon::parse($expiryDate)->lt(Carbon::parse($examDate))) {
+                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'expiry_date must be after or equal to exam_date');
                     $rowFailed = true;
                     continue;
                 }
 
                 if (!isset($pdfByCin[$cin])) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Missing PDF in ZIP for CIN');
+                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Missing PDF in ZIP for CIN');
                     $rowFailed = true;
                     continue;
                 }
@@ -189,7 +203,7 @@ class WorkerTrainingMassImportService
 
                 $worker = Worker::query()->where('cin', $cin)->first();
                 if (!$worker) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Worker not found');
+                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Worker not found');
                     $rowFailed = true;
                     continue;
                 }
@@ -197,23 +211,25 @@ class WorkerTrainingMassImportService
                 if ($worker->project_id) {
                     $project = Project::find($worker->project_id);
                     if ($project && !$user->canAccessProject($project)) {
-                        $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Access denied');
+                        $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Access denied');
                         $rowFailed = true;
                         continue;
                     }
                 } elseif (!$user->hasGlobalProjectScope()) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Access denied');
+                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Access denied');
                     $rowFailed = true;
                     continue;
                 }
 
-                $exists = WorkerTraining::query()
+                $ableTo = $this->parseAbleTo($ableToRaw);
+
+                $exists = WorkerMedicalAptitude::query()
                     ->where('worker_id', $worker->id)
-                    ->where('training_type', $trainingType)
-                    ->whereDate('training_date', $trainingDate)
+                    ->where('exam_nature', $examNature)
+                    ->whereDate('exam_date', $examDate)
                     ->exists();
                 if ($exists) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Duplicate training');
+                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Duplicate medical aptitude');
                     $rowFailed = true;
                     continue;
                 }
@@ -221,20 +237,22 @@ class WorkerTrainingMassImportService
                 $zipEntry = $pdfByCin[$cin];
                 $pdfContent = $zip->getFromName($zipEntry);
                 if ($pdfContent === false) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Failed to read PDF from ZIP');
+                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Failed to read PDF from ZIP');
                     $rowFailed = true;
                     continue;
                 }
 
                 $safeCin = preg_replace('/[^A-Za-z0-9_-]/', '_', $cin);
                 $uuid = (string) Str::uuid();
-                $storedPath = "worker_certificates/mass_trainings/{$safeCin}_{$uuid}.pdf";
+                $storedPath = "worker_certificates/mass_medical_aptitudes/{$safeCin}_{$uuid}.pdf";
                 Storage::disk('public')->put($storedPath, $pdfContent);
 
-                WorkerTraining::create([
+                WorkerMedicalAptitude::create([
                     'worker_id' => $worker->id,
-                    'training_type' => $trainingType,
-                    'training_date' => $trainingDate,
+                    'aptitude_status' => $aptitudeStatus,
+                    'exam_nature' => $examNature,
+                    'able_to' => $ableTo,
+                    'exam_date' => $examDate,
                     'expiry_date' => $expiryDate,
                     'certificate_path' => $storedPath,
                     'created_by' => $user->id,
@@ -242,7 +260,7 @@ class WorkerTrainingMassImportService
 
                 $importedCount++;
             } catch (\Throwable $e) {
-                $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Unexpected error: ' . ($e->getMessage() ?: 'Import failed'));
+                $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Unexpected error: ' . ($e->getMessage() ?: 'Import failed'));
                 $rowFailed = true;
                 continue;
             } finally {
@@ -272,16 +290,16 @@ class WorkerTrainingMassImportService
         foreach ($zipErrors as $e) {
             $file = $e['file'] ?? null;
             $msg = $e['error'] ?? 'ZIP error';
-            $failedRows[] = $this->failRow(null, null, null, null, 'ZIP: ' . ($file ? ($file . ' - ') : '') . $msg);
+            $failedRows[] = $this->failRow(null, null, null, null, null, null, 'ZIP: ' . ($file ? ($file . ' - ') : '') . $msg);
         }
 
         foreach ($unusedPdfs as $u) {
             $uCin = $u['cin'] ?? null;
             $file = $u['file'] ?? '-';
             if ($uCin && isset($excelCins[$uCin])) {
-                $failedRows[] = $this->failRow($uCin, null, null, null, 'PDF in ZIP not used (matching Excel row exists but row failed/was skipped) (file: ' . $file . ')');
+                $failedRows[] = $this->failRow($uCin, null, null, null, null, null, 'PDF in ZIP not used (matching Excel row exists but row failed/was skipped) (file: ' . $file . ')');
             } else {
-                $failedRows[] = $this->failRow($uCin, null, null, null, 'PDF in ZIP has no matching Excel row (file: ' . $file . ')');
+                $failedRows[] = $this->failRow($uCin, null, null, null, null, null, 'PDF in ZIP has no matching Excel row (file: ' . $file . ')');
             }
         }
 
@@ -295,9 +313,9 @@ class WorkerTrainingMassImportService
 
         $failedRowsUrl = null;
         if (!empty($failedRows)) {
-            $filename = 'worker_trainings_failed_rows_' . now()->format('Ymd_His') . '.xlsx';
+            $filename = 'worker_medical_aptitudes_failed_rows_' . now()->format('Ymd_His') . '.xlsx';
             $path = 'imports/failed_rows/' . $filename;
-            $contents = Excel::raw(new WorkerTrainingsMassFailedRowsExport($failedRows), ExcelFormat::XLSX);
+            $contents = Excel::raw(new WorkerMedicalAptitudesMassFailedRowsExport($failedRows), ExcelFormat::XLSX);
             Storage::disk('public')->put($path, $contents);
             $failedRowsUrl = '/api/imports/failed-rows/' . $filename;
         }
@@ -310,6 +328,18 @@ class WorkerTrainingMassImportService
             'unused_pdfs' => $unusedPdfs,
             'errors' => $failedRows,
         ];
+    }
+
+    private function parseAbleTo(?string $raw): array
+    {
+        if ($raw === null || trim($raw) === '') {
+            return [];
+        }
+
+        $parts = array_map('trim', explode(',', $raw));
+        $parts = array_values(array_filter($parts, fn ($v) => $v !== ''));
+        $parts = array_values(array_unique($parts));
+        return $parts;
     }
 
     private function normalizeCin($value): ?string
@@ -426,19 +456,29 @@ class WorkerTrainingMassImportService
                 return $row['col_0'];
             }
         }
-        if (in_array('type_formation', $possibleNames, true) || in_array('training_type', $possibleNames, true)) {
+        if (in_array('aptitude_status', $possibleNames, true) || in_array('status', $possibleNames, true)) {
             if (isset($row['col_1']) && $row['col_1'] !== null && $row['col_1'] !== '') {
                 return $row['col_1'];
             }
         }
-        if (in_array('date_formation', $possibleNames, true) || in_array('training_date', $possibleNames, true)) {
+        if (in_array('exam_nature', $possibleNames, true) || in_array('nature', $possibleNames, true)) {
             if (isset($row['col_2']) && $row['col_2'] !== null && $row['col_2'] !== '') {
                 return $row['col_2'];
             }
         }
-        if (in_array('date_expiration', $possibleNames, true) || in_array('expiry_date', $possibleNames, true) || in_array('expiration_date', $possibleNames, true)) {
+        if (in_array('able_to', $possibleNames, true)) {
             if (isset($row['col_3']) && $row['col_3'] !== null && $row['col_3'] !== '') {
                 return $row['col_3'];
+            }
+        }
+        if (in_array('exam_date', $possibleNames, true) || in_array('date', $possibleNames, true)) {
+            if (isset($row['col_4']) && $row['col_4'] !== null && $row['col_4'] !== '') {
+                return $row['col_4'];
+            }
+        }
+        if (in_array('date_expiration', $possibleNames, true) || in_array('expiry_date', $possibleNames, true) || in_array('expiration_date', $possibleNames, true)) {
+            if (isset($row['col_5']) && $row['col_5'] !== null && $row['col_5'] !== '') {
+                return $row['col_5'];
             }
         }
 
@@ -470,27 +510,16 @@ class WorkerTrainingMassImportService
         return null;
     }
 
-    private function failRow($cin, $trainingType, $a3 = null, $a4 = null, $a5 = null, $a6 = null): array
+    private function failRow($cin, $aptitudeStatus, $examNature, $ableTo, $examDate, $expiryDate, $error): array
     {
-        $args = func_get_args();
-        $count = count($args);
-
-        if ($count === 6) {
-            $trainingDate = $a4;
-            $expiryDate = $a5;
-            $error = (string) $a6;
-        } else {
-            $trainingDate = $a3;
-            $expiryDate = $a4;
-            $error = (string) $a5;
-        }
-
         return [
             'cin' => $cin,
-            'training_type' => $trainingType,
-            'training_date' => $trainingDate,
+            'aptitude_status' => $aptitudeStatus,
+            'exam_nature' => $examNature,
+            'able_to' => $ableTo,
+            'exam_date' => $examDate,
             'expiry_date' => $expiryDate,
-            'error' => $error,
+            'error' => (string) $error,
         ];
     }
 }

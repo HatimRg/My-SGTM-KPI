@@ -3,7 +3,17 @@ import { CheckCircle, XCircle } from 'lucide-react'
 import { useLanguage } from '../../i18n'
 
 export function getPasswordPolicy(role) {
-  const privileged = ['admin', 'hse_manager', 'dev', 'pole_director', 'works_director', 'hse_director', 'hr_director']
+  const privileged = [
+    'admin',
+    'consultation',
+    'hse_manager',
+    'regional_hse_manager',
+    'dev',
+    'pole_director',
+    'works_director',
+    'hse_director',
+    'hr_director',
+  ]
   const isPrivileged = privileged.includes(role)
 
   return {

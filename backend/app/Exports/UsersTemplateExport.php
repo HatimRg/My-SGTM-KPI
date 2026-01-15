@@ -23,6 +23,7 @@ class UsersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, Wi
     {
         $map = [
             'admin' => 'Administrateur',
+            'consultation' => 'Consultation',
             'hse_manager' => 'Manager HSE',
             'regional_hse_manager' => 'Manager HSE Régional',
             'responsable' => 'Responsable HSE',
@@ -159,7 +160,7 @@ class UsersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, Wi
                     $roleValidation->setShowDropDown(true);
                     $roleLabels = !empty($roleOptions)
                         ? array_map(fn ($r) => $this->roleLabel((string) $r), $roleOptions)
-                        : ['Administrateur', 'Manager HSE', 'Manager HSE Régional', 'Responsable HSE', 'Superviseur HSE', 'Responsable administratif', 'Animateur HSE', 'Développeur', 'Directeur de pôle', 'Directeur Travaux', 'Directeur HSE', 'Directeur RH'];
+                        : ['Administrateur', 'Consultation', 'Manager HSE', 'Manager HSE Régional', 'Responsable HSE', 'Superviseur HSE', 'Responsable administratif', 'Animateur HSE', 'Développeur', 'Directeur de pôle', 'Directeur Travaux', 'Directeur HSE', 'Directeur RH'];
                     $rolesCsv = implode(',', $roleLabels);
                     $roleValidation->setFormula1('"' . $rolesCsv . '"');
 

@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
-use App\Exports\WorkerTrainingsMassFailedRowsExport;
-use App\Imports\WorkerTrainingsMassImport;
+use App\Exports\WorkerSanctionsMassFailedRowsExport;
+use App\Imports\WorkerSanctionsMassImport;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\Worker;
-use App\Models\WorkerTraining;
+use App\Models\WorkerSanction;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -17,8 +17,10 @@ use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use ZipArchive;
 
-class WorkerTrainingMassImportService
+class WorkerSanctionMassImportService
 {
+    private array $allowedSanctionTypes = ['mise_a_pied', 'avertissement', 'rappel_a_lordre', 'blame'];
+
     public function handle(User $user, UploadedFile $excelFile, UploadedFile $zipFile, ?string $progressId = null): array
     {
         if (!class_exists(ZipArchive::class) || !extension_loaded('zip')) {
@@ -75,7 +77,7 @@ class WorkerTrainingMassImportService
             $pdfByCin[$cin] = $name;
         }
 
-        $import = new WorkerTrainingsMassImport();
+        $import = new WorkerSanctionsMassImport();
         Excel::import($import, $excelFile);
         $rows = $import->getRows();
 
@@ -130,57 +132,68 @@ class WorkerTrainingMassImportService
             $rowFailed = false;
 
             $cin = null;
-            $trainingType = null;
-            $trainingDate = null;
-            $expiryDate = null;
+            $sanctionDate = null;
+            $sanctionType = null;
+            $miseAPiedDays = null;
+            $reason = null;
 
             try {
                 $cin = $this->normalizeCin($this->getColumnValue($row, ['cin', 'cni', 'numero_cin', 'id']));
-                $trainingType = $this->getColumnValue($row, ['type_formation', 'training_type', 'type']);
-                $trainingDate = $this->parseDate($this->getColumnValue($row, ['date_formation', 'training_date', 'date']));
-                $expiryDate = $this->parseDate($this->getColumnValue($row, ['date_expiration', 'expiry_date', 'expiration_date']));
+                $sanctionDate = $this->parseDate($this->getColumnValue($row, ['date_sanction', 'sanction_date', 'date']));
+                $sanctionType = $this->getColumnValue($row, ['type_sanction', 'sanction_type', 'type']);
+                $miseAPiedDays = $this->getColumnValue($row, ['mise_a_pied_days', 'days']);
+                $reason = $this->getColumnValue($row, ['reason', 'motif']);
 
-                $trainingType = $trainingType !== null ? trim((string) $trainingType) : null;
+                $sanctionType = $sanctionType !== null ? trim((string) $sanctionType) : null;
+                $reason = $reason !== null ? trim((string) $reason) : null;
+
+                $miseAPiedDays = $miseAPiedDays !== null ? (int) $miseAPiedDays : null;
 
                 if (!$cin) {
-                    $failedRows[] = $this->failRow(null, $trainingType, $trainingDate, $expiryDate, 'Missing CIN');
+                    $failedRows[] = $this->failRow(null, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Missing CIN');
                     $rowFailed = true;
                     continue;
                 }
 
                 if (isset($seenCins[$cin])) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Duplicate CIN in Excel');
+                    $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Duplicate CIN in Excel');
                     $rowFailed = true;
                     continue;
                 }
                 $seenCins[$cin] = true;
 
-                if (!$trainingType) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Missing training_type');
+                if (!$sanctionDate) {
+                    $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Invalid or missing sanction_date');
                     $rowFailed = true;
                     continue;
                 }
 
-                if ($trainingType === 'other') {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Training type other is not supported in mass import');
+                if (!$sanctionType) {
+                    $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Missing sanction_type');
                     $rowFailed = true;
                     continue;
                 }
 
-                if (!$trainingDate) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Invalid or missing training_date');
+                if (!in_array($sanctionType, $this->allowedSanctionTypes, true)) {
+                    $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Invalid sanction_type');
                     $rowFailed = true;
                     continue;
                 }
 
-                if ($expiryDate && Carbon::parse($expiryDate)->lt(Carbon::parse($trainingDate))) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'expiry_date must be after or equal to training_date');
+                if (!$reason) {
+                    $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Missing reason');
+                    $rowFailed = true;
+                    continue;
+                }
+
+                if ($sanctionType === 'mise_a_pied' && (!$miseAPiedDays || $miseAPiedDays < 1 || $miseAPiedDays > 365)) {
+                    $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Days are required for mise a pied');
                     $rowFailed = true;
                     continue;
                 }
 
                 if (!isset($pdfByCin[$cin])) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Missing PDF in ZIP for CIN');
+                    $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Missing PDF in ZIP for CIN');
                     $rowFailed = true;
                     continue;
                 }
@@ -189,7 +202,7 @@ class WorkerTrainingMassImportService
 
                 $worker = Worker::query()->where('cin', $cin)->first();
                 if (!$worker) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Worker not found');
+                    $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Worker not found');
                     $rowFailed = true;
                     continue;
                 }
@@ -197,23 +210,24 @@ class WorkerTrainingMassImportService
                 if ($worker->project_id) {
                     $project = Project::find($worker->project_id);
                     if ($project && !$user->canAccessProject($project)) {
-                        $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Access denied');
+                        $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Access denied');
                         $rowFailed = true;
                         continue;
                     }
                 } elseif (!$user->hasGlobalProjectScope()) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Access denied');
+                    $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Access denied');
                     $rowFailed = true;
                     continue;
                 }
 
-                $exists = WorkerTraining::query()
+                $exists = WorkerSanction::query()
                     ->where('worker_id', $worker->id)
-                    ->where('training_type', $trainingType)
-                    ->whereDate('training_date', $trainingDate)
+                    ->where('sanction_type', $sanctionType)
+                    ->whereDate('sanction_date', $sanctionDate)
+                    ->where('reason', $reason)
                     ->exists();
                 if ($exists) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Duplicate training');
+                    $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Duplicate sanction');
                     $rowFailed = true;
                     continue;
                 }
@@ -221,28 +235,32 @@ class WorkerTrainingMassImportService
                 $zipEntry = $pdfByCin[$cin];
                 $pdfContent = $zip->getFromName($zipEntry);
                 if ($pdfContent === false) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Failed to read PDF from ZIP');
+                    $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Failed to read PDF from ZIP');
                     $rowFailed = true;
                     continue;
                 }
 
                 $safeCin = preg_replace('/[^A-Za-z0-9_-]/', '_', $cin);
                 $uuid = (string) Str::uuid();
-                $storedPath = "worker_certificates/mass_trainings/{$safeCin}_{$uuid}.pdf";
+                $storedPath = "worker_sanctions/mass_sanctions/{$safeCin}_{$uuid}.pdf";
                 Storage::disk('public')->put($storedPath, $pdfContent);
 
-                WorkerTraining::create([
+                $data = [
                     'worker_id' => $worker->id,
-                    'training_type' => $trainingType,
-                    'training_date' => $trainingDate,
-                    'expiry_date' => $expiryDate,
-                    'certificate_path' => $storedPath,
+                    'project_id' => $worker->project_id ? (int) $worker->project_id : null,
+                    'sanction_date' => $sanctionDate,
+                    'reason' => $reason,
+                    'sanction_type' => $sanctionType,
+                    'mise_a_pied_days' => $sanctionType === 'mise_a_pied' ? $miseAPiedDays : null,
+                    'document_path' => $storedPath,
                     'created_by' => $user->id,
-                ]);
+                ];
+
+                WorkerSanction::create($data);
 
                 $importedCount++;
             } catch (\Throwable $e) {
-                $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Unexpected error: ' . ($e->getMessage() ?: 'Import failed'));
+                $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Unexpected error: ' . ($e->getMessage() ?: 'Import failed'));
                 $rowFailed = true;
                 continue;
             } finally {
@@ -272,16 +290,16 @@ class WorkerTrainingMassImportService
         foreach ($zipErrors as $e) {
             $file = $e['file'] ?? null;
             $msg = $e['error'] ?? 'ZIP error';
-            $failedRows[] = $this->failRow(null, null, null, null, 'ZIP: ' . ($file ? ($file . ' - ') : '') . $msg);
+            $failedRows[] = $this->failRow(null, null, null, null, null, 'ZIP: ' . ($file ? ($file . ' - ') : '') . $msg);
         }
 
         foreach ($unusedPdfs as $u) {
             $uCin = $u['cin'] ?? null;
             $file = $u['file'] ?? '-';
             if ($uCin && isset($excelCins[$uCin])) {
-                $failedRows[] = $this->failRow($uCin, null, null, null, 'PDF in ZIP not used (matching Excel row exists but row failed/was skipped) (file: ' . $file . ')');
+                $failedRows[] = $this->failRow($uCin, null, null, null, null, 'PDF in ZIP not used (matching Excel row exists but row failed/was skipped) (file: ' . $file . ')');
             } else {
-                $failedRows[] = $this->failRow($uCin, null, null, null, 'PDF in ZIP has no matching Excel row (file: ' . $file . ')');
+                $failedRows[] = $this->failRow($uCin, null, null, null, null, 'PDF in ZIP has no matching Excel row (file: ' . $file . ')');
             }
         }
 
@@ -295,9 +313,9 @@ class WorkerTrainingMassImportService
 
         $failedRowsUrl = null;
         if (!empty($failedRows)) {
-            $filename = 'worker_trainings_failed_rows_' . now()->format('Ymd_His') . '.xlsx';
+            $filename = 'worker_sanctions_failed_rows_' . now()->format('Ymd_His') . '.xlsx';
             $path = 'imports/failed_rows/' . $filename;
-            $contents = Excel::raw(new WorkerTrainingsMassFailedRowsExport($failedRows), ExcelFormat::XLSX);
+            $contents = Excel::raw(new WorkerSanctionsMassFailedRowsExport($failedRows), ExcelFormat::XLSX);
             Storage::disk('public')->put($path, $contents);
             $failedRowsUrl = '/api/imports/failed-rows/' . $filename;
         }
@@ -426,19 +444,24 @@ class WorkerTrainingMassImportService
                 return $row['col_0'];
             }
         }
-        if (in_array('type_formation', $possibleNames, true) || in_array('training_type', $possibleNames, true)) {
+        if (in_array('date_sanction', $possibleNames, true) || in_array('sanction_date', $possibleNames, true) || in_array('date', $possibleNames, true)) {
             if (isset($row['col_1']) && $row['col_1'] !== null && $row['col_1'] !== '') {
                 return $row['col_1'];
             }
         }
-        if (in_array('date_formation', $possibleNames, true) || in_array('training_date', $possibleNames, true)) {
+        if (in_array('type_sanction', $possibleNames, true) || in_array('sanction_type', $possibleNames, true) || in_array('type', $possibleNames, true)) {
             if (isset($row['col_2']) && $row['col_2'] !== null && $row['col_2'] !== '') {
                 return $row['col_2'];
             }
         }
-        if (in_array('date_expiration', $possibleNames, true) || in_array('expiry_date', $possibleNames, true) || in_array('expiration_date', $possibleNames, true)) {
+        if (in_array('mise_a_pied_days', $possibleNames, true) || in_array('mise_a_pied', $possibleNames, true) || in_array('days', $possibleNames, true)) {
             if (isset($row['col_3']) && $row['col_3'] !== null && $row['col_3'] !== '') {
                 return $row['col_3'];
+            }
+        }
+        if (in_array('reason', $possibleNames, true) || in_array('motif', $possibleNames, true)) {
+            if (isset($row['col_4']) && $row['col_4'] !== null && $row['col_4'] !== '') {
+                return $row['col_4'];
             }
         }
 
@@ -470,27 +493,15 @@ class WorkerTrainingMassImportService
         return null;
     }
 
-    private function failRow($cin, $trainingType, $a3 = null, $a4 = null, $a5 = null, $a6 = null): array
+    private function failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, $error): array
     {
-        $args = func_get_args();
-        $count = count($args);
-
-        if ($count === 6) {
-            $trainingDate = $a4;
-            $expiryDate = $a5;
-            $error = (string) $a6;
-        } else {
-            $trainingDate = $a3;
-            $expiryDate = $a4;
-            $error = (string) $a5;
-        }
-
         return [
             'cin' => $cin,
-            'training_type' => $trainingType,
-            'training_date' => $trainingDate,
-            'expiry_date' => $expiryDate,
-            'error' => $error,
+            'sanction_date' => $sanctionDate,
+            'sanction_type' => $sanctionType,
+            'mise_a_pied_days' => $miseAPiedDays,
+            'reason' => $reason,
+            'error' => (string) $error,
         ];
     }
 }

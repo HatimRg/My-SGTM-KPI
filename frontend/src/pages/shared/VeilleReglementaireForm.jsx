@@ -93,6 +93,20 @@ export default function VeilleReglementaireForm({ mode }) {
   const [weekYear, setWeekYear] = useState(() => new Date().getFullYear())
   const [weekNumber, setWeekNumber] = useState(() => getIsoWeek(new Date()))
 
+  const buildDraftPayload = () => {
+    return {
+      schema_version: SCHEMA_VERSION,
+      mode,
+      submission_id: mode === 'resubmit' ? String(params?.id || '') : null,
+      selectedProjectId: selectedProjectId ? String(selectedProjectId) : '',
+      weekYear,
+      weekNumber,
+      page: currentPageNumber,
+      answers,
+      updated_at: Date.now(),
+    }
+  }
+
   const draftStorageKey = useMemo(() => {
     const userId = user?.id ? String(user.id) : 'anonymous'
     const submissionId = params?.id ? String(params.id) : ''
@@ -107,7 +121,7 @@ export default function VeilleReglementaireForm({ mode }) {
     draftHydratedRef.current.key = draftStorageKey
 
     try {
-      const raw = window.sessionStorage.getItem(draftStorageKey)
+      const raw = window.localStorage.getItem(draftStorageKey)
       if (!raw) return
       const parsed = safeParseJson(raw)
       if (!parsed || typeof parsed !== 'object') return
@@ -124,26 +138,38 @@ export default function VeilleReglementaireForm({ mode }) {
         skipSeedRef.current = true
         setLoadingSeed(false)
       }
+
+      const parsedPage = Number.parseInt(String(parsed.page ?? ''), 10)
+      if (
+        Number.isFinite(parsedPage) &&
+        parsedPage >= 1 &&
+        currentPageNumber === 1 &&
+        parsedPage !== 1
+      ) {
+        navigate(`${wizardBasePath}/${parsedPage}${location.search || ''}`, { replace: true })
+      }
     } catch {}
-  }, [draftStorageKey, mode, params?.id])
+  }, [currentPageNumber, draftStorageKey, location.search, mode, navigate, params?.id, wizardBasePath])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
 
     try {
-      const payload = {
-        schema_version: SCHEMA_VERSION,
-        mode,
-        submission_id: mode === 'resubmit' ? String(params?.id || '') : null,
-        selectedProjectId: selectedProjectId ? String(selectedProjectId) : '',
-        weekYear,
-        weekNumber,
-        answers,
-        updated_at: Date.now(),
-      }
-      window.sessionStorage.setItem(draftStorageKey, JSON.stringify(payload))
+      const payload = buildDraftPayload()
+      window.localStorage.setItem(draftStorageKey, JSON.stringify(payload))
     } catch {}
-  }, [answers, draftStorageKey, mode, params?.id, selectedProjectId, weekNumber, weekYear])
+  }, [answers, currentPageNumber, draftStorageKey, mode, params?.id, selectedProjectId, weekNumber, weekYear])
+
+  const handleSaveDraft = () => {
+    if (typeof window === 'undefined') return
+    try {
+      const payload = buildDraftPayload()
+      window.localStorage.setItem(draftStorageKey, JSON.stringify(payload))
+      toast.success(t('regulatoryWatch.draftSaved'))
+    } catch (e) {
+      toast.error(e?.message ?? t('errors.somethingWentWrong'))
+    }
+  }
 
   useEffect(() => {
     if (mode === 'resubmit') return
@@ -401,7 +427,7 @@ export default function VeilleReglementaireForm({ mode }) {
       toast.success(t('regulatoryWatch.submitSuccess'))
 
       try {
-        window.sessionStorage.removeItem(draftStorageKey)
+        window.localStorage.removeItem(draftStorageKey)
       } catch {}
 
       const submission = res.data?.data
@@ -432,33 +458,43 @@ export default function VeilleReglementaireForm({ mode }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-col sm:flex-row">
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-hse-primary/10 rounded-lg">
-            <FileText className="w-5 h-5 text-hse-primary" />
+      <div className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-900 pt-2 pb-4">
+        <div className="flex items-start justify-between gap-4 flex-col sm:flex-row">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-hse-primary/10 rounded-lg">
+              <FileText className="w-5 h-5 text-hse-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                {mode === 'resubmit' ? t('regulatoryWatch.resubmitTitle') : t('regulatoryWatch.newTitle')}
+              </h1>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{t('regulatoryWatch.subtitle')}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              {mode === 'resubmit' ? t('regulatoryWatch.resubmitTitle') : t('regulatoryWatch.newTitle')}
-            </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400">{t('regulatoryWatch.subtitle')}</p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <button type="button" className="btn-secondary flex items-center justify-center gap-2 w-full sm:w-auto" onClick={() => navigate(basePath)}>
-            <ArrowLeft className="w-4 h-4" />
-            {t('common.back')}
-          </button>
-          <button
-            type="button"
-            onClick={isLastSection ? handleSubmit : goNext}
-            disabled={submitting || !selectedProjectId || (isLastSection && loadingSeed)}
-            className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto"
-          >
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : isLastSection ? <Send className="w-4 h-4" /> : null}
-            {isLastSection ? t('common.submit') : t('common.next')}
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button type="button" className="btn-secondary flex items-center justify-center gap-2 w-full sm:w-auto" onClick={() => navigate(basePath)}>
+              <ArrowLeft className="w-4 h-4" />
+              {t('common.back')}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary flex items-center justify-center gap-2 w-full sm:w-auto"
+              onClick={handleSaveDraft}
+              disabled={submitting || loadingSeed}
+            >
+              {t('regulatoryWatch.saveDraft')}
+            </button>
+            <button
+              type="button"
+              onClick={isLastSection ? handleSubmit : goNext}
+              disabled={submitting || !selectedProjectId || (isLastSection && loadingSeed)}
+              className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto"
+            >
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : isLastSection ? <Send className="w-4 h-4" /> : null}
+              {isLastSection ? t('common.submit') : t('common.next')}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -674,14 +710,25 @@ export default function VeilleReglementaireForm({ mode }) {
                 {t('common.previous')}
               </button>
 
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={isLastSection ? handleSubmit : goNext}
-                disabled={submitting || !selectedProjectId || (isLastSection && loadingSeed)}
-              >
-                {isLastSection ? t('common.submit') : t('common.next')}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={handleSaveDraft}
+                  disabled={submitting || loadingSeed}
+                >
+                  {t('regulatoryWatch.saveDraft')}
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={isLastSection ? handleSubmit : goNext}
+                  disabled={submitting || !selectedProjectId || (isLastSection && loadingSeed)}
+                >
+                  {isLastSection ? t('common.submit') : t('common.next')}
+                </button>
+              </div>
             </div>
           </div>
         )

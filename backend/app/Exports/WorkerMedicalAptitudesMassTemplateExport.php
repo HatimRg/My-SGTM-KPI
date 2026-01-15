@@ -13,11 +13,13 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, WithEvents, WithTitle
+class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnWidths, WithEvents, WithTitle
 {
     private int $dataRows;
 
-    private string $trainingTypesCsv = 'bypassing_safety_controls,formation_coactivite,formation_coffrage_decoffrage,formation_conduite_defensive,formation_analyse_des_risques,formation_elingage_manutention,formation_ergonomie,formation_excavations,formation_outils_electroportatifs,formation_epi,formation_environnement,formation_espaces_confines,formation_flagman,formation_jha,formation_line_of_fire,formation_manutention_manuelle,formation_manutention_mecanique,formation_point_chaud,formation_produits_chimiques,formation_risques_electriques,induction_hse,travail_en_hauteur';
+    private string $aptitudeStatusCsv = 'apte,inapte';
+
+    private string $examNatureCsv = 'embauche_reintegration,visite_systematique,surveillance_medical_special,visite_de_reprise,visite_spontanee';
 
     public function __construct(int $dataRows = 200)
     {
@@ -26,28 +28,30 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
 
     public function title(): string
     {
-        return 'Formations';
+        return 'Aptitudes';
     }
 
     public function columnWidths(): array
     {
         return [
             'A' => 18,
-            'B' => 24,
-            'C' => 16,
-            'D' => 16,
+            'B' => 18,
+            'C' => 28,
+            'D' => 32,
+            'E' => 16,
+            'F' => 16,
         ];
     }
 
     public function array(): array
     {
         $rows = [];
-        $rows[] = ["SGTM - MODÈLE D'IMPORT FORMATIONS (MASS)"];
-        $rows[] = ['Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, TYPE_FORMATION* et DATE_FORMATION* obligatoires.'];
-        $rows[] = ['CIN*', 'TYPE_FORMATION*', 'DATE_FORMATION*', 'DATE_EXPIRATION'];
+        $rows[] = ["SGTM - MODÈLE D'IMPORT APTITUDES MÉDICALES (MASS)"];
+        $rows[] = ['Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, APTITUDE_STATUS*, EXAM_NATURE* et EXAM_DATE* obligatoires. ABLE_TO optionnel (valeurs séparées par virgule).'];
+        $rows[] = ['CIN*', 'APTITUDE_STATUS*', 'EXAM_NATURE*', 'ABLE_TO', 'EXAM_DATE*', 'DATE_EXPIRATION'];
 
         for ($i = 0; $i < $this->dataRows; $i++) {
-            $rows[] = ['', '', '', ''];
+            $rows[] = ['', '', '', '', '', ''];
         }
 
         return $rows;
@@ -64,19 +68,27 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
                 $spreadsheet->addSheet($listsSheet);
                 $listsSheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
 
-                $types = array_values(array_filter(array_map('trim', explode(',', $this->trainingTypesCsv)), fn ($v) => $v !== ''));
-                sort($types, SORT_NATURAL | SORT_FLAG_CASE);
+                $statuses = array_values(array_filter(array_map('trim', explode(',', $this->aptitudeStatusCsv)), fn ($v) => $v !== ''));
+                sort($statuses, SORT_NATURAL | SORT_FLAG_CASE);
                 $rowIndex = 1;
-                foreach ($types as $type) {
-                    $listsSheet->setCellValue('A' . $rowIndex, $type);
+                foreach ($statuses as $v) {
+                    $listsSheet->setCellValue('A' . $rowIndex, $v);
                     $rowIndex++;
                 }
-                $typesLastRow = max(1, count($types));
+                $statusesLastRow = max(1, count($statuses));
+
+                $natures = array_values(array_filter(array_map('trim', explode(',', $this->examNatureCsv)), fn ($v) => $v !== ''));
+                sort($natures, SORT_NATURAL | SORT_FLAG_CASE);
+                $rowIndex = 1;
+                foreach ($natures as $v) {
+                    $listsSheet->setCellValue('B' . $rowIndex, $v);
+                    $rowIndex++;
+                }
+                $naturesLastRow = max(1, count($natures));
 
                 $dataStartRow = 4;
                 $lastRow = $dataStartRow + $this->dataRows - 1;
 
-                // SGTM Theme colors (same palette as other templates)
                 $primaryOrange = 'F97316';
                 $darkOrange = 'EA580C';
                 $lightOrange = 'FED7AA';
@@ -85,10 +97,9 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
                 $grayLight = 'F9FAFB';
                 $grayBorder = '9CA3AF';
 
-                // === ROW 1: Title ===
-                $sheet->setCellValue('A1', 'SGTM - MODÈLE D\'IMPORT FORMATIONS (MASS)');
-                $sheet->mergeCells('A1:D1');
-                $sheet->getStyle('A1:D1')->applyFromArray([
+                $sheet->setCellValue('A1', 'SGTM - MODÈLE D\'IMPORT APTITUDES MÉDICALES (MASS)');
+                $sheet->mergeCells('A1:F1');
+                $sheet->getStyle('A1:F1')->applyFromArray([
                     'font' => ['bold' => true, 'size' => 18, 'color' => ['rgb' => $white]],
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $black]],
                     'alignment' => [
@@ -98,10 +109,9 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
                 ]);
                 $sheet->getRowDimension(1)->setRowHeight(40);
 
-                // === ROW 2: Instructions ===
-                $sheet->setCellValue('A2', 'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, TYPE_FORMATION* et DATE_FORMATION* obligatoires.');
-                $sheet->mergeCells('A2:D2');
-                $sheet->getStyle('A2:D2')->applyFromArray([
+                $sheet->setCellValue('A2', 'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, APTITUDE_STATUS*, EXAM_NATURE* et EXAM_DATE* obligatoires. ABLE_TO optionnel (valeurs séparées par virgule).');
+                $sheet->mergeCells('A2:F2');
+                $sheet->getStyle('A2:F2')->applyFromArray([
                     'font' => ['size' => 11, 'italic' => true, 'color' => ['rgb' => $black]],
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $lightOrange]],
                     'alignment' => [
@@ -113,17 +123,16 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
                         'bottom' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['rgb' => $primaryOrange]],
                     ],
                 ]);
-                $sheet->getRowDimension(2)->setRowHeight(42);
+                $sheet->getRowDimension(2)->setRowHeight(46);
 
-                // === ROW 3: Headers ===
-                $headers = ['CIN*', 'TYPE_FORMATION*', 'DATE_FORMATION*', 'DATE_EXPIRATION'];
+                $headers = ['CIN*', 'APTITUDE_STATUS*', 'EXAM_NATURE*', 'ABLE_TO', 'EXAM_DATE*', 'DATE_EXPIRATION'];
                 $col = 'A';
                 foreach ($headers as $header) {
                     $sheet->setCellValue($col . '3', $header);
                     $col++;
                 }
 
-                $sheet->getStyle('A3:D3')->applyFromArray([
+                $sheet->getStyle('A3:F3')->applyFromArray([
                     'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => $white]],
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $primaryOrange]],
                     'alignment' => [
@@ -137,17 +146,18 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
                 ]);
                 $sheet->getRowDimension(3)->setRowHeight(34);
 
-                // Highlight required fields (same pattern as other templates)
                 $sheet->getStyle('A3:C3')->applyFromArray([
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $black]],
                 ]);
+                $sheet->getStyle('E3')->applyFromArray([
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $black]],
+                ]);
 
-                // === Data rows: zebra + borders + validations ===
-                $sheet->setAutoFilter('A3:D3');
+                $sheet->setAutoFilter('A3:F3');
                 for ($row = $dataStartRow; $row <= $lastRow; $row++) {
                     $bgColor = ($row % 2 == 0) ? $grayLight : $white;
 
-                    $sheet->getStyle("A{$row}:D{$row}")->applyFromArray([
+                    $sheet->getStyle("A{$row}:F{$row}")->applyFromArray([
                         'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bgColor]],
                         'borders' => [
                             'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => $grayBorder]],
@@ -156,36 +166,46 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
                     ]);
                     $sheet->getRowDimension($row)->setRowHeight(22);
 
-                    // TYPE_FORMATION dropdown
-                    $typeValidation = $sheet->getCell("B{$row}")->getDataValidation();
-                    $typeValidation->setType(DataValidation::TYPE_LIST);
-                    $typeValidation->setErrorStyle(DataValidation::STYLE_STOP);
-                    $typeValidation->setAllowBlank(false);
-                    $typeValidation->setShowDropDown(true);
-                    $typeValidation->setShowErrorMessage(true);
-                    $typeValidation->setErrorTitle('Type formation');
-                    $typeValidation->setError('Veuillez sélectionner un type de formation valide dans la liste.');
-                    $typeValidation->setFormula1("='Lists'!\$A\$1:\$A\${typesLastRow}");
+                    $statusValidation = $sheet->getCell("B{$row}")->getDataValidation();
+                    $statusValidation->setType(DataValidation::TYPE_LIST);
+                    $statusValidation->setErrorStyle(DataValidation::STYLE_STOP);
+                    $statusValidation->setAllowBlank(false);
+                    $statusValidation->setShowDropDown(true);
+                    $statusValidation->setShowErrorMessage(true);
+                    $statusValidation->setErrorTitle('Aptitude status');
+                    $statusValidation->setError('Veuillez sélectionner un statut valide dans la liste.');
+                    $statusValidation->setFormula1("='Lists'!\$A\$1:\$A\${statusesLastRow}");
+
+                    $natureValidation = $sheet->getCell("C{$row}")->getDataValidation();
+                    $natureValidation->setType(DataValidation::TYPE_LIST);
+                    $natureValidation->setErrorStyle(DataValidation::STYLE_STOP);
+                    $natureValidation->setAllowBlank(false);
+                    $natureValidation->setShowDropDown(true);
+                    $natureValidation->setShowErrorMessage(true);
+                    $natureValidation->setErrorTitle('Exam nature');
+                    $natureValidation->setError('Veuillez sélectionner une nature d\'examen valide dans la liste.');
+                    $natureValidation->setFormula1("='Lists'!\$B\$1:\$B\${naturesLastRow}");
                 }
 
-                // Header hints
                 $sheet->getComment('A3')->getText()->createTextRun("CIN = IDENTIFIANT UNIQUE\n\nLe PDF dans le ZIP doit s'appeler: CIN.pdf");
                 $sheet->getComment('A3')->setWidth('220px');
                 $sheet->getComment('A3')->setHeight('90px');
 
-                $sheet->getComment('C3')->getText()->createTextRun('Format recommandé: AAAA-MM-JJ');
-                $sheet->getComment('C3')->setWidth('170px');
+                $sheet->getComment('D3')->getText()->createTextRun('Optionnel. Ex: travaux_en_hauteur, operateur');
+                $sheet->getComment('D3')->setWidth('220px');
 
-                $sheet->getComment('D3')->getText()->createTextRun('Optionnel. Format recommandé: AAAA-MM-JJ');
-                $sheet->getComment('D3')->setWidth('190px');
+                $sheet->getComment('E3')->getText()->createTextRun('Format recommandé: AAAA-MM-JJ');
+                $sheet->getComment('E3')->setWidth('170px');
 
-                // Freeze & print settings
+                $sheet->getComment('F3')->getText()->createTextRun('Optionnel. Format recommandé: AAAA-MM-JJ');
+                $sheet->getComment('F3')->setWidth('190px');
+
                 $sheet->freezePane('A4');
                 $sheet->setSelectedCell('A4');
 
                 $sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
                 $sheet->getPageSetup()->setFitToWidth(1);
-                $sheet->getPageSetup()->setPrintArea("A1:D{$lastRow}");
+                $sheet->getPageSetup()->setPrintArea("A1:F{$lastRow}");
 
                 $spreadsheet->setActiveSheetIndex(0);
             },

@@ -152,6 +152,17 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
                     // IMPORTANT: Keep 0 as integer 0, don't let it become empty
                     // Value is guaranteed to be an integer here
                 }
+
+                if (!$isAutoFillField && $field['key'] === 'conformite_hse') {
+                    if (
+                        isset($this->autoFillValues[$i]['auto_values'][$field['key']]) &&
+                        $this->autoFillValues[$i]['auto_values'][$field['key']] !== null &&
+                        $this->autoFillValues[$i]['auto_values'][$field['key']] !== ''
+                    ) {
+                        $dbValue = $this->autoFillValues[$i]['auto_values'][$field['key']];
+                        $value = is_numeric($dbValue) ? (float) $dbValue : '';
+                    }
+                }
                 
                 $row[] = $value;
             }

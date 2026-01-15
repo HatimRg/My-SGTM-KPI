@@ -8,6 +8,12 @@ const translations = { fr, en }
 const DEFAULT_LANGUAGE = 'fr'
 const STORAGE_KEY = 'hse-kpi-language'
 
+const normalizeLang = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  return raw.split(/[-_]/)[0]
+}
+
 const LanguageContext = createContext()
 
 export const languages = [
@@ -19,14 +25,16 @@ export function LanguageProvider({ children }) {
   const [language, setLanguageState] = useState(() => {
     // Get saved language from localStorage or use default
     const saved = localStorage.getItem(STORAGE_KEY)
-    return saved && translations[saved] ? saved : DEFAULT_LANGUAGE
+    const normalized = normalizeLang(saved)
+    return normalized && translations[normalized] ? normalized : DEFAULT_LANGUAGE
   })
 
   const setLanguage = useCallback((lang) => {
-    if (translations[lang]) {
-      setLanguageState(lang)
-      localStorage.setItem(STORAGE_KEY, lang)
-      document.documentElement.lang = lang
+    const normalized = normalizeLang(lang)
+    if (translations[normalized]) {
+      setLanguageState(normalized)
+      localStorage.setItem(STORAGE_KEY, normalized)
+      document.documentElement.lang = normalized
     }
   }, [])
 
@@ -107,7 +115,8 @@ export function useLanguage() {
       return null
     }
   })()
-  const language = saved && translations[saved] ? saved : DEFAULT_LANGUAGE
+  const normalizedSaved = normalizeLang(saved)
+  const language = normalizedSaved && translations[normalizedSaved] ? normalizedSaved : DEFAULT_LANGUAGE
 
   const t = (key, params = {}) => {
     const keys = key.split('.')

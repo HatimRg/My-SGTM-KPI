@@ -94,7 +94,7 @@ export const useAuthStore = create(
 
       isAdmin: () => {
         const { user } = get()
-        return user?.role === 'admin'
+        return user?.role === 'admin' || user?.role === 'consultation'
       },
 
       // Initialize auth state on app load

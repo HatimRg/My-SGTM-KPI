@@ -8,6 +8,14 @@ import { FileText, Loader2, PlusCircle, Eye, RotateCcw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
 
+const safeParseJson = (value) => {
+  try {
+    return JSON.parse(value)
+  } catch {
+    return null
+  }
+}
+
 const formatDateTime = (value) => {
   if (!value) return '-'
   const d = new Date(value)
@@ -41,6 +49,43 @@ export default function VeilleReglementaireHistory() {
   const [loading, setLoading] = useState(true)
   const [avgOverall, setAvgOverall] = useState(null)
   const [submissions, setSubmissions] = useState([])
+
+  const draftStorageKey = useMemo(() => {
+    const userId = user?.id ? String(user.id) : 'anonymous'
+    return `regulatory_watch_draft:new:${userId}:new`
+  }, [user?.id])
+
+  const [draft, setDraft] = useState(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = window.localStorage.getItem(draftStorageKey)
+      if (!raw) {
+        setDraft(null)
+        return
+      }
+      const parsed = safeParseJson(raw)
+      setDraft(parsed && typeof parsed === 'object' ? parsed : null)
+    } catch {
+      setDraft(null)
+    }
+  }, [draftStorageKey])
+
+  const handleContinueDraft = () => {
+    const page = Number.parseInt(String(draft?.page ?? '1'), 10)
+    const clamped = Number.isFinite(page) && page >= 1 ? page : 1
+    navigate(`${basePath}/new/${clamped}`)
+  }
+
+  const handleDiscardDraft = () => {
+    try {
+      window.localStorage.removeItem(draftStorageKey)
+    } catch {
+      // ignore
+    }
+    setDraft(null)
+  }
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -91,6 +136,28 @@ export default function VeilleReglementaireHistory() {
 
   return (
     <div className="space-y-6">
+      {draft?.answers ? (
+        <div className="bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-900/30 p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('regulatoryWatch.draftSaved')}</div>
+              <div className="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                {t('common.page')} {draft?.page ?? 1}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button type="button" className="btn-secondary" onClick={handleDiscardDraft}>
+                {t('common.delete')}
+              </button>
+              <button type="button" className="btn-primary" onClick={handleContinueDraft}>
+                {t('common.continue')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex items-start justify-between gap-4 flex-col sm:flex-row">
         <div className="flex items-start gap-3">
           <div className="p-2 bg-hse-primary/10 rounded-lg">

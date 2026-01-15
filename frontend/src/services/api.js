@@ -3,6 +3,8 @@ import toast from 'react-hot-toast'
 
 const API_BASE_URL = '/api'
 
+const MASS_IMPORT_TIMEOUT = 10 * 60 * 1000
+
 // Simple in-memory cache for GET requests
 const requestCache = new Map()
 const CACHE_TTL = 30000 // 30 seconds
@@ -119,12 +121,16 @@ export const workerTrainingService = {
   getAll: (params) => api.get('/worker-trainings', { params }),
   getOtherLabels: (params) => api.get('/worker-trainings/other-labels', { params }),
   downloadMassTemplate: () => api.get('/worker-trainings/mass/template', { responseType: 'blob' }),
-  massImport: ({ excel, zip }) => {
+  massImport: ({ excel, zip, progressId }) => {
     const formData = new FormData()
     if (excel) formData.append('excel', excel)
     if (zip) formData.append('zip', zip)
+    if (progressId) formData.append('progress_id', progressId)
     return api.post('/worker-trainings/mass/import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: MASS_IMPORT_TIMEOUT,
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
     })
   },
   getById: (id) => api.get(`/worker-trainings/${id}`),
@@ -158,6 +164,19 @@ export const workerTrainingService = {
 
 export const workerQualificationService = {
   getAll: (params) => api.get('/worker-qualifications', { params }),
+  downloadMassTemplate: () => api.get('/worker-qualifications/mass/template', { responseType: 'blob' }),
+  massImport: ({ excel, zip, progressId }) => {
+    const formData = new FormData()
+    if (excel) formData.append('excel', excel)
+    if (zip) formData.append('zip', zip)
+    if (progressId) formData.append('progress_id', progressId)
+    return api.post('/worker-qualifications/mass/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: MASS_IMPORT_TIMEOUT,
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+    })
+  },
   getById: (id) => api.get(`/worker-qualifications/${id}`),
   create: (data) => {
     const formData = new FormData()
@@ -189,6 +208,19 @@ export const workerQualificationService = {
 
 export const workerMedicalAptitudeService = {
   getAll: (params) => api.get('/worker-medical-aptitudes', { params }),
+  downloadMassTemplate: () => api.get('/worker-medical-aptitudes/mass/template', { responseType: 'blob' }),
+  massImport: ({ excel, zip, progressId }) => {
+    const formData = new FormData()
+    if (excel) formData.append('excel', excel)
+    if (zip) formData.append('zip', zip)
+    if (progressId) formData.append('progress_id', progressId)
+    return api.post('/worker-medical-aptitudes/mass/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: MASS_IMPORT_TIMEOUT,
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+    })
+  },
   getById: (id) => api.get(`/worker-medical-aptitudes/${id}`),
   create: (data) => {
     const formData = new FormData()
@@ -236,6 +268,19 @@ export const workerMedicalAptitudeService = {
 
 export const workerSanctionService = {
   getAll: (params) => api.get('/worker-sanctions', { params }),
+  downloadMassTemplate: () => api.get('/worker-sanctions/mass/template', { responseType: 'blob' }),
+  massImport: ({ excel, zip, progressId }) => {
+    const formData = new FormData()
+    if (excel) formData.append('excel', excel)
+    if (zip) formData.append('zip', zip)
+    if (progressId) formData.append('progress_id', progressId)
+    return api.post('/worker-sanctions/mass/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: MASS_IMPORT_TIMEOUT,
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+    })
+  },
   getById: (id) => api.get(`/worker-sanctions/${id}`),
   create: (data) => {
     const formData = new FormData()
@@ -285,6 +330,10 @@ api.interceptors.response.use(
     }
 
     const { response, config } = error
+
+    if (config?.silent) {
+      return Promise.reject(error)
+    }
 
     try {
       const method = String(config?.method || 'GET').toUpperCase()

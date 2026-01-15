@@ -74,12 +74,7 @@ class DailyKpiTemplateImport
 
                 foreach ($fieldMap as $rowIndex => $fieldName) {
                     $value = $data[$rowIndex][$colIndex] ?? null;
-                    // Convert to numeric, handle empty strings
-                    if ($value === '' || $value === null) {
-                        $dayData[$fieldName] = null;
-                    } else {
-                        $dayData[$fieldName] = is_numeric($value) ? floatval($value) : null;
-                    }
+                    $dayData[$fieldName] = self::normalizeNumeric($value);
                 }
 
                 $dailyData[] = $dayData;
@@ -89,6 +84,29 @@ class DailyKpiTemplateImport
         }
 
         return $dailyData;
+    }
+
+    private static function normalizeNumeric($value): ?float
+    {
+        if ($value === '' || $value === null) {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            return (float) $value;
+        }
+
+        if (is_string($value)) {
+            $v = trim($value);
+            if ($v === '') {
+                return null;
+            }
+
+            $v = str_replace(['%', ' ', "\u{00A0}", ','], ['', '', '', '.'], $v);
+            return is_numeric($v) ? (float) $v : null;
+        }
+
+        return null;
     }
 
     /**

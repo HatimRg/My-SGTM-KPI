@@ -45,6 +45,17 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+const makeProgressId = () => {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID()
+    }
+  } catch {
+    // ignore
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
 const TRAINING_TYPE_OPTIONS = [
   { value: 'bypassing_safety_controls', labelKey: 'workers.details.trainings.types.bypassing_safety_controls' },
   { value: 'formation_coactivite', labelKey: 'workers.details.trainings.types.formation_coactivite' },
@@ -119,6 +130,15 @@ export default function Workers() {
 
   const massTrainingsExcelRef = useRef(null)
   const massTrainingsZipRef = useRef(null)
+
+  const massQualificationsExcelRef = useRef(null)
+  const massQualificationsZipRef = useRef(null)
+
+  const massMedicalExcelRef = useRef(null)
+  const massMedicalZipRef = useRef(null)
+
+  const massSanctionsExcelRef = useRef(null)
+  const massSanctionsZipRef = useRef(null)
 
   const isHrReadOnly = user?.role === 'hr' || user?.role === 'hr_director'
 
@@ -321,6 +341,29 @@ export default function Workers() {
   const [massTrainingsZip, setMassTrainingsZip] = useState(null)
   const [massTrainingsImporting, setMassTrainingsImporting] = useState(false)
   const [massTrainingsResult, setMassTrainingsResult] = useState(null)
+  const [massTrainingsProgressId, setMassTrainingsProgressId] = useState(null)
+  const [massTrainingsProgress, setMassTrainingsProgress] = useState(null)
+
+  const [massQualificationsExcel, setMassQualificationsExcel] = useState(null)
+  const [massQualificationsZip, setMassQualificationsZip] = useState(null)
+  const [massQualificationsImporting, setMassQualificationsImporting] = useState(false)
+  const [massQualificationsResult, setMassQualificationsResult] = useState(null)
+  const [massQualificationsProgressId, setMassQualificationsProgressId] = useState(null)
+  const [massQualificationsProgress, setMassQualificationsProgress] = useState(null)
+
+  const [massMedicalExcel, setMassMedicalExcel] = useState(null)
+  const [massMedicalZip, setMassMedicalZip] = useState(null)
+  const [massMedicalImporting, setMassMedicalImporting] = useState(false)
+  const [massMedicalResult, setMassMedicalResult] = useState(null)
+  const [massMedicalProgressId, setMassMedicalProgressId] = useState(null)
+  const [massMedicalProgress, setMassMedicalProgress] = useState(null)
+
+  const [massSanctionsExcel, setMassSanctionsExcel] = useState(null)
+  const [massSanctionsZip, setMassSanctionsZip] = useState(null)
+  const [massSanctionsImporting, setMassSanctionsImporting] = useState(false)
+  const [massSanctionsResult, setMassSanctionsResult] = useState(null)
+  const [massSanctionsProgressId, setMassSanctionsProgressId] = useState(null)
+  const [massSanctionsProgress, setMassSanctionsProgress] = useState(null)
   const [confirmWorker, setConfirmWorker] = useState(null)
   const [showBulkConfirm, setShowBulkConfirm] = useState(false)
 
@@ -762,6 +805,51 @@ export default function Workers() {
     }
   }
 
+  const handleDownloadMassQualificationsTemplate = async () => {
+    try {
+      const res = await workerQualificationService.downloadMassTemplate()
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', 'worker_qualifications_mass_template.xlsx')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (error) {
+      toast.error(error.response?.data?.message ?? t('errors.somethingWentWrong'))
+    }
+  }
+
+  const handleDownloadMassMedicalTemplate = async () => {
+    try {
+      const res = await workerMedicalAptitudeService.downloadMassTemplate()
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', 'worker_medical_aptitudes_mass_template.xlsx')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (error) {
+      toast.error(error.response?.data?.message ?? t('errors.somethingWentWrong'))
+    }
+  }
+
+  const handleDownloadMassSanctionsTemplate = async () => {
+    try {
+      const res = await workerSanctionService.downloadMassTemplate()
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', 'worker_sanctions_mass_template.xlsx')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (error) {
+      toast.error(error.response?.data?.message ?? t('errors.somethingWentWrong'))
+    }
+  }
+
   const closeMassDocsModal = () => {
     setShowMassDocsModal(false)
     setMassDocsCategory('trainings')
@@ -769,17 +857,241 @@ export default function Workers() {
     setMassTrainingsZip(null)
     setMassTrainingsResult(null)
     setMassTrainingsImporting(false)
+    setMassTrainingsProgressId(null)
+    setMassTrainingsProgress(null)
     if (massTrainingsExcelRef.current) massTrainingsExcelRef.current.value = ''
     if (massTrainingsZipRef.current) massTrainingsZipRef.current.value = ''
+
+    setMassQualificationsExcel(null)
+    setMassQualificationsZip(null)
+    setMassQualificationsResult(null)
+    setMassQualificationsImporting(false)
+    setMassQualificationsProgressId(null)
+    setMassQualificationsProgress(null)
+    if (massQualificationsExcelRef.current) massQualificationsExcelRef.current.value = ''
+    if (massQualificationsZipRef.current) massQualificationsZipRef.current.value = ''
+
+    setMassMedicalExcel(null)
+    setMassMedicalZip(null)
+    setMassMedicalResult(null)
+    setMassMedicalImporting(false)
+    setMassMedicalProgressId(null)
+    setMassMedicalProgress(null)
+    if (massMedicalExcelRef.current) massMedicalExcelRef.current.value = ''
+    if (massMedicalZipRef.current) massMedicalZipRef.current.value = ''
+
+    setMassSanctionsExcel(null)
+    setMassSanctionsZip(null)
+    setMassSanctionsResult(null)
+    setMassSanctionsImporting(false)
+    setMassSanctionsProgressId(null)
+    setMassSanctionsProgress(null)
+    if (massSanctionsExcelRef.current) massSanctionsExcelRef.current.value = ''
+    if (massSanctionsZipRef.current) massSanctionsZipRef.current.value = ''
   }
+
+  const renderMassImportProgress = (progress) => {
+    if (!progress) return null
+
+    const processed = Number(progress?.processed ?? 0)
+    const total = Number(progress?.total ?? 0)
+    const imported = Number(progress?.imported ?? 0)
+    const failed = Number(progress?.failed ?? 0)
+
+    const safeTotal = total > 0 ? total : 0
+    const pct = safeTotal > 0 ? Math.min(100, Math.round((processed / safeTotal) * 100)) : 0
+
+    const isFailed = progress?.status === 'failed'
+    const isCompleted = progress?.status === 'completed'
+
+    return (
+      <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 space-y-2">
+        <div className="flex items-center justify-between text-sm">
+          <div className="text-gray-700 dark:text-gray-200 font-medium">{t('common.progress')}</div>
+          <div className={isFailed ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}>
+            {isCompleted ? '100%' : `${pct}%`}
+          </div>
+        </div>
+        <div className="w-full h-2 rounded bg-gray-200 dark:bg-gray-700 overflow-hidden">
+          <div className="h-2 bg-hse-primary" style={{ width: `${isCompleted ? 100 : pct}%` }} />
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-300">
+          <div>
+            {t('common.processed')}: {processed} / {safeTotal}
+          </div>
+          <div>
+            {t('common.imported')}: {imported}
+          </div>
+          <div>
+            {t('common.failed')}: {failed}
+          </div>
+          <div className="text-right">{String(progress?.status ?? '')}</div>
+        </div>
+        {isFailed && progress?.error ? (
+          <div className="text-xs text-red-600 dark:text-red-400">{String(progress.error)}</div>
+        ) : null}
+      </div>
+    )
+  }
+
+  useEffect(() => {
+    if (!massTrainingsImporting) return
+    if (!massTrainingsProgressId) return
+    if (massTrainingsProgress?.status === 'completed' || massTrainingsProgress?.status === 'failed') return
+
+    let stopped = false
+    let intervalId = null
+    let startTimeoutId = null
+    let notFoundCount = 0
+    const poll = async () => {
+      try {
+        const res = await api.get(`/mass-import/progress/${massTrainingsProgressId}`, { silent: true })
+        const data = res.data?.data ?? res.data
+        if (stopped) return
+        notFoundCount = 0
+        setMassTrainingsProgress(data)
+      } catch (err) {
+        if (err?.response?.status === 404) {
+          notFoundCount += 1
+          if (notFoundCount >= 5) {
+            stopped = true
+            if (startTimeoutId) window.clearTimeout(startTimeoutId)
+            if (intervalId) window.clearInterval(intervalId)
+          }
+        }
+      }
+    }
+
+    startTimeoutId = window.setTimeout(poll, 1000)
+    intervalId = window.setInterval(poll, 2000)
+    return () => {
+      stopped = true
+      if (startTimeoutId) window.clearTimeout(startTimeoutId)
+      if (intervalId) window.clearInterval(intervalId)
+    }
+  }, [massTrainingsImporting, massTrainingsProgressId, massTrainingsProgress?.status])
+
+  useEffect(() => {
+    if (!massQualificationsImporting) return
+    if (!massQualificationsProgressId) return
+    if (massQualificationsProgress?.status === 'completed' || massQualificationsProgress?.status === 'failed') return
+
+    let stopped = false
+    let intervalId = null
+    let startTimeoutId = null
+    let notFoundCount = 0
+    const poll = async () => {
+      try {
+        const res = await api.get(`/mass-import/progress/${massQualificationsProgressId}`, { silent: true })
+        const data = res.data?.data ?? res.data
+        if (stopped) return
+        notFoundCount = 0
+        setMassQualificationsProgress(data)
+      } catch (err) {
+        if (err?.response?.status === 404) {
+          notFoundCount += 1
+          if (notFoundCount >= 5) {
+            stopped = true
+            if (startTimeoutId) window.clearTimeout(startTimeoutId)
+            if (intervalId) window.clearInterval(intervalId)
+          }
+        }
+      }
+    }
+
+    startTimeoutId = window.setTimeout(poll, 1000)
+    intervalId = window.setInterval(poll, 2000)
+    return () => {
+      stopped = true
+      if (startTimeoutId) window.clearTimeout(startTimeoutId)
+      if (intervalId) window.clearInterval(intervalId)
+    }
+  }, [massQualificationsImporting, massQualificationsProgressId, massQualificationsProgress?.status])
+
+  useEffect(() => {
+    if (!massMedicalImporting) return
+    if (!massMedicalProgressId) return
+    if (massMedicalProgress?.status === 'completed' || massMedicalProgress?.status === 'failed') return
+
+    let stopped = false
+    let intervalId = null
+    let startTimeoutId = null
+    let notFoundCount = 0
+    const poll = async () => {
+      try {
+        const res = await api.get(`/mass-import/progress/${massMedicalProgressId}`, { silent: true })
+        const data = res.data?.data ?? res.data
+        if (stopped) return
+        notFoundCount = 0
+        setMassMedicalProgress(data)
+      } catch (err) {
+        if (err?.response?.status === 404) {
+          notFoundCount += 1
+          if (notFoundCount >= 5) {
+            stopped = true
+            if (startTimeoutId) window.clearTimeout(startTimeoutId)
+            if (intervalId) window.clearInterval(intervalId)
+          }
+        }
+      }
+    }
+
+    startTimeoutId = window.setTimeout(poll, 1000)
+    intervalId = window.setInterval(poll, 2000)
+    return () => {
+      stopped = true
+      if (startTimeoutId) window.clearTimeout(startTimeoutId)
+      if (intervalId) window.clearInterval(intervalId)
+    }
+  }, [massMedicalImporting, massMedicalProgressId, massMedicalProgress?.status])
+
+  useEffect(() => {
+    if (!massSanctionsImporting) return
+    if (!massSanctionsProgressId) return
+    if (massSanctionsProgress?.status === 'completed' || massSanctionsProgress?.status === 'failed') return
+
+    let stopped = false
+    let intervalId = null
+    let startTimeoutId = null
+    let notFoundCount = 0
+    const poll = async () => {
+      try {
+        const res = await api.get(`/mass-import/progress/${massSanctionsProgressId}`, { silent: true })
+        const data = res.data?.data ?? res.data
+        if (stopped) return
+        notFoundCount = 0
+        setMassSanctionsProgress(data)
+      } catch (err) {
+        if (err?.response?.status === 404) {
+          notFoundCount += 1
+          if (notFoundCount >= 5) {
+            stopped = true
+            if (startTimeoutId) window.clearTimeout(startTimeoutId)
+            if (intervalId) window.clearInterval(intervalId)
+          }
+        }
+      }
+    }
+
+    startTimeoutId = window.setTimeout(poll, 1000)
+    intervalId = window.setInterval(poll, 2000)
+    return () => {
+      stopped = true
+      if (startTimeoutId) window.clearTimeout(startTimeoutId)
+      if (intervalId) window.clearInterval(intervalId)
+    }
+  }, [massSanctionsImporting, massSanctionsProgressId, massSanctionsProgress?.status])
 
   const handleMassTrainingsImport = async () => {
     if (!massTrainingsExcel || !massTrainingsZip) return
 
     setMassTrainingsImporting(true)
     setMassTrainingsResult(null)
+    const progressId = makeProgressId()
+    setMassTrainingsProgressId(progressId)
+    setMassTrainingsProgress({ id: progressId, status: 'running', processed: 0, total: 0, failed: 0, imported: 0 })
     try {
-      const res = await workerTrainingService.massImport({ excel: massTrainingsExcel, zip: massTrainingsZip })
+      const res = await workerTrainingService.massImport({ excel: massTrainingsExcel, zip: massTrainingsZip, progressId })
       const result = res.data?.data ?? res.data
       setMassTrainingsResult(result)
 
@@ -791,9 +1103,100 @@ export default function Workers() {
         await downloadFromUrl(result.failed_rows_url, 'worker_trainings_failed_rows.xlsx')
       }
     } catch (error) {
+      setMassTrainingsProgress(prev =>
+        prev ? { ...prev, status: 'failed', error: error.response?.data?.message ?? t('errors.somethingWentWrong') } : prev
+      )
       toast.error(error.response?.data?.message ?? t('errors.somethingWentWrong'))
     } finally {
       setMassTrainingsImporting(false)
+    }
+  }
+
+  const handleMassQualificationsImport = async () => {
+    if (!massQualificationsExcel || !massQualificationsZip) return
+
+    setMassQualificationsImporting(true)
+    setMassQualificationsResult(null)
+    const progressId = makeProgressId()
+    setMassQualificationsProgressId(progressId)
+    setMassQualificationsProgress({ id: progressId, status: 'running', processed: 0, total: 0, failed: 0, imported: 0 })
+    try {
+      const res = await workerQualificationService.massImport({ excel: massQualificationsExcel, zip: massQualificationsZip, progressId })
+      const result = res.data?.data ?? res.data
+      setMassQualificationsResult(result)
+
+      const imported = result?.imported ?? 0
+      const failed = result?.failed_count ?? 0
+      toast.success(t('workers.massDocs.qualifications.importSuccess', { imported, failed }))
+
+      if (result?.failed_rows_url) {
+        await downloadFromUrl(result.failed_rows_url, 'worker_qualifications_failed_rows.xlsx')
+      }
+    } catch (error) {
+      setMassQualificationsProgress(prev =>
+        prev ? { ...prev, status: 'failed', error: error.response?.data?.message ?? t('errors.somethingWentWrong') } : prev
+      )
+      toast.error(error.response?.data?.message ?? t('errors.somethingWentWrong'))
+    } finally {
+      setMassQualificationsImporting(false)
+    }
+  }
+
+  const handleMassMedicalImport = async () => {
+    if (!massMedicalExcel || !massMedicalZip) return
+
+    setMassMedicalImporting(true)
+    setMassMedicalResult(null)
+    const progressId = makeProgressId()
+    setMassMedicalProgressId(progressId)
+    setMassMedicalProgress({ id: progressId, status: 'running', processed: 0, total: 0, failed: 0, imported: 0 })
+    try {
+      const res = await workerMedicalAptitudeService.massImport({ excel: massMedicalExcel, zip: massMedicalZip, progressId })
+      const result = res.data?.data ?? res.data
+      setMassMedicalResult(result)
+
+      const imported = result?.imported ?? 0
+      const failed = result?.failed_count ?? 0
+      toast.success(t('workers.massDocs.medical.importSuccess', { imported, failed }))
+
+      if (result?.failed_rows_url) {
+        await downloadFromUrl(result.failed_rows_url, 'worker_medical_aptitudes_failed_rows.xlsx')
+      }
+    } catch (error) {
+      setMassMedicalProgress(prev => prev ? { ...prev, status: 'failed', error: error.response?.data?.message ?? t('errors.somethingWentWrong') } : prev)
+      toast.error(error.response?.data?.message ?? t('errors.somethingWentWrong'))
+    } finally {
+      setMassMedicalImporting(false)
+    }
+  }
+
+  const handleMassSanctionsImport = async () => {
+    if (!massSanctionsExcel || !massSanctionsZip) return
+
+    setMassSanctionsImporting(true)
+    setMassSanctionsResult(null)
+    const progressId = makeProgressId()
+    setMassSanctionsProgressId(progressId)
+    setMassSanctionsProgress({ id: progressId, status: 'running', processed: 0, total: 0, failed: 0, imported: 0 })
+    try {
+      const res = await workerSanctionService.massImport({ excel: massSanctionsExcel, zip: massSanctionsZip, progressId })
+      const result = res.data?.data ?? res.data
+      setMassSanctionsResult(result)
+
+      const imported = result?.imported ?? 0
+      const failed = result?.failed_count ?? 0
+      toast.success(t('workers.massDocs.sanctions.importSuccess', { imported, failed }))
+
+      if (result?.failed_rows_url) {
+        await downloadFromUrl(result.failed_rows_url, 'worker_sanctions_failed_rows.xlsx')
+      }
+    } catch (error) {
+      setMassSanctionsProgress(prev =>
+        prev ? { ...prev, status: 'failed', error: error.response?.data?.message ?? t('errors.somethingWentWrong') } : prev
+      )
+      toast.error(error.response?.data?.message ?? t('errors.somethingWentWrong'))
+    } finally {
+      setMassSanctionsImporting(false)
     }
   }
 
@@ -1008,11 +1411,23 @@ export default function Workers() {
     if (!url) return
     try {
       const path = normalizeApiPath(url)
-      const res = await api.get(path, { responseType: 'blob' })
-      const blob = res.data
+      let blob
+      let headers = null
+      if (typeof path === 'string' && path.startsWith('/storage/')) {
+        const resp = await fetch(path)
+        if (!resp.ok) {
+          throw new Error(`Failed to fetch: ${resp.status}`)
+        }
+        blob = await resp.blob()
+        headers = { 'content-disposition': resp.headers.get('content-disposition') }
+      } else {
+        const res = await api.get(path, { responseType: 'blob' })
+        blob = res.data
+        headers = res.headers
+      }
 
       let filename = fallbackFilename
-      const contentDisposition = res.headers?.['content-disposition']
+      const contentDisposition = headers?.['content-disposition']
       if (typeof contentDisposition === 'string') {
         const m = /filename="?([^";]+)"?/i.exec(contentDisposition)
         if (m && m[1]) {
@@ -3565,13 +3980,33 @@ export default function Workers() {
             >
               {t('workers.massDocs.categories.trainings')}
             </button>
-            <button type="button" disabled className="btn-outline btn-sm opacity-50 cursor-not-allowed">
+            <button
+              type="button"
+              onClick={() => setMassDocsCategory('qualifications')}
+              className={massDocsCategory === 'qualifications' ? 'btn-primary btn-sm' : 'btn-outline btn-sm'}
+            >
               {t('workers.massDocs.categories.qualifications')}
             </button>
-            <button type="button" disabled className="btn-outline btn-sm opacity-50 cursor-not-allowed">
+            <button
+              type="button"
+              onClick={() => setMassDocsCategory('medical')}
+              className={massDocsCategory === 'medical' ? 'btn-primary btn-sm' : 'btn-outline btn-sm'}
+            >
               {t('workers.massDocs.categories.medical')}
             </button>
-            <button type="button" disabled className="btn-outline btn-sm opacity-50 cursor-not-allowed">
+            <button
+              type="button"
+              onClick={() => {
+                if (!canCreateSanctions) return
+                setMassDocsCategory('sanctions')
+              }}
+              disabled={!canCreateSanctions}
+              className={
+                massDocsCategory === 'sanctions'
+                  ? 'btn-primary btn-sm'
+                  : (!canCreateSanctions ? 'btn-outline btn-sm opacity-50 cursor-not-allowed' : 'btn-outline btn-sm')
+              }
+            >
               {t('workers.massDocs.categories.sanctions')}
             </button>
           </div>
@@ -3655,6 +4090,8 @@ export default function Workers() {
                 )}
               </div>
 
+              {renderMassImportProgress(massTrainingsProgress)}
+
               <button
                 type="button"
                 onClick={handleMassTrainingsImport}
@@ -3678,6 +4115,342 @@ export default function Workers() {
                     {Array.isArray(massTrainingsResult?.zip_errors) && massTrainingsResult.zip_errors.length > 0 ? (
                       <div className="text-xs text-amber-700 dark:text-amber-300">
                         {t('workers.massDocs.trainings.zipErrorsCount', { count: massTrainingsResult.zip_errors.length })}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {massDocsCategory === 'qualifications' && (
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={handleDownloadMassQualificationsTemplate}
+                className="w-full btn-outline flex items-center justify-center gap-2"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                {t('workers.massDocs.qualifications.downloadTemplate')}
+              </button>
+
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center">
+                <input
+                  ref={massQualificationsExcelRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={(e) => setMassQualificationsExcel(e.target.files?.[0] ?? null)}
+                  className="hidden"
+                />
+                {massQualificationsExcel ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <FileSpreadsheet className="w-5 h-5 text-green-500" />
+                    <span className="text-sm font-medium">{massQualificationsExcel.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMassQualificationsExcel(null)
+                        if (massQualificationsExcelRef.current) massQualificationsExcelRef.current.value = ''
+                      }}
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => massQualificationsExcelRef.current?.click()}
+                    className="text-hse-primary hover:underline"
+                  >
+                    {t('workers.massDocs.qualifications.chooseExcel')}
+                  </button>
+                )}
+              </div>
+
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center">
+                <input
+                  ref={massQualificationsZipRef}
+                  type="file"
+                  accept=".zip,application/zip"
+                  onChange={(e) => setMassQualificationsZip(e.target.files?.[0] ?? null)}
+                  className="hidden"
+                />
+                {massQualificationsZip ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <PackagePlus className="w-5 h-5 text-green-500" />
+                    <span className="text-sm font-medium">{massQualificationsZip.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMassQualificationsZip(null)
+                        if (massQualificationsZipRef.current) massQualificationsZipRef.current.value = ''
+                      }}
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => massQualificationsZipRef.current?.click()}
+                    className="text-hse-primary hover:underline"
+                  >
+                    {t('workers.massDocs.qualifications.chooseZip')}
+                  </button>
+                )}
+              </div>
+
+              {renderMassImportProgress(massQualificationsProgress)}
+
+              <button
+                type="button"
+                onClick={handleMassQualificationsImport}
+                disabled={!massQualificationsExcel || !massQualificationsZip || massQualificationsImporting}
+                className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {massQualificationsImporting && <Loader2 className="w-4 h-4 animate-spin" />}
+                <Upload className="w-4 h-4" />
+                {t('workers.massDocs.qualifications.import')}
+              </button>
+
+              {massQualificationsResult && (
+                <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-gray-700 dark:text-gray-200">
+                      {t('workers.massDocs.qualifications.result', {
+                        imported: massQualificationsResult?.imported ?? 0,
+                        failed: massQualificationsResult?.failed_count ?? 0,
+                      })}
+                    </div>
+                    {Array.isArray(massQualificationsResult?.zip_errors) && massQualificationsResult.zip_errors.length > 0 ? (
+                      <div className="text-xs text-amber-700 dark:text-amber-300">
+                        {t('workers.massDocs.qualifications.zipErrorsCount', { count: massQualificationsResult.zip_errors.length })}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {massDocsCategory === 'medical' && (
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={handleDownloadMassMedicalTemplate}
+                className="w-full btn-outline flex items-center justify-center gap-2"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                {t('workers.massDocs.medical.downloadTemplate')}
+              </button>
+
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center">
+                <input
+                  ref={massMedicalExcelRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={(e) => setMassMedicalExcel(e.target.files?.[0] ?? null)}
+                  className="hidden"
+                />
+                {massMedicalExcel ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <FileSpreadsheet className="w-5 h-5 text-green-500" />
+                    <span className="text-sm font-medium">{massMedicalExcel.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMassMedicalExcel(null)
+                        if (massMedicalExcelRef.current) massMedicalExcelRef.current.value = ''
+                      }}
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => massMedicalExcelRef.current?.click()}
+                    className="text-hse-primary hover:underline"
+                  >
+                    {t('workers.massDocs.medical.chooseExcel')}
+                  </button>
+                )}
+              </div>
+
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center">
+                <input
+                  ref={massMedicalZipRef}
+                  type="file"
+                  accept=".zip,application/zip"
+                  onChange={(e) => setMassMedicalZip(e.target.files?.[0] ?? null)}
+                  className="hidden"
+                />
+                {massMedicalZip ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <PackagePlus className="w-5 h-5 text-green-500" />
+                    <span className="text-sm font-medium">{massMedicalZip.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMassMedicalZip(null)
+                        if (massMedicalZipRef.current) massMedicalZipRef.current.value = ''
+                      }}
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => massMedicalZipRef.current?.click()}
+                    className="text-hse-primary hover:underline"
+                  >
+                    {t('workers.massDocs.medical.chooseZip')}
+                  </button>
+                )}
+              </div>
+
+              {renderMassImportProgress(massMedicalProgress)}
+
+              <button
+                type="button"
+                onClick={handleMassMedicalImport}
+                disabled={!massMedicalExcel || !massMedicalZip || massMedicalImporting}
+                className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {massMedicalImporting && <Loader2 className="w-4 h-4 animate-spin" />}
+                <Upload className="w-4 h-4" />
+                {t('workers.massDocs.medical.import')}
+              </button>
+
+              {massMedicalResult && (
+                <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-gray-700 dark:text-gray-200">
+                      {t('workers.massDocs.medical.result', {
+                        imported: massMedicalResult?.imported ?? 0,
+                        failed: massMedicalResult?.failed_count ?? 0,
+                      })}
+                    </div>
+                    {Array.isArray(massMedicalResult?.zip_errors) && massMedicalResult.zip_errors.length > 0 ? (
+                      <div className="text-xs text-amber-700 dark:text-amber-300">
+                        {t('workers.massDocs.medical.zipErrorsCount', { count: massMedicalResult.zip_errors.length })}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {massDocsCategory === 'sanctions' && (
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={handleDownloadMassSanctionsTemplate}
+                className="w-full btn-outline flex items-center justify-center gap-2"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                {t('workers.massDocs.sanctions.downloadTemplate')}
+              </button>
+
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center">
+                <input
+                  ref={massSanctionsExcelRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={(e) => setMassSanctionsExcel(e.target.files?.[0] ?? null)}
+                  className="hidden"
+                />
+                {massSanctionsExcel ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <FileSpreadsheet className="w-5 h-5 text-green-500" />
+                    <span className="text-sm font-medium">{massSanctionsExcel.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMassSanctionsExcel(null)
+                        if (massSanctionsExcelRef.current) massSanctionsExcelRef.current.value = ''
+                      }}
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => massSanctionsExcelRef.current?.click()}
+                    className="text-hse-primary hover:underline"
+                  >
+                    {t('workers.massDocs.sanctions.chooseExcel')}
+                  </button>
+                )}
+              </div>
+
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center">
+                <input
+                  ref={massSanctionsZipRef}
+                  type="file"
+                  accept=".zip,application/zip"
+                  onChange={(e) => setMassSanctionsZip(e.target.files?.[0] ?? null)}
+                  className="hidden"
+                />
+                {massSanctionsZip ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <PackagePlus className="w-5 h-5 text-green-500" />
+                    <span className="text-sm font-medium">{massSanctionsZip.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMassSanctionsZip(null)
+                        if (massSanctionsZipRef.current) massSanctionsZipRef.current.value = ''
+                      }}
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => massSanctionsZipRef.current?.click()}
+                    className="text-hse-primary hover:underline"
+                  >
+                    {t('workers.massDocs.sanctions.chooseZip')}
+                  </button>
+                )}
+              </div>
+
+              {renderMassImportProgress(massSanctionsProgress)}
+
+              <button
+                type="button"
+                onClick={handleMassSanctionsImport}
+                disabled={!massSanctionsExcel || !massSanctionsZip || massSanctionsImporting}
+                className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {massSanctionsImporting && <Loader2 className="w-4 h-4 animate-spin" />}
+                <Upload className="w-4 h-4" />
+                {t('workers.massDocs.sanctions.import')}
+              </button>
+
+              {massSanctionsResult && (
+                <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-gray-700 dark:text-gray-200">
+                      {t('workers.massDocs.sanctions.result', {
+                        imported: massSanctionsResult?.imported ?? 0,
+                        failed: massSanctionsResult?.failed_count ?? 0,
+                      })}
+                    </div>
+                    {Array.isArray(massSanctionsResult?.zip_errors) && massSanctionsResult.zip_errors.length > 0 ? (
+                      <div className="text-xs text-amber-700 dark:text-amber-300">
+                        {t('workers.massDocs.sanctions.zipErrorsCount', { count: massSanctionsResult.zip_errors.length })}
                       </div>
                     ) : null}
                   </div>

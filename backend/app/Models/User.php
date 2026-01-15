@@ -22,6 +22,7 @@ class User extends Authenticatable
         'pole',
         'phone',
         'avatar',
+        'preferred_language',
         'project_list_preference',
         'is_active',
         'created_by',
@@ -57,6 +58,7 @@ class User extends Authenticatable
 
     // Role constants
     const ROLE_ADMIN = 'admin';
+    const ROLE_CONSULTATION = 'consultation';
     const ROLE_HSE_MANAGER = 'hse_manager';
     const ROLE_REGIONAL_HSE_MANAGER = 'regional_hse_manager';
     const ROLE_RESPONSABLE = 'responsable';
@@ -98,7 +100,7 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->role === self::ROLE_ADMIN || $this->role === self::ROLE_DEV;
+        return $this->role === self::ROLE_ADMIN || $this->role === self::ROLE_CONSULTATION || $this->role === self::ROLE_DEV;
     }
 
     public function isAdminLike(): bool

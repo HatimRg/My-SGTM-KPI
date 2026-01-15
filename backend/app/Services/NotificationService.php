@@ -103,7 +103,7 @@ class NotificationService
      */
     public static function sendToAdmins(string $type, string $title, string $message, array $options = []): void
     {
-        $adminIds = User::where('role', 'admin')->where('is_active', true)->pluck('id')->toArray();
+        $adminIds = User::whereIn('role', ['admin', 'consultation'])->where('is_active', true)->pluck('id')->toArray();
         self::sendToUsers($adminIds, $type, $title, $message, $options);
     }
 
@@ -126,21 +126,40 @@ class NotificationService
         $project = $kpiReport->project;
         $submitter = $kpiReport->submitter;
 
+        $options = [
+            'project_id' => $project->id,
+            'icon' => 'clipboard-check',
+            'action_url' => "/admin/kpi?report={$kpiReport->id}",
+            'data' => [
+                'kpi_report_id' => $kpiReport->id,
+                'project_name' => $project->name,
+                'week' => $kpiReport->week_number,
+            ],
+        ];
+
         self::sendToAdmins(
             Notification::TYPE_KPI_SUBMITTED,
             'Nouveau rapport KPI soumis',
             "{$submitter->name} a soumis un rapport KPI pour {$project->name} (Semaine {$kpiReport->week_number})",
-            [
-                'project_id' => $project->id,
-                'icon' => 'clipboard-check',
-                'action_url' => "/admin/kpi?report={$kpiReport->id}",
-                'data' => [
-                    'kpi_report_id' => $kpiReport->id,
-                    'project_name' => $project->name,
-                    'week' => $kpiReport->week_number,
-                ],
-            ]
+            $options
         );
+
+        $hseManagerIds = $project
+            ->users()
+            ->whereIn('role', [User::ROLE_HSE_MANAGER, User::ROLE_REGIONAL_HSE_MANAGER])
+            ->where('is_active', true)
+            ->pluck('users.id')
+            ->toArray();
+
+        if (!empty($hseManagerIds)) {
+            self::sendToUsers(
+                $hseManagerIds,
+                Notification::TYPE_KPI_SUBMITTED,
+                'Nouveau rapport KPI à valider',
+                "{$submitter->name} a soumis un rapport KPI pour {$project->name} (Semaine {$kpiReport->week_number})",
+                $options
+            );
+        }
     }
 
     /**

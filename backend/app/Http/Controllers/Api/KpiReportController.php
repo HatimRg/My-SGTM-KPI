@@ -7,6 +7,7 @@ use App\Models\KpiReport;
 use App\Models\Project;
 use App\Models\DailyKpiSnapshot;
 use App\Models\Notification;
+use App\Models\User;
 use App\Services\NotificationService;
 use App\Helpers\WeekHelper;
 use Illuminate\Http\Request;
@@ -212,6 +213,12 @@ class KpiReportController extends Controller
             $reportData['submitted_by'] = $user->id;
             $reportData['status'] = $request->get('status', 'draft');
 
+            if ($reportData['status'] === 'submitted' && $user->isHseManager()) {
+                $reportData['status'] = 'approved';
+                $reportData['approved_by'] = $user->id;
+                $reportData['approved_at'] = now();
+            }
+
             if (in_array('submission_count', $this->kpiReportColumns(), true)) {
                 $reportData['submission_count'] = 1;
             }
@@ -270,6 +277,10 @@ class KpiReportController extends Controller
                         'project_id' => $project->id,
                     ]);
                 }
+            }
+
+            if ($report->status === 'approved' && $reportData['status'] === 'approved') {
+                NotificationService::kpiApproved($report);
             }
 
             $report->load(['project', 'submitter']);
@@ -420,6 +431,12 @@ class KpiReportController extends Controller
                 if (in_array('submission_count', $this->kpiReportColumns(), true)) {
                     $updateData['submission_count'] = ((int) ($kpiReport->submission_count ?? 0)) + 1;
                 }
+
+                if ($user->isHseManager()) {
+                    $updateData['status'] = 'approved';
+                    $updateData['approved_by'] = $user->id;
+                    $updateData['approved_at'] = now();
+                }
             }
 
             $kpiReport->update($updateData);
@@ -456,9 +473,12 @@ class KpiReportController extends Controller
             ]);
         }
 
-        // Notify admins if just submitted
         if ($request->get('status') === 'submitted' && $kpiReport->wasChanged('status')) {
-            $this->notifyAdminsOfSubmission($kpiReport, $kpiReport->project);
+            if ($kpiReport->status === 'submitted') {
+                $this->notifyAdminsOfSubmission($kpiReport, $kpiReport->project);
+            } elseif ($kpiReport->status === 'approved') {
+                NotificationService::kpiApproved($kpiReport);
+            }
         }
 
         $kpiReport->load(['project', 'submitter', 'approver']);
@@ -500,13 +520,38 @@ class KpiReportController extends Controller
      */
     public function approve(Request $request, KpiReport $kpiReport)
     {
+        $user = $request->user();
         if ($kpiReport->status !== 'submitted') {
             return $this->error('Only submitted reports can be approved', 422);
         }
 
+        $project = $kpiReport->project;
+        if (!$project) {
+            $project = Project::findOrFail($kpiReport->project_id);
+        }
+        if (!$user || !$user->canAccessProject($project)) {
+            return $this->error('Access denied', 403);
+        }
+
+        $submitter = $kpiReport->submitter;
+        if (!$submitter) {
+            $submitter = User::find($kpiReport->submitted_by);
+        }
+
+        $canApprove = false;
+        if ($user->isAdminLike()) {
+            $canApprove = true;
+        } elseif ($user->isHseManager() && $submitter && $submitter->isResponsable()) {
+            $canApprove = true;
+        }
+
+        if (!$canApprove) {
+            return $this->error('Access denied', 403);
+        }
+
         $kpiReport->update([
             'status' => 'approved',
-            'approved_by' => $request->user()->id,
+            'approved_by' => $user->id,
             'approved_at' => now(),
         ]);
 
@@ -523,12 +568,37 @@ class KpiReportController extends Controller
      */
     public function reject(Request $request, KpiReport $kpiReport)
     {
+        $user = $request->user();
         $request->validate([
             'reason' => 'required|string|max:1000',
         ]);
 
         if ($kpiReport->status !== 'submitted') {
             return $this->error('Only submitted reports can be rejected', 422);
+        }
+
+        $project = $kpiReport->project;
+        if (!$project) {
+            $project = Project::findOrFail($kpiReport->project_id);
+        }
+        if (!$user || !$user->canAccessProject($project)) {
+            return $this->error('Access denied', 403);
+        }
+
+        $submitter = $kpiReport->submitter;
+        if (!$submitter) {
+            $submitter = User::find($kpiReport->submitted_by);
+        }
+
+        $canReject = false;
+        if ($user->isAdminLike()) {
+            $canReject = true;
+        } elseif ($user->isHseManager() && $submitter && $submitter->isResponsable()) {
+            $canReject = true;
+        }
+
+        if (!$canReject) {
+            return $this->error('Access denied', 403);
         }
 
         $project = $kpiReport->project;
@@ -541,7 +611,7 @@ class KpiReportController extends Controller
             'status' => 'draft',  // Back to draft for editing
             'rejection_reason' => $request->reason,
             'rejected_at' => now(),
-            'rejected_by' => $request->user()->id,
+            'rejected_by' => $user->id,
         ]);
 
         // Notify using NotificationService

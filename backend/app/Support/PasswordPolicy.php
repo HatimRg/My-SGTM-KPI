@@ -9,6 +9,7 @@ class PasswordPolicy
         $r = (string) $role;
         return in_array($r, [
             'admin',
+            'consultation',
             'hse_manager',
             'regional_hse_manager',
             'dev',

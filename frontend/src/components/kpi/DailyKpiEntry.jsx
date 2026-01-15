@@ -312,8 +312,8 @@ export default function DailyKpiEntry({ projectId, weekNumber, year, onDataConfi
   const handleConfirmData = async () => {
     setLoading(true)
     try {
-      const entriesToSave = dailyData.filter(day => 
-        KPI_FIELDS.some(field => day[field.key] !== '' && day[field.key] !== null && day[field.key] !== 0)
+      const entriesToSave = dailyData.filter(day =>
+        KPI_FIELDS.some(field => day[field.key] !== '' && day[field.key] !== null && day[field.key] !== undefined)
       )
 
       if (entriesToSave.length === 0) {

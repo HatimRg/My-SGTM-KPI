@@ -74,6 +74,25 @@ export default function KpiManagement() {
     return new Date(value).toLocaleDateString(locale)
   }
 
+  const effectiveRole = user?.role
+  const isHseManager = effectiveRole === 'hse_manager' || effectiveRole === 'regional_hse_manager'
+  const isApproverAdminLike =
+    effectiveRole === 'admin' ||
+    effectiveRole === 'consultation' ||
+    effectiveRole === 'dev' ||
+    effectiveRole === 'pole_director' ||
+    effectiveRole === 'works_director' ||
+    effectiveRole === 'hse_director' ||
+    effectiveRole === 'hr_director'
+
+  const canApproveReport = (report) => {
+    if (!report) return false
+    if (report.status !== 'submitted') return false
+    if (isApproverAdminLike) return true
+    if (isHseManager && report?.submitter?.role === 'responsable') return true
+    return false
+  }
+
   const visibleReports = reports.filter((report) => report.status !== 'draft')
 
   // Initialize filters from URL params (week/year) on first mount
@@ -435,7 +454,7 @@ export default function KpiManagement() {
                   </div>
 
                   <div className="mt-3 flex items-center justify-end gap-2">
-                    {report.status === 'submitted' && (
+                    {canApproveReport(report) && (
                       <>
                         <button
                           onClick={() => handleApprove(report.id)}
@@ -519,7 +538,7 @@ export default function KpiManagement() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-end gap-2">
-                          {report.status === 'submitted' && (
+                          {canApproveReport(report) && (
                             <>
                               <button
                                 onClick={() => handleApprove(report.id)}
@@ -804,7 +823,7 @@ export default function KpiManagement() {
                 <DailyKpiPreview dailySnapshots={dailySnapshots} />
               )}
 
-              {selectedReport.status === 'submitted' && (
+              {canApproveReport(selectedReport) && (
                 <div className="flex gap-3 pt-4 border-t dark:border-gray-700">
                   <button
                     onClick={() => handleApprove(selectedReport.id)}
