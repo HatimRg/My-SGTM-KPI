@@ -589,31 +589,34 @@ class WorkerController extends Controller
             'hse_team' => (clone $base)->where('is_active', true)
                 ->whereRaw('LOWER(fonction) LIKE ?', ['%hse%'])
                 ->count(),
-            'induction_hse' => (clone $base)->where('is_active', true)
-                ->whereHas('trainings', function ($q) use ($today) {
-                    $q->where('training_type', 'induction_hse')
-                        ->where(function ($d) use ($today) {
-                            $d->whereNull('expiry_date')
-                                ->orWhere('expiry_date', '>=', $today);
-                        });
+            'induction_hse' => (clone $base)
+                ->whereHas('trainings', function ($q) {
+                    $q->where(function ($t) {
+                        $t->where('training_type', 'induction_hse')
+                            ->orWhereRaw(
+                                'LOWER(training_type) REGEXP ?',
+                                ['induction[^a-z0-9]*hse']
+                            );
+                    });
                 })
                 ->count(),
-            'travail_en_hauteur' => (clone $base)->where('is_active', true)
-                ->whereHas('trainings', function ($q) use ($today) {
-                    $q->where('training_type', 'travail_en_hauteur')
-                        ->where(function ($d) use ($today) {
-                            $d->whereNull('expiry_date')
-                                ->orWhere('expiry_date', '>=', $today);
-                        });
+            'travail_en_hauteur' => (clone $base)
+                ->whereHas('trainings', function ($q) {
+                    $q->where(function ($t) {
+                        $t->where('training_type', 'travail_en_hauteur')
+                            ->orWhereRaw(
+                                'LOWER(training_type) REGEXP ?',
+                                ['travail[^a-z0-9]*en[^a-z0-9]*hauteur']
+                            );
+                    });
                 })
                 ->count(),
-            'medical_aptitude' => (clone $base)->where('is_active', true)
-                ->whereHas('medicalAptitudes', function ($q) use ($today) {
-                    $q->where('aptitude_status', 'apte')
-                        ->where(function ($d) use ($today) {
-                            $d->whereNull('expiry_date')
-                                ->orWhere('expiry_date', '>=', $today);
-                        });
+            'medical_aptitude' => (clone $base)
+                ->whereHas('medicalAptitudes', function ($q) {
+                    $q->where(function ($s) {
+                        $s->where('aptitude_status', 'apte')
+                            ->orWhereRaw('LOWER(aptitude_status) REGEXP ?', ['^apte$']);
+                    });
                 })
                 ->count(),
             'by_project' => (clone $base)->where('is_active', true)

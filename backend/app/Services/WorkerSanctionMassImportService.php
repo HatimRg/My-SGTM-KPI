@@ -19,7 +19,7 @@ use ZipArchive;
 
 class WorkerSanctionMassImportService
 {
-    private array $allowedSanctionTypes = ['mise_a_pied', 'avertissement', 'rappel_a_lordre', 'blame'];
+    private const ALLOWED_SANCTION_TYPES = ['mise_a_pied', 'avertissement', 'rappel_a_lordre', 'blame'];
 
     public function handle(User $user, UploadedFile $excelFile, UploadedFile $zipFile, ?string $progressId = null): array
     {
@@ -134,6 +134,7 @@ class WorkerSanctionMassImportService
             $cin = null;
             $sanctionDate = null;
             $sanctionType = null;
+            $sanctionTypeRaw = null;
             $miseAPiedDays = null;
             $reason = null;
 
@@ -144,7 +145,8 @@ class WorkerSanctionMassImportService
                 $miseAPiedDays = $this->getColumnValue($row, ['mise_a_pied_days', 'days']);
                 $reason = $this->getColumnValue($row, ['reason', 'motif']);
 
-                $sanctionType = $sanctionType !== null ? trim((string) $sanctionType) : null;
+                $sanctionTypeRaw = $sanctionType !== null ? trim((string) $sanctionType) : null;
+                $sanctionType = $this->normalizeSanctionType($sanctionTypeRaw);
                 $reason = $reason !== null ? trim((string) $reason) : null;
 
                 $miseAPiedDays = $miseAPiedDays !== null ? (int) $miseAPiedDays : null;
@@ -169,13 +171,16 @@ class WorkerSanctionMassImportService
                 }
 
                 if (!$sanctionType) {
-                    $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Missing sanction_type');
+                    $error = ($sanctionTypeRaw === null || $sanctionTypeRaw === '')
+                        ? 'Missing sanction_type'
+                        : 'Invalid sanction_type';
+                    $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionTypeRaw, $miseAPiedDays, $reason, $error);
                     $rowFailed = true;
                     continue;
                 }
 
-                if (!in_array($sanctionType, $this->allowedSanctionTypes, true)) {
-                    $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Invalid sanction_type');
+                if (!in_array($sanctionType, self::ALLOWED_SANCTION_TYPES, true)) {
+                    $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionTypeRaw, $miseAPiedDays, $reason, 'Invalid sanction_type');
                     $rowFailed = true;
                     continue;
                 }
@@ -503,5 +508,40 @@ class WorkerSanctionMassImportService
             'reason' => $reason,
             'error' => (string) $error,
         ];
+    }
+
+    private function normalizeSanctionType(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $v = trim(str_replace("\u{00A0}", ' ', $value));
+        if ($v === '') {
+            return null;
+        }
+
+        $key = $this->normalizeSanctionTypeKey($v);
+        return in_array($key, self::ALLOWED_SANCTION_TYPES, true) ? $key : null;
+    }
+
+    private function normalizeSanctionTypeKey(string $value): string
+    {
+        $s = trim(str_replace("\u{00A0}", ' ', $value));
+        $s = preg_replace('/\s+/u', ' ', $s);
+
+        if (function_exists('iconv')) {
+            $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
+            if (is_string($ascii) && $ascii !== '') {
+                $s = $ascii;
+            }
+        }
+
+        $s = strtolower($s);
+        $s = preg_replace('/[^a-z0-9]+/', '_', $s);
+        $s = preg_replace('/_+/', '_', $s);
+        $s = trim($s, '_');
+
+        return $s;
     }
 }

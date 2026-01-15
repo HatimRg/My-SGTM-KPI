@@ -20,6 +20,13 @@ use ZipArchive;
 class WorkerMedicalAptitudeMassImportService
 {
     private array $allowedAptitudeStatuses = ['apte', 'inapte'];
+    private const ALLOWED_EXAM_NATURES = [
+        'embauche_reintegration',
+        'visite_systematique',
+        'surveillance_medical_special',
+        'visite_de_reprise',
+        'visite_spontanee',
+    ];
 
     public function handle(User $user, UploadedFile $excelFile, UploadedFile $zipFile, ?string $progressId = null): array
     {
@@ -133,7 +140,9 @@ class WorkerMedicalAptitudeMassImportService
 
             $cin = null;
             $aptitudeStatus = null;
+            $aptitudeStatusRaw = null;
             $examNature = null;
+            $examNatureRaw = null;
             $ableToRaw = null;
             $examDate = null;
             $expiryDate = null;
@@ -146,8 +155,10 @@ class WorkerMedicalAptitudeMassImportService
                 $examDate = $this->parseDate($this->getColumnValue($row, ['exam_date', 'date_examen', 'date']));
                 $expiryDate = $this->parseDate($this->getColumnValue($row, ['date_expiration', 'expiry_date', 'expiration_date']));
 
-                $aptitudeStatus = $aptitudeStatus !== null ? trim((string) $aptitudeStatus) : null;
-                $examNature = $examNature !== null ? trim((string) $examNature) : null;
+                $aptitudeStatusRaw = $aptitudeStatus !== null ? trim((string) $aptitudeStatus) : null;
+                $examNatureRaw = $examNature !== null ? trim((string) $examNature) : null;
+                $aptitudeStatus = $this->normalizeMedicalAptitudeStatus($aptitudeStatusRaw);
+                $examNature = $this->normalizeExamNature($examNatureRaw);
                 $ableToRaw = $ableToRaw !== null ? trim((string) $ableToRaw) : null;
 
                 if (!$cin) {
@@ -164,19 +175,31 @@ class WorkerMedicalAptitudeMassImportService
                 $seenCins[$cin] = true;
 
                 if (!$aptitudeStatus) {
-                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Missing aptitude_status');
+                    $error = ($aptitudeStatusRaw === null || $aptitudeStatusRaw === '')
+                        ? 'Missing aptitude_status'
+                        : 'Invalid aptitude_status';
+                    $failedRows[] = $this->failRow($cin, $aptitudeStatusRaw, $examNatureRaw, $ableToRaw, $examDate, $expiryDate, $error);
                     $rowFailed = true;
                     continue;
                 }
 
                 if (!in_array($aptitudeStatus, $this->allowedAptitudeStatuses, true)) {
-                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Invalid aptitude_status');
+                    $failedRows[] = $this->failRow($cin, $aptitudeStatusRaw, $examNatureRaw, $ableToRaw, $examDate, $expiryDate, 'Invalid aptitude_status');
                     $rowFailed = true;
                     continue;
                 }
 
                 if (!$examNature) {
-                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Missing exam_nature');
+                    $error = ($examNatureRaw === null || $examNatureRaw === '')
+                        ? 'Missing exam_nature'
+                        : 'Invalid exam_nature';
+                    $failedRows[] = $this->failRow($cin, $aptitudeStatusRaw, $examNatureRaw, $ableToRaw, $examDate, $expiryDate, $error);
+                    $rowFailed = true;
+                    continue;
+                }
+
+                if (!in_array($examNature, self::ALLOWED_EXAM_NATURES, true)) {
+                    $failedRows[] = $this->failRow($cin, $aptitudeStatusRaw, $examNatureRaw, $ableToRaw, $examDate, $expiryDate, 'Invalid exam_nature');
                     $rowFailed = true;
                     continue;
                 }
@@ -521,5 +544,54 @@ class WorkerMedicalAptitudeMassImportService
             'expiry_date' => $expiryDate,
             'error' => (string) $error,
         ];
+    }
+
+    private function normalizeMedicalAptitudeStatus(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $v = trim(str_replace("\u{00A0}", ' ', $value));
+        if ($v === '') {
+            return null;
+        }
+
+        $key = $this->normalizeKey($v);
+        return in_array($key, $this->allowedAptitudeStatuses, true) ? $key : null;
+    }
+
+    private function normalizeExamNature(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $v = trim(str_replace("\u{00A0}", ' ', $value));
+        if ($v === '') {
+            return null;
+        }
+
+        $key = $this->normalizeKey($v);
+        return in_array($key, self::ALLOWED_EXAM_NATURES, true) ? $key : null;
+    }
+
+    private function normalizeKey(string $value): string
+    {
+        $s = trim(str_replace("\u{00A0}", ' ', $value));
+        $s = preg_replace('/\s+/u', ' ', $s);
+
+        if (function_exists('iconv')) {
+            $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
+            if (is_string($ascii) && $ascii !== '') {
+                $s = $ascii;
+            }
+        }
+
+        $s = strtolower($s);
+        $s = preg_replace('/[^a-z0-9]+/', '_', $s);
+        $s = preg_replace('/_+/', '_', $s);
+        $s = trim($s, '_');
+        return $s;
     }
 }

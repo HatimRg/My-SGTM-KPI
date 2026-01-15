@@ -19,6 +19,29 @@ use ZipArchive;
 
 class WorkerQualificationMassImportService
 {
+    private const ALLOWED_QUALIFICATION_TYPES = [
+        'elingueur',
+        'equipier_premiere_intervention',
+        'habilitation_electrique',
+        'inspecteur_echafaudage',
+        'monteur_echafaudage',
+        'monteur_grue_a_tour',
+        'operateur_bulldozer',
+        'operateur_chargeuse',
+        'operateur_chariot_elevateur',
+        'operateur_compacteur',
+        'operateur_dumper',
+        'operateur_grue_a_tour',
+        'operateur_grue_mobile',
+        'operateur_niveleuse',
+        'operateur_nacelle',
+        'operateur_pelle',
+        'sst',
+        'soudeur',
+        'utilisation_meule',
+        'other',
+    ];
+
     public function handle(User $user, UploadedFile $excelFile, UploadedFile $zipFile, ?string $progressId = null): array
     {
         if (!class_exists(ZipArchive::class) || !extension_loaded('zip')) {
@@ -131,6 +154,7 @@ class WorkerQualificationMassImportService
 
             $cin = null;
             $qualificationType = null;
+            $qualificationTypeRaw = null;
             $qualificationLevel = null;
             $qualificationLabel = null;
             $startDate = null;
@@ -144,7 +168,8 @@ class WorkerQualificationMassImportService
                 $startDate = $this->parseDate($this->getColumnValue($row, ['date_debut', 'start_date', 'date_start', 'date']));
                 $expiryDate = $this->parseDate($this->getColumnValue($row, ['date_expiration', 'expiry_date', 'expiration_date']));
 
-                $qualificationType = $qualificationType !== null ? trim((string) $qualificationType) : null;
+                $qualificationTypeRaw = $qualificationType !== null ? trim((string) $qualificationType) : null;
+                $qualificationType = $this->normalizeQualificationType($qualificationTypeRaw);
                 $qualificationLevel = $qualificationLevel !== null ? trim((string) $qualificationLevel) : null;
                 $qualificationLabel = $qualificationLabel !== null ? trim((string) $qualificationLabel) : null;
 
@@ -162,7 +187,10 @@ class WorkerQualificationMassImportService
                 $seenCins[$cin] = true;
 
                 if (!$qualificationType) {
-                    $failedRows[] = $this->failRow($cin, $qualificationType, $qualificationLevel, $qualificationLabel, $startDate, $expiryDate, 'Missing qualification_type');
+                    $error = ($qualificationTypeRaw === null || $qualificationTypeRaw === '')
+                        ? 'Missing qualification_type'
+                        : 'Invalid qualification_type';
+                    $failedRows[] = $this->failRow($cin, $qualificationTypeRaw, $qualificationLevel, $qualificationLabel, $startDate, $expiryDate, $error);
                     $rowFailed = true;
                     continue;
                 }
@@ -505,5 +533,45 @@ class WorkerQualificationMassImportService
             'expiry_date' => $expiryDate,
             'error' => (string) $error,
         ];
+    }
+
+    private function normalizeQualificationType(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $v = trim(str_replace("\u{00A0}", ' ', $value));
+        if ($v === '') {
+            return null;
+        }
+
+        $key = $this->normalizeQualificationTypeKey($v);
+
+        if ($key === 'other') {
+            return 'other';
+        }
+
+        return in_array($key, self::ALLOWED_QUALIFICATION_TYPES, true) ? $key : null;
+    }
+
+    private function normalizeQualificationTypeKey(string $value): string
+    {
+        $s = trim(str_replace("\u{00A0}", ' ', $value));
+        $s = preg_replace('/\s+/u', ' ', $s);
+
+        if (function_exists('iconv')) {
+            $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
+            if (is_string($ascii) && $ascii !== '') {
+                $s = $ascii;
+            }
+        }
+
+        $s = strtolower($s);
+        $s = preg_replace('/[^a-z0-9]+/', '_', $s);
+        $s = preg_replace('/_+/', '_', $s);
+        $s = trim($s, '_');
+
+        return $s;
     }
 }

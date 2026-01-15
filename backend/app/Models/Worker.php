@@ -209,8 +209,22 @@ class Worker extends Model
             $presence = (string) ($filters['training_presence'] ?? 'has');
             $expiry = (string) ($filters['training_expiry'] ?? 'any');
 
-            $trainingConstraint = function ($q) use ($type, $label, $expiry, $today) {
-                $q->where('training_type', $type);
+            $typeRegex = null;
+            if ($type !== '' && $type !== 'other') {
+                $parts = preg_split('/[^a-z0-9]+/i', strtolower($type)) ?: [];
+                $parts = array_values(array_filter($parts, fn ($p) => $p !== ''));
+                $typeRegex = !empty($parts) ? implode('[^a-z0-9]*', $parts) : null;
+            }
+
+            $trainingConstraint = function ($q) use ($type, $typeRegex, $label, $expiry, $today) {
+                if ($typeRegex) {
+                    $q->where(function ($t) use ($type, $typeRegex) {
+                        $t->where('training_type', $type)
+                            ->orWhereRaw('LOWER(training_type) REGEXP ?', [$typeRegex]);
+                    });
+                } else {
+                    $q->where('training_type', $type);
+                }
                 if ($label !== '') {
                     $q->where('training_label', $label);
                 }

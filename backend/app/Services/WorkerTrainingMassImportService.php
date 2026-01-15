@@ -10,6 +10,7 @@ use App\Models\Worker;
 use App\Models\WorkerTraining;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Excel as ExcelFormat;
@@ -19,8 +20,35 @@ use ZipArchive;
 
 class WorkerTrainingMassImportService
 {
+    private const ALLOWED_TRAINING_TYPES = [
+        'bypassing_safety_controls',
+        'formation_coactivite',
+        'formation_coffrage_decoffrage',
+        'formation_conduite_defensive',
+        'formation_analyse_des_risques',
+        'formation_elingage_manutention',
+        'formation_ergonomie',
+        'formation_excavations',
+        'formation_outils_electroportatifs',
+        'formation_epi',
+        'formation_environnement',
+        'formation_espaces_confines',
+        'formation_flagman',
+        'formation_jha',
+        'formation_line_of_fire',
+        'formation_manutention_manuelle',
+        'formation_manutention_mecanique',
+        'formation_point_chaud',
+        'formation_produits_chimiques',
+        'formation_risques_electriques',
+        'induction_hse',
+        'travail_en_hauteur',
+    ];
+
     public function handle(User $user, UploadedFile $excelFile, UploadedFile $zipFile, ?string $progressId = null): array
     {
+        $debugImport = (bool) env('WORKER_TRAINING_IMPORT_DEBUG', false);
+
         if (!class_exists(ZipArchive::class) || !extension_loaded('zip')) {
             throw new \RuntimeException('ZipArchive extension is required for ZIP imports');
         }
@@ -36,6 +64,8 @@ class WorkerTrainingMassImportService
         $failedRows = [];
         $importedCount = 0;
         $usedPdfCins = [];
+
+        $zipParsedSample = [];
 
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $stat = $zip->statIndex($i);
@@ -67,6 +97,15 @@ class WorkerTrainingMassImportService
                 continue;
             }
 
+            if ($debugImport && count($zipParsedSample) < 20) {
+                $zipParsedSample[] = [
+                    'zip_entry' => $name,
+                    'basename' => $zipBaseName,
+                    'cin_raw' => $base,
+                    'cin_normalized' => $cin,
+                ];
+            }
+
             if (isset($pdfByCin[$cin])) {
                 $zipErrors[] = ['file' => $name, 'error' => 'Duplicate PDF for CIN'];
                 continue;
@@ -75,11 +114,35 @@ class WorkerTrainingMassImportService
             $pdfByCin[$cin] = $name;
         }
 
+        if ($debugImport) {
+            Log::info('WorkerTrainingMassImport ZIP parsed', [
+                'zip_original_name' => $zipFile->getClientOriginalName(),
+                'zip_size' => $zipFile->getSize(),
+                'zip_num_files' => $zip->numFiles,
+                'pdf_by_cin_count' => count($pdfByCin),
+                'zip_errors_count' => count($zipErrors),
+                'zip_parsed_sample' => $zipParsedSample,
+                'pdf_cins_sample' => array_slice(array_keys($pdfByCin), 0, 25),
+            ]);
+        }
+
         $import = new WorkerTrainingsMassImport();
         Excel::import($import, $excelFile);
         $rows = $import->getRows();
 
+        if ($debugImport) {
+            $row0 = $rows[0] ?? null;
+            Log::info('WorkerTrainingMassImport Excel parsed', [
+                'excel_original_name' => $excelFile->getClientOriginalName(),
+                'excel_size' => $excelFile->getSize(),
+                'rows_count' => is_array($rows) ? count($rows) : null,
+                'row0_keys' => is_array($row0) ? array_keys($row0) : null,
+                'rows_sample' => array_slice($rows, 0, 5),
+            ]);
+        }
+
         $excelCins = [];
+        $excelCinSample = [];
         foreach ($rows as $rowForCin) {
             $rowForCin = array_change_key_case($rowForCin, CASE_LOWER);
             if ($this->isRowEmpty($rowForCin)) {
@@ -88,7 +151,24 @@ class WorkerTrainingMassImportService
             $cinForCinSet = $this->normalizeCin($this->getColumnValue($rowForCin, ['cin', 'cni', 'numero_cin', 'id']));
             if ($cinForCinSet) {
                 $excelCins[$cinForCinSet] = true;
+                if ($debugImport && count($excelCinSample) < 25) {
+                    $excelCinSample[] = $cinForCinSet;
+                }
             }
+        }
+
+        if ($debugImport) {
+            $zipOnlyCins = array_values(array_diff(array_keys($pdfByCin), array_keys($excelCins)));
+            $excelOnlyCins = array_values(array_diff(array_keys($excelCins), array_keys($pdfByCin)));
+            Log::info('WorkerTrainingMassImport CIN sets', [
+                'excel_cins_count' => count($excelCins),
+                'excel_cins_sample' => $excelCinSample,
+                'zip_cins_count' => count($pdfByCin),
+                'zip_only_cins_count' => count($zipOnlyCins),
+                'zip_only_cins_sample' => array_slice($zipOnlyCins, 0, 25),
+                'excel_only_cins_count' => count($excelOnlyCins),
+                'excel_only_cins_sample' => array_slice($excelOnlyCins, 0, 25),
+            ]);
         }
 
         $progress = null;
@@ -131,6 +211,7 @@ class WorkerTrainingMassImportService
 
             $cin = null;
             $trainingType = null;
+            $trainingTypeRaw = null;
             $trainingDate = null;
             $expiryDate = null;
 
@@ -140,7 +221,8 @@ class WorkerTrainingMassImportService
                 $trainingDate = $this->parseDate($this->getColumnValue($row, ['date_formation', 'training_date', 'date']));
                 $expiryDate = $this->parseDate($this->getColumnValue($row, ['date_expiration', 'expiry_date', 'expiration_date']));
 
-                $trainingType = $trainingType !== null ? trim((string) $trainingType) : null;
+                $trainingTypeRaw = $trainingType !== null ? trim((string) $trainingType) : null;
+                $trainingType = $this->normalizeTrainingType($trainingTypeRaw);
 
                 if (!$cin) {
                     $failedRows[] = $this->failRow(null, $trainingType, $trainingDate, $expiryDate, 'Missing CIN');
@@ -156,7 +238,10 @@ class WorkerTrainingMassImportService
                 $seenCins[$cin] = true;
 
                 if (!$trainingType) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Missing training_type');
+                    $error = ($trainingTypeRaw === null || $trainingTypeRaw === '')
+                        ? 'Missing training_type'
+                        : 'Invalid training_type';
+                    $failedRows[] = $this->failRow($cin, $trainingTypeRaw, $trainingDate, $expiryDate, $error);
                     $rowFailed = true;
                     continue;
                 }
@@ -283,6 +368,15 @@ class WorkerTrainingMassImportService
             } else {
                 $failedRows[] = $this->failRow($uCin, null, null, null, 'PDF in ZIP has no matching Excel row (file: ' . $file . ')');
             }
+        }
+
+        if ($debugImport) {
+            Log::info('WorkerTrainingMassImport ZIP usage result', [
+                'used_pdf_cins_count' => count($usedPdfCins),
+                'unused_pdfs_count' => count($unusedPdfs),
+                'unused_pdfs_sample' => array_slice($unusedPdfs, 0, 25),
+                'failed_rows_count' => count($failedRows),
+            ]);
         }
 
         if ($progress && $progressId) {
@@ -492,5 +586,45 @@ class WorkerTrainingMassImportService
             'expiry_date' => $expiryDate,
             'error' => $error,
         ];
+    }
+
+    private function normalizeTrainingType(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $v = trim(str_replace("\u{00A0}", ' ', $value));
+        if ($v === '') {
+            return null;
+        }
+
+        $key = $this->normalizeTrainingTypeKey($v);
+
+        if ($key === 'other') {
+            return 'other';
+        }
+
+        return in_array($key, self::ALLOWED_TRAINING_TYPES, true) ? $key : null;
+    }
+
+    private function normalizeTrainingTypeKey(string $value): string
+    {
+        $s = trim(str_replace("\u{00A0}", ' ', $value));
+        $s = preg_replace('/\s+/u', ' ', $s);
+
+        if (function_exists('iconv')) {
+            $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
+            if (is_string($ascii) && $ascii !== '') {
+                $s = $ascii;
+            }
+        }
+
+        $s = strtolower($s);
+        $s = preg_replace('/[^a-z0-9]+/', '_', $s);
+        $s = preg_replace('/_+/', '_', $s);
+        $s = trim($s, '_');
+
+        return $s;
     }
 }
