@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\SorReportController;
 use App\Http\Controllers\Api\TrainingController;
 use App\Http\Controllers\Api\AwarenessSessionController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\SorAnalyticsController;
 use App\Http\Controllers\Api\DailyKpiSnapshotController;
 use App\Http\Controllers\Api\DailyEffectifController;
 use App\Http\Controllers\Api\NotificationController;
@@ -30,6 +31,7 @@ use App\Http\Controllers\Api\BootstrapController;
 use App\Http\Controllers\Api\HeavyMachineryController;
 use App\Http\Controllers\Api\HeavyMachineryMachineController;
 use App\Http\Controllers\Api\HeavyMachineryReportController;
+use App\Http\Controllers\Api\PpeAnalyticsController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -82,6 +84,26 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/charts/inspections', [DashboardController::class, 'inspectionCharts']);
         Route::get('/charts/sor', [DashboardController::class, 'sorCharts']);
         Route::get('/charts/rates', [DashboardController::class, 'rateCharts']);
+
+        // SOR Analytics (descriptive, per-graph endpoints)
+        Route::prefix('sor-analytics')->middleware(['cache.api:2'])->group(function () {
+            Route::get('/kpis', [SorAnalyticsController::class, 'kpis']);
+            Route::get('/project-pole-stacked', [SorAnalyticsController::class, 'projectPoleStacked']);
+            Route::get('/project-treemap', [SorAnalyticsController::class, 'projectTreemap']);
+            Route::get('/project-pole-heatmap', [SorAnalyticsController::class, 'projectPoleHeatmap']);
+            Route::get('/theme-avg-resolution', [SorAnalyticsController::class, 'themeAvgResolution']);
+            Route::get('/theme-resolution-box', [SorAnalyticsController::class, 'themeResolutionBox']);
+            Route::get('/theme-unresolved-count', [SorAnalyticsController::class, 'themeUnresolvedCount']);
+            Route::get('/theme-resolved-unresolved', [SorAnalyticsController::class, 'themeResolvedUnresolved']);
+            Route::get('/theme-bubble', [SorAnalyticsController::class, 'themeBubble']);
+            Route::get('/user-theme-avg-resolution', [SorAnalyticsController::class, 'userThemeAvgResolution']);
+            Route::get('/pole-theme-unresolved-rate', [SorAnalyticsController::class, 'poleThemeUnresolvedRate']);
+        });
+
+        // PPE Analytics
+        Route::prefix('ppe-analytics')->middleware(['cache.api:2'])->group(function () {
+            Route::get('/consumption', [PpeAnalyticsController::class, 'consumption']);
+        });
     });
 
     // User management (Admin only)

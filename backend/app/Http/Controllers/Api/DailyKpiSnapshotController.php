@@ -145,11 +145,6 @@ class DailyKpiSnapshotController extends Controller
             }
         }
 
-        // Work hours formula: effectif × 10
-        if ((!array_key_exists('heures_travaillees', $validated) || $validated['heures_travaillees'] === null) && isset($validated['effectif'])) {
-            $validated['heures_travaillees'] = (float) (((int) $validated['effectif']) * 10);
-        }
-
         $snapshot = DailyKpiSnapshot::updateOrCreate(
             [
                 'project_id' => $validated['project_id'],
@@ -461,10 +456,6 @@ class DailyKpiSnapshotController extends Controller
                 if ($effectifEntry) {
                     $data['effectif'] = (int) $effectifEntry->effectif;
                 }
-            }
-
-            if (!array_key_exists('heures_travaillees', $data) && array_key_exists('effectif', $data)) {
-                $data['heures_travaillees'] = (float) (((int) $data['effectif']) * 10);
             }
 
             $snapshot = DailyKpiSnapshot::updateOrCreate(

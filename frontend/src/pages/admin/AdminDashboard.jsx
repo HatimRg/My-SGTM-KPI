@@ -54,6 +54,7 @@ import ThemeSelector from '../../components/dashboard/ThemeSelector'
 import SafetyTheme from '../../components/dashboard/themes/SafetyTheme'
 import TrainingTheme from '../../components/dashboard/themes/TrainingTheme'
 import ComplianceTheme from '../../components/dashboard/themes/ComplianceTheme'
+import PpeTheme from '../../components/dashboard/themes/PpeTheme'
 import EnvironmentalTheme from '../../components/dashboard/themes/EnvironmentalTheme'
 import DeviationTheme from '../../components/dashboard/themes/DeviationTheme'
 import { getAllWeeksForYear, getCurrentWeek } from '../../utils/weekHelper'
@@ -510,19 +511,23 @@ export default function AdminDashboard() {
               </option>
             ))}
           </select>
-          <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700" />
-          <select
-            value={focusWeek}
-            onChange={(e) => setFocusWeek(e.target.value)}
-            className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm w-full sm:w-auto"
-          >
-            <option value="all">{t('common.all')}</option>
-            {focusWeeks.map((w) => (
-              <option key={w.week} value={w.week}>
-                {w.label}
-              </option>
-            ))}
-          </select>
+          {activeTheme !== 'ppe' && (
+            <>
+              <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700" />
+              <select
+                value={focusWeek}
+                onChange={(e) => setFocusWeek(e.target.value)}
+                className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm w-full sm:w-auto"
+              >
+                <option value="all">{t('common.all')}</option>
+                {focusWeeks.map((w) => (
+                  <option key={w.week} value={w.week}>
+                    {w.label}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
         </div>
       </div>
 
@@ -553,8 +558,11 @@ export default function AdminDashboard() {
           regulatoryWatch={data?.regulatory_watch}
         />
       )}
+      {activeTheme === 'ppe' && (
+        <PpeTheme year={year} projectId={focusProjectId} pole={focusPole} />
+      )}
       {activeTheme === 'deviations' && (
-        <DeviationTheme year={year} projects={projects} projectId={focusProjectId} week={focusWeek} />
+        <DeviationTheme year={year} projects={projects} projectId={focusProjectId} week={focusWeek} pole={focusPole} />
       )}
       {activeTheme === 'environmental' && (
         <EnvironmentalTheme 

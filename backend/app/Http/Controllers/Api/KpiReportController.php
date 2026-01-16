@@ -785,6 +785,7 @@ class KpiReportController extends Controller
             // Sum up daily data if available
             $dailyTotals = [
                 'effectif' => $dailySnapshots->sum('effectif') ?: $workersCount,
+                'heures_travaillees' => $dailySnapshots->sum('heures_travaillees') ?: 0,
                 'induction' => $dailySnapshots->sum('induction') ?: 0,
                 'releve_ecarts' => $dailySnapshots->sum('releve_ecarts') ?: $deviationsCount,
                 'sensibilisation' => $dailySnapshots->sum('sensibilisation') ?: $sensibilisationCount,
@@ -809,7 +810,7 @@ class KpiReportController extends Controller
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'data' => [
-                    'hours_worked' => $dailyTotals['effectif'],
+                    'hours_worked' => $dailyTotals['heures_travaillees'],
                     'employees_trained' => $employeesTrained ?: $dailyTotals['induction'],
                     'unsafe_conditions_reported' => $dailyTotals['releve_ecarts'],
                     'toolbox_talks' => $dailyTotals['sensibilisation'],

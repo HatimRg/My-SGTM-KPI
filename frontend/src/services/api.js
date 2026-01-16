@@ -462,6 +462,22 @@ export const dashboardService = {
   getInspectionCharts: (params) => cachedGet('/dashboard/charts/inspections', params),
   getSorCharts: (params) => cachedGet('/dashboard/charts/sor', params),
   getRateCharts: (params) => cachedGet('/dashboard/charts/rates', params),
+
+  // SOR analytics (descriptive, per-graph endpoints)
+  getSorAnalyticsKpis: (params) => cachedGet('/dashboard/sor-analytics/kpis', params),
+  getSorProjectPoleStacked: (params) => cachedGet('/dashboard/sor-analytics/project-pole-stacked', params),
+  getSorProjectTreemap: (params) => cachedGet('/dashboard/sor-analytics/project-treemap', params),
+  getSorProjectPoleHeatmap: (params) => cachedGet('/dashboard/sor-analytics/project-pole-heatmap', params),
+  getSorThemeAvgResolution: (params) => cachedGet('/dashboard/sor-analytics/theme-avg-resolution', params),
+  getSorThemeResolutionBox: (params) => cachedGet('/dashboard/sor-analytics/theme-resolution-box', params),
+  getSorThemeUnresolvedCount: (params) => cachedGet('/dashboard/sor-analytics/theme-unresolved-count', params),
+  getSorThemeResolvedUnresolved: (params) => cachedGet('/dashboard/sor-analytics/theme-resolved-unresolved', params),
+  getSorThemeBubble: (params) => cachedGet('/dashboard/sor-analytics/theme-bubble', params),
+  getSorUserThemeAvgResolution: (params) => cachedGet('/dashboard/sor-analytics/user-theme-avg-resolution', params),
+  getSorPoleThemeUnresolvedRate: (params) => cachedGet('/dashboard/sor-analytics/pole-theme-unresolved-rate', params),
+
+  // PPE analytics
+  getPpeConsumptionAnalytics: (params) => cachedGet('/dashboard/ppe-analytics/consumption', params),
 }
 
 export const userService = {

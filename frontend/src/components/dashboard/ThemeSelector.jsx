@@ -3,6 +3,7 @@ import { useTranslation } from '../../i18n'
 import {
   Shield,
   Activity,
+  HardHat,
   GraduationCap,
   ClipboardCheck,
   AlertTriangle,
@@ -33,6 +34,12 @@ const HSE_THEMES = [
     nameKey: 'dashboard.themes.compliance',
     icon: ClipboardCheck,
     gradient: 'from-green-500 to-green-700'
+  },
+  {
+    id: 'ppe',
+    nameKey: 'dashboard.themes.ppe',
+    icon: HardHat,
+    gradient: 'from-slate-500 to-slate-700'
   },
   {
     id: 'deviations',

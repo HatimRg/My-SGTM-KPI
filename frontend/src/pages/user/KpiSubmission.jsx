@@ -564,7 +564,7 @@ export default function KpiSubmission() {
                     const updated = { ...prev }
                     
                     // Map daily field names to KPI report field names
-                    if (aggregates.effectif !== undefined) updated.hours_worked = aggregates.effectif
+                    if (aggregates.heures_travaillees !== undefined) updated.hours_worked = aggregates.heures_travaillees
                     if (aggregates.induction !== undefined) updated.employees_trained = aggregates.induction
                     if (aggregates.releve_ecarts !== undefined) updated.unsafe_conditions_reported = aggregates.releve_ecarts
                     if (aggregates.sensibilisation !== undefined) updated.toolbox_talks = aggregates.sensibilisation

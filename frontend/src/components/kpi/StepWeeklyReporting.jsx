@@ -33,13 +33,13 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
       <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
         <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
           <Users className="w-5 h-5 text-hse-primary" />
-          {t('kpi.weekly.effectif')} & {t('kpi.weekly.induction')}
+          {t('kpi.rates.hoursWorked')} & {t('kpi.weekly.induction')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="label flex items-center gap-2">
               <Users className="w-4 h-4 text-gray-400" />
-              {t('kpi.weekly.effectif')}
+              {t('kpi.rates.hoursWorked')}
             </label>
             <input
               type="number"

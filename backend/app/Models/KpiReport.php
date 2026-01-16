@@ -192,9 +192,9 @@ class KpiReport extends Model
     // Calculate TF (Frequency Rate) = (Accidents × 1,000,000) / Hours Worked
     public function calculateTf(): float
     {
-        $effectiveHours = (float) $this->hours_worked * 10.0;
-        if ($effectiveHours > 0) {
-            return ($this->accidents * 1000000) / $effectiveHours;
+        $hours = (float) $this->hours_worked;
+        if ($hours > 0) {
+            return ($this->accidents * 1000000) / $hours;
         }
         return 0;
     }
@@ -202,9 +202,9 @@ class KpiReport extends Model
     // Calculate TG (Severity Rate) = (Lost Workdays × 1,000) / Hours Worked
     public function calculateTg(): float
     {
-        $effectiveHours = (float) $this->hours_worked * 10.0;
-        if ($effectiveHours > 0) {
-            return ($this->lost_workdays * 1000) / $effectiveHours;
+        $hours = (float) $this->hours_worked;
+        if ($hours > 0) {
+            return ($this->lost_workdays * 1000) / $hours;
         }
         return 0;
     }

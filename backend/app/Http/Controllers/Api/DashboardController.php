@@ -169,13 +169,13 @@ class DashboardController extends Controller
                 SUM(trainings_planned) as total_trainings_planned,
                 SUM(employees_trained) as employees_trained,
                 SUM(inspections_completed) as total_inspections,
-                (SUM(hours_worked) * 10.0) as total_hours,
+                SUM(hours_worked) as total_hours,
                 SUM(lost_workdays) as lost_workdays,
                 SUM(training_hours) as total_training_hours,
                 SUM(near_misses) as total_near_misses,
                 SUM(work_permits) as total_work_permits,
-                CASE WHEN SUM(hours_worked) > 0 THEN (SUM(accidents) * 1000000.0) / (SUM(hours_worked) * 10.0) ELSE 0 END as avg_tf,
-                CASE WHEN SUM(hours_worked) > 0 THEN (SUM(lost_workdays) * 1000.0) / (SUM(hours_worked) * 10.0) ELSE 0 END as avg_tg,
+                CASE WHEN SUM(hours_worked) > 0 THEN (SUM(accidents) * 1000000.0) / SUM(hours_worked) ELSE 0 END as avg_tf,
+                CASE WHEN SUM(hours_worked) > 0 THEN (SUM(lost_workdays) * 1000.0) / SUM(hours_worked) ELSE 0 END as avg_tg,
                 AVG(hse_compliance_rate) as avg_hse_compliance,
                 AVG(medical_compliance_rate) as avg_medical_compliance,
                 SUM(water_consumption) as total_water_consumption,
@@ -212,10 +212,10 @@ class DashboardController extends Controller
                 SUM(inspections_completed) as inspections,
                 SUM(near_misses) as near_misses,
                 SUM(work_permits) as work_permits,
-                (SUM(hours_worked) * 10.0) as hours_worked,
+                SUM(hours_worked) as hours_worked,
                 SUM(lost_workdays) as lost_workdays,
-                CASE WHEN SUM(hours_worked) > 0 THEN (SUM(accidents) * 1000000.0) / (SUM(hours_worked) * 10.0) ELSE 0 END as tf,
-                CASE WHEN SUM(hours_worked) > 0 THEN (SUM(lost_workdays) * 1000.0) / (SUM(hours_worked) * 10.0) ELSE 0 END as tg,
+                CASE WHEN SUM(hours_worked) > 0 THEN (SUM(accidents) * 1000000.0) / SUM(hours_worked) ELSE 0 END as tf,
+                CASE WHEN SUM(hours_worked) > 0 THEN (SUM(lost_workdays) * 1000.0) / SUM(hours_worked) ELSE 0 END as tg,
                 AVG(hse_compliance_rate) as hse_compliance,
                 AVG(medical_compliance_rate) as medical_compliance,
                 SUM(water_consumption) as water,
@@ -253,7 +253,7 @@ class DashboardController extends Controller
                 project_id,
                 COUNT(*) as reports_count,
                 SUM(accidents) as total_accidents,
-                (SUM(hours_worked) * 10.0) as total_hours,
+                SUM(hours_worked) as total_hours,
                 SUM(lost_workdays) as lost_workdays
             ')
             ->where('report_year', $year)
@@ -730,8 +730,8 @@ class DashboardController extends Controller
                 SUM(accidents) as total_accidents,
                 SUM(trainings_conducted) as total_trainings,
                 SUM(inspections_completed) as total_inspections,
-                CASE WHEN SUM(hours_worked) > 0 THEN (SUM(accidents) * 1000000.0) / (SUM(hours_worked) * 10.0) ELSE 0 END as avg_tf,
-                CASE WHEN SUM(hours_worked) > 0 THEN (SUM(lost_workdays) * 1000.0) / (SUM(hours_worked) * 10.0) ELSE 0 END as avg_tg
+                CASE WHEN SUM(hours_worked) > 0 THEN (SUM(accidents) * 1000000.0) / SUM(hours_worked) ELSE 0 END as avg_tf,
+                CASE WHEN SUM(hours_worked) > 0 THEN (SUM(lost_workdays) * 1000.0) / SUM(hours_worked) ELSE 0 END as avg_tg
             ')
             ->first();
 
@@ -1146,9 +1146,9 @@ class DashboardController extends Controller
         $byMonth = $query
             ->selectRaw('
                 report_month,
-                CASE WHEN SUM(hours_worked) > 0 THEN (SUM(accidents) * 1000000.0) / (SUM(hours_worked) * 10.0) ELSE 0 END as tf,
-                CASE WHEN SUM(hours_worked) > 0 THEN (SUM(lost_workdays) * 1000.0) / (SUM(hours_worked) * 10.0) ELSE 0 END as tg,
-                (SUM(hours_worked) * 10.0) as hours,
+                CASE WHEN SUM(hours_worked) > 0 THEN (SUM(accidents) * 1000000.0) / SUM(hours_worked) ELSE 0 END as tf,
+                CASE WHEN SUM(hours_worked) > 0 THEN (SUM(lost_workdays) * 1000.0) / SUM(hours_worked) ELSE 0 END as tg,
+                SUM(hours_worked) as hours,
                 SUM(lost_workdays) as lost_days
             ')
             ->groupBy('report_month')

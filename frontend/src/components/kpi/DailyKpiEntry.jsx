@@ -196,12 +196,6 @@ export default function DailyKpiEntry({ projectId, weekNumber, year, onDataConfi
         inspections: getNextValue(day, autoValues, 'inspections'),
         mesures_disciplinaires: getNextValue(day, autoValues, 'mesures_disciplinaires'),
         conformite_hse: getNextValue(day, autoValues, 'conformite_hse'),
-        // Apply work hours formula: effectif × 10
-        heures_travaillees: (() => {
-          const eff = Number(day.effectif)
-          if (Number.isFinite(eff)) return eff * 10
-          return day.heures_travaillees ?? ''
-        })(),
       }
     })
 
@@ -297,11 +291,6 @@ export default function DailyKpiEntry({ projectId, weekNumber, year, onDataConfi
     newData[dayIndex] = {
       ...newData[dayIndex],
       [fieldKey]: numValue
-    }
-    
-    // Auto-calculate work hours when effectif changes (formula: effectif × 10)
-    if (fieldKey === 'effectif' && numValue !== '') {
-      newData[dayIndex].heures_travaillees = numValue * 10
     }
     
     setDailyData(newData)
