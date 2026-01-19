@@ -125,9 +125,6 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
             ['label' => 'Mesures disciplinaires', 'key' => 'mesures_disciplinaires'],
             ['label' => 'Taux de conformité HSE (%)', 'key' => 'conformite_hse'],
             ['label' => 'Taux de conformité Médicale (%)', 'key' => 'conformite_medicale'],
-            ['label' => 'Suivi du bruit (dB)', 'key' => 'suivi_bruit'],
-            ['label' => 'Consommation Eau (m³)', 'key' => 'consommation_eau'],
-            ['label' => 'Consommation Électricité (kWh)', 'key' => 'consommation_electricite'],
         ];
 
         foreach ($kpiFields as $field) {
@@ -266,8 +263,8 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
         // Hide date reference row (row 8)
         $sheet->getRowDimension(8)->setVisible(false);
 
-        // Data entry area styling (rows 9-26)
-        $lastDataRow = 26;
+        // Data entry area styling (rows 9-23)
+        $lastDataRow = 23;
         
         // KPI labels column - Amber tinted with dark text
         $sheet->getStyle("A9:A{$lastDataRow}")->applyFromArray([

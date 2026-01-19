@@ -48,6 +48,9 @@ const EffectifAnalytics = lazy(() => import('./pages/shared/EffectifAnalytics'))
 const VeilleReglementaireHistory = lazy(() => import('./pages/shared/VeilleReglementaireHistory'))
 const VeilleReglementaireDetails = lazy(() => import('./pages/shared/VeilleReglementaireDetails'))
 const VeilleReglementaireForm = lazy(() => import('./pages/shared/VeilleReglementaireForm'))
+const HseEvents = lazy(() => import('./pages/shared/HseEvents'))
+const MonthlyMeasurements = lazy(() => import('./pages/shared/MonthlyMeasurements'))
+const LightingMeasurements = lazy(() => import('./pages/shared/LightingMeasurements'))
 
 // Heavy Machinery Tracking (lazy-loaded)
 const HeavyMachineryViewMachines = lazy(() => import('./pages/shared/heavyMachinery/ViewMachines'))
@@ -234,6 +237,21 @@ function App() {
       <Route
         element={
           <ProtectedRoute
+            allowedRoles={['admin', 'consultation', 'dev', 'pole_director', 'works_director', 'hse_director', 'hr_director', 'hse_manager', 'regional_hse_manager', 'responsable']}
+            enforceAllowedRoles
+          >
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/admin/hse-events" element={<HseEvents />} />
+        <Route path="/admin/monthly-measurements" element={<MonthlyMeasurements />} />
+        <Route path="/admin/lighting" element={<LightingMeasurements />} />
+      </Route>
+
+      <Route
+        element={
+          <ProtectedRoute
             allowedRoles={['admin', 'consultation', 'dev', 'pole_director', 'works_director', 'hse_director', 'hr_director', 'hse_manager', 'regional_hse_manager']}
             enforceAllowedRoles
           >
@@ -397,6 +415,9 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/subcontractors" element={<SubcontractorOpenings />} />
         <Route path="/subcontractors/openings/:id" element={<SubcontractorOpeningDetails />} />
+        <Route path="/hse-events" element={<HseEvents />} />
+        <Route path="/monthly-measurements" element={<MonthlyMeasurements />} />
+        <Route path="/lighting" element={<LightingMeasurements />} />
       </Route>
 
       {/* HR Routes */}

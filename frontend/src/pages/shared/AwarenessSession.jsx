@@ -5,7 +5,8 @@ import { awarenessService, exportService } from '../../services/api'
 import { useProjectStore } from '../../store/projectStore'
 import DatePicker from '../../components/ui/DatePicker'
 import Select from '../../components/ui/Select'
-import { Search, X, Filter, ChevronDown, ChevronUp, Plus, Check, FileSpreadsheet } from 'lucide-react'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import { Search, X, Filter, ChevronDown, ChevronUp, Plus, Check, FileSpreadsheet, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getWeekFromDate } from '../../utils/weekHelper'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
@@ -43,6 +44,8 @@ export default function AwarenessSession() {
   const [formExpanded, setFormExpanded] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [exporting, setExporting] = useState(false)
+
+  const [confirmDeleteSession, setConfirmDeleteSession] = useState(null)
 
   useEffect(() => {
     if (user?.name) {
@@ -185,6 +188,24 @@ export default function AwarenessSession() {
         const message = error.response?.data?.message ?? t('errors.somethingWentWrong') ?? 'Failed to save session'
         toast.error(message)
       })
+  }
+
+  const handleDeleteSession = (session) => {
+    setConfirmDeleteSession(session)
+  }
+
+  const confirmDelete = async () => {
+    if (!confirmDeleteSession?.id) return
+    try {
+      await awarenessService.delete(confirmDeleteSession.id)
+      toast.success(t('common.saved') ?? 'Saved')
+      fetchSessions()
+    } catch (error) {
+      console.error('Failed to delete awareness session', error)
+      toast.error(t('errors.failedToDelete') ?? t('common.error') ?? 'Error')
+    } finally {
+      setConfirmDeleteSession(null)
+    }
   }
 
   return (
@@ -513,6 +534,16 @@ export default function AwarenessSession() {
                       <p>
                         {s.duration_minutes} min
                       </p>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSession(s)}
+                          className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30"
+                          title={t('common.delete') ?? 'Delete'}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -540,6 +571,7 @@ export default function AwarenessSession() {
                     <th className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400">{t('awareness.colDuration')}</th>
                     <th className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400">{t('awareness.colParticipants')}</th>
                     <th className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400">{t('awareness.colHours')}</th>
+                    <th className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400">{t('common.actions') ?? 'Actions'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -565,6 +597,16 @@ export default function AwarenessSession() {
                       </td>
                       <td className="py-2 pr-4 text-gray-700 dark:text-gray-200">
                         {s.session_hours}
+                      </td>
+                      <td className="py-2 pr-4 text-gray-700 dark:text-gray-200">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSession(s)}
+                          className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30"
+                          title={t('common.delete') ?? 'Delete'}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -600,6 +642,16 @@ export default function AwarenessSession() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={!!confirmDeleteSession}
+        title={t('common.delete') ?? 'Delete'}
+        message={t('common.confirmDelete') ?? 'Are you sure you want to delete this record?'}
+        confirmLabel={t('common.delete') ?? 'Delete'}
+        cancelLabel={t('common.cancel') ?? 'Cancel'}
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteSession(null)}
+      />
     </div>
   )
 }

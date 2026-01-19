@@ -32,6 +32,9 @@ use App\Http\Controllers\Api\HeavyMachineryController;
 use App\Http\Controllers\Api\HeavyMachineryMachineController;
 use App\Http\Controllers\Api\HeavyMachineryReportController;
 use App\Http\Controllers\Api\PpeAnalyticsController;
+use App\Http\Controllers\Api\HseEventController;
+use App\Http\Controllers\Api\MonthlyKpiMeasurementController;
+use App\Http\Controllers\Api\LightingMeasurementController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -259,6 +262,33 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{training}', [TrainingController::class, 'destroy']);
     });
 
+    // HSE Events (Accidents/Incidents/Medical/Road)
+    Route::prefix('hse-events')->group(function () {
+        Route::get('/', [HseEventController::class, 'index']);
+        Route::post('/', [HseEventController::class, 'store']);
+        Route::get('/{hseEvent}', [HseEventController::class, 'show']);
+        Route::put('/{hseEvent}', [HseEventController::class, 'update']);
+        Route::delete('/{hseEvent}', [HseEventController::class, 'destroy']);
+    });
+
+    // Monthly KPI Measurements (noise/water/electricity)
+    Route::prefix('monthly-kpi-measurements')->group(function () {
+        Route::get('/', [MonthlyKpiMeasurementController::class, 'index']);
+        Route::post('/', [MonthlyKpiMeasurementController::class, 'store']);
+        Route::get('/{monthlyKpiMeasurement}', [MonthlyKpiMeasurementController::class, 'show']);
+        Route::put('/{monthlyKpiMeasurement}', [MonthlyKpiMeasurementController::class, 'update']);
+        Route::delete('/{monthlyKpiMeasurement}', [MonthlyKpiMeasurementController::class, 'destroy']);
+    });
+
+    // Lighting (Lux) Measurements
+    Route::prefix('lighting-measurements')->group(function () {
+        Route::get('/', [LightingMeasurementController::class, 'index']);
+        Route::post('/', [LightingMeasurementController::class, 'store']);
+        Route::get('/{lightingMeasurement}', [LightingMeasurementController::class, 'show']);
+        Route::put('/{lightingMeasurement}', [LightingMeasurementController::class, 'update']);
+        Route::delete('/{lightingMeasurement}', [LightingMeasurementController::class, 'destroy']);
+    });
+
     // Awareness Sessions (TBM/TBT)
     Route::prefix('awareness-sessions')->group(function () {
         Route::get('/', [AwarenessSessionController::class, 'index']);
@@ -384,6 +414,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/latest', [RegulatoryWatchController::class, 'latest']);
         Route::get('/{submission}', [RegulatoryWatchController::class, 'show']);
         Route::post('/', [RegulatoryWatchController::class, 'store']);
+        Route::delete('/{submission}', [RegulatoryWatchController::class, 'destroy']);
     });
 
     // Subcontractor Site Openings (Ouverture de chantier) (Responsable and Admin)

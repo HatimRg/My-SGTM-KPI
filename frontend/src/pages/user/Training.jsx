@@ -6,7 +6,8 @@ import { useProjectStore } from '../../store/projectStore'
 import DatePicker from '../../components/ui/DatePicker'
 import Select from '../../components/ui/Select'
 import Modal from '../../components/ui/Modal'
-import { Search, X, Image as ImageIcon, Filter, ChevronDown, ChevronUp, Plus, Check, Download, FileSpreadsheet, Loader2 } from 'lucide-react'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import { Search, X, Image as ImageIcon, Filter, ChevronDown, ChevronUp, Plus, Check, Download, FileSpreadsheet, Loader2, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getWeekFromDate } from '../../utils/weekHelper'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
@@ -82,6 +83,8 @@ export default function Training() {
   const [formExpanded, setFormExpanded] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [exporting, setExporting] = useState(false)
+
+  const [confirmDeleteTraining, setConfirmDeleteTraining] = useState(null)
 
   const projectListPreference = user?.project_list_preference ?? 'code'
   const sortedProjects = useMemo(() => {
@@ -235,6 +238,24 @@ export default function Training() {
       .finally(() => {
         setLoadingPhoto(false)
       })
+  }
+
+  const handleDeleteTraining = (training) => {
+    setConfirmDeleteTraining(training)
+  }
+
+  const confirmDelete = async () => {
+    if (!confirmDeleteTraining?.id) return
+    try {
+      await trainingService.delete(confirmDeleteTraining.id)
+      toast.success(t('common.saved') ?? 'Saved')
+      fetchTrainings()
+    } catch (error) {
+      console.error('Failed to delete training', error)
+      toast.error(t('errors.failedToDelete') ?? t('common.error') ?? 'Error')
+    } finally {
+      setConfirmDeleteTraining(null)
+    }
   }
 
   const handleSubmit = (e) => {
@@ -638,6 +659,16 @@ export default function Training() {
                       <p>
                         {t(`training.durations.${OLD_LABEL_TO_KEY[tr.duration_label] ?? tr.duration_label}`)}
                       </p>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTraining(tr)}
+                          className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30"
+                          title={t('common.delete') ?? 'Delete'}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -679,6 +710,7 @@ export default function Training() {
                     <th className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400">{t('training.colParticipants')}</th>
                     <th className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400">{t('training.colHours')}</th>
                     <th className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400">{t('training.colPhoto')}</th>
+                    <th className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400">{t('common.actions') ?? 'Actions'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -726,6 +758,16 @@ export default function Training() {
                         ) : (
                           <span className="text-xs text-gray-400"></span>
                         )}
+                      </td>
+                      <td className="py-2 pr-4 text-gray-700 dark:text-gray-200">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTraining(tr)}
+                          className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30"
+                          title={t('common.delete') ?? 'Delete'}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -808,6 +850,16 @@ export default function Training() {
           </div>
         </Modal>
       )}
+
+      <ConfirmDialog
+        isOpen={!!confirmDeleteTraining}
+        title={t('common.delete') ?? 'Delete'}
+        message={t('common.confirmDelete') ?? 'Are you sure you want to delete this record?'}
+        confirmLabel={t('common.delete') ?? 'Delete'}
+        cancelLabel={t('common.cancel') ?? 'Cancel'}
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteTraining(null)}
+      />
     </div>
   )
 }

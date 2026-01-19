@@ -57,9 +57,6 @@ class DailyKpiTemplateImport
             $dataStartRow + 12 => 'mesures_disciplinaires',
             $dataStartRow + 13 => 'conformite_hse',
             $dataStartRow + 14 => 'conformite_medicale',
-            $dataStartRow + 15 => 'suivi_bruit',
-            $dataStartRow + 16 => 'consommation_eau',
-            $dataStartRow + 17 => 'consommation_electricite',
         ];
 
         // Extract daily values
@@ -137,13 +134,10 @@ class DailyKpiTemplateImport
             'heures_formation' => (float) $collect->sum('heures_formation'),
             'permis_travail' => (int) $collect->sum('permis_travail'),
             'mesures_disciplinaires' => (int) $collect->sum('mesures_disciplinaires'),
-            'consommation_eau' => (float) $collect->sum('consommation_eau'),
-            'consommation_electricite' => (float) $collect->sum('consommation_electricite'),
             
             // AVG
             'conformite_hse' => round($collect->whereNotNull('conformite_hse')->avg('conformite_hse') ?? 0, 2),
             'conformite_medicale' => round($collect->whereNotNull('conformite_medicale')->avg('conformite_medicale') ?? 0, 2),
-            'suivi_bruit' => round($collect->whereNotNull('suivi_bruit')->avg('suivi_bruit') ?? 0, 2),
         ];
     }
 }

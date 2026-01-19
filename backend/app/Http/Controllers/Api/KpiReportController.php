@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\KpiReport;
 use App\Models\Project;
 use App\Models\DailyKpiSnapshot;
+use App\Models\HseEvent;
+use App\Models\MonthlyKpiMeasurement;
 use App\Models\Notification;
 use App\Models\User;
 use App\Services\NotificationService;
 use App\Helpers\WeekHelper;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -232,9 +235,35 @@ class KpiReportController extends Controller
                     (int) $request->report_year
                 );
 
+                if (!is_array($aggregated)) {
+                    $aggregated = [];
+                }
+
+                $eventAgg = $this->aggregateHseEventsForDates(
+                    (int) $request->project_id,
+                    (string) $request->start_date,
+                    (string) $request->end_date
+                );
+
+                if (!empty($eventAgg)) {
+                    $aggregated = array_merge($aggregated, $eventAgg);
+                }
+
+                $monthlyAgg = $this->aggregateMonthlyMeasurements(
+                    (int) $request->project_id,
+                    (int) $request->report_year,
+                    (int) $request->report_month
+                );
+                if (!empty($monthlyAgg)) {
+                    $aggregated = array_merge($aggregated, $monthlyAgg);
+                }
+
                 if (!empty($aggregated)) {
                     $autoFields = [
                         'accidents',
+                        'accidents_fatal',
+                        'accidents_serious',
+                        'accidents_minor',
                         'near_misses',
                         'first_aid_cases',
                         'lost_workdays',
@@ -355,9 +384,40 @@ class KpiReportController extends Controller
                 ->get();
         }
 
+        $hseEvents = [];
+        try {
+            if ($kpiReport->start_date && $kpiReport->end_date) {
+                $hseEvents = HseEvent::query()
+                    ->where('project_id', $kpiReport->project_id)
+                    ->whereBetween('event_date', [$kpiReport->start_date->toDateString(), $kpiReport->end_date->toDateString()])
+                    ->orderBy('event_date')
+                    ->orderBy('id')
+                    ->get();
+            }
+        } catch (\Throwable $e) {
+            $hseEvents = [];
+        }
+
+        $monthlyMeasurements = [];
+        try {
+            if ($kpiReport->report_year && $kpiReport->report_month) {
+                $monthlyMeasurements = MonthlyKpiMeasurement::query()
+                    ->where('project_id', $kpiReport->project_id)
+                    ->where('year', (int) $kpiReport->report_year)
+                    ->where('month', (int) $kpiReport->report_month)
+                    ->orderBy('indicator')
+                    ->orderBy('id')
+                    ->get();
+            }
+        } catch (\Throwable $e) {
+            $monthlyMeasurements = [];
+        }
+
         return $this->success([
             'report' => $kpiReport,
             'daily_snapshots' => $dailySnapshots,
+            'hse_events' => $hseEvents,
+            'monthly_measurements' => $monthlyMeasurements,
         ]);
     }
 
@@ -782,6 +842,13 @@ class KpiReportController extends Controller
                 ->whereBetween('entry_date', [$startDate, $endDate])
                 ->get();
 
+            // HSE events (new authoritative tracker)
+            $hseAgg = $this->aggregateHseEventsForDates((int) $projectId, (string) $startDate, (string) $endDate);
+
+            // Monthly measurements (noise/water/electricity)
+            $monthDate = Carbon::parse($startDate);
+            $monthlyAgg = $this->aggregateMonthlyMeasurements((int) $projectId, (int) $monthDate->format('Y'), (int) $monthDate->format('m'));
+
             // Sum up daily data if available
             $dailyTotals = [
                 'effectif' => $dailySnapshots->sum('effectif') ?: $workersCount,
@@ -799,9 +866,27 @@ class KpiReportController extends Controller
                 'mesures_disciplinaires' => $dailySnapshots->sum('mesures_disciplinaires') ?: 0,
                 'conformite_hse' => $dailySnapshots->avg('conformite_hse') ?: 0,
                 'conformite_medicale' => $dailySnapshots->avg('conformite_medicale') ?: 0,
+                'suivi_bruit' => $dailySnapshots->avg('suivi_bruit') ?: 0,
                 'consommation_eau' => $dailySnapshots->sum('consommation_eau') ?: 0,
                 'consommation_electricite' => $dailySnapshots->sum('consommation_electricite') ?: 0,
             ];
+
+            $accidents = ($hseAgg['accidents'] ?? 0) > 0 ? (int) $hseAgg['accidents'] : (int) $dailyTotals['accidents'];
+            $lostWorkdays = ($hseAgg['lost_workdays'] ?? 0) > 0 ? (int) $hseAgg['lost_workdays'] : (int) $dailyTotals['jours_arret'];
+            $nearMisses = ($hseAgg['near_misses'] ?? 0) > 0 ? (int) $hseAgg['near_misses'] : (int) $dailyTotals['presquaccident'];
+            $firstAid = ($hseAgg['first_aid_cases'] ?? 0) > 0 ? (int) $hseAgg['first_aid_cases'] : (int) $dailyTotals['premiers_soins'];
+
+            $waterConsumption = array_key_exists('water_consumption', $monthlyAgg)
+                ? (float) $monthlyAgg['water_consumption']
+                : (float) $dailyTotals['consommation_eau'];
+
+            $electricityConsumption = array_key_exists('electricity_consumption', $monthlyAgg)
+                ? (float) $monthlyAgg['electricity_consumption']
+                : (float) $dailyTotals['consommation_electricite'];
+
+            $noiseMonitoring = array_key_exists('noise_monitoring', $monthlyAgg)
+                ? (float) $monthlyAgg['noise_monitoring']
+                : (float) $dailyTotals['suivi_bruit'];
 
             return $this->success([
                 'auto_populated' => true,
@@ -814,18 +899,22 @@ class KpiReportController extends Controller
                     'employees_trained' => $employeesTrained ?: $dailyTotals['induction'],
                     'unsafe_conditions_reported' => $dailyTotals['releve_ecarts'],
                     'toolbox_talks' => $dailyTotals['sensibilisation'],
-                    'near_misses' => $dailyTotals['presquaccident'],
-                    'first_aid_cases' => $dailyTotals['premiers_soins'],
-                    'accidents' => $dailyTotals['accidents'],
-                    'lost_workdays' => $dailyTotals['jours_arret'],
+                    'near_misses' => $nearMisses,
+                    'first_aid_cases' => $firstAid,
+                    'accidents' => $accidents,
+                    'accidents_fatal' => (int) ($hseAgg['accidents_fatal'] ?? 0),
+                    'accidents_serious' => (int) ($hseAgg['accidents_serious'] ?? 0),
+                    'accidents_minor' => (int) ($hseAgg['accidents_minor'] ?? 0),
+                    'lost_workdays' => $lostWorkdays,
                     'inspections_completed' => $dailyTotals['inspections'],
                     'training_hours' => $dailyTotals['heures_formation'],
                     'work_permits' => $dailyTotals['permis_travail'],
                     'corrective_actions' => $dailyTotals['mesures_disciplinaires'],
                     'hse_compliance_rate' => round($dailyTotals['conformite_hse'], 2),
                     'medical_compliance_rate' => round($dailyTotals['conformite_medicale'], 2),
-                    'water_consumption' => $dailyTotals['consommation_eau'],
-                    'electricity_consumption' => $dailyTotals['consommation_electricite'],
+                    'noise_monitoring' => $noiseMonitoring,
+                    'water_consumption' => $waterConsumption,
+                    'electricity_consumption' => $electricityConsumption,
                     'findings_open' => $deviationsCount - $closedDeviations,
                     'findings_closed' => $closedDeviations,
                     'trainings_conducted' => $trainingsCount,
@@ -838,10 +927,83 @@ class KpiReportController extends Controller
                     'inspections' => $inspectionsCount,
                     'workers' => $workersCount,
                     'daily_snapshots' => $dailySnapshots->count(),
+                    'hse_events' => (int) ($hseAgg['_total_events'] ?? 0),
+                    'monthly_measurements' => (int) ($monthlyAgg['_total_measurements'] ?? 0),
                 ],
             ]);
         } catch (\Throwable $e) {
             return $this->error('Failed to auto-populate data', 422);
+        }
+    }
+
+    private function aggregateHseEventsForDates(int $projectId, string $startDate, string $endDate): array
+    {
+        try {
+            $events = HseEvent::query()
+                ->where('project_id', $projectId)
+                ->whereBetween('event_date', [$startDate, $endDate])
+                ->get();
+
+            if ($events->isEmpty()) {
+                return [];
+            }
+
+            $accidentTypes = ['accident', 'work_accident', 'road_accident', 'traffic_accident'];
+            $nearMissTypes = ['near_miss', 'near_misses', 'presquaccident', 'near-miss'];
+            $firstAidTypes = ['first_aid', 'first_aid_case', 'premiers_soins', 'first-aid'];
+
+            $accidentEvents = $events->whereIn('type', $accidentTypes);
+            $lostDays = (int) $events->where('lost_time', true)->sum('lost_days');
+
+            return [
+                '_total_events' => $events->count(),
+                'accidents' => $accidentEvents->count(),
+                'accidents_fatal' => $accidentEvents->where('severity', 'fatal')->count(),
+                'accidents_serious' => $accidentEvents->where('severity', 'serious')->count(),
+                'accidents_minor' => $accidentEvents->where('severity', 'minor')->count(),
+                'near_misses' => $events->whereIn('type', $nearMissTypes)->count(),
+                'first_aid_cases' => $events->whereIn('type', $firstAidTypes)->count(),
+                'lost_workdays' => $lostDays,
+            ];
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    private function aggregateMonthlyMeasurements(int $projectId, int $year, int $month): array
+    {
+        try {
+            $rows = MonthlyKpiMeasurement::query()
+                ->where('project_id', $projectId)
+                ->where('year', $year)
+                ->where('month', $month)
+                ->whereIn('indicator', ['noise_monitoring', 'water_consumption', 'electricity_consumption'])
+                ->get()
+                ->keyBy('indicator');
+
+            if ($rows->isEmpty()) {
+                return [];
+            }
+
+            $result = [
+                '_total_measurements' => $rows->count(),
+            ];
+
+            if (isset($rows['noise_monitoring'])) {
+                $result['noise_monitoring'] = (float) $rows['noise_monitoring']->value;
+            }
+
+            if (isset($rows['water_consumption'])) {
+                $result['water_consumption'] = (float) $rows['water_consumption']->value;
+            }
+
+            if (isset($rows['electricity_consumption'])) {
+                $result['electricity_consumption'] = (float) $rows['electricity_consumption']->value;
+            }
+
+            return $result;
+        } catch (\Throwable $e) {
+            return [];
         }
     }
 

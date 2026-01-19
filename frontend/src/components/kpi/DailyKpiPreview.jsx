@@ -21,9 +21,6 @@ const KPI_FIELDS = [
   { key: 'mesures_disciplinaires', label: 'Mesures disc.', labelEn: 'Disciplinary', unit: '' },
   { key: 'conformite_hse', label: 'Conformité HSE', labelEn: 'HSE Compliance', unit: '%' },
   { key: 'conformite_medicale', label: 'Conformité Méd.', labelEn: 'Medical Compl.', unit: '%' },
-  { key: 'suivi_bruit', label: 'Bruit', labelEn: 'Noise', unit: 'dB' },
-  { key: 'consommation_eau', label: 'Eau', labelEn: 'Water', unit: 'm³' },
-  { key: 'consommation_electricite', label: 'Électricité', labelEn: 'Electricity', unit: 'kWh' },
 ]
 
 const DAY_NAMES = {

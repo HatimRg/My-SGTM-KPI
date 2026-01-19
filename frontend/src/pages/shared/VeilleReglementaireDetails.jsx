@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useLocation, useParams } from 'react-router-dom'
 import { regulatoryWatchService } from '../../services/api'
 import { useLanguage } from '../../i18n'
-import { ArrowLeft, CheckCircle2, FileText, Loader2, MinusCircle, RotateCcw, XCircle } from 'lucide-react'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import { ArrowLeft, CheckCircle2, FileText, Loader2, MinusCircle, RotateCcw, Trash2, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatBulletText, getArticleSchemaById, getLocalized, getSectionSchemaById } from './veilleReglementaireSchema'
 
@@ -76,6 +77,8 @@ export default function VeilleReglementaireDetails() {
   const [loading, setLoading] = useState(true)
   const [submission, setSubmission] = useState(null)
 
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
   useEffect(() => {
     const load = async () => {
       if (!submissionId) return
@@ -93,6 +96,19 @@ export default function VeilleReglementaireDetails() {
 
     load()
   }, [submissionId])
+
+  const doDelete = async () => {
+    if (!submissionId) return
+    try {
+      await regulatoryWatchService.delete(submissionId)
+      toast.success(t('common.deleted') ?? 'Deleted')
+      navigate(basePath)
+    } catch (e) {
+      toast.error(e.response?.data?.message ?? t('errors.somethingWentWrong'))
+    } finally {
+      setConfirmDelete(false)
+    }
+  }
 
   const overallLabel = submission?.overall_score === null || submission?.overall_score === undefined
     ? '-'
@@ -134,6 +150,15 @@ export default function VeilleReglementaireDetails() {
           >
             <RotateCcw className="w-4 h-4" />
             {t('regulatoryWatch.resubmit')}
+          </button>
+          <button
+            type="button"
+            className="btn-danger flex items-center gap-2 w-full sm:w-auto"
+            onClick={() => setConfirmDelete(true)}
+            disabled={!submissionId}
+          >
+            <Trash2 className="w-4 h-4" />
+            {t('common.delete') ?? 'Delete'}
           </button>
         </div>
       </div>
@@ -241,6 +266,17 @@ export default function VeilleReglementaireDetails() {
           })}
         </>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmDelete}
+        title={t('common.confirm') ?? 'Confirm'}
+        message={t('common.confirmDelete') ?? 'Are you sure you want to delete this record?'}
+        confirmLabel={t('common.delete') ?? 'Delete'}
+        cancelLabel={t('common.cancel') ?? 'Cancel'}
+        variant="danger"
+        onConfirm={doDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   )
 }

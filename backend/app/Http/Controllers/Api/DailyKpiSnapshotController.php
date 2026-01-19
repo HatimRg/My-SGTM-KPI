@@ -19,6 +19,24 @@ use Carbon\Carbon;
 
 class DailyKpiSnapshotController extends Controller
 {
+    private const MONTHLY_ONLY_FIELDS = [
+        'suivi_bruit',
+        'consommation_eau',
+        'consommation_electricite',
+    ];
+
+    private function rejectMonthlyOnlyDailyFields(array $data)
+    {
+        foreach (self::MONTHLY_ONLY_FIELDS as $field) {
+            if (array_key_exists($field, $data) && $data[$field] !== null && $data[$field] !== '') {
+                return $this->error('Noise, water, and electricity measurements are monthly-only and cannot be entered daily.', 422, [
+                    'field' => $field,
+                ]);
+            }
+        }
+        return null;
+    }
+
     /**
      * List daily KPI snapshots with filters.
      */
@@ -100,6 +118,10 @@ class DailyKpiSnapshotController extends Controller
             'status' => 'nullable|in:draft,submitted',
             'notes' => 'nullable|string',
         ]);
+
+        if ($resp = $this->rejectMonthlyOnlyDailyFields($validated)) {
+            return $resp;
+        }
 
         $project = Project::findOrFail($validated['project_id']);
         if (!$user->canAccessProject($project)) {
@@ -217,6 +239,10 @@ class DailyKpiSnapshotController extends Controller
             'status' => 'nullable|in:draft,submitted',
             'notes' => 'nullable|string',
         ]);
+
+        if ($resp = $this->rejectMonthlyOnlyDailyFields($validated)) {
+            return $resp;
+        }
 
         $dailyKpiSnapshot->update($validated);
 
@@ -380,6 +406,12 @@ class DailyKpiSnapshotController extends Controller
             $dailyData = DailyKpiTemplateImport::parse($request->file('file'));
             $aggregates = DailyKpiTemplateImport::calculateAggregates($dailyData);
 
+            foreach ($dailyData as $row) {
+                if ($resp = $this->rejectMonthlyOnlyDailyFields($row)) {
+                    return $resp;
+                }
+            }
+
             return $this->success([
                 'daily_entries' => $dailyData,
                 'aggregates' => $aggregates,
@@ -438,8 +470,7 @@ class DailyKpiSnapshotController extends Controller
                 'effectif', 'induction', 'releve_ecarts', 'sensibilisation',
                 'presquaccident', 'premiers_soins', 'accidents', 'jours_arret',
                 'heures_travaillees', 'inspections', 'heures_formation', 'permis_travail',
-                'mesures_disciplinaires', 'conformite_hse', 'conformite_medicale',
-                'suivi_bruit', 'consommation_eau', 'consommation_electricite'
+                'mesures_disciplinaires', 'conformite_hse', 'conformite_medicale'
             ];
 
             foreach ($fields as $field) {
@@ -494,9 +525,6 @@ class DailyKpiSnapshotController extends Controller
                 'mesures_disciplinaires' => $kpiAggregates['disciplinary_actions'] ?? 0,
                 'conformite_hse' => $kpiAggregates['hse_compliance_rate'] ?? 0,
                 'conformite_medicale' => $kpiAggregates['medical_compliance_rate'] ?? 0,
-                'suivi_bruit' => $kpiAggregates['noise_monitoring'] ?? 0,
-                'consommation_eau' => $kpiAggregates['water_consumption'] ?? 0,
-                'consommation_electricite' => $kpiAggregates['electricity_consumption'] ?? 0,
             ];
         }
 
@@ -542,9 +570,6 @@ class DailyKpiSnapshotController extends Controller
                 'mesures_disciplinaires' => $kpiAggregates['disciplinary_actions'] ?? 0,
                 'conformite_hse' => $kpiAggregates['hse_compliance_rate'] ?? 0,
                 'conformite_medicale' => $kpiAggregates['medical_compliance_rate'] ?? 0,
-                'suivi_bruit' => $kpiAggregates['noise_monitoring'] ?? 0,
-                'consommation_eau' => $kpiAggregates['water_consumption'] ?? 0,
-                'consommation_electricite' => $kpiAggregates['electricity_consumption'] ?? 0,
             ];
         }
 

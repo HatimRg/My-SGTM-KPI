@@ -4,7 +4,8 @@ import { projectService, regulatoryWatchService } from '../../services/api'
 import { useLanguage } from '../../i18n'
 import { useAuthStore } from '../../store/authStore'
 import Select from '../../components/ui/Select'
-import { FileText, Loader2, PlusCircle, Eye, RotateCcw } from 'lucide-react'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import { FileText, Loader2, PlusCircle, Eye, RotateCcw, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
 
@@ -49,6 +50,8 @@ export default function VeilleReglementaireHistory() {
   const [loading, setLoading] = useState(true)
   const [avgOverall, setAvgOverall] = useState(null)
   const [submissions, setSubmissions] = useState([])
+
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const draftStorageKey = useMemo(() => {
     const userId = user?.id ? String(user.id) : 'anonymous'
@@ -131,6 +134,35 @@ export default function VeilleReglementaireHistory() {
 
     loadHistory()
   }, [selectedProjectId])
+
+  const handleDelete = (submission) => {
+    setConfirmDelete(submission)
+  }
+
+  const confirmDeleteSubmission = async () => {
+    if (!confirmDelete?.id) return
+
+    try {
+      await regulatoryWatchService.delete(confirmDelete.id)
+      toast.success(t('common.deleted') ?? 'Deleted')
+
+      const params = {
+        per_page: 50,
+      }
+      if (selectedProjectId) params.project_id = Number(selectedProjectId)
+
+      const res = await regulatoryWatchService.getAll(params)
+      const data = res.data?.data ?? null
+      setAvgOverall(data?.avg_overall_score ?? null)
+      const paginator = data?.submissions
+      const rows = paginator?.data ?? []
+      setSubmissions(Array.isArray(rows) ? rows : [])
+    } catch (e) {
+      toast.error(e.response?.data?.message ?? t('errors.somethingWentWrong'))
+    } finally {
+      setConfirmDelete(null)
+    }
+  }
 
   const avgLabel = avgOverall === null ? '-' : `${avgOverall}%`
 
@@ -269,6 +301,14 @@ export default function VeilleReglementaireHistory() {
                         <RotateCcw className="w-4 h-4" />
                         {t('regulatoryWatch.resubmit')}
                       </button>
+                      <button
+                        type="button"
+                        className="btn-danger flex items-center gap-2"
+                        onClick={() => handleDelete(s)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        {t('common.delete') ?? 'Delete'}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -277,6 +317,17 @@ export default function VeilleReglementaireHistory() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        title={t('common.confirm') ?? 'Confirm'}
+        message={t('common.confirmDelete') ?? 'Are you sure you want to delete this record?'}
+        confirmLabel={t('common.delete') ?? 'Delete'}
+        cancelLabel={t('common.cancel') ?? 'Cancel'}
+        variant="danger"
+        onConfirm={confirmDeleteSubmission}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   )
 }

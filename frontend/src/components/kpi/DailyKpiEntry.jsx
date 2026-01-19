@@ -32,9 +32,6 @@ const KPI_FIELDS = [
   { key: 'mesures_disciplinaires', label: 'Mesures disciplinaires', labelEn: 'Disciplinary', formula: 'SUM', unit: '' },
   { key: 'conformite_hse', label: 'Conformité HSE (%)', labelEn: 'HSE Compliance (%)', formula: 'AVG', unit: '%' },
   { key: 'conformite_medicale', label: 'Conformité Médicale (%)', labelEn: 'Medical Compliance (%)', formula: 'AVG', unit: '%' },
-  { key: 'suivi_bruit', label: 'Suivi du bruit (dB)', labelEn: 'Noise (dB)', formula: 'AVG', unit: 'dB' },
-  { key: 'consommation_eau', label: 'Eau (m³)', labelEn: 'Water (m³)', formula: 'SUM', unit: 'm³' },
-  { key: 'consommation_electricite', label: 'Électricité (kWh)', labelEn: 'Electricity (kWh)', formula: 'SUM', unit: 'kWh' },
 ]
 
 const DAY_NAMES = {

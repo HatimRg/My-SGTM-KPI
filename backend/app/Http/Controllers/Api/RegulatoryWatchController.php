@@ -145,6 +145,32 @@ class RegulatoryWatchController extends Controller
         return $this->success($submission, 'Veille reglementaire submitted', 201);
     }
 
+    public function destroy(Request $request, RegulatoryWatchSubmission $submission)
+    {
+        $user = $request->user();
+
+        $role = (string) ($user ? $user->role : '');
+        $allowedRoles = ['hse_director', 'hse_manager', 'responsable', 'supervisor'];
+        if (!$user || (!$user->isAdminLike() && !in_array($role, $allowedRoles, true))) {
+            return $this->error('Access denied', 403);
+        }
+
+        if (!$user->hasGlobalProjectScope()) {
+            $allowed = Project::query()->visibleTo($user)->whereKey((int) $submission->project_id)->exists();
+            if (!$allowed) {
+                return $this->error('Access denied', 403);
+            }
+        }
+
+        if (!$user->isAdminLike() && (int) $submission->submitted_by !== (int) $user->id) {
+            return $this->error('Access denied', 403);
+        }
+
+        $submission->delete();
+
+        return $this->success(null, 'Regulatory watch submission deleted');
+    }
+
     private function computeScores(array $answers): array
     {
         $sections = $answers['sections'] ?? null;

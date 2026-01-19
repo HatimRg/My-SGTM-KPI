@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../../i18n'
-import { projectService, kpiService } from '../../services/api'
+import { projectService, kpiService, monthlyKpiMeasurementService } from '../../services/api'
 import {
   FileText,
   Calendar,
@@ -42,6 +42,14 @@ export default function KpiSubmission() {
   const [isEditMode, setIsEditMode] = useState(false)
   const [existingReportId, setExistingReportId] = useState(null)
   const [rejectionInfo, setRejectionInfo] = useState(null)
+
+  const [monthlyEnv, setMonthlyEnv] = useState({
+    noise_monitoring: '',
+    water_consumption: '',
+    electricity_consumption: '',
+  })
+  const [monthlyEnvLoading, setMonthlyEnvLoading] = useState(false)
+  const [monthlyEnvSaving, setMonthlyEnvSaving] = useState(false)
 
   // Form data state
   const [formData, setFormData] = useState(() => {
@@ -143,12 +151,9 @@ export default function KpiSubmission() {
       return Number.isFinite(n) ? n : 0
     }
 
-    setFormData((prev) => {
+    setFormData(prev => {
       const updated = { ...prev, [field]: value }
 
-      // Auto-calculate TF and TG when relevant fields change
-      // TF (Frequency Rate) = (Accidents × 1,000,000) / Hours Worked
-      // TG (Severity Rate) = (Lost Workdays × 1,000) / Hours Worked
       if (['accidents', 'lost_workdays', 'hours_worked'].includes(field)) {
         const hoursWorked = toNumber(field === 'hours_worked' ? value : updated.hours_worked)
         const accidents = toNumber(field === 'accidents' ? value : updated.accidents)
@@ -165,6 +170,126 @@ export default function KpiSubmission() {
 
       return updated
     })
+  }
+
+  useEffect(() => {
+    const fetchMonthlyEnv = async () => {
+      if (!formData.project_id || !formData.report_year || !formData.report_month) return
+
+      setMonthlyEnvLoading(true)
+      try {
+        const [noiseRes, waterRes, elecRes] = await Promise.all([
+          monthlyKpiMeasurementService.getAll({
+            project_id: formData.project_id,
+            year: formData.report_year,
+            month: formData.report_month,
+            indicator: 'noise_monitoring',
+            per_page: 1,
+          }),
+          monthlyKpiMeasurementService.getAll({
+            project_id: formData.project_id,
+            year: formData.report_year,
+            month: formData.report_month,
+            indicator: 'water_consumption',
+            per_page: 1,
+          }),
+          monthlyKpiMeasurementService.getAll({
+            project_id: formData.project_id,
+            year: formData.report_year,
+            month: formData.report_month,
+            indicator: 'electricity_consumption',
+            per_page: 1,
+          }),
+        ])
+
+        const noiseRow = noiseRes.data?.data?.[0]
+        const waterRow = waterRes.data?.data?.[0]
+        const elecRow = elecRes.data?.data?.[0]
+
+        const next = {
+          noise_monitoring: noiseRow?.value ?? '',
+          water_consumption: waterRow?.value ?? '',
+          electricity_consumption: elecRow?.value ?? '',
+        }
+        setMonthlyEnv(next)
+
+        setFormData(prev => ({
+          ...prev,
+          noise_monitoring: noiseRow?.value ?? prev.noise_monitoring,
+          water_consumption: waterRow?.value ?? prev.water_consumption,
+          electricity_consumption: elecRow?.value ?? prev.electricity_consumption,
+        }))
+      } catch (e) {
+        console.error('Failed to fetch monthly environmental KPI measurements:', e)
+      } finally {
+        setMonthlyEnvLoading(false)
+      }
+    }
+
+    fetchMonthlyEnv()
+  }, [formData.project_id, formData.report_year, formData.report_month])
+
+  const handleSaveMonthlyEnv = async () => {
+    if (!formData.project_id || !formData.report_year || !formData.report_month) return
+
+    const normalize = (v) => {
+      if (v === '' || v === null || v === undefined) return null
+      const n = Number(v)
+      return Number.isFinite(n) ? n : null
+    }
+
+    const noise = normalize(monthlyEnv.noise_monitoring)
+    const water = normalize(monthlyEnv.water_consumption)
+    const elec = normalize(monthlyEnv.electricity_consumption)
+
+    setMonthlyEnvSaving(true)
+    try {
+      const requests = []
+
+      if (noise !== null) {
+        requests.push(monthlyKpiMeasurementService.upsert({
+          project_id: formData.project_id,
+          year: formData.report_year,
+          month: formData.report_month,
+          indicator: 'noise_monitoring',
+          value: noise,
+        }))
+      }
+      if (water !== null) {
+        requests.push(monthlyKpiMeasurementService.upsert({
+          project_id: formData.project_id,
+          year: formData.report_year,
+          month: formData.report_month,
+          indicator: 'water_consumption',
+          value: water,
+        }))
+      }
+      if (elec !== null) {
+        requests.push(monthlyKpiMeasurementService.upsert({
+          project_id: formData.project_id,
+          year: formData.report_year,
+          month: formData.report_month,
+          indicator: 'electricity_consumption',
+          value: elec,
+        }))
+      }
+
+      await Promise.all(requests)
+
+      setFormData(prev => ({
+        ...prev,
+        noise_monitoring: noise !== null ? noise : prev.noise_monitoring,
+        water_consumption: water !== null ? water : prev.water_consumption,
+        electricity_consumption: elec !== null ? elec : prev.electricity_consumption,
+      }))
+
+      toast.success(t('common.saved') ?? 'Saved')
+    } catch (e) {
+      console.error('Failed to save monthly environmental KPI measurements:', e)
+      toast.error(t('common.error') ?? 'Error')
+    } finally {
+      setMonthlyEnvSaving(false)
+    }
   }
 
   // Fetch projects on mount
@@ -578,9 +703,6 @@ export default function KpiSubmission() {
                     if (aggregates.mesures_disciplinaires !== undefined) updated.corrective_actions = aggregates.mesures_disciplinaires
                     if (aggregates.conformite_hse !== undefined) updated.hse_compliance_rate = aggregates.conformite_hse
                     if (aggregates.conformite_medicale !== undefined) updated.medical_compliance_rate = aggregates.conformite_medicale
-                    if (aggregates.suivi_bruit !== undefined) updated.noise_monitoring = aggregates.suivi_bruit
-                    if (aggregates.consommation_eau !== undefined) updated.water_consumption = aggregates.consommation_eau
-                    if (aggregates.consommation_electricite !== undefined) updated.electricity_consumption = aggregates.consommation_electricite
                     
                     // Auto-calculate TF and TG after all values are set
                     // TF (Frequency Rate) = (Accidents × 1,000,000) / Hours Worked
@@ -604,6 +726,84 @@ export default function KpiSubmission() {
                   })
                 }}
               />
+            )}
+
+            {/* Monthly-only Environmental KPI Measurements */}
+            {formData.project_id && (
+              <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 rounded-xl">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div>
+                    <div className="font-semibold text-gray-800 dark:text-gray-200">
+                      {t('kpi.monthlyMeasurements') ?? 'Monthly Measurements'}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {(t('kpi.monthlyMeasurementsHint') ?? 'Noise / Water / Electricity are monthly-only.')} {formData.report_month}/{formData.report_year}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveMonthlyEnv}
+                    disabled={monthlyEnvSaving || monthlyEnvLoading}
+                    className="btn-secondary flex items-center gap-2"
+                  >
+                    {monthlyEnvSaving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    {t('common.save') ?? 'Save'}
+                  </button>
+                </div>
+
+                {monthlyEnvLoading ? (
+                  <div className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {t('common.loading') ?? 'Loading'}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        {t('kpi.noiseMonitoring') ?? 'Noise (dB)'}
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="input w-full"
+                        value={monthlyEnv.noise_monitoring}
+                        onChange={(e) => setMonthlyEnv(prev => ({ ...prev, noise_monitoring: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        {t('kpi.waterConsumption') ?? 'Water (m³)'}
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="input w-full"
+                        value={monthlyEnv.water_consumption}
+                        onChange={(e) => setMonthlyEnv(prev => ({ ...prev, water_consumption: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        {t('kpi.electricityConsumption') ?? 'Electricity (kWh)'}
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="input w-full"
+                        value={monthlyEnv.electricity_consumption}
+                        onChange={(e) => setMonthlyEnv(prev => ({ ...prev, electricity_consumption: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
             
             <StepWeeklyReporting

@@ -739,6 +739,30 @@ export const dailyKpiService = {
   bulkSave: (data) => api.post('/daily-kpi/bulk-save', data),
 }
 
+export const monthlyKpiMeasurementService = {
+  getAll: (params) => api.get('/monthly-kpi-measurements', { params }),
+  getById: (id) => api.get(`/monthly-kpi-measurements/${id}`),
+  upsert: (data) => api.post('/monthly-kpi-measurements', data),
+  update: (id, data) => api.put(`/monthly-kpi-measurements/${id}`, data),
+  delete: (id) => api.delete(`/monthly-kpi-measurements/${id}`),
+}
+
+export const hseEventService = {
+  getAll: (params) => api.get('/hse-events', { params }),
+  getById: (id) => api.get(`/hse-events/${id}`),
+  create: (data) => api.post('/hse-events', data),
+  update: (id, data) => api.put(`/hse-events/${id}`, data),
+  delete: (id) => api.delete(`/hse-events/${id}`),
+}
+
+export const lightingMeasurementService = {
+  getAll: (params) => api.get('/lighting-measurements', { params }),
+  getById: (id) => api.get(`/lighting-measurements/${id}`),
+  create: (data) => api.post('/lighting-measurements', data),
+  update: (id, data) => api.put(`/lighting-measurements/${id}`, data),
+  delete: (id) => api.delete(`/lighting-measurements/${id}`),
+}
+
 export const dailyEffectifService = {
   upsert: (data) => api.post('/daily-effectif', data),
   entry: (params) => api.get('/daily-effectif/entry', { params }),
@@ -763,6 +787,7 @@ export const regulatoryWatchService = {
   getLatest: (params) => api.get('/regulatory-watch/latest', { params }),
   getById: (id) => api.get(`/regulatory-watch/${id}`),
   submit: (data) => api.post('/regulatory-watch', data),
+  delete: (id) => api.delete(`/regulatory-watch/${id}`),
 }
 
 export const workerService = {
