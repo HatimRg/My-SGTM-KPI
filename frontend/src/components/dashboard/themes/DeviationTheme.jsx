@@ -74,13 +74,16 @@ const DeviationTheme = memo(function DeviationTheme({ year, projects: _projects,
   const [userThemeAvgResolution, setUserThemeAvgResolution] = useState(null)
   const [poleThemeUnresolvedRate, setPoleThemeUnresolvedRate] = useState(null)
 
+  const hourUnit = t('common.hourShort') ?? 'h'
+  const dayUnit = t('common.dayShort') ?? 'd'
+
   const formatHours = (value) => {
     if (value === null || value === undefined) return '—'
     const v = Number(value)
     if (Number.isNaN(v)) return '—'
-    if (v < 48) return `${Math.round(v * 10) / 10}h`
+    if (v < 48) return `${Math.round(v * 10) / 10}${hourUnit}`
     const days = Math.round((v / 24) * 10) / 10
-    return `${days}d`
+    return `${days}${dayUnit}`
   }
 
   const poleColor = useMemo(() => {

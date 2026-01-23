@@ -18,10 +18,16 @@ class UsersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, Wi
 {
     protected int $dataRows;
     protected array $roleOptions;
+    protected string $lang;
+
+    private function tr(string $fr, string $en): string
+    {
+        return $this->lang === 'en' ? $en : $fr;
+    }
 
     protected function roleLabel(string $role): string
     {
-        $map = [
+        $mapFr = [
             'admin' => 'Administrateur',
             'consultation' => 'Consultation',
             'hse_manager' => 'Manager HSE',
@@ -37,18 +43,37 @@ class UsersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, Wi
             'hr_director' => 'Directeur RH',
         ];
 
+        $mapEn = [
+            'admin' => 'Administrator',
+            'consultation' => 'Viewer',
+            'hse_manager' => 'HSE Manager',
+            'regional_hse_manager' => 'Regional HSE Manager',
+            'responsable' => 'HSE Responsible',
+            'supervisor' => 'HSE Supervisor',
+            'user' => 'HSE Officer',
+            'hr' => 'Administrative Manager',
+            'dev' => 'Developer',
+            'pole_director' => 'Pole Director',
+            'works_director' => 'Works Director',
+            'hse_director' => 'HSE Director',
+            'hr_director' => 'HR Director',
+        ];
+
+        $map = $this->lang === 'en' ? $mapEn : $mapFr;
         return $map[$role] ?? $role;
     }
 
-    public function __construct(int $dataRows = 200, array $roleOptions = [])
+    public function __construct(int $dataRows = 200, array $roleOptions = [], string $lang = 'fr')
     {
         $this->dataRows = $dataRows;
         $this->roleOptions = $roleOptions;
+        $lang = strtolower(trim($lang));
+        $this->lang = in_array($lang, ['en', 'fr'], true) ? $lang : 'fr';
     }
 
     public function title(): string
     {
-        return 'Utilisateurs';
+        return $this->tr('Utilisateurs', 'Users');
     }
 
     public function columnWidths(): array
@@ -87,7 +112,7 @@ class UsersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, Wi
                 $grayLight = 'F9FAFB';
                 $grayBorder = '9CA3AF';
 
-                $sheet->setCellValue('A1', 'SGTM - MODÈLE D\'IMPORT UTILISATEURS');
+                $sheet->setCellValue('A1', $this->tr("SGTM - MODÈLE D'IMPORT UTILISATEURS", 'SGTM - USERS IMPORT TEMPLATE'));
                 $sheet->mergeCells('A1:H1');
                 $sheet->getStyle('A1:H1')->applyFromArray([
                     'font' => ['bold' => true, 'size' => 18, 'color' => ['rgb' => $white]],
@@ -99,7 +124,10 @@ class UsersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, Wi
                 ]);
                 $sheet->getRowDimension(1)->setRowHeight(40);
 
-                $sheet->setCellValue('A2', 'Instructions: EMAIL, NOM et ROLE obligatoires. Mot de passe requis pour les nouveaux utilisateurs. ACTIF: ACTIF/INACTIF. PROJECT_CODES (optionnel) = codes projets séparés par virgule. POLE (optionnel) = ignoré sauf si ROLE = Directeur de pôle.');
+                $sheet->setCellValue('A2', $this->tr(
+                    'Instructions: EMAIL, NOM et ROLE obligatoires. Mot de passe requis pour les nouveaux utilisateurs. ACTIF: ACTIF/INACTIF. PROJECT_CODES (optionnel) = codes projets séparés par virgule. POLE (optionnel) = ignoré sauf si ROLE = Directeur de pôle.',
+                    'Instructions: EMAIL, NAME and ROLE are required. Password is required for new users. ACTIVE: ACTIVE/INACTIVE. PROJECT_CODES (optional) = project codes separated by commas. POLE (optional) = ignored unless ROLE = Pole Director.'
+                ));
                 $sheet->mergeCells('A2:H2');
                 $sheet->getStyle('A2:H2')->applyFromArray([
                     'font' => ['size' => 11, 'italic' => true, 'color' => ['rgb' => $black]],
@@ -115,7 +143,9 @@ class UsersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, Wi
                 ]);
                 $sheet->getRowDimension(2)->setRowHeight(42);
 
-                $headers = ['EMAIL*', 'NOM*', 'MOT_DE_PASSE', 'ROLE*', 'POLE', 'TELEPHONE', 'ACTIF', 'PROJECT_CODES'];
+                $headers = $this->lang === 'en'
+                    ? ['EMAIL*', 'NAME*', 'PASSWORD', 'ROLE*', 'POLE', 'PHONE', 'ACTIVE', 'PROJECT_CODES']
+                    : ['EMAIL*', 'NOM*', 'MOT_DE_PASSE', 'ROLE*', 'POLE', 'TELEPHONE', 'ACTIF', 'PROJECT_CODES'];
                 $col = 'A';
                 foreach ($headers as $header) {
                     $sheet->setCellValue($col . '3', $header);
@@ -160,7 +190,9 @@ class UsersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, Wi
                     $roleValidation->setShowDropDown(true);
                     $roleLabels = !empty($roleOptions)
                         ? array_map(fn ($r) => $this->roleLabel((string) $r), $roleOptions)
-                        : ['Administrateur', 'Consultation', 'Manager HSE', 'Manager HSE Régional', 'Responsable HSE', 'Superviseur HSE', 'Responsable administratif', 'Animateur HSE', 'Développeur', 'Directeur de pôle', 'Directeur Travaux', 'Directeur HSE', 'Directeur RH'];
+                        : ($this->lang === 'en'
+                            ? ['Administrator', 'Viewer', 'HSE Manager', 'Regional HSE Manager', 'HSE Responsible', 'HSE Supervisor', 'Administrative Manager', 'HSE Officer', 'Developer', 'Pole Director', 'Works Director', 'HSE Director', 'HR Director']
+                            : ['Administrateur', 'Consultation', 'Manager HSE', 'Manager HSE Régional', 'Responsable HSE', 'Superviseur HSE', 'Responsable administratif', 'Animateur HSE', 'Développeur', 'Directeur de pôle', 'Directeur Travaux', 'Directeur HSE', 'Directeur RH']);
                     $rolesCsv = implode(',', $roleLabels);
                     $roleValidation->setFormula1('"' . $rolesCsv . '"');
 
@@ -169,8 +201,8 @@ class UsersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, Wi
                     $activeValidation->setErrorStyle(DataValidation::STYLE_STOP);
                     $activeValidation->setAllowBlank(true);
                     $activeValidation->setShowDropDown(true);
-                    $activeValidation->setFormula1('"ACTIF,INACTIF"');
-                    $sheet->setCellValue("G{$row}", 'ACTIF');
+                    $activeValidation->setFormula1($this->lang === 'en' ? '"ACTIVE,INACTIVE"' : '"ACTIF,INACTIF"');
+                    $sheet->setCellValue("G{$row}", $this->lang === 'en' ? 'ACTIVE' : 'ACTIF');
                 }
 
                 $sheet->freezePane('A4');

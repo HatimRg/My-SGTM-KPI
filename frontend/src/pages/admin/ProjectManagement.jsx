@@ -140,6 +140,19 @@ export default function ProjectManagement() {
     }
   }
 
+  const handleManagementExport = async () => {
+    try {
+      const year = new Date().getFullYear()
+      const res = await projectService.managementExport({ year })
+      const filename =
+        extractFilename(res.headers?.['content-disposition']) ??
+        `SGTM-Project-Management-Export_${year}.xlsx`
+      downloadBlob(res.data, filename)
+    } catch (e) {
+      toast.error(t('errors.exportFailed'))
+    }
+  }
+
   const handleBulkImport = async () => {
     if (!bulkFile) {
       toast.error(t('projects.bulk.chooseFile'))
@@ -350,6 +363,16 @@ export default function ProjectManagement() {
           <p className="text-gray-500 dark:text-gray-400 mt-1">Manage projects and assign responsible users</p>
         </div>
         <div className="flex items-center gap-2">
+          {user?.role === 'admin' && (
+            <button
+              type="button"
+              onClick={handleManagementExport}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <FolderKanban className="w-4 h-4" />
+              Export
+            </button>
+          )}
           <div ref={bulkRef} className="relative">
             <button
               type="button"

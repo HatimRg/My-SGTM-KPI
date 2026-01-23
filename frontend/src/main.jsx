@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import toast, { Toaster, ToastBar } from 'react-hot-toast'
 import { LanguageProvider } from './i18n'
 import App from './App.jsx'
+import bugReportRecorder from './utils/bugReportRecorder'
 import './index.css'
 
 const safeToString = (value) => {
@@ -62,6 +63,8 @@ if (typeof window !== 'undefined') {
     })
   })
 }
+
+bugReportRecorder.init()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

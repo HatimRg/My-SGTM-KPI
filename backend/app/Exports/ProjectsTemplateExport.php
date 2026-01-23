@@ -16,15 +16,23 @@ use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 class ProjectsTemplateExport implements WithStyles, WithColumnWidths, WithTitle, WithEvents
 {
     protected int $dataRows;
+    protected string $lang;
 
-    public function __construct(int $dataRows = 200)
+    public function __construct(int $dataRows = 200, string $lang = 'fr')
     {
         $this->dataRows = $dataRows;
+        $lang = strtolower(trim($lang));
+        $this->lang = in_array($lang, ['en', 'fr'], true) ? $lang : 'fr';
+    }
+
+    private function tr(string $fr, string $en): string
+    {
+        return $this->lang === 'en' ? $en : $fr;
     }
 
     public function title(): string
     {
-        return 'Projets';
+        return $this->tr('Projets', 'Projects');
     }
 
     public function columnWidths(): array
@@ -64,7 +72,7 @@ class ProjectsTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                 $grayLight = 'F9FAFB';
                 $grayBorder = '9CA3AF';
 
-                $sheet->setCellValue('A1', 'SGTM - MODÈLE D\'IMPORT PROJETS');
+                $sheet->setCellValue('A1', $this->tr("SGTM - MODÈLE D'IMPORT PROJETS", 'SGTM - PROJECTS IMPORT TEMPLATE'));
                 $sheet->mergeCells('A1:J1');
                 $sheet->getStyle('A1:J1')->applyFromArray([
                     'font' => ['bold' => true, 'size' => 18, 'color' => ['rgb' => $white]],
@@ -76,7 +84,10 @@ class ProjectsTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                 ]);
                 $sheet->getRowDimension(1)->setRowHeight(40);
 
-                $sheet->setCellValue('A2', 'Instructions: CODE et NOM obligatoires. STATUT: active/completed/on_hold/cancelled. Les dates peuvent être au format YYYY-MM-DD.');
+                $sheet->setCellValue('A2', $this->tr(
+                    'Instructions: CODE et NOM obligatoires. STATUT: active/completed/on_hold/cancelled. Les dates peuvent être au format YYYY-MM-DD.',
+                    'Instructions: CODE and NAME are required. STATUS: active/completed/on_hold/cancelled. Dates can be in YYYY-MM-DD format.'
+                ));
                 $sheet->mergeCells('A2:J2');
                 $sheet->getStyle('A2:J2')->applyFromArray([
                     'font' => ['size' => 11, 'italic' => true, 'color' => ['rgb' => $black]],
@@ -91,7 +102,9 @@ class ProjectsTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                 ]);
                 $sheet->getRowDimension(2)->setRowHeight(28);
 
-                $headers = ['CODE*', 'NOM*', 'POLE', 'CLIENT', 'STATUT', 'DATE_DEBUT', 'DATE_FIN', 'LOCALISATION', 'DESCRIPTION', 'RESPONSABLES_EMAILS'];
+                $headers = $this->lang === 'en'
+                    ? ['CODE*', 'NAME*', 'POLE', 'CLIENT', 'STATUS', 'START_DATE', 'END_DATE', 'LOCATION', 'DESCRIPTION', 'RESPONSIBLE_EMAILS']
+                    : ['CODE*', 'NOM*', 'POLE', 'CLIENT', 'STATUT', 'DATE_DEBUT', 'DATE_FIN', 'LOCALISATION', 'DESCRIPTION', 'RESPONSABLES_EMAILS'];
                 $col = 'A';
                 foreach ($headers as $header) {
                     $sheet->setCellValue($col . '3', $header);

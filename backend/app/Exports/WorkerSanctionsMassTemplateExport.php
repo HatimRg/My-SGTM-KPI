@@ -16,17 +16,25 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 class WorkerSanctionsMassTemplateExport implements FromArray, WithColumnWidths, WithEvents, WithTitle
 {
     private int $dataRows;
+    private string $lang;
 
     private string $sanctionTypesCsv = 'mise_a_pied,avertissement,rappel_a_lordre,blame';
 
-    public function __construct(int $dataRows = 200)
+    public function __construct(int $dataRows = 200, string $lang = 'fr')
     {
         $this->dataRows = max(10, $dataRows);
+        $lang = strtolower(trim($lang));
+        $this->lang = in_array($lang, ['en', 'fr'], true) ? $lang : 'fr';
+    }
+
+    private function tr(string $fr, string $en): string
+    {
+        return $this->lang === 'en' ? $en : $fr;
     }
 
     public function title(): string
     {
-        return 'Sanctions';
+        return $this->tr('Sanctions', 'Sanctions');
     }
 
     public function columnWidths(): array
@@ -43,8 +51,11 @@ class WorkerSanctionsMassTemplateExport implements FromArray, WithColumnWidths, 
     public function array(): array
     {
         $rows = [];
-        $rows[] = ["SGTM - MODÈLE D'IMPORT SANCTIONS (MASS)"];
-        $rows[] = ['Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, DATE_SANCTION*, TYPE_SANCTION* et REASON* obligatoires. Si type=mise_a_pied, MISE_A_PIED_DAYS est obligatoire.'];
+        $rows[] = [$this->tr("SGTM - MODÈLE D'IMPORT SANCTIONS (MASS)", 'SGTM - SANCTIONS MASS IMPORT TEMPLATE')];
+        $rows[] = [$this->tr(
+            'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, DATE_SANCTION*, TYPE_SANCTION* et REASON* obligatoires. Si type=mise_a_pied, MISE_A_PIED_DAYS est obligatoire.',
+            'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf. CIN*, DATE_SANCTION*, TYPE_SANCTION* and REASON* are required. If type=mise_a_pied, MISE_A_PIED_DAYS is required.'
+        )];
         $rows[] = ['CIN*', 'DATE_SANCTION*', 'TYPE_SANCTION*', 'MISE_A_PIED_DAYS', 'REASON*'];
 
         for ($i = 0; $i < $this->dataRows; $i++) {
@@ -85,7 +96,7 @@ class WorkerSanctionsMassTemplateExport implements FromArray, WithColumnWidths, 
                 $grayLight = 'F9FAFB';
                 $grayBorder = '9CA3AF';
 
-                $sheet->setCellValue('A1', 'SGTM - MODÈLE D\'IMPORT SANCTIONS (MASS)');
+                $sheet->setCellValue('A1', $this->tr("SGTM - MODÈLE D'IMPORT SANCTIONS (MASS)", 'SGTM - SANCTIONS MASS IMPORT TEMPLATE'));
                 $sheet->mergeCells('A1:E1');
                 $sheet->getStyle('A1:E1')->applyFromArray([
                     'font' => ['bold' => true, 'size' => 18, 'color' => ['rgb' => $white]],
@@ -97,7 +108,10 @@ class WorkerSanctionsMassTemplateExport implements FromArray, WithColumnWidths, 
                 ]);
                 $sheet->getRowDimension(1)->setRowHeight(40);
 
-                $sheet->setCellValue('A2', 'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, DATE_SANCTION*, TYPE_SANCTION* et REASON* obligatoires. Si type=mise_a_pied, MISE_A_PIED_DAYS est obligatoire.');
+                $sheet->setCellValue('A2', $this->tr(
+                    'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, DATE_SANCTION*, TYPE_SANCTION* et REASON* obligatoires. Si type=mise_a_pied, MISE_A_PIED_DAYS est obligatoire.',
+                    'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf. CIN*, DATE_SANCTION*, TYPE_SANCTION* and REASON* are required. If type=mise_a_pied, MISE_A_PIED_DAYS is required.'
+                ));
                 $sheet->mergeCells('A2:E2');
                 $sheet->getStyle('A2:E2')->applyFromArray([
                     'font' => ['size' => 11, 'italic' => true, 'color' => ['rgb' => $black]],
@@ -160,19 +174,22 @@ class WorkerSanctionsMassTemplateExport implements FromArray, WithColumnWidths, 
                     $typeValidation->setAllowBlank(false);
                     $typeValidation->setShowDropDown(true);
                     $typeValidation->setShowErrorMessage(true);
-                    $typeValidation->setErrorTitle('Sanction type');
-                    $typeValidation->setError('Veuillez sélectionner un type de sanction valide dans la liste.');
+                    $typeValidation->setErrorTitle($this->tr('Type sanction', 'Sanction type'));
+                    $typeValidation->setError($this->tr('Veuillez sélectionner un type de sanction valide dans la liste.', 'Please select a valid sanction type from the list.'));
                     $typeValidation->setFormula1("='Lists'!\$A\$1:\$A\${typesLastRow}");
                 }
 
-                $sheet->getComment('A3')->getText()->createTextRun("CIN = IDENTIFIANT UNIQUE\n\nLe PDF dans le ZIP doit s'appeler: CIN.pdf");
+                $sheet->getComment('A3')->getText()->createTextRun($this->tr(
+                    "CIN = IDENTIFIANT UNIQUE\n\nLe PDF dans le ZIP doit s'appeler: CIN.pdf",
+                    'CIN = UNIQUE IDENTIFIER\n\nThe PDF in the ZIP must be named: CIN.pdf'
+                ));
                 $sheet->getComment('A3')->setWidth('220px');
                 $sheet->getComment('A3')->setHeight('90px');
 
-                $sheet->getComment('B3')->getText()->createTextRun('Format recommandé: AAAA-MM-JJ');
+                $sheet->getComment('B3')->getText()->createTextRun($this->tr('Format recommandé: AAAA-MM-JJ', 'Recommended format: YYYY-MM-DD'));
                 $sheet->getComment('B3')->setWidth('170px');
 
-                $sheet->getComment('D3')->getText()->createTextRun('Requis si TYPE_SANCTION = mise_a_pied');
+                $sheet->getComment('D3')->getText()->createTextRun($this->tr('Requis si TYPE_SANCTION = mise_a_pied', 'Required if TYPE_SANCTION = mise_a_pied'));
                 $sheet->getComment('D3')->setWidth('200px');
 
                 $sheet->freezePane('A4');

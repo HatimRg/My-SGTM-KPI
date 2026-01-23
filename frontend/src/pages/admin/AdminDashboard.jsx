@@ -67,6 +67,8 @@ export default function AdminDashboard() {
   const { user } = useAuthStore()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [safetyPerformance, setSafetyPerformance] = useState(null)
+  const [safetyLoading, setSafetyLoading] = useState(false)
   const [year, setYear] = useState(getCurrentWeek().year)
   const [compareYear, setCompareYear] = useState(getCurrentWeek().year - 1)
   const [compareData, setCompareData] = useState(null)
@@ -134,10 +136,37 @@ export default function AdminDashboard() {
     }
   }, [compareYear])
 
+  const fetchSafetyPerformance = useCallback(async () => {
+    try {
+      setSafetyLoading(true)
+      const params = { year }
+      if (focusPole) params.pole = focusPole
+      if (focusProjectId !== 'all') params.project_id = focusProjectId
+      if (focusWeek !== 'all') params.week = focusWeek
+
+      const response = await cachedApiCall(
+        dashboardService.getSafetyPerformance,
+        '/dashboard/safety-performance',
+        params,
+        30000
+      )
+      setSafetyPerformance(response.data.data)
+    } catch (error) {
+      toast.error(t('dashboard.loadFailed') || t('errors.failedToLoad'))
+    } finally {
+      setSafetyLoading(false)
+    }
+  }, [year, focusPole, focusProjectId, focusWeek])
+
   useEffect(() => {
     fetchDashboardData()
     fetchCompareData()
   }, [fetchDashboardData, fetchCompareData])
+
+  useEffect(() => {
+    if (activeTheme !== 'safety') return
+    fetchSafetyPerformance()
+  }, [activeTheme, fetchSafetyPerformance])
 
   useEffect(() => {
     fetchPoles()
@@ -537,6 +566,8 @@ export default function AdminDashboard() {
           kpiSummary={focusedKpiSummary} 
           weeklyTrends={filteredWeeklyTrends} 
           projectPerformance={filteredProjectPerformance} 
+          safetyPerformance={safetyPerformance}
+          safetyLoading={safetyLoading}
         />
       )}
       {activeTheme === 'training' && (

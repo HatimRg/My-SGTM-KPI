@@ -27,6 +27,10 @@ class DeviationsExport implements FromCollection, WithHeadings, WithMapping, Wit
         /** @var Builder $query */
         $query = SorReport::query()->with(['project:id,name,code', 'submitter:id,name', 'closer:id,name']);
 
+        if (!empty($this->filters['visible_project_ids']) && is_array($this->filters['visible_project_ids'])) {
+            $query->whereIn('project_id', $this->filters['visible_project_ids']);
+        }
+
         if (!empty($this->filters['project_id'])) {
             $query->where('project_id', (int) $this->filters['project_id']);
         }

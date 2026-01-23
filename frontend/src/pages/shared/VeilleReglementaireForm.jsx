@@ -148,7 +148,7 @@ export default function VeilleReglementaireForm({ mode }) {
       ) {
         navigate(`${wizardBasePath}/${parsedPage}${location.search || ''}`, { replace: true })
       }
-    } catch {}
+    } catch (e) { void e }
   }, [currentPageNumber, draftStorageKey, location.search, mode, navigate, params?.id, wizardBasePath])
 
   useEffect(() => {
@@ -157,7 +157,7 @@ export default function VeilleReglementaireForm({ mode }) {
     try {
       const payload = buildDraftPayload()
       window.localStorage.setItem(draftStorageKey, JSON.stringify(payload))
-    } catch {}
+    } catch (e) { void e }
   }, [answers, currentPageNumber, draftStorageKey, mode, params?.id, selectedProjectId, weekNumber, weekYear])
 
   const handleSaveDraft = () => {
@@ -428,7 +428,7 @@ export default function VeilleReglementaireForm({ mode }) {
 
       try {
         window.localStorage.removeItem(draftStorageKey)
-      } catch {}
+      } catch (e) { void e }
 
       const submission = res.data?.data
       if (submission?.id) {

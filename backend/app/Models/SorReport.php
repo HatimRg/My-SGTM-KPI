@@ -73,6 +73,65 @@ class SorReport extends Model
         'autre' => 'Autre',
     ];
 
+    public static function normalizeCategory(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return null;
+        }
+
+        if (str_starts_with($raw, 'sor.categories.')) {
+            $raw = substr($raw, strlen('sor.categories.'));
+            $raw = trim((string) $raw);
+        }
+
+        $candidate = self::normalizeCategoryComparable($raw);
+        if ($candidate !== '' && array_key_exists($candidate, self::CATEGORIES)) {
+            return $candidate;
+        }
+
+        foreach (self::CATEGORIES as $key => $label) {
+            if (self::normalizeCategoryComparable($label) === $candidate) {
+                return $key;
+            }
+        }
+
+        return $raw;
+    }
+
+    private static function normalizeCategoryComparable(string $value): string
+    {
+        $v = trim($value);
+        if ($v === '') {
+            return '';
+        }
+
+        $v = mb_strtolower($v);
+        $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $v);
+        if (is_string($ascii) && $ascii !== '') {
+            $v = $ascii;
+        }
+
+        $v = preg_replace('/[^a-z0-9]+/i', '_', $v);
+        $v = trim((string) $v, '_');
+
+        return $v;
+    }
+
+    public function setCategoryAttribute($value): void
+    {
+        $this->attributes['category'] = self::normalizeCategory($value);
+    }
+
+    public function getCategoryAttribute($value): ?string
+    {
+        return self::normalizeCategory($value);
+    }
+
     // Relationships
     public function project()
     {

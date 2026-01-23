@@ -15,15 +15,23 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 class ProjectTeamTemplateExport implements WithStyles, WithColumnWidths, WithTitle, WithEvents
 {
     protected int $dataRows;
+    protected string $lang;
 
-    public function __construct(int $dataRows = 200)
+    public function __construct(int $dataRows = 200, string $lang = 'fr')
     {
         $this->dataRows = $dataRows;
+        $lang = strtolower(trim($lang));
+        $this->lang = in_array($lang, ['en', 'fr'], true) ? $lang : 'fr';
+    }
+
+    private function tr(string $fr, string $en): string
+    {
+        return $this->lang === 'en' ? $en : $fr;
     }
 
     public function title(): string
     {
-        return 'Equipe';
+        return $this->tr('Equipe', 'Team');
     }
 
     public function columnWidths(): array
@@ -55,7 +63,7 @@ class ProjectTeamTemplateExport implements WithStyles, WithColumnWidths, WithTit
                 $grayLight = 'F9FAFB';
                 $grayBorder = '9CA3AF';
 
-                $sheet->setCellValue('A1', 'SGTM - MODÈLE D\'IMPORT EQUIPE PROJET');
+                $sheet->setCellValue('A1', $this->tr("SGTM - MODÈLE D'IMPORT EQUIPE PROJET", 'SGTM - PROJECT TEAM IMPORT TEMPLATE'));
                 $sheet->mergeCells('A1:B1');
                 $sheet->getStyle('A1:B1')->applyFromArray([
                     'font' => ['bold' => true, 'size' => 18, 'color' => ['rgb' => $white]],
@@ -67,7 +75,10 @@ class ProjectTeamTemplateExport implements WithStyles, WithColumnWidths, WithTit
                 ]);
                 $sheet->getRowDimension(1)->setRowHeight(40);
 
-                $sheet->setCellValue('A2', 'Instructions: EMAIL obligatoire. Seuls les HSE Officers (role=user) existants peuvent être ajoutés.');
+                $sheet->setCellValue('A2', $this->tr(
+                    'Instructions: EMAIL obligatoire. Seuls les HSE Officers (role=user) existants peuvent être ajoutés.',
+                    'Instructions: EMAIL is required. Only existing HSE Officers (role=user) can be added.'
+                ));
                 $sheet->mergeCells('A2:B2');
                 $sheet->getStyle('A2:B2')->applyFromArray([
                     'font' => ['size' => 11, 'italic' => true, 'color' => ['rgb' => $black]],
@@ -84,7 +95,7 @@ class ProjectTeamTemplateExport implements WithStyles, WithColumnWidths, WithTit
                 $sheet->getRowDimension(2)->setRowHeight(30);
 
                 $sheet->setCellValue('A3', 'EMAIL*');
-                $sheet->setCellValue('B3', 'NOTE');
+                $sheet->setCellValue('B3', $this->tr('NOTE', 'NOTE'));
 
                 $sheet->getStyle('A3:B3')->applyFromArray([
                     'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => $white]],

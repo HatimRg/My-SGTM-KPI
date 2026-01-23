@@ -24,8 +24,9 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
     protected $year;
     protected $weekDates;
     protected $autoFillValues;
+    protected string $lang;
 
-    public function __construct(string $projectName, string $projectCode, int $weekNumber, int $year, array $autoFillValues = [])
+    public function __construct(string $projectName, string $projectCode, int $weekNumber, int $year, array $autoFillValues = [], string $lang = 'fr')
     {
         $this->projectName = $projectName;
         $this->projectCode = $projectCode;
@@ -33,11 +34,18 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
         $this->year = $year;
         $this->weekDates = WeekHelper::getWeekDates($weekNumber, $year);
         $this->autoFillValues = $autoFillValues;
+        $lang = strtolower(trim($lang));
+        $this->lang = in_array($lang, ['en', 'fr'], true) ? $lang : 'fr';
+    }
+
+    private function tr(string $fr, string $en): string
+    {
+        return $this->lang === 'en' ? $en : $fr;
     }
 
     public function title(): string
     {
-        return 'Daily HSE KPI';
+        return $this->tr('KPI HSE Journalier', 'Daily HSE KPI');
     }
 
     public function drawings()
@@ -63,7 +71,9 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
     {
         $startDate = $this->weekDates['start'];
         $days = [];
-        $dayNames = ['Samedi', 'Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
+        $dayNames = $this->lang === 'en'
+            ? ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+            : ['Samedi', 'Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
         
         // Generate 7 days (Saturday to Friday)
         for ($i = 0; $i < 7; $i++) {
@@ -78,21 +88,21 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
         $rows = [];
 
         // Row 1: Title with space for logo
-        $rows[] = ['', '', 'SUIVI JOURNALIER HSE', '', '', '', '', ''];
+        $rows[] = ['', '', $this->tr('SUIVI JOURNALIER HSE', 'DAILY HSE TRACKING'), '', '', '', '', ''];
         
         // Row 2: Empty separator
         $rows[] = [''];
         
         // Rows 3-5: Project info in a professional card style
-        $rows[] = ['PROJET', $this->projectName, '', '', 'CODE', $this->projectCode, '', ''];
-        $rows[] = ['SEMAINE', "S{$this->weekNumber}", '', '', 'ANNÉE', $this->year, '', ''];
-        $rows[] = ['PÉRIODE', $this->weekDates['start']->format('d/m/Y') . ' au ' . $this->weekDates['end']->format('d/m/Y'), '', '', '', '', '', ''];
+        $rows[] = [$this->tr('PROJET', 'PROJECT'), $this->projectName, '', '', 'CODE', $this->projectCode, '', ''];
+        $rows[] = [$this->tr('SEMAINE', 'WEEK'), "S{$this->weekNumber}", '', '', $this->tr('ANNÉE', 'YEAR'), $this->year, '', ''];
+        $rows[] = [$this->tr('PÉRIODE', 'PERIOD'), $this->weekDates['start']->format('d/m/Y') . $this->tr(' au ', ' to ') . $this->weekDates['end']->format('d/m/Y'), '', '', '', '', '', ''];
         
         // Row 6: Empty separator
         $rows[] = [''];
         
         // Row 7: Column headers (only 8 columns now: Indicator + 7 days)
-        $headerRow = ['INDICATEUR'];
+        $headerRow = [$this->tr('INDICATEUR', 'INDICATOR')];
         foreach ($days as $day) {
             $headerRow[] = $day['name'] . "\n" . $day['date'];
         }
@@ -110,21 +120,21 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
         $autoFillFields = ['releve_ecarts', 'sensibilisation', 'heures_formation', 'permis_travail', 'inspections', 'mesures_disciplinaires'];
         
         $kpiFields = [
-            ['label' => 'Effectif', 'key' => 'effectif'],
-            ['label' => 'Induction', 'key' => 'induction'],
-            ['label' => 'Relevé des écarts', 'key' => 'releve_ecarts'],
-            ['label' => 'Nombre de Sensibilisation', 'key' => 'sensibilisation'],
-            ['label' => 'Presqu\'accident', 'key' => 'presquaccident'],
-            ['label' => 'Premiers soins', 'key' => 'premiers_soins'],
-            ['label' => 'Accident', 'key' => 'accidents'],
-            ['label' => 'Nombre de jours d\'arrêt', 'key' => 'jours_arret'],
-            ['label' => 'Heures travaillées (=Effectif×10)', 'key' => 'heures_travaillees'],
-            ['label' => 'Nombre d\'Inspections', 'key' => 'inspections'],
-            ['label' => 'Heures de formation', 'key' => 'heures_formation'],
-            ['label' => 'Permis de travail', 'key' => 'permis_travail'],
-            ['label' => 'Mesures disciplinaires', 'key' => 'mesures_disciplinaires'],
-            ['label' => 'Taux de conformité HSE (%)', 'key' => 'conformite_hse'],
-            ['label' => 'Taux de conformité Médicale (%)', 'key' => 'conformite_medicale'],
+            ['label' => $this->tr('Effectif', 'Workforce'), 'key' => 'effectif'],
+            ['label' => $this->tr('Induction', 'Induction'), 'key' => 'induction'],
+            ['label' => $this->tr('Relevé des écarts', 'Deviations'), 'key' => 'releve_ecarts'],
+            ['label' => $this->tr('Nombre de Sensibilisation', 'Awareness sessions'), 'key' => 'sensibilisation'],
+            ['label' => $this->tr('Presqu\'accident', 'Near miss'), 'key' => 'presquaccident'],
+            ['label' => $this->tr('Premiers soins', 'First aid'), 'key' => 'premiers_soins'],
+            ['label' => $this->tr('Accident', 'Accident'), 'key' => 'accidents'],
+            ['label' => $this->tr('Nombre de jours d\'arrêt', 'Lost days'), 'key' => 'jours_arret'],
+            ['label' => $this->tr('Heures travaillées', 'Hours worked'), 'key' => 'heures_travaillees'],
+            ['label' => $this->tr('Nombre d\'Inspections', 'Inspections'), 'key' => 'inspections'],
+            ['label' => $this->tr('Heures de formation', 'Training hours'), 'key' => 'heures_formation'],
+            ['label' => $this->tr('Permis de travail', 'Work permits'), 'key' => 'permis_travail'],
+            ['label' => $this->tr('Mesures disciplinaires', 'Disciplinary measures'), 'key' => 'mesures_disciplinaires'],
+            ['label' => $this->tr('Taux de conformité HSE (%)', 'HSE compliance rate (%)'), 'key' => 'conformite_hse'],
+            ['label' => $this->tr('Taux de conformité Médicale (%)', 'Medical compliance rate (%)'), 'key' => 'conformite_medicale'],
         ];
 
         foreach ($kpiFields as $field) {
@@ -143,7 +153,11 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
                     // Get value from autoFillValues if available
                     if (isset($this->autoFillValues[$i]['auto_values'][$field['key']])) {
                         $dbValue = $this->autoFillValues[$i]['auto_values'][$field['key']];
-                        $value = is_numeric($dbValue) ? (int) $dbValue : 0;
+                        if (is_numeric($dbValue)) {
+                            $value = $field['key'] === 'heures_formation' ? (float) $dbValue : (int) $dbValue;
+                        } else {
+                            $value = 0;
+                        }
                     }
                     
                     // IMPORTANT: Keep 0 as integer 0, don't let it become empty
@@ -168,10 +182,10 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
 
         // Footer instructions
         $rows[] = [''];
-        $rows[] = ['Instructions:'];
-        $rows[] = ['• Remplissez les valeurs journalières dans les colonnes correspondantes'];
-        $rows[] = ['• Les totaux seront calculés automatiquement lors de l\'import'];
-        $rows[] = ['• Ne modifiez pas la structure du fichier (lignes/colonnes)'];
+        $rows[] = [$this->tr('Instructions:', 'Instructions:')];
+        $rows[] = [$this->tr('• Remplissez les valeurs journalières dans les colonnes correspondantes', '• Fill in the daily values in the corresponding columns')];
+        $rows[] = [$this->tr('• Les totaux seront calculés automatiquement lors de l\'import', '• Totals will be calculated automatically during import')];
+        $rows[] = [$this->tr('• Ne modifiez pas la structure du fichier (lignes/colonnes)', '• Do not modify the file structure (rows/columns)')];
 
         return $rows;
     }
@@ -283,6 +297,12 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
             'numberFormat' => ['formatCode' => '0'],
         ]);
 
+        // Allow decimals for hours and compliance rates
+        $sheet->getStyle('B17:H17')->getNumberFormat()->setFormatCode('0.00');
+        $sheet->getStyle('B19:H19')->getNumberFormat()->setFormatCode('0.00');
+        $sheet->getStyle('B22:H22')->getNumberFormat()->setFormatCode('0.00');
+        $sheet->getStyle('B23:H23')->getNumberFormat()->setFormatCode('0.00');
+
         // Alternate row colors for better readability
         for ($i = 9; $i <= $lastDataRow; $i++) {
             if ($i % 2 == 0) {
@@ -292,21 +312,6 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
             }
             $sheet->getRowDimension($i)->setRowHeight(24);
         }
-
-        // Add Excel formulas for "Heures travaillées" (row 17 = Effectif row 9 × 10)
-        // Row 17 is "Heures travaillées", Row 9 is "Effectif"
-        $workHoursRow = 17;
-        $columns = ['B', 'C', 'D', 'E', 'F', 'G', 'H'];
-        foreach ($columns as $col) {
-            $effectifCell = $col . '9';
-            $sheet->setCellValue($col . $workHoursRow, "={$effectifCell}*10");
-        }
-        
-        // Style the formula row differently
-        $sheet->getStyle("B{$workHoursRow}:H{$workHoursRow}")->applyFromArray([
-            'font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => $darkAmber]],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FDE68A']],
-        ]);
 
         // Instructions styling - Amber accent
         $instructionRow = $lastDataRow + 2;
@@ -340,8 +345,10 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
                 $autoFillRows = [
                     11 => 'releve_ecarts',      // Relevé des écarts
                     12 => 'sensibilisation',    // Nombre de Sensibilisation
+                    18 => 'inspections',        // Nombre d'Inspections
                     19 => 'heures_formation',   // Heures de formation
                     20 => 'permis_travail',     // Permis de travail
+                    21 => 'mesures_disciplinaires', // Mesures disciplinaires
                 ];
                 
                 $columns = ['B', 'C', 'D', 'E', 'F', 'G', 'H'];
@@ -351,7 +358,10 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
                         // Get value from autoFillValues, default to 0
                         $value = 0;
                         if (isset($autoFillValues[$colIndex]['auto_values'][$fieldKey])) {
-                            $value = (int) $autoFillValues[$colIndex]['auto_values'][$fieldKey];
+                            $dbValue = $autoFillValues[$colIndex]['auto_values'][$fieldKey];
+                            if (is_numeric($dbValue)) {
+                                $value = $fieldKey === 'heures_formation' ? (float) $dbValue : (int) $dbValue;
+                            }
                         }
                         
                         // Explicitly set the cell value

@@ -114,21 +114,38 @@ class SorAnalyticsController extends Controller
         return "CONCAT(sor_reports.observation_date, ' ', COALESCE(sor_reports.observation_time, '00:00:00'))";
     }
 
+    private function closureTimestampSql(): string
+    {
+        $driver = DB::getDriverName();
+
+        if ($driver === 'pgsql') {
+            return "(COALESCE(sor_reports.corrective_action_date, sor_reports.closed_at::date) + COALESCE(sor_reports.corrective_action_time, sor_reports.closed_at::time, '00:00:00'))";
+        }
+
+        if ($driver === 'sqlite') {
+            return "COALESCE(datetime(sor_reports.corrective_action_date || ' ' || COALESCE(sor_reports.corrective_action_time, '00:00:00')), sor_reports.closed_at)";
+        }
+
+        // mysql / mariadb
+        return "COALESCE(CONCAT(sor_reports.corrective_action_date, ' ', COALESCE(sor_reports.corrective_action_time, '00:00:00')), sor_reports.closed_at)";
+    }
+
     private function resolutionHoursSql(): string
     {
         $driver = DB::getDriverName();
         $obs = $this->observationTimestampSql();
+        $close = $this->closureTimestampSql();
 
         if ($driver === 'pgsql') {
-            return "GREATEST(0, EXTRACT(EPOCH FROM (sor_reports.closed_at - {$obs})) / 3600.0)";
+            return "GREATEST(0, EXTRACT(EPOCH FROM ({$close} - {$obs})) / 3600.0)";
         }
 
         if ($driver === 'sqlite') {
-            return "MAX(0, (julianday(sor_reports.closed_at) - julianday({$obs})) * 24.0)";
+            return "MAX(0, (julianday({$close}) - julianday({$obs})) * 24.0)";
         }
 
         // mysql / mariadb
-        return "GREATEST(0, TIMESTAMPDIFF(HOUR, {$obs}, sor_reports.closed_at))";
+        return "GREATEST(0, TIMESTAMPDIFF(MINUTE, {$obs}, {$close}) / 60.0)";
     }
 
     private function percentile(array $sorted, float $p): ?float
@@ -164,13 +181,16 @@ class SorAnalyticsController extends Controller
 
         $avgResolutionHours = (clone $base)
             ->where('sor_reports.status', SorReport::STATUS_CLOSED)
-            ->whereNotNull('sor_reports.closed_at')
+            ->where(function ($q) {
+                $q->whereNotNull('sor_reports.corrective_action_date')
+                  ->orWhereNotNull('sor_reports.closed_at');
+            })
             ->avg(DB::raw($this->resolutionHoursSql()));
 
         $worstTheme = (clone $base)
             ->select('sor_reports.category')
             ->selectRaw("SUM(CASE WHEN sor_reports.status != ? THEN 1 ELSE 0 END) as unresolved_count", [SorReport::STATUS_CLOSED])
-            ->selectRaw("AVG(CASE WHEN sor_reports.status = ? AND sor_reports.closed_at IS NOT NULL THEN {$this->resolutionHoursSql()} ELSE NULL END) as avg_resolution_hours", [SorReport::STATUS_CLOSED])
+            ->selectRaw("AVG(CASE WHEN sor_reports.status = ? AND (sor_reports.corrective_action_date IS NOT NULL OR sor_reports.closed_at IS NOT NULL) THEN {$this->resolutionHoursSql()} ELSE NULL END) as avg_resolution_hours", [SorReport::STATUS_CLOSED])
             ->groupBy('sor_reports.category')
             ->orderByDesc('unresolved_count')
             ->orderByDesc('avg_resolution_hours')
@@ -185,7 +205,7 @@ class SorAnalyticsController extends Controller
 
         $worstUser = (clone $base)
             ->select('submitters.id as user_id', 'submitters.name as user_name')
-            ->selectRaw("AVG(CASE WHEN sor_reports.status = ? AND sor_reports.closed_at IS NOT NULL THEN {$this->resolutionHoursSql()} ELSE NULL END) as avg_resolution_hours", [SorReport::STATUS_CLOSED])
+            ->selectRaw("AVG(CASE WHEN sor_reports.status = ? AND (sor_reports.corrective_action_date IS NOT NULL OR sor_reports.closed_at IS NOT NULL) THEN {$this->resolutionHoursSql()} ELSE NULL END) as avg_resolution_hours", [SorReport::STATUS_CLOSED])
             ->selectRaw('COUNT(*) as total')
             ->groupBy('submitters.id', 'submitters.name')
             ->havingRaw('COUNT(*) > 0')

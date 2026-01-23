@@ -247,8 +247,10 @@ class ProjectTeamController extends Controller
                 return $this->error('XLSX export requires PHP zip extension (ZipArchive). Please enable/install php-zip on the server.', 422);
             }
 
+            $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
+
             $filename = 'SGTM-Project-Team-Template-' . ($project->code ?: $project->id) . '.xlsx';
-            return Excel::download(new ProjectTeamTemplateExport(), $filename);
+            return Excel::download(new ProjectTeamTemplateExport(200, $lang), $filename);
         } catch (\Throwable $e) {
             Log::error('Project team template generation failed', [
                 'project_id' => $project->id,

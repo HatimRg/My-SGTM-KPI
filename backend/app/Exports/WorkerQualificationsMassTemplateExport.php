@@ -16,17 +16,25 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 class WorkerQualificationsMassTemplateExport implements FromArray, WithColumnWidths, WithEvents, WithTitle
 {
     private int $dataRows;
+    private string $lang;
 
     private string $qualificationTypesCsv = 'elingueur,equipier_premiere_intervention,habilitation_electrique,inspecteur_echafaudage,monteur_echafaudage,monteur_grue_a_tour,operateur_bulldozer,operateur_chargeuse,operateur_chariot_elevateur,operateur_compacteur,operateur_dumper,operateur_grue_a_tour,operateur_grue_mobile,operateur_niveleuse,operateur_nacelle,operateur_pelle,sst,soudeur,utilisation_meule,other';
 
-    public function __construct(int $dataRows = 200)
+    public function __construct(int $dataRows = 200, string $lang = 'fr')
     {
         $this->dataRows = max(10, $dataRows);
+        $lang = strtolower(trim($lang));
+        $this->lang = in_array($lang, ['en', 'fr'], true) ? $lang : 'fr';
+    }
+
+    private function tr(string $fr, string $en): string
+    {
+        return $this->lang === 'en' ? $en : $fr;
     }
 
     public function title(): string
     {
-        return 'Qualifications';
+        return $this->tr('Qualifications', 'Qualifications');
     }
 
     public function columnWidths(): array
@@ -44,8 +52,11 @@ class WorkerQualificationsMassTemplateExport implements FromArray, WithColumnWid
     public function array(): array
     {
         $rows = [];
-        $rows[] = ["SGTM - MODÈLE D'IMPORT QUALIFICATIONS (MASS)"];
-        $rows[] = ['Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, TYPE_QUALIFICATION* et DATE_DEBUT* obligatoires. Si type=other, LIBELLE_QUALIFICATION est obligatoire.'];
+        $rows[] = [$this->tr("SGTM - MODÈLE D'IMPORT QUALIFICATIONS (MASS)", 'SGTM - QUALIFICATIONS MASS IMPORT TEMPLATE')];
+        $rows[] = [$this->tr(
+            'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, TYPE_QUALIFICATION* et DATE_DEBUT* obligatoires. Si type=other, LIBELLE_QUALIFICATION est obligatoire.',
+            'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf. CIN*, TYPE_QUALIFICATION* and DATE_DEBUT* are required. If type=other, LIBELLE_QUALIFICATION is required.'
+        )];
         $rows[] = ['CIN*', 'TYPE_QUALIFICATION*', 'NIVEAU_QUALIFICATION', 'LIBELLE_QUALIFICATION', 'DATE_DEBUT*', 'DATE_EXPIRATION'];
 
         for ($i = 0; $i < $this->dataRows; $i++) {
@@ -86,7 +97,7 @@ class WorkerQualificationsMassTemplateExport implements FromArray, WithColumnWid
                 $grayLight = 'F9FAFB';
                 $grayBorder = '9CA3AF';
 
-                $sheet->setCellValue('A1', 'SGTM - MODÈLE D\'IMPORT QUALIFICATIONS (MASS)');
+                $sheet->setCellValue('A1', $this->tr("SGTM - MODÈLE D'IMPORT QUALIFICATIONS (MASS)", 'SGTM - QUALIFICATIONS MASS IMPORT TEMPLATE'));
                 $sheet->mergeCells('A1:F1');
                 $sheet->getStyle('A1:F1')->applyFromArray([
                     'font' => ['bold' => true, 'size' => 18, 'color' => ['rgb' => $white]],
@@ -98,7 +109,10 @@ class WorkerQualificationsMassTemplateExport implements FromArray, WithColumnWid
                 ]);
                 $sheet->getRowDimension(1)->setRowHeight(40);
 
-                $sheet->setCellValue('A2', 'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, TYPE_QUALIFICATION* et DATE_DEBUT* obligatoires. Si type=other, LIBELLE_QUALIFICATION est obligatoire.');
+                $sheet->setCellValue('A2', $this->tr(
+                    'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, TYPE_QUALIFICATION* et DATE_DEBUT* obligatoires. Si type=other, LIBELLE_QUALIFICATION est obligatoire.',
+                    'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf. CIN*, TYPE_QUALIFICATION* and DATE_DEBUT* are required. If type=other, LIBELLE_QUALIFICATION is required.'
+                ));
                 $sheet->mergeCells('A2:F2');
                 $sheet->getStyle('A2:F2')->applyFromArray([
                     'font' => ['size' => 11, 'italic' => true, 'color' => ['rgb' => $black]],
@@ -161,19 +175,22 @@ class WorkerQualificationsMassTemplateExport implements FromArray, WithColumnWid
                     $typeValidation->setAllowBlank(false);
                     $typeValidation->setShowDropDown(true);
                     $typeValidation->setShowErrorMessage(true);
-                    $typeValidation->setErrorTitle('Type qualification');
-                    $typeValidation->setError('Veuillez sélectionner un type de qualification valide dans la liste.');
+                    $typeValidation->setErrorTitle($this->tr('Type qualification', 'Qualification type'));
+                    $typeValidation->setError($this->tr('Veuillez sélectionner un type de qualification valide dans la liste.', 'Please select a valid qualification type from the list.'));
                     $typeValidation->setFormula1("='Lists'!\$A\$1:\$A\${typesLastRow}");
                 }
 
-                $sheet->getComment('A3')->getText()->createTextRun("CIN = IDENTIFIANT UNIQUE\n\nLe PDF dans le ZIP doit s'appeler: CIN.pdf");
+                $sheet->getComment('A3')->getText()->createTextRun($this->tr(
+                    "CIN = IDENTIFIANT UNIQUE\n\nLe PDF dans le ZIP doit s'appeler: CIN.pdf",
+                    'CIN = UNIQUE IDENTIFIER\n\nThe PDF in the ZIP must be named: CIN.pdf'
+                ));
                 $sheet->getComment('A3')->setWidth('220px');
                 $sheet->getComment('A3')->setHeight('90px');
 
-                $sheet->getComment('E3')->getText()->createTextRun('Format recommandé: AAAA-MM-JJ');
+                $sheet->getComment('E3')->getText()->createTextRun($this->tr('Format recommandé: AAAA-MM-JJ', 'Recommended format: YYYY-MM-DD'));
                 $sheet->getComment('E3')->setWidth('170px');
 
-                $sheet->getComment('F3')->getText()->createTextRun('Optionnel. Format recommandé: AAAA-MM-JJ');
+                $sheet->getComment('F3')->getText()->createTextRun($this->tr('Optionnel. Format recommandé: AAAA-MM-JJ', 'Optional. Recommended format: YYYY-MM-DD'));
                 $sheet->getComment('F3')->setWidth('190px');
 
                 $sheet->freezePane('A4');

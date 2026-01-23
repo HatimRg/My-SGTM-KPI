@@ -166,14 +166,16 @@ class WorkerMedicalAptitudeController extends Controller
 
     public function massTemplate(Request $request)
     {
-        $this->checkMassImportAccess($request);
+        $user = $this->checkMassImportAccess($request);
 
         if (!class_exists(ZipArchive::class) || !extension_loaded('zip')) {
             return $this->error('ZipArchive extension is required to generate Excel templates', 500);
         }
 
+        $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
+
         $filename = 'worker_medical_aptitudes_mass_template.xlsx';
-        $contents = Excel::raw(new WorkerMedicalAptitudesMassTemplateExport(), ExcelFormat::XLSX);
+        $contents = Excel::raw(new WorkerMedicalAptitudesMassTemplateExport(200, $lang), ExcelFormat::XLSX);
 
         return response($contents, 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

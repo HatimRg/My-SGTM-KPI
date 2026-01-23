@@ -39,18 +39,49 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
         'Autre',
     ];
 
+    private const MACHINE_TYPES_EN = [
+        'Mobile crane',
+        'Tower crane',
+        'Crawler excavator',
+        'Wheeled excavator',
+        'Mini excavator',
+        'Loader',
+        'Mini loader',
+        'Compressor',
+        'Compactor',
+        'Vibratory roller',
+        'Forklift',
+        'Articulating boom lift',
+        'Telescopic boom lift',
+        'Scissor lift',
+        'Bulldozer',
+        'Dump truck',
+        'Water tanker truck',
+        'Diesel tanker truck',
+        'Backhoe loader',
+        'Other',
+    ];
+
     protected int $dataRows;
     protected array $projectCodes;
+    protected string $lang;
 
-    public function __construct(int $dataRows = 200, array $projectCodes = [])
+    public function __construct(int $dataRows = 200, array $projectCodes = [], string $lang = 'fr')
     {
         $this->dataRows = $dataRows;
         $this->projectCodes = $projectCodes;
+        $lang = strtolower(trim($lang));
+        $this->lang = in_array($lang, ['en', 'fr'], true) ? $lang : 'fr';
+    }
+
+    private function tr(string $fr, string $en): string
+    {
+        return $this->lang === 'en' ? $en : $fr;
     }
 
     public function title(): string
     {
-        return 'Engins';
+        return $this->tr('Engins', 'Machines');
     }
 
     public function columnWidths(): array
@@ -85,7 +116,7 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                 $spreadsheet->addSheet($listsSheet);
                 $listsSheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
 
-                $machineTypes = self::MACHINE_TYPES;
+                $machineTypes = $this->lang === 'en' ? self::MACHINE_TYPES_EN : self::MACHINE_TYPES;
                 sort($machineTypes, SORT_NATURAL | SORT_FLAG_CASE);
                 $machineTypes = array_values(array_filter(array_map('trim', $machineTypes), fn ($v) => $v !== ''));
 
@@ -112,7 +143,7 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                 $grayLight = 'F9FAFB';
                 $grayBorder = '9CA3AF';
 
-                $sheet->setCellValue('A1', 'SGTM - MODÈLE D\'IMPORT ENGINS');
+                $sheet->setCellValue('A1', $this->tr("SGTM - MODÈLE D'IMPORT ENGINS", 'SGTM - MACHINES IMPORT TEMPLATE'));
                 $sheet->mergeCells('A1:G1');
                 $sheet->getStyle('A1:G1')->applyFromArray([
                     'font' => ['bold' => true, 'size' => 18, 'color' => ['rgb' => $white]],
@@ -124,7 +155,10 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                 ]);
                 $sheet->getRowDimension(1)->setRowHeight(40);
 
-                $sheet->setCellValue('A2', 'Instructions: SERIAL_NUMBER* obligatoire et unique. MACHINE_TYPE* et BRAND* obligatoires. PROJECT_CODE (optionnel) doit correspondre à un code projet existant dans votre périmètre. ACTIF: ACTIF/INACTIF (optionnel, par défaut ACTIF).');
+                $sheet->setCellValue('A2', $this->tr(
+                    'Instructions: SERIAL_NUMBER* obligatoire et unique. MACHINE_TYPE* et BRAND* obligatoires. PROJECT_CODE (optionnel) doit correspondre à un code projet existant dans votre périmètre. ACTIF: ACTIF/INACTIF (optionnel, par défaut ACTIF).',
+                    'Instructions: SERIAL_NUMBER* is required and must be unique. MACHINE_TYPE* and BRAND* are required. PROJECT_CODE (optional) must match an existing project code within your scope. ACTIVE: ACTIVE/INACTIVE (optional, defaults to ACTIVE).'
+                ));
                 $sheet->mergeCells('A2:G2');
                 $sheet->getStyle('A2:G2')->applyFromArray([
                     'font' => ['size' => 11, 'italic' => true, 'color' => ['rgb' => $black]],
@@ -140,7 +174,9 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                 ]);
                 $sheet->getRowDimension(2)->setRowHeight(42);
 
-                $headers = ['SERIAL_NUMBER*', 'INTERNAL_CODE', 'MACHINE_TYPE*', 'BRAND*', 'MODEL', 'PROJECT_CODE', 'ACTIF'];
+                $headers = $this->lang === 'en'
+                    ? ['SERIAL_NUMBER*', 'INTERNAL_CODE', 'MACHINE_TYPE*', 'BRAND*', 'MODEL', 'PROJECT_CODE', 'ACTIVE']
+                    : ['SERIAL_NUMBER*', 'INTERNAL_CODE', 'MACHINE_TYPE*', 'BRAND*', 'MODEL', 'PROJECT_CODE', 'ACTIF'];
                 $col = 'A';
                 foreach ($headers as $header) {
                     $sheet->setCellValue($col . '3', $header);
@@ -183,8 +219,8 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                     $activeValidation->setErrorStyle(DataValidation::STYLE_STOP);
                     $activeValidation->setAllowBlank(true);
                     $activeValidation->setShowDropDown(true);
-                    $activeValidation->setFormula1('"ACTIF,INACTIF"');
-                    $sheet->setCellValue("G{$row}", 'ACTIF');
+                    $activeValidation->setFormula1($this->lang === 'en' ? '"ACTIVE,INACTIVE"' : '"ACTIF,INACTIF"');
+                    $sheet->setCellValue("G{$row}", $this->lang === 'en' ? 'ACTIVE' : 'ACTIF');
 
                     $typeValidation = $sheet->getCell("C{$row}")->getDataValidation();
                     $typeValidation->setType(DataValidation::TYPE_LIST);
@@ -192,8 +228,8 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                     $typeValidation->setAllowBlank(false);
                     $typeValidation->setShowDropDown(true);
                     $typeValidation->setShowErrorMessage(true);
-                    $typeValidation->setErrorTitle('Machine type');
-                    $typeValidation->setError('Select a machine type from the list, or type a new value if needed.');
+                    $typeValidation->setErrorTitle($this->tr('Type engin', 'Machine type'));
+                    $typeValidation->setError($this->tr('Sélectionnez un type d\'engin dans la liste, ou saisissez une nouvelle valeur si nécessaire.', 'Select a machine type from the list, or type a new value if needed.'));
                     $typeValidation->setFormula1("='Lists'!\$A\$1:\$A\${machineTypesLastRow}");
 
                     if (!empty($projectCodes)) {

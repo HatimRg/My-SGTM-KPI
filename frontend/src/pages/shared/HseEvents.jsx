@@ -6,6 +6,7 @@ import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { sortProjects } from '../../utils/projectList'
 import { AlertTriangle, Plus, Edit2, Trash2, Loader2 } from 'lucide-react'
+import AccidentIncidentModal from '../../components/hse/AccidentIncidentModal'
 import toast from 'react-hot-toast'
 
 const EVENT_TYPES = [
@@ -17,6 +18,9 @@ const EVENT_TYPES = [
   { value: 'road_accident' },
   { value: 'other' },
 ]
+
+const ACCIDENT_INCIDENT_TYPES = ['work_accident', 'incident', 'near_miss', 'road_accident']
+const MEDICAL_VISIT_TYPES = ['medical_consultation', 'first_aid']
 
 const SEVERITIES = [
   { value: '' },
@@ -52,8 +56,11 @@ export default function HseEvents() {
   const [toDate, setToDate] = useState('')
 
   const [showModal, setShowModal] = useState(false)
+  const [showAccidentModal, setShowAccidentModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
+
+  const [activeTab, setActiveTab] = useState('accidents')
 
   const projectListPreference = user?.project_list_preference ?? 'code'
   const sortedProjects = useMemo(() => sortProjects(projects, projectListPreference), [projects, projectListPreference])
@@ -112,21 +119,56 @@ export default function HseEvents() {
     }
   }
 
+  const submitAccidentIncident = async (payload) => {
+    setSaving(true)
+    try {
+      let res
+      if (editing?.id) {
+        res = await hseEventService.update(editing.id, payload)
+      } else {
+        res = await hseEventService.create(payload)
+      }
+      toast.success(t('common.saved') ?? 'Saved')
+      fetchItems()
+
+      const saved = res?.data?.data ?? res?.data
+      return saved
+    } catch (err) {
+      toast.error(t('common.error') ?? 'Error')
+      throw err
+    } finally {
+      setSaving(false)
+    }
+  }
+
   useEffect(() => {
     fetchItems()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProjectId, yearFilter, monthFilter, fromDate, toDate])
 
   const openCreate = () => {
+    if (activeTab === 'accidents') {
+      setEditing(null)
+      setShowAccidentModal(true)
+      return
+    }
+
     setEditing(null)
     setFormData({
       ...getEmptyForm(),
       project_id: selectedProjectId || '',
+      type: 'medical_consultation',
     })
     setShowModal(true)
   }
 
   const openEdit = (row) => {
+    if (ACCIDENT_INCIDENT_TYPES.includes(row.type)) {
+      setEditing(row)
+      setShowAccidentModal(true)
+      return
+    }
+
     const isKnownType = EVENT_TYPES.some((tpe) => tpe.value !== 'other' && tpe.value === row.type)
     const isKnownSeverity = SEVERITIES.some((sev) => sev.value && sev.value !== 'other' && sev.value === row.severity)
     setEditing(row)
@@ -149,6 +191,11 @@ export default function HseEvents() {
     setShowModal(false)
     setEditing(null)
     setFormData(getEmptyForm())
+  }
+
+  const closeAccidentModal = () => {
+    setShowAccidentModal(false)
+    setEditing(null)
   }
 
   const submit = async (e) => {
@@ -226,6 +273,12 @@ export default function HseEvents() {
   const visibleItems = useMemo(() => {
     let rows = Array.isArray(items) ? items : []
 
+    if (activeTab === 'accidents') {
+      rows = rows.filter((r) => ACCIDENT_INCIDENT_TYPES.includes(r.type))
+    } else {
+      rows = rows.filter((r) => MEDICAL_VISIT_TYPES.includes(r.type))
+    }
+
     if (typeFilter) {
       if (typeFilter === 'other') {
         rows = rows.filter((r) => !EVENT_TYPES.some((tpe) => tpe.value !== 'other' && tpe.value === r.type))
@@ -243,7 +296,20 @@ export default function HseEvents() {
     }
 
     return rows
-  }, [items, typeFilter, severityFilter])
+  }, [items, typeFilter, severityFilter, activeTab])
+
+  const typeFilterOptions = useMemo(() => {
+    const allowed = activeTab === 'accidents' ? ACCIDENT_INCIDENT_TYPES : MEDICAL_VISIT_TYPES
+    return EVENT_TYPES.filter((tpe) => tpe.value === 'other' || allowed.includes(tpe.value))
+  }, [activeTab])
+
+  useEffect(() => {
+    const allowed = activeTab === 'accidents' ? ACCIDENT_INCIDENT_TYPES : MEDICAL_VISIT_TYPES
+    if (typeFilter && typeFilter !== 'other' && !allowed.includes(typeFilter)) {
+      setTypeFilter('')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab])
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
@@ -262,6 +328,33 @@ export default function HseEvents() {
           <Plus className="w-4 h-4" />
           {t('common.new') ?? 'New'}
         </button>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-2">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className={
+              activeTab === 'accidents'
+                ? 'btn-primary'
+                : 'btn-secondary'
+            }
+            onClick={() => setActiveTab('accidents')}
+          >
+            {t('hseEvents.tabs.accidents') ?? 'Accident / Incident'}
+          </button>
+          <button
+            type="button"
+            className={
+              activeTab === 'medical'
+                ? 'btn-primary'
+                : 'btn-secondary'
+            }
+            onClick={() => setActiveTab('medical')}
+          >
+            {t('hseEvents.tabs.medical') ?? 'Medical Visits'}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
@@ -286,7 +379,7 @@ export default function HseEvents() {
             <label className="label">{t('hseEvents.filters.type') ?? 'Type'}</label>
             <select className="input" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
               <option value="">{t('common.all') ?? 'All'}</option>
-              {EVENT_TYPES.map((tpe) => (
+              {typeFilterOptions.map((tpe) => (
                 <option key={tpe.value} value={tpe.value}>{typeLabel(tpe.value)}</option>
               ))}
             </select>
@@ -417,7 +510,10 @@ export default function HseEvents() {
             <div>
               <label className="label">{t('hseEvents.fields.type') ?? 'Type'}</label>
               <select className="input" value={formData.type} onChange={(e) => setFormData((p) => ({ ...p, type: e.target.value }))} required>
-                {EVENT_TYPES.map((tpe) => (
+                {(activeTab === 'medical'
+                  ? EVENT_TYPES.filter((tpe) => tpe.value === 'other' || MEDICAL_VISIT_TYPES.includes(tpe.value))
+                  : EVENT_TYPES
+                ).map((tpe) => (
                   <option key={tpe.value} value={tpe.value}>{typeLabel(tpe.value)}</option>
                 ))}
               </select>
@@ -492,6 +588,16 @@ export default function HseEvents() {
           </div>
         </form>
       </Modal>
+
+      <AccidentIncidentModal
+        isOpen={showAccidentModal}
+        onClose={closeAccidentModal}
+        onSubmit={submitAccidentIncident}
+        projects={sortedProjects}
+        selectedProjectId={selectedProjectId}
+        t={t}
+        initial={editing}
+      />
 
       <ConfirmDialog
         isOpen={!!confirmDelete}

@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/authStore'
 import api, { sorService, projectService, exportService, workerService } from '../../services/api'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
 import { DatePicker, TimePicker, Modal } from '../../components/ui'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import AutocompleteInput from '../../components/ui/AutocompleteInput'
 import {
   AlertTriangle,
@@ -27,7 +28,8 @@ import {
   Pin,
   ClipboardCheck,
   FileText,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Upload
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -67,7 +69,6 @@ const CATEGORIES = [
    } else if (path === '/api') {
      path = '/'
    }
-
    return path
  }
 
@@ -99,6 +100,9 @@ const CATEGORIES = [
 export default function SorSubmission() {
   const { t, language } = useLanguage()
   const { user } = useAuthStore()
+  const [bulkModalOpen, setBulkModalOpen] = useState(false)
+  const [bulkFile, setBulkFile] = useState(null)
+  const [bulkUploading, setBulkUploading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [reports, setReports] = useState([])
@@ -128,6 +132,69 @@ export default function SorSubmission() {
   const [pinnedReports, setPinnedReports] = useState([])
   const [formStep, setFormStep] = useState(1) // 1 = Problem, 2 = Corrective Action
   const [exporting, setExporting] = useState(false)
+
+  const [confirmDeleteReport, setConfirmDeleteReport] = useState(null)
+
+  const extractFilename = (contentDisposition) => {
+    if (!contentDisposition) return null
+    const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(contentDisposition)
+    const value = decodeURIComponent(match?.[1] ?? match?.[2] ?? '')
+    return value !== '' ? value : null
+  }
+
+  const downloadBlob = (blob, filename) => {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename ?? 'template.xlsx'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const openBulkImport = () => {
+    setBulkFile(null)
+    setBulkModalOpen(true)
+  }
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await sorService.downloadTemplate()
+      const filename = extractFilename(res.headers?.['content-disposition']) ?? 'SGTM-SOR-Template.xlsx'
+      downloadBlob(res.data, filename)
+    } catch (e) {
+      toast.error(e.response?.data?.message ?? t('common.downloadTemplateFailed'))
+    }
+  }
+
+  const handleBulkImport = async () => {
+    if (!bulkFile) {
+      toast.error(t('common.chooseFile'))
+      return
+    }
+
+    try {
+      setBulkUploading(true)
+      const form = new FormData()
+      form.append('file', bulkFile)
+      const res = await sorService.bulkImport(form)
+      const payload = res.data?.data ?? {}
+      const imported = payload.imported ?? 0
+      const updated = payload.updated ?? 0
+      const errors = payload.errors ?? []
+      toast.success(t('common.importSummary', { imported, updated }))
+      if (errors.length > 0) toast.error(t('common.importIssues', { count: errors.length }))
+      setBulkFile(null)
+      setBulkModalOpen(false)
+      fetchData()
+      fetchPinnedReports()
+    } catch (e) {
+      toast.error(e.response?.data?.message ?? t('common.importFailed'))
+    } finally {
+      setBulkUploading(false)
+    }
+  }
 
   const projectListPreference = user?.project_list_preference ?? 'code'
   const sortedProjects = useMemo(() => {
@@ -170,6 +237,25 @@ export default function SorSubmission() {
     if (!key) return ''
     return t(`sor.categories.${key}`)
   }, [t])
+
+  const handleDeleteReport = (report) => {
+    setConfirmDeleteReport(report)
+  }
+
+  const confirmDelete = async () => {
+    if (!confirmDeleteReport?.id) return
+    try {
+      await sorService.delete(confirmDeleteReport.id)
+      toast.success(t('common.saved'))
+      fetchData()
+      fetchPinnedReports()
+    } catch (error) {
+      console.error('Failed to delete SOR report', error)
+      toast.error(t('errors.failedToDelete') ?? t('common.error'))
+    } finally {
+      setConfirmDeleteReport(null)
+    }
+  }
 
   // ESC key handler for all modals
   useEffect(() => {
@@ -670,8 +756,48 @@ export default function SorSubmission() {
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">{t('sor.subtitle')}</p>
         </div>
+
+      {bulkModalOpen && (
+        <Modal isOpen={bulkModalOpen} onClose={() => setBulkModalOpen(false)} title="Massive Add" size="xl">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <button type="button" onClick={handleDownloadTemplate} className="btn-secondary flex items-center justify-center gap-2">
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>{t('common.downloadTemplate') ?? 'Download template'}</span>
+              </button>
+
+              <label className="flex items-center justify-between border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-xs cursor-pointer hover:border-hse-primary hover:bg-hse-primary/5">
+                <div className="flex items-center gap-2">
+                  <Upload className="w-4 h-4 text-gray-500" />
+                  <span className="text-gray-700 dark:text-gray-200">
+                    {bulkFile ? bulkFile.name : (t('common.chooseFile') ?? 'Choose Excel file')}
+                  </span>
+                </div>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={(e) => setBulkFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+
+              <button type="button" onClick={handleBulkImport} disabled={bulkUploading || !bulkFile} className="btn-primary">
+                {bulkUploading ? (t('common.loading') ?? 'Importing...') : (t('common.import') ?? 'Import')}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
         <button
-          onClick={() => { resetForm(); setShowForm(true) }}
+          onClick={(e) => {
+            // Ctrl+Click reserved for future "Massive Add" modal
+            if (e?.ctrlKey) {
+              openBulkImport()
+              return
+            }
+            resetForm()
+            setShowForm(true)
+          }}
           className="btn btn-primary flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
@@ -840,6 +966,14 @@ export default function SorSubmission() {
                             <CheckCircle className="w-4 h-4" />
                           </button>
                         )}
+
+                        <button
+                          onClick={() => handleDeleteReport(report)}
+                          className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
+                          title={t('common.delete')}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1332,7 +1466,7 @@ export default function SorSubmission() {
         isOpen={showCorrectiveModal && !!pendingReport}
         onClose={() => { setShowCorrectiveModal(false); resetCorrectiveData(); setPendingReport(null) }}
         title={t('sor.addCorrectiveTitle')}
-        size="md"
+        size="lg"
       >
             {pendingReport && (
               <>
@@ -1431,6 +1565,16 @@ export default function SorSubmission() {
               </>
             )}
       </Modal>
+
+      <ConfirmDialog
+        isOpen={!!confirmDeleteReport}
+        title={t('common.delete')}
+        message={t('common.confirmDelete')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteReport(null)}
+      />
     </div>
   )
 }

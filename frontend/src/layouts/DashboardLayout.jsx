@@ -4,13 +4,21 @@ import { useAuthStore } from '../store/authStore'
 import { useDevStore, DEV_PROJECT_SCOPE } from '../store/devStore'
 import useThemeStore from '../stores/themeStore'
 import { useLanguage } from '../i18n'
-import { notificationService } from '../services/api'
+import { bugReportService, notificationService } from '../services/api'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import { Modal } from '../components/ui'
+import bugReportRecorder from '../utils/bugReportRecorder'
+import toast from 'react-hot-toast'
 import {
+  CalendarDays,
   LayoutDashboard,
+  Home,
   Users,
+  UserRound,
   FolderKanban,
-  FileText,
+  FolderHeart,
+  FilePlus2,
+  FileWarning,
   History,
   Bell,
   LogOut,
@@ -19,11 +27,12 @@ import {
   ChevronDown,
   User,
   Settings,
-  PlusCircle,
   ClipboardCheck,
-  ClipboardList,
+  ClipboardSignature,
   FileSearch,
   AlertTriangle,
+  Siren,
+  Lightbulb,
   Sun,
   Moon,
   CheckCircle,
@@ -35,9 +44,20 @@ import {
   Megaphone,
   FolderPlus,
   ExternalLink,
-  Building2,
   Truck,
-  Shield,
+  Wrench,
+  Search,
+  FileX2,
+  Gauge,
+  ShieldAlert,
+  ShieldCheck,
+  Gavel,
+  Handshake,
+  Bug,
+  Eye,
+  Square,
+  Play,
+  Send,
 } from 'lucide-react'
 import appLogo from '../App_Logo.png'
 
@@ -48,6 +68,15 @@ export default function DashboardLayout() {
   const [devToolsOpen, setDevToolsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifications, setNotifications] = useState([])
+
+  const [bugModalOpen, setBugModalOpen] = useState(false)
+  const [bugSubmitting, setBugSubmitting] = useState(false)
+  const [bugComment, setBugComment] = useState('')
+  const [bugSeverity, setBugSeverity] = useState('')
+  const [bugImpact, setBugImpact] = useState('')
+  const [bugReproducibility, setBugReproducibility] = useState('')
+  const [bugExtraNotes, setBugExtraNotes] = useState('')
+  const [bugRecorderTick, setBugRecorderTick] = useState(0)
 
   const { user, logout, isAdmin } = useAuthStore()
   const { simulatedRole, setSimulatedRole, clearSimulatedRole, projectScope, setProjectScope } = useDevStore()
@@ -109,7 +138,15 @@ export default function DashboardLayout() {
     }
 
     fetchNotificationsList()
-  }, [notificationDropdownOpen, user])
+  }, [user, notificationDropdownOpen])
+
+  useEffect(() => {
+    if (!bugModalOpen) return
+    const interval = setInterval(() => {
+      setBugRecorderTick((v) => v + 1)
+    }, 500)
+    return () => clearInterval(interval)
+  }, [bugModalOpen])
 
   const handleLogout = async () => {
     await logout()
@@ -207,87 +244,200 @@ export default function DashboardLayout() {
     { to: '/admin', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/admin/users', icon: Users, label: t('users.title') },
     { to: '/admin/projects', icon: FolderKanban, label: t('projects.title') },
-    { to: '/admin/kpi', icon: ClipboardCheck, label: t('kpi.title') },
+    { to: '/admin/bug-reports', icon: Bug, label: t('nav.bugReports') },
+    { to: '/admin/kpi', icon: Gauge, label: t('kpi.title') },
     { to: '/admin/kpi-history', icon: History, label: t('kpi.history') },
-    { to: '/admin/hse-events', icon: AlertTriangle, label: t('nav.hseEvents') },
-    { to: '/admin/monthly-measurements', icon: FileText, label: t('nav.monthlyMeasurements') },
-    { to: '/admin/lighting', icon: Sun, label: t('nav.lightingMeasurements') },
-    { to: '/admin/effectif', icon: Users, label: t('effectif.title') },
+    { to: '/admin/hse-events', icon: Siren, label: t('nav.hseEvents') },
+    { to: '/admin/monthly-measurements', icon: CalendarDays, label: t('nav.monthlyMeasurements') },
+    { to: '/admin/lighting', icon: Lightbulb, label: t('nav.lightingMeasurements') },
+    { to: '/admin/effectif', icon: UserRound, label: t('effectif.title') },
     { to: '/admin/training', icon: GraduationCap, label: t('training.navLabel') },
-    { to: '/admin/awareness', icon: Users, label: t('awareness.navLabel') },
-    { to: '/admin/sor', icon: AlertTriangle, label: t('sor.title') },
-    { to: '/admin/work-permits', icon: ClipboardList, label: t('workPermits.title') },
+    { to: '/admin/awareness', icon: Megaphone, label: t('awareness.navLabel') },
+    { to: '/admin/sor', icon: ShieldAlert, label: t('sor.title') },
+    { to: '/admin/work-permits', icon: ClipboardSignature, label: t('workPermits.title') },
     { to: '/admin/inspections', icon: FileSearch, label: t('inspections.title') },
-    { to: '/admin/regulatory-watch', icon: FileText, label: t('regulatoryWatch.nav') },
+    { to: '/admin/regulatory-watch', icon: Gavel, label: t('regulatoryWatch.nav') },
     { to: '/admin/workers', icon: HardHat, label: t('workers.title') },
-    { to: '/admin/ppe', icon: Shield, label: t('ppe.nav') },
-    { to: '/admin/subcontractors', icon: Building2, label: t('subcontractors.title') },
+    { to: '/admin/ppe', icon: ShieldCheck, label: t('ppe.nav') },
+    { to: '/admin/subcontractors', icon: Handshake, label: t('subcontractors.title') },
   ]
 
   const directorNavItems = [
     { to: '/admin', icon: LayoutDashboard, label: t('nav.dashboard') },
-    { to: '/admin/kpi', icon: ClipboardCheck, label: t('kpi.title') },
+    { to: '/admin/bug-reports', icon: Bug, label: t('nav.bugReports') },
+    { to: '/admin/kpi', icon: Gauge, label: t('kpi.title') },
     { to: '/admin/kpi-history', icon: History, label: t('kpi.history') },
-    { to: '/admin/hse-events', icon: AlertTriangle, label: t('nav.hseEvents') },
-    { to: '/admin/monthly-measurements', icon: FileText, label: t('nav.monthlyMeasurements') },
-    { to: '/admin/lighting', icon: Sun, label: t('nav.lightingMeasurements') },
+    { to: '/admin/hse-events', icon: Siren, label: t('nav.hseEvents') },
+    { to: '/admin/monthly-measurements', icon: CalendarDays, label: t('nav.monthlyMeasurements') },
+    { to: '/admin/lighting', icon: Lightbulb, label: t('nav.lightingMeasurements') },
     { to: '/admin/training', icon: GraduationCap, label: t('training.navLabel') },
-    { to: '/admin/awareness', icon: Users, label: t('awareness.navLabel') },
-    { to: '/admin/sor', icon: AlertTriangle, label: t('sor.title') },
-    { to: '/admin/work-permits', icon: ClipboardList, label: t('workPermits.title') },
+    { to: '/admin/awareness', icon: Megaphone, label: t('awareness.navLabel') },
+    { to: '/admin/sor', icon: ShieldAlert, label: t('sor.title') },
+    { to: '/admin/work-permits', icon: ClipboardSignature, label: t('workPermits.title') },
     { to: '/admin/inspections', icon: FileSearch, label: t('inspections.title') },
-    { to: '/admin/regulatory-watch', icon: FileText, label: t('regulatoryWatch.nav') },
+    { to: '/admin/regulatory-watch', icon: Gavel, label: t('regulatoryWatch.nav') },
     { to: '/admin/workers', icon: HardHat, label: t('workers.title') },
-    { to: '/admin/ppe', icon: Shield, label: t('ppe.nav') },
-    { to: '/admin/subcontractors', icon: Building2, label: t('subcontractors.title') },
+    { to: '/admin/ppe', icon: ShieldCheck, label: t('ppe.nav') },
+    { to: '/admin/subcontractors', icon: Handshake, label: t('subcontractors.title') },
   ]
 
   const hrDirectorNavItems = [
     { to: '/admin', icon: LayoutDashboard, label: t('nav.dashboard') },
-    { to: '/admin/effectif', icon: Users, label: t('effectif.title') },
+    { to: '/admin/bug-reports', icon: Bug, label: t('nav.bugReports') },
+    { to: '/admin/effectif', icon: UserRound, label: t('effectif.title') },
     { to: '/admin/workers', icon: HardHat, label: t('workers.title') },
   ]
 
+  const resetBugForm = () => {
+    setBugComment('')
+    setBugSeverity('')
+    setBugImpact('')
+    setBugReproducibility('')
+    setBugExtraNotes('')
+  }
+
+  const closeBugModal = () => {
+    setBugModalOpen(false)
+  }
+
+  const handleBugStartStop = () => {
+    try {
+      if (bugReportRecorder.isRecording()) {
+        bugReportRecorder.stop()
+        toast.success(t('bugReport.recordingStopped'))
+      } else {
+        bugReportRecorder.start({ user })
+        setBugModalOpen(false)
+        toast.success(t('bugReport.recordingStarted'))
+        toast(t('bugReport.tryReplicateHint'), { duration: 7000 })
+      }
+    } catch (e) {
+      toast.error(t('errors.somethingWentWrong'))
+    }
+  }
+
+  const handleBugClearRecording = () => {
+    try {
+      bugReportRecorder.clear()
+      toast.success(t('bugReport.recordingCleared'))
+    } catch {
+      toast.error(t('errors.somethingWentWrong'))
+    }
+  }
+
+  const handleBugClearCapturedFile = () => {
+    try {
+      bugReportRecorder.clearLatestUploadedFile()
+      toast.success(t('bugReport.capturedFileCleared'))
+    } catch {
+      toast.error(t('errors.somethingWentWrong'))
+    }
+  }
+
+  const formatBytes = (bytes) => {
+    const n = Number(bytes)
+    if (!Number.isFinite(n) || n <= 0) return '0 B'
+    const units = ['B', 'KB', 'MB', 'GB']
+    const i = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)))
+    const v = n / Math.pow(1024, i)
+    return `${v.toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+  }
+
+  const formatDuration = (seconds) => {
+    const s = Math.max(0, Math.floor(Number(seconds) || 0))
+    const m = Math.floor(s / 60)
+    const h = Math.floor(m / 60)
+    const mm = m % 60
+    const ss = s % 60
+    if (h > 0) return `${h}h ${mm}m ${ss}s`
+    if (m > 0) return `${m}m ${ss}s`
+    return `${ss}s`
+  }
+
+  const handleBugSubmit = async () => {
+    if (bugSubmitting) return
+    if (bugReportRecorder.isRecording()) {
+      toast.error(t('bugReport.stopBeforeSubmit'))
+      return
+    }
+
+    if (!bugComment || String(bugComment).trim() === '') {
+      toast.error(t('bugReport.commentRequired'))
+      return
+    }
+
+    try {
+      setBugSubmitting(true)
+
+      const draft = bugReportRecorder.getDraft()
+      if (!draft?.started_at) {
+        toast.error(t('bugReport.recordingRequired'))
+        return
+      }
+      const attachment = bugReportRecorder.getLatestUploadedFile() || null
+
+      await bugReportService.submit({
+        ...draft,
+        comment: String(bugComment).trim(),
+        severity: bugSeverity || null,
+        impact: bugImpact || null,
+        reproducibility: bugReproducibility || null,
+        extra_notes: bugExtraNotes || null,
+        attachment,
+      })
+
+      bugReportRecorder.clear()
+      resetBugForm()
+      setBugModalOpen(false)
+
+      toast.success(t('bugReport.submitted'))
+    } catch (e) {
+      toast.error(e.response?.data?.message ?? t('errors.somethingWentWrong'))
+    } finally {
+      setBugSubmitting(false)
+    }
+  }
+
   const userNavItems = [
-    { to: '/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
-    { to: '/my-projects', icon: FolderKanban, label: t('nav.myProjects') },
-    { to: '/kpi/submit', icon: PlusCircle, label: t('kpi.submission') },
+    { to: '/dashboard', icon: Home, label: t('nav.dashboard') },
+    { to: '/my-projects', icon: FolderHeart, label: t('nav.myProjects') },
+    { to: '/kpi/submit', icon: FilePlus2, label: t('kpi.submission') },
     { to: '/kpi/history', icon: History, label: t('kpi.history') },
-    { to: '/deviations', icon: AlertTriangle, label: t('dashboard.themes.deviations') },
+    { to: '/deviations', icon: FileWarning, label: t('dashboard.themes.deviations') },
     { to: '/training', icon: GraduationCap, label: t('training.navLabel') },
-    { to: '/awareness', icon: Users, label: t('awareness.navLabel') },
-    { to: '/work-permits', icon: ClipboardList, label: t('workPermits.title') },
+    { to: '/awareness', icon: Megaphone, label: t('awareness.navLabel') },
+    { to: '/work-permits', icon: ClipboardSignature, label: t('workPermits.title') },
     { to: '/inspections', icon: FileSearch, label: t('inspections.title') },
-    { to: '/regulatory-watch', icon: FileText, label: t('regulatoryWatch.nav') },
-    { to: '/hse-events', icon: AlertTriangle, label: t('nav.hseEvents') },
-    { to: '/monthly-measurements', icon: FileText, label: t('nav.monthlyMeasurements') },
-    { to: '/lighting', icon: Sun, label: t('nav.lightingMeasurements') },
+    { to: '/regulatory-watch', icon: Gavel, label: t('regulatoryWatch.nav') },
+    { to: '/hse-events', icon: Siren, label: t('nav.hseEvents') },
+    { to: '/monthly-measurements', icon: CalendarDays, label: t('nav.monthlyMeasurements') },
+    { to: '/lighting', icon: Lightbulb, label: t('nav.lightingMeasurements') },
     { to: '/workers', icon: HardHat, label: t('workers.title') },
-    { to: '/ppe', icon: Shield, label: t('ppe.nav') },
-    { to: '/subcontractors', icon: Building2, label: t('subcontractors.title') },
+    { to: '/ppe', icon: ShieldCheck, label: t('ppe.nav') },
+    { to: '/subcontractors', icon: Handshake, label: t('subcontractors.title') },
   ]
 
   const hseOfficerNavItems = [
-    { to: '/sor', icon: AlertTriangle, label: t('sor.title') },
-    { to: '/sor/projects', icon: FolderKanban, label: t('nav.myProjects') },
-    { to: '/sor/awareness', icon: Users, label: t('awareness.navLabel') },
+    { to: '/sor', icon: ShieldAlert, label: t('sor.title') },
+    { to: '/sor/projects', icon: FolderHeart, label: t('nav.myProjects') },
+    { to: '/sor/awareness', icon: Megaphone, label: t('awareness.navLabel') },
   ]
 
   const supervisorNavItems = [
-    { to: '/supervisor', icon: AlertTriangle, label: t('sor.title') },
-    { to: '/supervisor/projects', icon: FolderKanban, label: t('nav.myProjects') },
-    { to: '/supervisor/awareness', icon: Users, label: t('awareness.navLabel') },
+    { to: '/supervisor', icon: ShieldAlert, label: t('sor.title') },
+    { to: '/supervisor/projects', icon: FolderHeart, label: t('nav.myProjects') },
+    { to: '/supervisor/awareness', icon: Megaphone, label: t('awareness.navLabel') },
     { to: '/supervisor/training', icon: GraduationCap, label: t('training.navLabel') },
-    { to: '/supervisor/work-permits', icon: ClipboardList, label: t('workPermits.title') },
+    { to: '/supervisor/work-permits', icon: ClipboardSignature, label: t('workPermits.title') },
     { to: '/supervisor/inspections', icon: FileSearch, label: t('inspections.title') },
-    { to: '/supervisor/regulatory-watch', icon: FileText, label: t('regulatoryWatch.nav') },
+    { to: '/supervisor/regulatory-watch', icon: Gavel, label: t('regulatoryWatch.nav') },
     { to: '/supervisor/workers', icon: HardHat, label: t('workers.title') },
-    { to: '/supervisor/ppe', icon: Shield, label: t('ppe.nav') },
+    { to: '/supervisor/ppe', icon: ShieldCheck, label: t('ppe.nav') },
   ]
 
   const hrNavItems = [
     { to: '/hr/workers', icon: HardHat, label: t('workers.title') },
-    { to: '/hr/effectif', icon: Users, label: t('effectif.title') },
+    { to: '/hr/effectif', icon: UserRound, label: t('effectif.title') },
   ]
 
   const getNavItems = () => {
@@ -417,7 +567,10 @@ export default function DashboardLayout() {
                       }
                       onClick={() => setSidebarOpen(false)}
                     >
-                      <span>{t('heavyMachinery.viewMachines.nav')}</span>
+                      <span className="flex items-center gap-3">
+                        <Wrench className="w-5 h-5" />
+                        <span>{t('heavyMachinery.viewMachines.nav')}</span>
+                      </span>
                     </NavLink>
                     <NavLink
                       to="/heavy-machinery/global-search"
@@ -426,7 +579,10 @@ export default function DashboardLayout() {
                       }
                       onClick={() => setSidebarOpen(false)}
                     >
-                      <span>{t('heavyMachinery.globalSearch.nav')}</span>
+                      <span className="flex items-center gap-3">
+                        <Search className="w-5 h-5" />
+                        <span>{t('heavyMachinery.globalSearch.nav')}</span>
+                      </span>
                     </NavLink>
                     <NavLink
                       to="/heavy-machinery/expired-documentation"
@@ -436,7 +592,10 @@ export default function DashboardLayout() {
                       onClick={() => setSidebarOpen(false)}
                       ref={heavyMachineryLastLinkRef}
                     >
-                      <span>{t('heavyMachinery.expiredDocumentation.nav')}</span>
+                      <span className="flex items-center gap-3">
+                        <FileX2 className="w-5 h-5" />
+                        <span>{t('heavyMachinery.expiredDocumentation.nav')}</span>
+                      </span>
                     </NavLink>
                   </div>
                 )}
@@ -561,6 +720,34 @@ export default function DashboardLayout() {
                   )}
                 </div>
               )}
+
+              {/* Bug report */}
+              <div className="flex items-center gap-2">
+                {isUserAdminLike && (
+                  <button
+                    onClick={() => navigate('/admin/bug-reports')}
+                    className="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+                    title={t('nav.bugReports')}
+                  >
+                    <Eye className="w-4 h-4" />
+                    {t('common.view')}
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    setBugModalOpen(true)
+                    setNotificationDropdownOpen(false)
+                    setProfileDropdownOpen(false)
+                    setDevToolsOpen(false)
+                  }}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-hse-primary text-white hover:bg-hse-primary/90 transition-colors text-sm font-semibold"
+                  title={t('bugReport.open')}
+                >
+                  <Bug className="w-4 h-4" />
+                  <span className="hidden sm:inline">{t('bugReport.open')}</span>
+                </button>
+              </div>
 
               {/* Language Switcher */}
               <LanguageSwitcher variant="compact" />
@@ -747,6 +934,242 @@ export default function DashboardLayout() {
           </div>
         </main>
       </div>
+
+      <Modal
+        isOpen={bugModalOpen}
+        onClose={closeBugModal}
+        title={t('bugReport.modalTitle')}
+        size="full"
+      >
+        {(() => {
+          void bugRecorderTick
+          const draft = bugReportRecorder.getDraft()
+          const isRecording = bugReportRecorder.isRecording()
+          const capturedFile = bugReportRecorder.getLatestUploadedFile()
+          const consoleCount = Array.isArray(draft.console_logs) ? draft.console_logs.length : 0
+          const networkCount = Array.isArray(draft.network_logs) ? draft.network_logs.length : 0
+          const routeCount = Array.isArray(draft.route_logs) ? draft.route_logs.length : 0
+          const actionsCount = networkCount + routeCount
+
+          const startedAtMs = draft?.started_at ? Date.parse(draft.started_at) : null
+          const endedAtMs = draft?.ended_at ? Date.parse(draft.ended_at) : null
+          const hasDraftTimes = Number.isFinite(startedAtMs) && startedAtMs !== null
+          const durationSeconds = Number.isFinite(draft?.duration_seconds)
+            ? draft.duration_seconds
+            : hasDraftTimes
+              ? Math.max(
+                  0,
+                  Math.floor(
+                    ((isRecording ? Date.now() : endedAtMs ?? Date.now()) - startedAtMs) / 1000
+                  )
+                )
+              : 0
+
+          const hasRecording = !!draft?.started_at
+
+          return (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800/40">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="text-sm text-gray-700 dark:text-gray-200">
+                    <div className="font-semibold">
+                      {isRecording ? t('bugReport.recordingActive') : t('bugReport.recordingInactive')}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {t('bugReport.recordingCounts', {
+                        console: consoleCount,
+                        network: networkCount,
+                        routes: routeCount,
+                      })}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {t('bugReport.recordingDuration', {
+                        duration: formatDuration(durationSeconds),
+                        actions: actionsCount,
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleBugStartStop}
+                      className={
+                        isRecording
+                          ? 'inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 text-sm font-semibold'
+                          : 'inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-hse-primary text-white hover:bg-hse-primary/90 text-sm font-semibold'
+                      }
+                    >
+                      {isRecording ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                      {isRecording ? t('bugReport.stopRecording') : t('bugReport.startRecording')}
+                    </button>
+
+                    <button
+                      onClick={handleBugClearRecording}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-semibold"
+                      disabled={isRecording}
+                      title={isRecording ? t('bugReport.stopToClear') : t('bugReport.clearRecording')}
+                    >
+                      {t('bugReport.clearRecording')}
+                    </button>
+                  </div>
+                </div>
+
+                {!hasRecording && !isRecording && (
+                  <div className="mt-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                    {t('bugReport.recordingRequiredHint')}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    {t('bugReport.commentLabel')}
+                  </label>
+                  <textarea
+                    value={bugComment}
+                    onChange={(e) => setBugComment(e.target.value)}
+                    rows={4}
+                    className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
+                    placeholder={t('bugReport.commentPlaceholder')}
+                    disabled={isRecording}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      {t('bugReport.severityLabel')}
+                    </label>
+                    <select
+                      value={bugSeverity}
+                      onChange={(e) => setBugSeverity(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
+                      disabled={isRecording}
+                    >
+                      <option value="">{t('common.select')}</option>
+                      <option value="low">low</option>
+                      <option value="medium">medium</option>
+                      <option value="high">high</option>
+                      <option value="critical">critical</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      {t('bugReport.impactLabel')}
+                    </label>
+                    <select
+                      value={bugImpact}
+                      onChange={(e) => setBugImpact(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
+                      disabled={isRecording}
+                    >
+                      <option value="">{t('common.select')}</option>
+                      <option value="minor">minor</option>
+                      <option value="major">major</option>
+                      <option value="blocking">blocking</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      {t('bugReport.reproducibilityLabel')}
+                    </label>
+                    <select
+                      value={bugReproducibility}
+                      onChange={(e) => setBugReproducibility(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
+                      disabled={isRecording}
+                    >
+                      <option value="">{t('common.select')}</option>
+                      <option value="once">once</option>
+                      <option value="sometimes">sometimes</option>
+                      <option value="often">often</option>
+                      <option value="always">always</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    {t('bugReport.extraNotesLabel')}
+                  </label>
+                  <textarea
+                    value={bugExtraNotes}
+                    onChange={(e) => setBugExtraNotes(e.target.value)}
+                    rows={4}
+                    className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
+                    placeholder={t('bugReport.extraNotesPlaceholder')}
+                    disabled={isRecording}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    {t('bugReport.capturedFileLabel')}
+                  </label>
+                  <div className="mt-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm">
+                    {capturedFile ? (
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-gray-900 dark:text-gray-100 break-all">
+                            {capturedFile.name}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {formatBytes(capturedFile.size)}{capturedFile.type ? ` • ${capturedFile.type}` : ''}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleBugClearCapturedFile}
+                          className="shrink-0 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-semibold"
+                          disabled={isRecording}
+                          title={isRecording ? t('bugReport.stopToClear') : t('bugReport.clearCapturedFile')}
+                        >
+                          {t('common.clear')}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-gray-600 dark:text-gray-300">
+                        {t('bugReport.noCapturedFile')}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {t('bugReport.capturedFileHint')}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 pt-2">
+                <button
+                  onClick={closeBugModal}
+                  className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-semibold"
+                  disabled={bugSubmitting}
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  onClick={handleBugSubmit}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-hse-primary text-white hover:bg-hse-primary/90 text-sm font-semibold disabled:opacity-50"
+                  disabled={bugSubmitting || isRecording || !hasRecording}
+                  title={
+                    isRecording
+                      ? t('bugReport.stopBeforeSubmit')
+                      : !hasRecording
+                        ? t('bugReport.recordingRequired')
+                        : t('common.submit')
+                  }
+                >
+                  <Send className="w-4 h-4" />
+                  {bugSubmitting ? t('bugReport.submitting') : t('common.submit')}
+                </button>
+              </div>
+            </div>
+          )
+        })()}
+      </Modal>
 
       {/* Click outside to close dropdowns */}
       {(profileDropdownOpen || notificationDropdownOpen || devToolsOpen) && (

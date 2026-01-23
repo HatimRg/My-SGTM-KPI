@@ -94,7 +94,7 @@ class ProjectsImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunk
                 $this->importedCount++;
             }
 
-            $emailsRaw = $this->getColumnValue($row, ['responsables_emails', 'responsables', 'responsable_emails']);
+            $emailsRaw = $this->getColumnValue($row, ['responsables_emails', 'responsables', 'responsable_emails', 'responsible_emails']);
             if ($emailsRaw) {
                 $emails = array_filter(array_map('trim', preg_split('/[,;]+/', (string) $emailsRaw)));
                 if (!empty($emails)) {

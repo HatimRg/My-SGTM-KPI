@@ -283,6 +283,7 @@ class DailyKpiSnapshotController extends Controller
             'project_id' => 'required|exists:projects,id',
             'week_number' => 'required|integer|min:1|max:52',
             'year' => 'required|integer|min:2020|max:2100',
+            'lang' => 'nullable|string|in:en,fr',
         ]);
 
         $user = $request->user();
@@ -297,6 +298,7 @@ class DailyKpiSnapshotController extends Controller
         $projectId = $project->id;
         $weekNumber = (int) $request->week_number;
         $year = (int) $request->year;
+        $lang = $request->query('lang') ?: ($user->preferred_language ?? 'fr');
         
         // Fetch auto-fill values from system data
         $dates = WeekHelper::getWeekDates($weekNumber, $year);
@@ -371,7 +373,8 @@ class DailyKpiSnapshotController extends Controller
                 $project->code,
                 $weekNumber,
                 $year,
-                $autoFillValues
+                $autoFillValues,
+                $lang
             ),
             $filename
         );

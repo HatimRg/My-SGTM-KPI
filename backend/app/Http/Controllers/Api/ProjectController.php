@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ProjectsTemplateExport;
+use App\Exports\ProjectManagementExport;
 use App\Imports\ProjectsImport;
 
 class ProjectController extends Controller
@@ -97,14 +98,49 @@ class ProjectController extends Controller
             if (!class_exists(\ZipArchive::class) || !extension_loaded('zip')) {
                 return $this->error('XLSX export requires PHP zip extension (ZipArchive). Please enable/install php-zip on the server.', 422);
             }
+            $user = $request->user();
+            $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
             $filename = 'SGTM-Projects-Template.xlsx';
-            return Excel::download(new ProjectsTemplateExport(), $filename);
+            return Excel::download(new ProjectsTemplateExport(200, $lang), $filename);
         } catch (\Throwable $e) {
             Log::error('Projects template generation failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
             return $this->error('Failed to generate template: ' . $e->getMessage(), 422);
+        }
+    }
+
+    /**
+     * Admin-only Project Management Excel export.
+     * Includes:
+     *  - Sheet 1: Project summary + KPIs
+     *  - Sheet 2: Users who never accessed app (must_change_password)
+     */
+    public function managementExport(Request $request)
+    {
+        $request->validate([
+            'year' => 'nullable|integer|min:2020|max:2100',
+            'lang' => 'nullable|string|in:en,fr',
+        ]);
+
+        try {
+            if (!class_exists(\ZipArchive::class) || !extension_loaded('zip')) {
+                return $this->error('XLSX export requires PHP zip extension (ZipArchive). Please enable/install php-zip on the server.', 422);
+            }
+
+            $user = $request->user();
+            $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
+            $year = (int) ($request->get('year') ?: date('Y'));
+
+            $filename = 'SGTM-Project-Management-Export_' . $year . '_' . date('Y-m-d_His') . '.xlsx';
+            return Excel::download(new ProjectManagementExport($year, $lang), $filename);
+        } catch (\Throwable $e) {
+            Log::error('Project management export failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return $this->error('Failed to export: ' . $e->getMessage(), 422);
         }
     }
 

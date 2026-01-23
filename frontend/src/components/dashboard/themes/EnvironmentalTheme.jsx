@@ -210,8 +210,8 @@ const EnvironmentalTheme = memo(function EnvironmentalTheme({ kpiSummary, weekly
                     labelStyle={{ color: '#f3f4f6' }}
                   />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="water" fill={COLORS.water} name="Water (m³)" radius={[4, 4, 0, 0]} />
-                  <Line yAxisId="right" type="monotone" dataKey="electricity" stroke={COLORS.electricity} strokeWidth={2} name="Electricity (kWh)" />
+                  <Bar yAxisId="left" dataKey="water" fill={COLORS.water} name={`${t('dashboard.environmental.waterConsumption')} (m³)`} radius={[4, 4, 0, 0]} />
+                  <Line yAxisId="right" type="monotone" dataKey="electricity" stroke={COLORS.electricity} strokeWidth={2} name={`${t('dashboard.environmental.electricityUsage')} (kWh)`} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>

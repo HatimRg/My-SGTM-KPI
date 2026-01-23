@@ -1,5 +1,6 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
+import bugReportRecorder from '../utils/bugReportRecorder'
 
 const API_BASE_URL = '/api'
 
@@ -9,6 +10,16 @@ const MASS_IMPORT_TIMEOUT = 10 * 60 * 1000
 const requestCache = new Map()
 const CACHE_TTL = 30000 // 30 seconds
 const pendingRequests = new Map()
+
+const getUiLang = () => {
+  try {
+    const raw = localStorage.getItem('hse-kpi-language')
+    const normalized = String(raw || '').trim().split(/[-_]/)[0]
+    return normalized === 'en' ? 'en' : 'fr'
+  } catch {
+    return 'fr'
+  }
+}
 
 // Cache helper functions
 const getCacheKey = (url, params) => {
@@ -81,6 +92,8 @@ api.interceptors.request.use(
   },
 )
 
+bugReportRecorder.installAxiosInterceptors(api, { isSensitiveUrl })
+
 export const trainingService = {
   getAll: (params) => api.get('/trainings', { params }),
   getById: (id) => api.get(`/trainings/${id}`),
@@ -120,7 +133,7 @@ export const trainingService = {
 export const workerTrainingService = {
   getAll: (params) => api.get('/worker-trainings', { params }),
   getOtherLabels: (params) => api.get('/worker-trainings/other-labels', { params }),
-  downloadMassTemplate: () => api.get('/worker-trainings/mass/template', { responseType: 'blob' }),
+  downloadMassTemplate: () => api.get('/worker-trainings/mass/template', { params: { lang: getUiLang() }, responseType: 'blob' }),
   massImport: ({ excel, zip, progressId }) => {
     const formData = new FormData()
     if (excel) formData.append('excel', excel)
@@ -164,7 +177,7 @@ export const workerTrainingService = {
 
 export const workerQualificationService = {
   getAll: (params) => api.get('/worker-qualifications', { params }),
-  downloadMassTemplate: () => api.get('/worker-qualifications/mass/template', { responseType: 'blob' }),
+  downloadMassTemplate: () => api.get('/worker-qualifications/mass/template', { params: { lang: getUiLang() }, responseType: 'blob' }),
   massImport: ({ excel, zip, progressId }) => {
     const formData = new FormData()
     if (excel) formData.append('excel', excel)
@@ -208,7 +221,7 @@ export const workerQualificationService = {
 
 export const workerMedicalAptitudeService = {
   getAll: (params) => api.get('/worker-medical-aptitudes', { params }),
-  downloadMassTemplate: () => api.get('/worker-medical-aptitudes/mass/template', { responseType: 'blob' }),
+  downloadMassTemplate: () => api.get('/worker-medical-aptitudes/mass/template', { params: { lang: getUiLang() }, responseType: 'blob' }),
   massImport: ({ excel, zip, progressId }) => {
     const formData = new FormData()
     if (excel) formData.append('excel', excel)
@@ -268,7 +281,7 @@ export const workerMedicalAptitudeService = {
 
 export const workerSanctionService = {
   getAll: (params) => api.get('/worker-sanctions', { params }),
-  downloadMassTemplate: () => api.get('/worker-sanctions/mass/template', { responseType: 'blob' }),
+  downloadMassTemplate: () => api.get('/worker-sanctions/mass/template', { params: { lang: getUiLang() }, responseType: 'blob' }),
   massImport: ({ excel, zip, progressId }) => {
     const formData = new FormData()
     if (excel) formData.append('excel', excel)
@@ -300,6 +313,13 @@ export const workerSanctionService = {
 export const awarenessService = {
   getAll: (params) => api.get('/awareness-sessions', { params }),
   getById: (id) => api.get(`/awareness-sessions/${id}`),
+  downloadTemplate: () => api.get('/awareness-sessions/template', { params: { lang: getUiLang() }, responseType: 'blob' }),
+  bulkImport: (formData) => api.post('/awareness-sessions/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: MASS_IMPORT_TIMEOUT,
+    maxBodyLength: Infinity,
+    maxContentLength: Infinity,
+  }),
   create: (data) => api.post('/awareness-sessions', data),
   update: (id, data) => api.put(`/awareness-sessions/${id}`, data),
   delete: (id) => api.delete(`/awareness-sessions/${id}`),
@@ -456,6 +476,7 @@ export const dashboardService = {
     const normalized = typeof params === 'number' ? { year: params } : (params || {})
     return cachedGet('/dashboard/user', normalized)
   },
+  getSafetyPerformance: (params) => cachedGet('/dashboard/safety-performance', params),
   // Charts are also cached
   getAccidentCharts: (params) => cachedGet('/dashboard/charts/accidents', params),
   getTrainingCharts: (params) => cachedGet('/dashboard/charts/trainings', params),
@@ -489,7 +510,7 @@ export const userService = {
   toggleStatus: (id) => api.post(`/users/${id}/toggle-status`),
   assignProjects: (id, projectIds) => api.post(`/users/${id}/assign-projects`, { project_ids: projectIds }),
   getStatistics: () => api.get('/users/statistics'),
-  downloadTemplate: () => api.get('/users/template', { responseType: 'blob' }),
+  downloadTemplate: () => api.get('/users/template', { params: { lang: getUiLang() }, responseType: 'blob' }),
   bulkImport: (formData) => api.post('/users/import', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
@@ -548,7 +569,8 @@ export const projectService = {
   getStatistics: () => api.get('/projects/statistics'),
   getKpiTrends: (id, months) => api.get(`/projects/${id}/kpi-trends`, { params: { months } }),
   getPoles: (params) => cachedGet('/projects/poles', params ?? {}, 300000),
-  downloadTemplate: () => api.get('/projects/template', { responseType: 'blob' }),
+  downloadTemplate: () => api.get('/projects/template', { params: { lang: getUiLang() }, responseType: 'blob' }),
+  managementExport: (params) => api.get('/projects/management-export', { params: { ...params, lang: getUiLang() }, responseType: 'blob' }),
   bulkImport: (formData) => api.post('/projects/import', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
@@ -557,7 +579,7 @@ export const projectService = {
   getAvailableOfficers: (id) => api.get(`/projects/${id}/team/available`),
   addTeamMember: (projectId, userId) => api.post(`/projects/${projectId}/team`, { user_id: userId }),
   addTeamMembers: (projectId, userIds) => api.post(`/projects/${projectId}/team/bulk`, { user_ids: userIds }),
-  downloadTeamTemplate: (projectId) => api.get(`/projects/${projectId}/team/template`, { responseType: 'blob' }),
+  downloadTeamTemplate: (projectId) => api.get(`/projects/${projectId}/team/template`, { params: { lang: getUiLang() }, responseType: 'blob' }),
   importTeam: (projectId, formData) => api.post(`/projects/${projectId}/team/import`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
@@ -577,7 +599,7 @@ export const projectService = {
 export const heavyMachineryService = {
   getDocumentKeys: () => api.get('/heavy-machinery/document-keys'),
   getMachineTypes: () => api.get('/heavy-machinery/machine-types'),
-  downloadMachinesTemplate: () => api.get('/heavy-machinery/machines/template', { responseType: 'blob' }),
+  downloadMachinesTemplate: () => api.get('/heavy-machinery/machines/template', { params: { lang: getUiLang() }, responseType: 'blob' }),
   importMachines: (formData) => api.post('/heavy-machinery/machines/import', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
@@ -644,6 +666,34 @@ export const notificationService = {
   send: (data) => api.post('/notifications/send', data),
 }
 
+export const bugReportService = {
+  submit: (data) => {
+    const formData = new FormData()
+    Object.keys(data).forEach((key) => {
+      const value = data[key]
+      if (value === null || value === undefined || value === '') return
+      if (key === 'attachment') {
+        if (value) formData.append('attachment', value)
+        return
+      }
+
+      if (key === 'console_logs' || key === 'network_logs' || key === 'route_logs' || key === 'metadata') {
+        formData.append(key, typeof value === 'string' ? value : JSON.stringify(value))
+        return
+      }
+
+      formData.append(key, value)
+    })
+
+    return api.post('/bug-reports', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  list: (params) => api.get('/bug-reports', { params }),
+  getById: (id) => api.get(`/bug-reports/${id}`),
+  downloadAttachment: (id) => api.get(`/bug-reports/${id}/attachment`, { responseType: 'blob' }),
+}
+
 export const exportService = {
   exportExcel: (params) => api.get('/export/excel', { params, responseType: 'blob' }),
   exportPdf: (params) => api.get('/export/pdf', { params, responseType: 'blob' }),
@@ -660,6 +710,13 @@ export const sorService = {
   getAll: (params) => api.get('/sor-reports', { params }),
   getById: (id) => api.get(`/sor-reports/${id}`),
   getPinned: () => api.get('/sor-reports/pinned'),
+  downloadTemplate: () => api.get('/sor-reports/template', { params: { lang: getUiLang() }, responseType: 'blob' }),
+  bulkImport: (formData) => api.post('/sor-reports/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: MASS_IMPORT_TIMEOUT,
+    maxBodyLength: Infinity,
+    maxContentLength: Infinity,
+  }),
   create: (data) => {
     const formData = new FormData()
     Object.keys(data).forEach(key => {
@@ -732,7 +789,7 @@ export const dailyKpiService = {
   getWeekDates: (params) => api.get('/daily-kpi/week-dates', { params }),
   getWeekAggregates: (params) => api.get('/daily-kpi/week-aggregates', { params }),
   getAutoFillValues: (params) => api.get('/daily-kpi/auto-fill', { params }),
-  downloadTemplate: (params) => api.get('/daily-kpi/download-template', { params, responseType: 'blob' }),
+  downloadTemplate: (params) => api.get('/daily-kpi/download-template', { params: { ...params, lang: getUiLang() }, responseType: 'blob' }),
   parseTemplate: (formData) => api.post('/daily-kpi/parse-template', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
@@ -753,6 +810,20 @@ export const hseEventService = {
   create: (data) => api.post('/hse-events', data),
   update: (id, data) => api.put(`/hse-events/${id}`, data),
   delete: (id) => api.delete(`/hse-events/${id}`),
+  listAttachments: (id) => api.get(`/hse-events/${id}/attachments`),
+  uploadAttachment: (id, data) => {
+    const formData = new FormData()
+    Object.keys(data).forEach((key) => {
+      const value = data[key]
+      if (value !== null && value !== undefined && value !== '') {
+        formData.append(key, value)
+      }
+    })
+    return api.post(`/hse-events/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  deleteAttachment: (id, attachmentId) => api.delete(`/hse-events/${id}/attachments/${attachmentId}`),
 }
 
 export const lightingMeasurementService = {
@@ -799,7 +870,7 @@ export const workerService = {
   getStatistics: (params, config = {}) => api.get('/workers/statistics', { ...config, params }),
   getEntreprises: () => cachedGet('/workers/entreprises', {}, 300000),
   getFonctions: () => cachedGet('/workers/fonctions', {}, 300000),
-  downloadTemplate: () => api.get('/workers/template', { responseType: 'blob' }),
+  downloadTemplate: () => api.get('/workers/template', { params: { lang: getUiLang() }, responseType: 'blob' }),
   export: (params) => api.get('/workers/export', { params, responseType: 'blob' }),
   import: (formData) => api.post('/workers/import', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }

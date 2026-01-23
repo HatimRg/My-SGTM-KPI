@@ -6,7 +6,8 @@ import { useProjectStore } from '../../store/projectStore'
 import DatePicker from '../../components/ui/DatePicker'
 import Select from '../../components/ui/Select'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
-import { Search, X, Filter, ChevronDown, ChevronUp, Plus, Check, FileSpreadsheet, Trash2 } from 'lucide-react'
+import Modal from '../../components/ui/Modal'
+import { Search, X, Filter, ChevronDown, ChevronUp, Plus, Check, FileSpreadsheet, Trash2, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getWeekFromDate } from '../../utils/weekHelper'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
@@ -19,6 +20,10 @@ export default function AwarenessSession() {
   const { t } = useLanguage()
   const { user } = useAuthStore()
   const { projects, isLoading: loadingProjects, fetchProjects } = useProjectStore()
+
+  const [bulkModalOpen, setBulkModalOpen] = useState(false)
+  const [bulkFile, setBulkFile] = useState(null)
+  const [bulkUploading, setBulkUploading] = useState(false)
 
   const projectListPreference = user?.project_list_preference ?? 'code'
   const sortedProjects = useMemo(() => {
@@ -51,7 +56,67 @@ export default function AwarenessSession() {
     if (user?.name) {
       setByName(user.name)
     }
-  }, [user])
+  }, [user?.name])
+
+  const extractFilename = (contentDisposition) => {
+    if (!contentDisposition) return null
+    const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(contentDisposition)
+    const value = decodeURIComponent(match?.[1] ?? match?.[2] ?? '')
+    return value !== '' ? value : null
+  }
+
+  const downloadBlob = (blob, filename) => {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename ?? 'template.xlsx'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const openBulkImport = () => {
+    setBulkFile(null)
+    setBulkModalOpen(true)
+  }
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await awarenessService.downloadTemplate()
+      const filename = extractFilename(res.headers?.['content-disposition']) ?? 'SGTM-Awareness-Template.xlsx'
+      downloadBlob(res.data, filename)
+    } catch (e) {
+      toast.error(e.response?.data?.message ?? t('common.downloadTemplateFailed'))
+    }
+  }
+
+  const handleBulkImport = async () => {
+    if (!bulkFile) {
+      toast.error(t('common.chooseFile'))
+      return
+    }
+
+    try {
+      setBulkUploading(true)
+      const form = new FormData()
+      form.append('file', bulkFile)
+      const res = await awarenessService.bulkImport(form)
+      const payload = res.data?.data ?? {}
+      const imported = payload.imported ?? 0
+      const updated = payload.updated ?? 0
+      const errors = payload.errors ?? []
+      toast.success(t('common.importSummary', { imported, updated }))
+      if (errors.length > 0) toast.error(t('common.importIssues', { count: errors.length }))
+      setBulkFile(null)
+      setBulkModalOpen(false)
+      fetchSessions()
+    } catch (e) {
+      toast.error(e.response?.data?.message ?? t('common.importFailed'))
+    } finally {
+      setBulkUploading(false)
+    }
+  }
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -146,7 +211,7 @@ export default function AwarenessSession() {
     } catch (error) {
       console.error('Error exporting awareness sessions:', error)
       // Reuse generic error message
-      toast.error(t('errors.somethingWentWrong') ?? 'Error while exporting')
+      toast.error(t('errors.somethingWentWrong') ?? t('common.exportFailed'))
     } finally {
       setExporting(false)
     }
@@ -214,6 +279,38 @@ export default function AwarenessSession() {
         <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
           {t('nav.dashboard')} / {t('awareness.navLabel')}
         </div>
+
+      {bulkModalOpen && (
+        <Modal isOpen={bulkModalOpen} onClose={() => setBulkModalOpen(false)} title="Massive Add" size="xl">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <button type="button" onClick={handleDownloadTemplate} className="btn-secondary flex items-center justify-center gap-2">
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>{t('common.downloadTemplate') ?? 'Download template'}</span>
+              </button>
+
+              <label className="flex items-center justify-between border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-xs cursor-pointer hover:border-hse-primary hover:bg-hse-primary/5">
+                <div className="flex items-center gap-2">
+                  <Upload className="w-4 h-4 text-gray-500" />
+                  <span className="text-gray-700 dark:text-gray-200">
+                    {bulkFile ? bulkFile.name : (t('common.chooseFile') ?? 'Choose Excel file')}
+                  </span>
+                </div>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={(e) => setBulkFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+
+              <button type="button" onClick={handleBulkImport} disabled={bulkUploading || !bulkFile} className="btn-primary">
+                {bulkUploading ? (t('common.loading') ?? 'Importing...') : (t('common.import') ?? 'Import')}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('awareness.pageTitle')}</h1>
         <p className="text-gray-500 dark:text-gray-400 mt-1">{t('awareness.pageSubtitle')}</p>
       </div>
@@ -222,7 +319,13 @@ export default function AwarenessSession() {
       <div className="card">
         <button
           type="button"
-          onClick={() => setFormExpanded(!formExpanded)}
+          onClick={(e) => {
+            if (e?.ctrlKey) {
+              openBulkImport()
+              return
+            }
+            setFormExpanded(!formExpanded)
+          }}
           className="w-full p-4 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors rounded-xl"
         >
           <div className="flex items-center gap-3">

@@ -114,7 +114,7 @@ export default function MemberManagement({ projectId, projectName }) {
 
   const handleBulkImportTeam = async () => {
     if (!bulkFile) {
-      toast.error('Please choose a file')
+      toast.error(t('common.chooseFile'))
       return
     }
     try {
@@ -125,8 +125,8 @@ export default function MemberManagement({ projectId, projectName }) {
       const payload = res.data?.data ?? {}
       const added = payload.added_count ?? 0
       const errors = payload.errors ?? []
-      toast.success(`Added: ${added}`)
-      if (errors.length > 0) toast.error(`${errors.length} row(s) had issues`)
+      toast.success(t('common.addedCount', { added }))
+      if (errors.length > 0) toast.error(t('common.importIssues', { count: errors.length }))
       setBulkFile(null)
       setBulkOpen(false)
       fetchAllMembers()

@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\PpeAnalyticsController;
 use App\Http\Controllers\Api\HseEventController;
 use App\Http\Controllers\Api\MonthlyKpiMeasurementController;
 use App\Http\Controllers\Api\LightingMeasurementController;
+use App\Http\Controllers\Api\BugReportController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -72,6 +73,18 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/imports/failed-rows/{filename}', [ImportFilesController::class, 'downloadFailedRows']);
 
+    // Bug reports (all authenticated users can submit)
+    Route::prefix('bug-reports')->group(function () {
+        Route::post('/', [BugReportController::class, 'store']);
+    });
+
+    // Bug reports (admin only)
+    Route::middleware('admin')->prefix('bug-reports')->group(function () {
+        Route::get('/', [BugReportController::class, 'index']);
+        Route::get('/{bugReport}', [BugReportController::class, 'show']);
+        Route::get('/{bugReport}/attachment', [BugReportController::class, 'downloadAttachment']);
+    });
+
     Route::prefix('bootstrap')->group(function () {
         Route::get('/template', [BootstrapController::class, 'template']);
         Route::get('/export', [BootstrapController::class, 'export']);
@@ -82,6 +95,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('dashboard')->group(function () {
         Route::get('/admin', [DashboardController::class, 'adminDashboard'])->middleware(['cache.api:2']);
         Route::get('/user', [DashboardController::class, 'userDashboard']);
+        Route::get('/safety-performance', [DashboardController::class, 'safetyPerformance'])->middleware(['cache.api:2']);
         Route::get('/charts/accidents', [DashboardController::class, 'accidentCharts']);
         Route::get('/charts/trainings', [DashboardController::class, 'trainingCharts']);
         Route::get('/charts/inspections', [DashboardController::class, 'inspectionCharts']);
@@ -141,6 +155,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('admin')->group(function () {
             Route::get('/template', [ProjectController::class, 'downloadTemplate']);
             Route::post('/import', [ProjectController::class, 'bulkImport']);
+            Route::get('/management-export', [ProjectController::class, 'managementExport']);
         });
 
         Route::get('/{project}', [ProjectController::class, 'show']);
@@ -240,7 +255,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/categories', [SorReportController::class, 'categories']);
         Route::get('/statistics', [SorReportController::class, 'statistics']);
         Route::get('/pinned', [SorReportController::class, 'pinned']);
+        Route::get('/template', [SorReportController::class, 'template']);
         Route::get('/export', [SorReportController::class, 'export']);
+        Route::post('/import', [SorReportController::class, 'import']);
         Route::get('/', [SorReportController::class, 'index']);
         Route::post('/', [SorReportController::class, 'store']);
         Route::get('/{sorReport}/photo', [SorReportController::class, 'viewPhoto']);
@@ -248,7 +265,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{sorReport}', [SorReportController::class, 'show']);
         Route::put('/{sorReport}', [SorReportController::class, 'update']);
         Route::post('/{sorReport}/corrective-action', [SorReportController::class, 'submitCorrectiveAction']);
-        Route::delete('/{sorReport}', [SorReportController::class, 'destroy'])->middleware('admin');
+        Route::delete('/{sorReport}', [SorReportController::class, 'destroy']);
     });
 
     // Trainings
@@ -267,6 +284,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [HseEventController::class, 'index']);
         Route::post('/', [HseEventController::class, 'store']);
         Route::get('/{hseEvent}', [HseEventController::class, 'show']);
+        Route::get('/{hseEvent}/attachments', [HseEventController::class, 'attachments']);
+        Route::post('/{hseEvent}/attachments', [HseEventController::class, 'uploadAttachment']);
+        Route::get('/{hseEvent}/attachments/{attachmentId}', [HseEventController::class, 'viewAttachment']);
+        Route::delete('/{hseEvent}/attachments/{attachmentId}', [HseEventController::class, 'deleteAttachment']);
         Route::put('/{hseEvent}', [HseEventController::class, 'update']);
         Route::delete('/{hseEvent}', [HseEventController::class, 'destroy']);
     });
@@ -292,6 +313,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Awareness Sessions (TBM/TBT)
     Route::prefix('awareness-sessions')->group(function () {
         Route::get('/', [AwarenessSessionController::class, 'index']);
+        Route::get('/template', [AwarenessSessionController::class, 'template']);
+        Route::get('/export', [AwarenessSessionController::class, 'export']);
+        Route::post('/import', [AwarenessSessionController::class, 'import']);
         Route::post('/', [AwarenessSessionController::class, 'store']);
         Route::get('/statistics', [AwarenessSessionController::class, 'statistics']);
         Route::get('/{awarenessSession}', [AwarenessSessionController::class, 'show']);

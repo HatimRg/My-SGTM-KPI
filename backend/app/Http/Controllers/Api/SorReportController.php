@@ -4,11 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Exports\DeviationsExport;
+use App\Exports\SorReportsTemplateExport;
+use App\Imports\SorReportsImport;
 use App\Models\SorReport;
 use App\Models\Project;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -194,6 +198,7 @@ class SorReportController extends Controller
         }
 
         $filters = [
+            'visible_project_ids' => $projectIds,
             'project_id' => $request->get('project_id'),
             'status' => $request->get('status'),
             'category' => $request->get('category'),
@@ -204,6 +209,77 @@ class SorReportController extends Controller
         $filename = 'deviations_' . date('Y-m-d_His') . '.xlsx';
 
         return Excel::download(new DeviationsExport($filters), $filename);
+    }
+
+    public function template(Request $request)
+    {
+        try {
+            $user = $request->user();
+
+            $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
+
+            if (!class_exists(\ZipArchive::class) || !extension_loaded('zip')) {
+                return $this->error('XLSX export requires PHP zip extension (ZipArchive). Please enable/install php-zip on the server.', 422);
+            }
+
+            $visibleProjectIds = $user ? $user->visibleProjectIds() : null;
+            $projectCodes = [];
+            if ($visibleProjectIds !== null) {
+                if (count($visibleProjectIds) === 0) {
+                    $projectCodes = [];
+                } else {
+                    $projectCodes = Project::whereIn('id', $visibleProjectIds)->orderBy('code')->pluck('code')->toArray();
+                }
+            } else {
+                $projectCodes = Project::query()->orderBy('code')->pluck('code')->toArray();
+            }
+
+            $filename = 'SGTM-SOR-Template.xlsx';
+            return Excel::download(new SorReportsTemplateExport(200, $projectCodes, $lang), $filename);
+        } catch (\Throwable $e) {
+            Log::error('SOR template generation failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return $this->error('Failed to generate SOR template: ' . $e->getMessage(), 422);
+        }
+    }
+
+    public function import(Request $request)
+    {
+        @ini_set('max_execution_time', '300');
+        @ini_set('memory_limit', '512M');
+
+        if (!class_exists(\ZipArchive::class) || !extension_loaded('zip')) {
+            return $this->error('XLSX import requires PHP zip extension (ZipArchive). Please enable/install php-zip on the server.', 422);
+        }
+
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls|max:20480',
+        ]);
+
+        $user = $request->user();
+        $visibleProjectIds = $user ? $user->visibleProjectIds() : null;
+        $import = new SorReportsImport($user ? (int) $user->id : 0, $visibleProjectIds);
+
+        try {
+            DB::beginTransaction();
+            Excel::import($import, $request->file('file'));
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('SOR bulk import failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return $this->error('Failed to import SOR reports: ' . $e->getMessage(), 422);
+        }
+
+        return $this->success([
+            'imported' => $import->getImportedCount(),
+            'updated' => $import->getUpdatedCount(),
+            'errors' => $import->getErrors(),
+        ], 'SOR reports imported');
     }
 
     public function viewPhoto(Request $request, SorReport $sorReport)
@@ -503,6 +579,10 @@ class SorReportController extends Controller
         $user = request()->user();
         $project = Project::findOrFail($sorReport->project_id);
         if (!$user->canAccessProject($project)) {
+            abort(403, 'Access denied');
+        }
+
+        if (!$user->isAdminLike() && (int) $sorReport->submitted_by !== (int) $user->id) {
             abort(403, 'Access denied');
         }
 

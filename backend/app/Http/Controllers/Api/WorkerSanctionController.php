@@ -135,14 +135,16 @@ class WorkerSanctionController extends Controller
 
     public function massTemplate(Request $request)
     {
-        $this->checkMassImportAccess($request);
+        $user = $this->checkMassImportAccess($request);
 
         if (!class_exists(ZipArchive::class) || !extension_loaded('zip')) {
             return $this->error('ZipArchive extension is required to generate Excel templates', 500);
         }
 
+        $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
+
         $filename = 'worker_sanctions_mass_template.xlsx';
-        $contents = Excel::raw(new WorkerSanctionsMassTemplateExport(), ExcelFormat::XLSX);
+        $contents = Excel::raw(new WorkerSanctionsMassTemplateExport(200, $lang), ExcelFormat::XLSX);
 
         return response($contents, 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

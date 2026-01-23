@@ -400,6 +400,8 @@ class UserController extends Controller
         try {
             $user = $request->user();
 
+            $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
+
             if (!class_exists(\ZipArchive::class) || !extension_loaded('zip')) {
                 return $this->error('XLSX export requires PHP zip extension (ZipArchive). Please enable/install php-zip on the server.', 422);
             }
@@ -418,7 +420,7 @@ class UserController extends Controller
                 $roleOptions = array_values(array_filter($roleOptions, fn ($r) => $r !== User::ROLE_ADMIN));
             }
 
-            return Excel::download(new UsersTemplateExport(200, $roleOptions), $filename);
+            return Excel::download(new UsersTemplateExport(200, $roleOptions, $lang), $filename);
         } catch (\Throwable $e) {
             Log::error('Users template generation failed', [
                 'error' => $e->getMessage(),

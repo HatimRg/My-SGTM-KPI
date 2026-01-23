@@ -16,19 +16,27 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnWidths, WithEvents, WithTitle
 {
     private int $dataRows;
+    private string $lang;
 
     private string $aptitudeStatusCsv = 'apte,inapte';
 
     private string $examNatureCsv = 'embauche_reintegration,visite_systematique,surveillance_medical_special,visite_de_reprise,visite_spontanee';
 
-    public function __construct(int $dataRows = 200)
+    public function __construct(int $dataRows = 200, string $lang = 'fr')
     {
         $this->dataRows = max(10, $dataRows);
+        $lang = strtolower(trim($lang));
+        $this->lang = in_array($lang, ['en', 'fr'], true) ? $lang : 'fr';
+    }
+
+    private function tr(string $fr, string $en): string
+    {
+        return $this->lang === 'en' ? $en : $fr;
     }
 
     public function title(): string
     {
-        return 'Aptitudes';
+        return $this->tr('Aptitudes', 'Medical Aptitudes');
     }
 
     public function columnWidths(): array
@@ -46,8 +54,11 @@ class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnW
     public function array(): array
     {
         $rows = [];
-        $rows[] = ["SGTM - MODÈLE D'IMPORT APTITUDES MÉDICALES (MASS)"];
-        $rows[] = ['Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, APTITUDE_STATUS*, EXAM_NATURE* et EXAM_DATE* obligatoires. ABLE_TO optionnel (valeurs séparées par virgule).'];
+        $rows[] = [$this->tr("SGTM - MODÈLE D'IMPORT APTITUDES MÉDICALES (MASS)", 'SGTM - MEDICAL APTITUDES MASS IMPORT TEMPLATE')];
+        $rows[] = [$this->tr(
+            'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, APTITUDE_STATUS*, EXAM_NATURE* et EXAM_DATE* obligatoires. ABLE_TO optionnel (valeurs séparées par virgule).',
+            'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf. CIN*, APTITUDE_STATUS*, EXAM_NATURE* and EXAM_DATE* are required. ABLE_TO is optional (comma-separated values).'
+        )];
         $rows[] = ['CIN*', 'APTITUDE_STATUS*', 'EXAM_NATURE*', 'ABLE_TO', 'EXAM_DATE*', 'DATE_EXPIRATION'];
 
         for ($i = 0; $i < $this->dataRows; $i++) {
@@ -97,7 +108,7 @@ class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnW
                 $grayLight = 'F9FAFB';
                 $grayBorder = '9CA3AF';
 
-                $sheet->setCellValue('A1', 'SGTM - MODÈLE D\'IMPORT APTITUDES MÉDICALES (MASS)');
+                $sheet->setCellValue('A1', $this->tr("SGTM - MODÈLE D'IMPORT APTITUDES MÉDICALES (MASS)", 'SGTM - MEDICAL APTITUDES MASS IMPORT TEMPLATE'));
                 $sheet->mergeCells('A1:F1');
                 $sheet->getStyle('A1:F1')->applyFromArray([
                     'font' => ['bold' => true, 'size' => 18, 'color' => ['rgb' => $white]],
@@ -109,7 +120,10 @@ class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnW
                 ]);
                 $sheet->getRowDimension(1)->setRowHeight(40);
 
-                $sheet->setCellValue('A2', 'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, APTITUDE_STATUS*, EXAM_NATURE* et EXAM_DATE* obligatoires. ABLE_TO optionnel (valeurs séparées par virgule).');
+                $sheet->setCellValue('A2', $this->tr(
+                    'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, APTITUDE_STATUS*, EXAM_NATURE* et EXAM_DATE* obligatoires. ABLE_TO optionnel (valeurs séparées par virgule).',
+                    'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf. CIN*, APTITUDE_STATUS*, EXAM_NATURE* and EXAM_DATE* are required. ABLE_TO is optional (comma-separated values).'
+                ));
                 $sheet->mergeCells('A2:F2');
                 $sheet->getStyle('A2:F2')->applyFromArray([
                     'font' => ['size' => 11, 'italic' => true, 'color' => ['rgb' => $black]],
@@ -172,8 +186,8 @@ class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnW
                     $statusValidation->setAllowBlank(false);
                     $statusValidation->setShowDropDown(true);
                     $statusValidation->setShowErrorMessage(true);
-                    $statusValidation->setErrorTitle('Aptitude status');
-                    $statusValidation->setError('Veuillez sélectionner un statut valide dans la liste.');
+                    $statusValidation->setErrorTitle($this->tr('Statut aptitude', 'Aptitude status'));
+                    $statusValidation->setError($this->tr('Veuillez sélectionner un statut valide dans la liste.', 'Please select a valid status from the list.'));
                     $statusValidation->setFormula1("='Lists'!\$A\$1:\$A\${statusesLastRow}");
 
                     $natureValidation = $sheet->getCell("C{$row}")->getDataValidation();
@@ -182,22 +196,25 @@ class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnW
                     $natureValidation->setAllowBlank(false);
                     $natureValidation->setShowDropDown(true);
                     $natureValidation->setShowErrorMessage(true);
-                    $natureValidation->setErrorTitle('Exam nature');
-                    $natureValidation->setError('Veuillez sélectionner une nature d\'examen valide dans la liste.');
+                    $natureValidation->setErrorTitle($this->tr('Nature examen', 'Exam nature'));
+                    $natureValidation->setError($this->tr('Veuillez sélectionner une nature d\'examen valide dans la liste.', 'Please select a valid exam nature from the list.'));
                     $natureValidation->setFormula1("='Lists'!\$B\$1:\$B\${naturesLastRow}");
                 }
 
-                $sheet->getComment('A3')->getText()->createTextRun("CIN = IDENTIFIANT UNIQUE\n\nLe PDF dans le ZIP doit s'appeler: CIN.pdf");
+                $sheet->getComment('A3')->getText()->createTextRun($this->tr(
+                    "CIN = IDENTIFIANT UNIQUE\n\nLe PDF dans le ZIP doit s'appeler: CIN.pdf",
+                    'CIN = UNIQUE IDENTIFIER\n\nThe PDF in the ZIP must be named: CIN.pdf'
+                ));
                 $sheet->getComment('A3')->setWidth('220px');
                 $sheet->getComment('A3')->setHeight('90px');
 
-                $sheet->getComment('D3')->getText()->createTextRun('Optionnel. Ex: travaux_en_hauteur, operateur');
+                $sheet->getComment('D3')->getText()->createTextRun($this->tr('Optionnel. Ex: travaux_en_hauteur, operateur', 'Optional. Example: travail_en_hauteur, operateur'));
                 $sheet->getComment('D3')->setWidth('220px');
 
-                $sheet->getComment('E3')->getText()->createTextRun('Format recommandé: AAAA-MM-JJ');
+                $sheet->getComment('E3')->getText()->createTextRun($this->tr('Format recommandé: AAAA-MM-JJ', 'Recommended format: YYYY-MM-DD'));
                 $sheet->getComment('E3')->setWidth('170px');
 
-                $sheet->getComment('F3')->getText()->createTextRun('Optionnel. Format recommandé: AAAA-MM-JJ');
+                $sheet->getComment('F3')->getText()->createTextRun($this->tr('Optionnel. Format recommandé: AAAA-MM-JJ', 'Optional. Recommended format: YYYY-MM-DD'));
                 $sheet->getComment('F3')->setWidth('190px');
 
                 $sheet->freezePane('A4');

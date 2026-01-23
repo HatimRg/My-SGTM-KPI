@@ -5,6 +5,7 @@ import { useDevStore } from './store/devStore'
 import useThemeStore from './stores/themeStore'
 import { Loader2 } from 'lucide-react'
 import ErrorBoundary from './components/ErrorBoundary'
+import bugReportRecorder from './utils/bugReportRecorder'
 
 // Layouts (kept eager as they are lightweight wrappers)
 import AuthLayout from './layouts/AuthLayout'
@@ -20,6 +21,7 @@ const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
 const UserManagement = lazy(() => import('./pages/admin/UserManagement'))
 const ProjectManagement = lazy(() => import('./pages/admin/ProjectManagement'))
 const KpiManagement = lazy(() => import('./pages/admin/KpiManagement'))
+const BugReports = lazy(() => import('./pages/admin/BugReports'))
 
 // User Pages (lazy-loaded)
 const UserDashboard = lazy(() => import('./pages/user/UserDashboard'))
@@ -170,6 +172,14 @@ function App() {
     initTheme()
   }, [initTheme])
 
+  useEffect(() => {
+    bugReportRecorder.trackRoute({
+      pathname: location.pathname,
+      search: location.search,
+      hash: location.hash,
+    })
+  }, [location.pathname, location.search, location.hash])
+
   return (
     <ErrorBoundary
       name="App"
@@ -273,6 +283,7 @@ function App() {
         <Route path="/admin/users" element={<UserManagement />} />
         <Route path="/admin/projects" element={<ProjectManagement />} />
         <Route path="/admin/projects/:id" element={<ProjectDetails />} />
+        <Route path="/admin/bug-reports" element={<BugReports />} />
         <Route
           path="/admin/effectif"
           element={

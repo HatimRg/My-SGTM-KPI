@@ -12,6 +12,7 @@ use App\Models\SorReport;
 use App\Models\WorkPermit;
 use App\Models\Inspection;
 use App\Models\Machine;
+use App\Models\HseEvent;
 use App\Models\RegulatoryWatchSubmission;
 use App\Helpers\WeekHelper;
 use Illuminate\Http\Request;
@@ -21,6 +22,519 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
+    private const SAFETY_PERFORMANCE_SEVERITY_LABELS = [
+        1 => 'near_miss',
+        2 => 'first_aid',
+        3 => 'medical',
+        4 => 'lta',
+        5 => 'serious',
+        6 => 'fatal',
+    ];
+
+    private function safetySeverityFromDetails(?array $details, ?string $fallbackType = null, ?string $fallbackSeverity = null): array
+    {
+        // Default (unknown)
+        $score = 0;
+
+        if (is_array($details) && ($details['schema_version'] ?? null) === 'accident_v1') {
+            $victims = $details['victims'] ?? [];
+            if (is_array($victims)) {
+                foreach ($victims as $v) {
+                    if (!is_array($v)) {
+                        continue;
+                    }
+                    $outcome = (string) ($v['outcome'] ?? '');
+                    $rank = match ($outcome) {
+                        'fatal' => 6,
+                        'serious_hospitalization' => 5,
+                        'lost_time_accident' => 4,
+                        'medical_treatment_no_lost_time' => 3,
+                        'first_aid_only' => 2,
+                        'no_injury' => 1,
+                        default => 0,
+                    };
+                    if ($rank > $score) {
+                        $score = $rank;
+                    }
+                }
+            }
+        }
+
+        // Legacy / fallback mapping.
+        if ($score === 0) {
+            $type = (string) ($fallbackType ?? '');
+            if ($type === 'near_miss') {
+                $score = 1;
+            } elseif ($type === 'first_aid') {
+                $score = 2;
+            } elseif ($type === 'medical_consultation') {
+                $score = 3;
+            }
+        }
+
+        if ($score === 0) {
+            $sev = (string) ($fallbackSeverity ?? '');
+            $score = match ($sev) {
+                'minor' => 2,
+                'moderate' => 3,
+                'major' => 4,
+                'critical' => 5,
+                'fatal' => 6,
+                default => 0,
+            };
+        }
+
+        if ($score === 0) {
+            $score = 1; // default to "near miss" to avoid dropping events from charts
+        }
+
+        return [
+            'score' => $score,
+            'label' => self::SAFETY_PERFORMANCE_SEVERITY_LABELS[$score] ?? 'near_miss',
+        ];
+    }
+
+    private function victimsCountFromDetails(?array $details): int
+    {
+        if (is_array($details) && ($details['schema_version'] ?? null) === 'accident_v1') {
+            $count = (int) ($details['victims_count'] ?? 0);
+            if ($count > 0) {
+                return $count;
+            }
+            $victims = $details['victims'] ?? null;
+            if (is_array($victims)) {
+                return count($victims);
+            }
+        }
+        return 1;
+    }
+
+    private function fatalitiesCountFromDetails(?array $details, int $severityScore): int
+    {
+        if (is_array($details) && ($details['schema_version'] ?? null) === 'accident_v1') {
+            $victims = $details['victims'] ?? [];
+            if (is_array($victims)) {
+                $n = 0;
+                foreach ($victims as $v) {
+                    if (is_array($v) && ($v['outcome'] ?? null) === 'fatal') {
+                        $n++;
+                    }
+                }
+                if ($n > 0) {
+                    return $n;
+                }
+            }
+        }
+
+        return $severityScore >= 6 ? 1 : 0;
+    }
+
+    public function safetyPerformance(Request $request)
+    {
+        $user = $request->user();
+        $year = (int) $request->get('year', date('Y'));
+        $projectId = $request->get('project_id');
+        $pole = $request->get('pole');
+        $week = $request->get('week');
+        $week = $week !== null ? (int) $week : null;
+
+        if (!$user || (!$user->isAdminLike() && !$user->isHseManager())) {
+            return $this->error('Access denied', 403);
+        }
+
+        $projectIdsForPole = null;
+        if ($pole !== null && $pole !== '') {
+            $projectIdsForPole = Project::query()->visibleTo($user)->where('pole', $pole)->pluck('id');
+        } else {
+            $projectIdsForPole = $user->visibleProjectIds();
+        }
+
+        $eventsQuery = HseEvent::query()->with(['project:id,name,code,pole']);
+
+        if ($projectIdsForPole !== null) {
+            if (count($projectIdsForPole) === 0) {
+                $eventsQuery->whereRaw('1 = 0');
+            } else {
+                $eventsQuery->whereIn('project_id', $projectIdsForPole);
+            }
+        }
+
+        $eventsQuery->where('event_year', $year);
+
+        if ($projectId && $projectId !== 'all') {
+            $eventsQuery->where('project_id', (int) $projectId);
+        }
+
+        if ($pole !== null && $pole !== '') {
+            $eventsQuery->where('pole', $pole);
+        }
+
+        if ($week && $week >= 1 && $week <= 52) {
+            $eventsQuery->where('week_year', $year)->where('week_number', $week);
+        }
+
+        $events = $eventsQuery->get([
+            'id',
+            'project_id',
+            'event_date',
+            'event_year',
+            'week_year',
+            'week_number',
+            'pole',
+            'type',
+            'severity',
+            'location',
+            'details',
+        ]);
+
+        $byProject = [];
+        $byLocation = [];
+        $byActivity = [];
+        $conditionsMatrix = []; // [ground][lighting] => value
+        $grounds = [];
+        $lightings = [];
+        $causeFlows = []; // [immediate][root] => count
+        $bubble = []; // key => agg
+        $actionsHealth = []; // [type][status] => count
+        $rootCauseCounts = [];
+
+        $totalEvents = 0;
+        $weightedIndex = 0;
+        $severeCount = 0;
+        $totalVictims = 0;
+        $totalFatalities = 0;
+        $totalActions = 0;
+        $overdueActions = 0;
+
+        $now = now()->startOfDay();
+
+        foreach ($events as $e) {
+            $totalEvents++;
+            $details = is_array($e->details) ? $e->details : null;
+
+            $sev = $this->safetySeverityFromDetails($details, $e->type, $e->severity);
+            $score = (int) $sev['score'];
+            $label = (string) $sev['label'];
+
+            $weightedIndex += $score;
+            if ($score >= 4) {
+                $severeCount++;
+            }
+
+            $victimsCount = $this->victimsCountFromDetails($details);
+            $totalVictims += $victimsCount;
+            $fatalities = $this->fatalitiesCountFromDetails($details, $score);
+            $totalFatalities += $fatalities;
+
+            // Project Hotspots
+            $p = $e->project;
+            $projectKey = $p ? (string) $p->id : (string) $e->project_id;
+            if (!isset($byProject[$projectKey])) {
+                $byProject[$projectKey] = [
+                    'project_id' => (int) ($p?->id ?? $e->project_id),
+                    'project_name' => (string) ($p?->name ?? 'Unknown'),
+                    'project_code' => $p?->code,
+                    'near_miss' => 0,
+                    'first_aid' => 0,
+                    'medical' => 0,
+                    'lta' => 0,
+                    'serious' => 0,
+                    'fatal' => 0,
+                    'total' => 0,
+                    'weighted' => 0,
+                ];
+            }
+            $byProject[$projectKey][$label] = ($byProject[$projectKey][$label] ?? 0) + 1;
+            $byProject[$projectKey]['total'] += 1;
+            $byProject[$projectKey]['weighted'] += $score;
+
+            // Worst location/zone
+            $loc = (string) ($e->location ?? '');
+            if ($loc === '' && is_array($details)) {
+                $loc = (string) ($details['exact_location'] ?? '');
+            }
+            $loc = $loc !== '' ? $loc : 'Unknown';
+            $byLocation[$loc] = ($byLocation[$loc] ?? 0) + $score;
+
+            // Activity driver
+            $activity = null;
+            if (is_array($details) && ($details['schema_version'] ?? null) === 'accident_v1') {
+                $activity = $details['activity'] ?? null;
+                if ($activity === 'other' && !empty($details['activity_other'])) {
+                    $activity = $details['activity_other'];
+                }
+            }
+            $activity = $activity ? (string) $activity : 'Unknown';
+            $byActivity[$activity] = ($byActivity[$activity] ?? 0) + 1;
+
+            // Conditions Matrix
+            $ground = null;
+            $lighting = null;
+            if (is_array($details) && ($details['schema_version'] ?? null) === 'accident_v1') {
+                $ground = $details['ground_condition'] ?? null;
+                $lighting = $details['lighting'] ?? null;
+            }
+            $ground = $ground ? (string) $ground : 'Unknown';
+            $lighting = $lighting ? (string) $lighting : 'Unknown';
+            $grounds[$ground] = true;
+            $lightings[$lighting] = true;
+            if (!isset($conditionsMatrix[$ground])) {
+                $conditionsMatrix[$ground] = [];
+            }
+            $conditionsMatrix[$ground][$lighting] = (int) (($conditionsMatrix[$ground][$lighting] ?? 0) + $score);
+
+            // Cause Path
+            $immediate = null;
+            $roots = [];
+            if (is_array($details) && ($details['schema_version'] ?? null) === 'accident_v1') {
+                $immediate = $details['immediate_cause'] ?? null;
+                if ($immediate === 'other' && !empty($details['immediate_cause_other'])) {
+                    $immediate = $details['immediate_cause_other'];
+                }
+                $rootsRaw = $details['root_causes'] ?? [];
+                if (is_array($rootsRaw)) {
+                    $roots = array_values(array_filter(array_map('strval', $rootsRaw)));
+                }
+            }
+            $immediate = $immediate ? (string) $immediate : 'Unknown';
+            if (empty($roots)) {
+                $roots = ['Unknown'];
+            }
+
+            foreach ($roots as $r) {
+                if (!isset($causeFlows[$immediate])) {
+                    $causeFlows[$immediate] = [];
+                }
+                $causeFlows[$immediate][$r] = (int) (($causeFlows[$immediate][$r] ?? 0) + 1);
+                $rootCauseCounts[$r] = (int) (($rootCauseCounts[$r] ?? 0) + 1);
+            }
+
+            // Bubble: Severity vs Victims
+            $bubbleKey = $score . '|' . $victimsCount . '|' . $activity;
+            if (!isset($bubble[$bubbleKey])) {
+                $bubble[$bubbleKey] = [
+                    'severity_score' => $score,
+                    'victims' => $victimsCount,
+                    'activity' => $activity,
+                    'events' => 0,
+                ];
+            }
+            $bubble[$bubbleKey]['events'] += 1;
+
+            // Actions health
+            $actions = [];
+            if (is_array($details) && ($details['schema_version'] ?? null) === 'accident_v1') {
+                $raw = $details['corrective_actions'] ?? [];
+                if (is_array($raw)) {
+                    $actions = $raw;
+                }
+            }
+
+            foreach ($actions as $a) {
+                if (!is_array($a)) {
+                    continue;
+                }
+                $totalActions++;
+                $type = (string) ($a['type'] ?? 'unknown');
+                if ($type === '') {
+                    $type = 'unknown';
+                }
+
+                $status = (string) ($a['status'] ?? 'open');
+                if (!in_array($status, ['open', 'in_progress', 'closed'], true)) {
+                    $status = 'open';
+                }
+
+                $deadline = $a['deadline'] ?? null;
+                if ($status !== 'closed' && $deadline) {
+                    try {
+                        $d = Carbon::parse($deadline)->startOfDay();
+                        if ($d->lt($now)) {
+                            $status = 'overdue';
+                            $overdueActions++;
+                        }
+                    } catch (\Throwable $ex) {
+                        // ignore parse errors
+                    }
+                }
+
+                if (!isset($actionsHealth[$type])) {
+                    $actionsHealth[$type] = [
+                        'open' => 0,
+                        'in_progress' => 0,
+                        'closed' => 0,
+                        'overdue' => 0,
+                    ];
+                }
+                $actionsHealth[$type][$status] = (int) (($actionsHealth[$type][$status] ?? 0) + 1);
+            }
+        }
+
+        // KPI tiles
+        $pctSevere = $totalEvents > 0 ? round(($severeCount * 100.0) / $totalEvents, 1) : 0;
+        $pctActionsOverdue = $totalActions > 0 ? round(($overdueActions * 100.0) / $totalActions, 1) : 0;
+
+        $worstProject = null;
+        if (!empty($byProject)) {
+            $sorted = array_values($byProject);
+            usort($sorted, function ($a, $b) {
+                return ($b['weighted'] <=> $a['weighted']);
+            });
+            $worstProject = [
+                'project_id' => $sorted[0]['project_id'],
+                'project_name' => $sorted[0]['project_name'],
+                'weighted' => $sorted[0]['weighted'],
+            ];
+        }
+
+        $worstLocation = null;
+        if (!empty($byLocation)) {
+            arsort($byLocation);
+            $loc = array_key_first($byLocation);
+            $worstLocation = [
+                'location' => $loc,
+                'weighted' => (int) ($byLocation[$loc] ?? 0),
+            ];
+        }
+
+        $topActivity = null;
+        if (!empty($byActivity)) {
+            arsort($byActivity);
+            $a = array_key_first($byActivity);
+            $topActivity = [
+                'activity' => $a,
+                'count' => (int) ($byActivity[$a] ?? 0),
+            ];
+        }
+
+        $topRootCause = null;
+        if (!empty($rootCauseCounts)) {
+            arsort($rootCauseCounts);
+            $r = array_key_first($rootCauseCounts);
+            $topRootCause = [
+                'root_cause' => $r,
+                'count' => (int) ($rootCauseCounts[$r] ?? 0),
+            ];
+        }
+
+        // Graph 1: Project hotspots
+        $hotspots = array_values($byProject);
+        usort($hotspots, function ($a, $b) {
+            return ($b['weighted'] <=> $a['weighted']);
+        });
+
+        // Graph 3: Activity driver Pareto
+        $activityRows = [];
+        $activityTotal = array_sum($byActivity);
+        if ($activityTotal < 1) {
+            $activityTotal = 1;
+        }
+        arsort($byActivity);
+        $running = 0;
+        foreach ($byActivity as $act => $cnt) {
+            $running += (int) $cnt;
+            $activityRows[] = [
+                'activity' => (string) $act,
+                'count' => (int) $cnt,
+                'cumulative_pct' => round(($running * 100.0) / $activityTotal, 1),
+            ];
+        }
+
+        // Graph 4: Conditions matrix
+        $groundsList = array_keys($grounds);
+        $lightingsList = array_keys($lightings);
+        sort($groundsList);
+        sort($lightingsList);
+        $matrixData = [];
+        foreach ($groundsList as $g) {
+            foreach ($lightingsList as $l) {
+                $matrixData[] = [
+                    'ground_condition' => $g,
+                    'lighting' => $l,
+                    'value' => (int) (($conditionsMatrix[$g][$l] ?? 0)),
+                ];
+            }
+        }
+
+        // Graph 5: Cause path sankey (nodes+links)
+        $nodeIndex = [];
+        $nodes = [];
+        $links = [];
+
+        $ensureNode = function (string $name) use (&$nodeIndex, &$nodes) {
+            if (!isset($nodeIndex[$name])) {
+                $nodeIndex[$name] = count($nodes);
+                $nodes[] = ['name' => $name];
+            }
+            return $nodeIndex[$name];
+        };
+
+        foreach ($causeFlows as $imm => $targets) {
+            $s = $ensureNode((string) $imm);
+            foreach ($targets as $root => $cnt) {
+                $t = $ensureNode((string) $root);
+                $links[] = [
+                    'source' => $s,
+                    'target' => $t,
+                    'value' => (int) $cnt,
+                ];
+            }
+        }
+
+        // Graph 6: Bubble
+        $bubbleRows = array_values($bubble);
+
+        // Graph 7: Actions health
+        $actionRows = [];
+        foreach ($actionsHealth as $type => $counts) {
+            $actionRows[] = array_merge(['type' => $type], $counts);
+        }
+        usort($actionRows, function ($a, $b) {
+            $ta = (int) (($a['open'] ?? 0) + ($a['in_progress'] ?? 0) + ($a['closed'] ?? 0) + ($a['overdue'] ?? 0));
+            $tb = (int) (($b['open'] ?? 0) + ($b['in_progress'] ?? 0) + ($b['closed'] ?? 0) + ($b['overdue'] ?? 0));
+            return $tb <=> $ta;
+        });
+
+        return $this->success([
+            'filters' => [
+                'year' => $year,
+                'project_id' => $projectId,
+                'pole' => $pole,
+                'week' => $week,
+            ],
+            'kpis' => [
+                'total_events' => $totalEvents,
+                'severity_weighted_index' => $weightedIndex,
+                'pct_severe' => $pctSevere,
+                'total_victims' => $totalVictims,
+                'total_fatalities' => $totalFatalities,
+                'worst_project' => $worstProject,
+                'worst_location' => $worstLocation,
+                'top_activity' => $topActivity,
+                'top_root_cause' => $topRootCause,
+                'pct_actions_overdue' => $pctActionsOverdue,
+            ],
+            'charts' => [
+                'project_hotspots' => $hotspots,
+                'activity_driver' => $activityRows,
+                'conditions_matrix' => [
+                    'rows' => $groundsList,
+                    'cols' => $lightingsList,
+                    'data' => $matrixData,
+                ],
+                'cause_path' => [
+                    'nodes' => $nodes,
+                    'links' => $links,
+                ],
+                'severity_vs_victims' => $bubbleRows,
+                'actions_health' => $actionRows,
+            ],
+            'meta' => [
+                'severity_labels' => self::SAFETY_PERFORMANCE_SEVERITY_LABELS,
+            ],
+        ]);
+    }
+
     /**
      * Get public stats for login page (no auth required)
      * Cached for 5 minutes to reduce database load
@@ -1021,25 +1535,51 @@ class DashboardController extends Controller
 
         $closedTimes = (clone $query)
             ->where('status', SorReport::STATUS_CLOSED)
-            ->whereNotNull('closed_at')
-            ->get(['observation_date', 'observation_time', 'closed_at']);
+            ->get(['observation_date', 'observation_time', 'closed_at', 'corrective_action_date', 'corrective_action_time']);
 
         $avgCloseDays = null;
         if ($closedTimes->count() > 0) {
             $values = $closedTimes->map(function ($r) {
                 try {
-                    if (empty($r->observation_date) || empty($r->closed_at)) {
+                    if (empty($r->observation_date)) {
                         return null;
                     }
 
                     $obsTime = $r->observation_time ?: '00:00:00';
+                    $obsTime = trim((string) $obsTime);
+                    if ($obsTime !== '' && preg_match('/^\d{1,2}:\d{2}$/', $obsTime)) {
+                        $obsTime .= ':00';
+                    }
                     $obsDate = $r->observation_date instanceof Carbon
                         ? $r->observation_date->toDateString()
                         : (string) $r->observation_date;
 
                     $obs = Carbon::parse($obsDate . ' ' . $obsTime);
-                    $closed = Carbon::parse($r->closed_at);
-                    $minutes = $obs->diffInMinutes($closed, false);
+
+                    // Prefer the real closure moment from corrective_action_date/time when present.
+                    // closed_at is often set to "now" when status is closed, including during bulk import.
+                    $closure = null;
+                    if (!empty($r->corrective_action_date)) {
+                        $closeDate = $r->corrective_action_date instanceof Carbon
+                            ? $r->corrective_action_date->toDateString()
+                            : (string) $r->corrective_action_date;
+
+                        $closeTime = $r->corrective_action_time ?: '00:00:00';
+                        $closeTime = trim((string) $closeTime);
+                        if ($closeTime !== '' && preg_match('/^\d{1,2}:\d{2}$/', $closeTime)) {
+                            $closeTime .= ':00';
+                        }
+
+                        $closure = Carbon::parse($closeDate . ' ' . ($closeTime !== '' ? $closeTime : '00:00:00'));
+                    } elseif (!empty($r->closed_at)) {
+                        $closure = Carbon::parse($r->closed_at);
+                    }
+
+                    if (!$closure) {
+                        return null;
+                    }
+
+                    $minutes = $obs->diffInMinutes($closure, false);
                     if ($minutes < 0) {
                         return null;
                     }

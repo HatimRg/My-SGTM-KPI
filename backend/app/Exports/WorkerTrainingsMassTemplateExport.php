@@ -16,17 +16,25 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, WithEvents, WithTitle
 {
     private int $dataRows;
+    private string $lang;
 
     private string $trainingTypesCsv = 'bypassing_safety_controls,formation_coactivite,formation_coffrage_decoffrage,formation_conduite_defensive,formation_analyse_des_risques,formation_elingage_manutention,formation_ergonomie,formation_excavations,formation_outils_electroportatifs,formation_epi,formation_environnement,formation_espaces_confines,formation_flagman,formation_jha,formation_line_of_fire,formation_manutention_manuelle,formation_manutention_mecanique,formation_point_chaud,formation_produits_chimiques,formation_risques_electriques,induction_hse,travail_en_hauteur';
 
-    public function __construct(int $dataRows = 200)
+    public function __construct(int $dataRows = 200, string $lang = 'fr')
     {
         $this->dataRows = max(10, $dataRows);
+        $lang = strtolower(trim($lang));
+        $this->lang = in_array($lang, ['en', 'fr'], true) ? $lang : 'fr';
+    }
+
+    private function tr(string $fr, string $en): string
+    {
+        return $this->lang === 'en' ? $en : $fr;
     }
 
     public function title(): string
     {
-        return 'Formations';
+        return $this->tr('Formations', 'Trainings');
     }
 
     public function columnWidths(): array
@@ -42,8 +50,11 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
     public function array(): array
     {
         $rows = [];
-        $rows[] = ["SGTM - MODÈLE D'IMPORT FORMATIONS (MASS)"];
-        $rows[] = ['Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, TYPE_FORMATION* et DATE_FORMATION* obligatoires.'];
+        $rows[] = [$this->tr("SGTM - MODÈLE D'IMPORT FORMATIONS (MASS)", 'SGTM - TRAININGS MASS IMPORT TEMPLATE')];
+        $rows[] = [$this->tr(
+            'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, TYPE_FORMATION* et DATE_FORMATION* obligatoires.',
+            'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf. CIN*, TYPE_FORMATION* and DATE_FORMATION* are required.'
+        )];
         $rows[] = ['CIN*', 'TYPE_FORMATION*', 'DATE_FORMATION*', 'DATE_EXPIRATION'];
 
         for ($i = 0; $i < $this->dataRows; $i++) {
@@ -86,7 +97,7 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
                 $grayBorder = '9CA3AF';
 
                 // === ROW 1: Title ===
-                $sheet->setCellValue('A1', 'SGTM - MODÈLE D\'IMPORT FORMATIONS (MASS)');
+                $sheet->setCellValue('A1', $this->tr("SGTM - MODÈLE D'IMPORT FORMATIONS (MASS)", 'SGTM - TRAININGS MASS IMPORT TEMPLATE'));
                 $sheet->mergeCells('A1:D1');
                 $sheet->getStyle('A1:D1')->applyFromArray([
                     'font' => ['bold' => true, 'size' => 18, 'color' => ['rgb' => $white]],
@@ -99,7 +110,10 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
                 $sheet->getRowDimension(1)->setRowHeight(40);
 
                 // === ROW 2: Instructions ===
-                $sheet->setCellValue('A2', 'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, TYPE_FORMATION* et DATE_FORMATION* obligatoires.');
+                $sheet->setCellValue('A2', $this->tr(
+                    'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, TYPE_FORMATION* et DATE_FORMATION* obligatoires.',
+                    'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf. CIN*, TYPE_FORMATION* and DATE_FORMATION* are required.'
+                ));
                 $sheet->mergeCells('A2:D2');
                 $sheet->getStyle('A2:D2')->applyFromArray([
                     'font' => ['size' => 11, 'italic' => true, 'color' => ['rgb' => $black]],
@@ -163,20 +177,23 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
                     $typeValidation->setAllowBlank(false);
                     $typeValidation->setShowDropDown(true);
                     $typeValidation->setShowErrorMessage(true);
-                    $typeValidation->setErrorTitle('Type formation');
-                    $typeValidation->setError('Veuillez sélectionner un type de formation valide dans la liste.');
+                    $typeValidation->setErrorTitle($this->tr('Type formation', 'Training type'));
+                    $typeValidation->setError($this->tr('Veuillez sélectionner un type de formation valide dans la liste.', 'Please select a valid training type from the list.'));
                     $typeValidation->setFormula1("='Lists'!\$A\$1:\$A\${typesLastRow}");
                 }
 
                 // Header hints
-                $sheet->getComment('A3')->getText()->createTextRun("CIN = IDENTIFIANT UNIQUE\n\nLe PDF dans le ZIP doit s'appeler: CIN.pdf");
+                $sheet->getComment('A3')->getText()->createTextRun($this->tr(
+                    "CIN = IDENTIFIANT UNIQUE\n\nLe PDF dans le ZIP doit s'appeler: CIN.pdf",
+                    'CIN = UNIQUE IDENTIFIER\n\nThe PDF in the ZIP must be named: CIN.pdf'
+                ));
                 $sheet->getComment('A3')->setWidth('220px');
                 $sheet->getComment('A3')->setHeight('90px');
 
-                $sheet->getComment('C3')->getText()->createTextRun('Format recommandé: AAAA-MM-JJ');
+                $sheet->getComment('C3')->getText()->createTextRun($this->tr('Format recommandé: AAAA-MM-JJ', 'Recommended format: YYYY-MM-DD'));
                 $sheet->getComment('C3')->setWidth('170px');
 
-                $sheet->getComment('D3')->getText()->createTextRun('Optionnel. Format recommandé: AAAA-MM-JJ');
+                $sheet->getComment('D3')->getText()->createTextRun($this->tr('Optionnel. Format recommandé: AAAA-MM-JJ', 'Optional. Recommended format: YYYY-MM-DD'));
                 $sheet->getComment('D3')->setWidth('190px');
 
                 // Freeze & print settings

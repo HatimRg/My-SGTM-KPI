@@ -5,14 +5,14 @@ import {
   Skull,
   TrendingUp,
   TrendingDown,
-  Clock,
-  Users
+  Clock
 } from 'lucide-react'
 import {
   AreaChart,
   Area,
   BarChart,
   Bar,
+  ComposedChart,
   LineChart,
   Line,
   PieChart,
@@ -20,10 +20,14 @@ import {
   Cell,
   XAxis,
   YAxis,
+  ZAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend
+  Legend,
+  Sankey,
+  ScatterChart,
+  Scatter
 } from 'recharts'
 
 const COLORS = {
@@ -54,8 +58,70 @@ const MetricCard = memo(function MetricCard({ title, value, icon: Icon, color, t
   )
 })
 
-const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projectPerformance }) {
+const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projectPerformance, safetyPerformance, safetyLoading }) {
   const t = useTranslation()
+
+  const hasSafetyPerformance = !!safetyPerformance?.kpis
+
+  const spKpis = useMemo(() => {
+    const k = safetyPerformance?.kpis || {}
+    return {
+      totalEvents: k.total_events ?? 0,
+      severityWeightedIndex: k.severity_weighted_index ?? 0,
+      pctSevere: k.pct_severe ?? 0,
+      totalVictims: k.total_victims ?? 0,
+      totalFatalities: k.total_fatalities ?? 0,
+      pctActionsOverdue: k.pct_actions_overdue ?? 0,
+      worstProject: k.worst_project ?? null,
+      worstLocation: k.worst_location ?? null,
+      topActivity: k.top_activity ?? null,
+      topRootCause: k.top_root_cause ?? null,
+    }
+  }, [safetyPerformance])
+
+  const spCharts = useMemo(() => safetyPerformance?.charts || {}, [safetyPerformance])
+
+  const projectHotspots = useMemo(() => {
+    const rows = spCharts?.project_hotspots
+    return Array.isArray(rows) ? rows.slice(0, 10) : []
+  }, [spCharts])
+
+  const activityPareto = useMemo(() => {
+    const rows = spCharts?.activity_driver
+    return Array.isArray(rows) ? rows.slice(0, 10) : []
+  }, [spCharts])
+
+  const conditions = useMemo(() => {
+    const m = spCharts?.conditions_matrix || {}
+    const data = Array.isArray(m.data) ? m.data : []
+    const rows = Array.isArray(m.rows) ? m.rows : []
+    const cols = Array.isArray(m.cols) ? m.cols : []
+    const max = data.reduce((acc, d) => Math.max(acc, Number(d?.value ?? 0)), 0)
+    return { rows, cols, data, max }
+  }, [spCharts])
+
+  const sankeyData = useMemo(() => {
+    const cp = spCharts?.cause_path || {}
+    const nodes = Array.isArray(cp.nodes) ? cp.nodes : []
+    const links = Array.isArray(cp.links) ? cp.links : []
+    return { nodes, links }
+  }, [spCharts])
+
+  const bubbleData = useMemo(() => {
+    const rows = spCharts?.severity_vs_victims
+    if (!Array.isArray(rows)) return []
+    return rows.map((r) => ({
+      severity: Number(r?.severity_score ?? 0),
+      victims: Number(r?.victims ?? 0),
+      events: Number(r?.events ?? 0),
+      activity: r?.activity ?? 'Unknown',
+    }))
+  }, [spCharts])
+
+  const actionsHealth = useMemo(() => {
+    const rows = spCharts?.actions_health
+    return Array.isArray(rows) ? rows.slice(0, 10) : []
+  }, [spCharts])
 
   // Safety metrics
   const safetyMetrics = useMemo(() => ({
@@ -115,185 +181,422 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
     }))
   }, [projectPerformance])
 
+  const Heatmap = memo(function Heatmap({ data, rows, cols, max }) {
+    const getValue = (r, c) => {
+      const found = (data || []).find((d) => d.ground_condition === r && d.lighting === c)
+      return Number(found?.value ?? 0)
+    }
+
+    const colorFor = (v) => {
+      if (!max || max <= 0) return 'rgba(220,38,38,0.05)'
+      const ratio = Math.max(0, Math.min(1, v / max))
+      const alpha = 0.08 + ratio * 0.85
+      return `rgba(220,38,38,${alpha})`
+    }
+
+    return (
+      <div className="w-full overflow-auto">
+        <div className="min-w-[640px]">
+          <div className="grid" style={{ gridTemplateColumns: `160px repeat(${cols.length}, minmax(80px, 1fr))` }}>
+            <div className="text-xs font-medium text-gray-600 dark:text-gray-300 p-2">{t('dashboard.safety.lighting') || 'Lighting'}</div>
+            {cols.map((c) => (
+              <div key={c} className="text-xs font-medium text-gray-600 dark:text-gray-300 p-2 text-center truncate" title={c}>{c}</div>
+            ))}
+
+            {rows.map((r) => (
+              <div key={r} className="contents">
+                <div className="text-xs font-medium text-gray-700 dark:text-gray-200 p-2 truncate" title={r}>{r}</div>
+                {cols.map((c) => {
+                  const v = getValue(r, c)
+                  return (
+                    <div
+                      key={`${r}|${c}`}
+                      className="p-2 border border-gray-100 dark:border-gray-800"
+                      title={`${r} / ${c}: ${v}`}
+                    >
+                      <div className="w-full h-8 rounded" style={{ background: colorFor(v) }} />
+                      <div className="text-[11px] text-gray-600 dark:text-gray-300 mt-1 text-center">{v}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  })
+
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Safety Metrics Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard
-          title={t('dashboard.safety.totalAccidents')}
-          value={safetyMetrics.totalAccidents}
-          icon={AlertTriangle}
-          color={safetyMetrics.totalAccidents > 0 ? 'red' : 'green'}
-          trend={t('dashboard.safety.yearToDate')}
-        />
-        <MetricCard
-          title={t('dashboard.safety.fatalAccidents')}
-          value={safetyMetrics.fatalAccidents}
-          icon={Skull}
-          color={safetyMetrics.fatalAccidents > 0 ? 'red' : 'green'}
-          trend={safetyMetrics.fatalAccidents === 0 ? t('dashboard.safety.noFatalities') : t('dashboard.safety.critical')}
-        />
-        <MetricCard
-          title={t('dashboard.safety.tfRate')}
-          value={safetyMetrics.avgTF}
-          icon={TrendingUp}
-          color="amber"
-          trend={t('dashboard.safety.avgFrequencyRate')}
-        />
-        <MetricCard
-          title={t('dashboard.safety.tgRate')}
-          value={safetyMetrics.avgTG}
-          icon={TrendingDown}
-          color="purple"
-          trend={t('dashboard.safety.avgSeverityRate')}
-        />
-      </div>
-
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Accident Trends */}
+      {safetyLoading && !hasSafetyPerformance && (
         <div className="card">
-          <div className="card-header">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.safety.accidentTrends')}</h3>
-          </div>
           <div className="card-body">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={accidentTrends}>
-                  <defs>
-                    <linearGradient id="accidentGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#dc2626" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#dc2626" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
-                  <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                    labelStyle={{ color: '#f3f4f6' }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="accidents" 
-                    stroke="#dc2626" 
-                    fill="url(#accidentGradient)" 
-                    name="Accidents"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 dark:border-gray-300" />
+              <span className="text-sm">{t('common.loading') || 'Loading...'}</span>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Accidents by Severity */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.safety.accidentsBySeverity')}</h3>
+      {hasSafetyPerformance && (
+        <>
+          {/* Safety Performance KPI Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard
+              title={t('dashboard.safety.totalEvents') || 'Total events'}
+              value={spKpis.totalEvents}
+              icon={AlertTriangle}
+              color={spKpis.totalEvents > 0 ? 'amber' : 'green'}
+              trend={t('dashboard.safety.yearToDate') || 'Year-to-date'}
+            />
+            <MetricCard
+              title={t('dashboard.safety.severityWeightedIndex') || 'Severity-weighted index'}
+              value={spKpis.severityWeightedIndex}
+              icon={TrendingUp}
+              color={spKpis.severityWeightedIndex > 0 ? 'red' : 'green'}
+              trend={spKpis.worstProject ? `${t('dashboard.safety.worstProject') || 'Worst project'}: ${spKpis.worstProject.project_name}` : null}
+            />
+            <MetricCard
+              title={t('dashboard.safety.severeShare') || 'Severe share'}
+              value={`${Number(spKpis.pctSevere ?? 0).toFixed(1)}%`}
+              icon={Skull}
+              color={spKpis.pctSevere > 0 ? 'red' : 'green'}
+              trend={spKpis.totalFatalities > 0 ? `${t('dashboard.safety.fatalAccidents') || 'Fatalities'}: ${spKpis.totalFatalities}` : (t('dashboard.safety.noFatalities') || 'No fatalities')}
+            />
+            <MetricCard
+              title={t('dashboard.safety.actionsOverdue') || 'Actions overdue'}
+              value={`${Number(spKpis.pctActionsOverdue ?? 0).toFixed(1)}%`}
+              icon={Clock}
+              color={spKpis.pctActionsOverdue > 0 ? 'amber' : 'green'}
+              trend={spKpis.worstLocation ? `${t('dashboard.safety.worstLocation') || 'Worst location'}: ${spKpis.worstLocation.location}` : null}
+            />
           </div>
-          <div className="card-body">
-            <div className="h-64">
-              {accidentsBySeverity.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={accidentsBySeverity}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                      label={({ name, value }) => `${name}: ${value}`}
-                    >
-                      {accidentsBySeverity.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-green-600 dark:text-green-400">
-                  <div className="text-center">
-                    <AlertTriangle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p className="font-medium">{t('dashboard.safety.noAccidents')}</p>
-                    <p className="text-sm text-gray-500">{t('dashboard.safety.greatSafety')}</p>
-                  </div>
+
+          {/* Charts Grid (Safety Performance) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Project hotspots */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.safety.projectHotspots') || 'Project Hotspots (severity-weighted)'}</h3>
+              </div>
+              <div className="card-body">
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={projectHotspots} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
+                      <XAxis type="number" tick={{ fontSize: 11 }} />
+                      <YAxis
+                        type="category"
+                        dataKey="project_name"
+                        tick={{ fontSize: 10 }}
+                        width={120}
+                      />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="fatal" stackId="a" fill="#dc2626" name="fatal" />
+                      <Bar dataKey="serious" stackId="a" fill="#f59e0b" name="serious" />
+                      <Bar dataKey="lta" stackId="a" fill="#8b5cf6" name="lta" />
+                      <Bar dataKey="medical" stackId="a" fill="#3b82f6" name="medical" />
+                      <Bar dataKey="first_aid" stackId="a" fill="#16a34a" name="first_aid" />
+                      <Bar dataKey="near_miss" stackId="a" fill="#14b8a6" name="near_miss" />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* TF vs TG Rates */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.safety.tfVsTg')}</h3>
-          </div>
-          <div className="card-body">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={tfTgData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
-                  <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                    labelStyle={{ color: '#f3f4f6' }}
-                  />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="tf" 
-                    stroke={COLORS.tf} 
-                    strokeWidth={2}
-                    dot={{ fill: COLORS.tf, r: 3 }}
-                    name="TF Rate"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="tg" 
-                    stroke={COLORS.tg} 
-                    strokeWidth={2}
-                    dot={{ fill: COLORS.tg, r: 3 }}
-                    name="TG Rate"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+            {/* Activity driver Pareto */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.safety.activityDriver') || 'Activity Driver (Pareto)'}</h3>
+              </div>
+              <div className="card-body">
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={activityPareto}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
+                      <XAxis dataKey="activity" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
+                      <YAxis yAxisId="left" allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar yAxisId="left" dataKey="count" fill="#dc2626" name="count" />
+                      <Line yAxisId="right" type="monotone" dataKey="cumulative_pct" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} name="cumulative %" />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Safety by Project */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.safety.accidentsByProject')}</h3>
-          </div>
-          <div className="card-body">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={safetyByProject} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
-                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                    labelStyle={{ color: '#f3f4f6' }}
-                  />
-                  <Bar 
-                    dataKey="accidents" 
-                    fill="#dc2626" 
-                    radius={[0, 4, 4, 0]}
-                    name="Accidents"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+            {/* Conditions heatmap */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.safety.conditionsMatrix') || 'Conditions Matrix (severity-weighted)'}</h3>
+              </div>
+              <div className="card-body">
+                <Heatmap data={conditions.data} rows={conditions.rows} cols={conditions.cols} max={conditions.max} />
+              </div>
+            </div>
+
+            {/* Cause path sankey */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.safety.causePath') || 'Cause Path (Immediate → Root)'}</h3>
+              </div>
+              <div className="card-body">
+                <div className="h-72">
+                  {sankeyData.nodes.length > 0 && sankeyData.links.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <Sankey
+                        data={sankeyData}
+                        nodePadding={18}
+                        linkCurvature={0.6}
+                        node={{ stroke: '#e5e7eb', strokeWidth: 1 }}
+                      >
+                        <Tooltip />
+                      </Sankey>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 text-sm">
+                      {t('common.noData') || 'No data available'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Bubble: severity vs victims */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.safety.severityVsVictims') || 'Severity vs Victims (bubble)'}</h3>
+              </div>
+              <div className="card-body">
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ScatterChart>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
+                      <XAxis type="number" dataKey="severity" name="severity" domain={[1, 6]} tick={{ fontSize: 11 }} />
+                      <YAxis type="number" dataKey="victims" name="victims" allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <ZAxis type="number" dataKey="events" range={[80, 600]} name="events" />
+                      <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                      <Legend />
+                      <Scatter name="events" data={bubbleData} fill="#dc2626" />
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions health */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.safety.actionsHealth') || 'Actions Health'}</h3>
+              </div>
+              <div className="card-body">
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={actionsHealth}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
+                      <XAxis dataKey="type" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="overdue" stackId="a" fill="#f59e0b" name="overdue" />
+                      <Bar dataKey="open" stackId="a" fill="#dc2626" name="open" />
+                      <Bar dataKey="in_progress" stackId="a" fill="#3b82f6" name="in_progress" />
+                      <Bar dataKey="closed" stackId="a" fill="#16a34a" name="closed" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
+
+      {!hasSafetyPerformance && (
+        <>
+          {/* Safety Metrics Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard
+              title={t('dashboard.safety.totalAccidents')}
+              value={safetyMetrics.totalAccidents}
+              icon={AlertTriangle}
+              color={safetyMetrics.totalAccidents > 0 ? 'red' : 'green'}
+              trend={t('dashboard.safety.yearToDate')}
+            />
+            <MetricCard
+              title={t('dashboard.safety.fatalAccidents')}
+              value={safetyMetrics.fatalAccidents}
+              icon={Skull}
+              color={safetyMetrics.fatalAccidents > 0 ? 'red' : 'green'}
+              trend={safetyMetrics.fatalAccidents === 0 ? t('dashboard.safety.noFatalities') : t('dashboard.safety.critical')}
+            />
+            <MetricCard
+              title={t('dashboard.safety.tfRate')}
+              value={safetyMetrics.avgTF}
+              icon={TrendingUp}
+              color="amber"
+              trend={t('dashboard.safety.avgFrequencyRate')}
+            />
+            <MetricCard
+              title={t('dashboard.safety.tgRate')}
+              value={safetyMetrics.avgTG}
+              icon={TrendingDown}
+              color="purple"
+              trend={t('dashboard.safety.avgSeverityRate')}
+            />
+          </div>
+
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Accident Trends */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.safety.accidentTrends')}</h3>
+              </div>
+              <div className="card-body">
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={accidentTrends}>
+                      <defs>
+                        <linearGradient id="accidentGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#dc2626" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#dc2626" stopOpacity={0.1}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
+                      <XAxis dataKey="week" tick={{ fontSize: 11 }} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                        labelStyle={{ color: '#f3f4f6' }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="accidents" 
+                        stroke="#dc2626" 
+                        fill="url(#accidentGradient)" 
+                        name="Accidents"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Accidents by Severity */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.safety.accidentsBySeverity')}</h3>
+              </div>
+              <div className="card-body">
+                <div className="h-64">
+                  {accidentsBySeverity.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={accidentsBySeverity}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                          label={({ name, value }) => `${name}: ${value}`}
+                        >
+                          {accidentsBySeverity.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-green-600 dark:text-green-400">
+                      <div className="text-center">
+                        <AlertTriangle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                        <p className="font-medium">{t('dashboard.safety.noAccidents')}</p>
+                        <p className="text-sm text-gray-500">{t('dashboard.safety.greatSafety')}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* TF vs TG Rates */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.safety.tfVsTg')}</h3>
+              </div>
+              <div className="card-body">
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={tfTgData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
+                      <XAxis dataKey="week" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                        labelStyle={{ color: '#f3f4f6' }}
+                      />
+                      <Legend />
+                      <Line 
+                        type="monotone" 
+                        dataKey="tf" 
+                        stroke={COLORS.tf} 
+                        strokeWidth={2}
+                        dot={{ fill: COLORS.tf, r: 3 }}
+                        name="TF Rate"
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="tg" 
+                        stroke={COLORS.tg} 
+                        strokeWidth={2}
+                        dot={{ fill: COLORS.tg, r: 3 }}
+                        name="TG Rate"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Safety by Project */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.safety.accidentsByProject')}</h3>
+              </div>
+              <div className="card-body">
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={safetyByProject} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
+                      <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                        labelStyle={{ color: '#f3f4f6' }}
+                      />
+                      <Bar 
+                        dataKey="accidents" 
+                        fill="#dc2626" 
+                        radius={[0, 4, 4, 0]}
+                        name="Accidents"
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 })

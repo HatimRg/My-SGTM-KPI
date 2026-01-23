@@ -260,6 +260,8 @@ class WorkerController extends Controller
     {
         $user = $this->checkAccess($request);
 
+        $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
+
         if (!class_exists(\ZipArchive::class) || !extension_loaded('zip')) {
             return $this->error('ZipArchive extension is required to generate Excel templates', 500);
         }
@@ -272,7 +274,7 @@ class WorkerController extends Controller
             ->all();
 
         $filename = 'workers_template.xlsx';
-        $contents = Excel::raw(new WorkersTemplateExport($projects), ExcelFormat::XLSX);
+        $contents = Excel::raw(new WorkersTemplateExport($projects, $lang), ExcelFormat::XLSX);
 
         return response($contents, 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

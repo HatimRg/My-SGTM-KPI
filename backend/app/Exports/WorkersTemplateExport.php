@@ -17,15 +17,23 @@ class WorkersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, 
 {
     protected $projects;
     protected $dataRows = 50; // Number of empty data rows
+    protected string $lang;
 
-    public function __construct(array $projects = [])
+    public function __construct(array $projects = [], string $lang = 'fr')
     {
         $this->projects = $projects;
+        $lang = strtolower(trim($lang));
+        $this->lang = in_array($lang, ['en', 'fr'], true) ? $lang : 'fr';
+    }
+
+    private function tr(string $fr, string $en): string
+    {
+        return $this->lang === 'en' ? $en : $fr;
     }
 
     public function title(): string
     {
-        return 'Travailleurs';
+        return $this->tr('Travailleurs', 'Workers');
     }
 
     public function columnWidths(): array
@@ -67,7 +75,7 @@ class WorkersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, 
                 $grayBorder = '9CA3AF';      // Gray-400
 
                 // === ROW 1: Title ===
-                $sheet->setCellValue('A1', 'SGTM - MODÈLE D\'IMPORT TRAVAILLEURS');
+                $sheet->setCellValue('A1', $this->tr("SGTM - MODÈLE D'IMPORT TRAVAILLEURS", 'SGTM - WORKERS IMPORT TEMPLATE'));
                 $sheet->mergeCells('A1:I1');
                 $sheet->getStyle('A1:I1')->applyFromArray([
                     'font' => [
@@ -87,7 +95,10 @@ class WorkersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, 
                 $sheet->getRowDimension(1)->setRowHeight(40);
 
                 // === ROW 2: Instructions ===
-                $sheet->setCellValue('A2', 'Instructions: CIN obligatoire et unique. STATUT: ACTIF/INACTIF (INACTIF = non visible dans le projet)');
+                $sheet->setCellValue('A2', $this->tr(
+                    'Instructions: CIN obligatoire et unique. STATUT: ACTIF/INACTIF (INACTIF = non visible dans le projet)',
+                    'Instructions: CIN is required and must be unique. STATUS: ACTIVE/INACTIVE (INACTIVE = not visible in the project)'
+                ));
                 $sheet->mergeCells('A2:I2');
                 $sheet->getStyle('A2:I2')->applyFromArray([
                     'font' => [
@@ -113,7 +124,9 @@ class WorkersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, 
                 $sheet->getRowDimension(2)->setRowHeight(28);
 
                 // === ROW 3: Headers ===
-                $headers = ['NOM', 'PRENOM', 'FONCTION', 'CIN', 'DATE DE NAISSANCE', 'ENTREPRISE', 'PROJET', 'DATE D\'ENTREE', 'STATUT'];
+                $headers = $this->lang === 'en'
+                    ? ['LAST_NAME', 'FIRST_NAME', 'POSITION', 'CIN', 'BIRTH_DATE', 'COMPANY', 'PROJECT', 'HIRE_DATE', 'STATUS']
+                    : ['NOM', 'PRENOM', 'FONCTION', 'CIN', 'DATE DE NAISSANCE', 'ENTREPRISE', 'PROJET', 'DATE D\'ENTREE', 'STATUT'];
                 $col = 'A';
                 foreach ($headers as $header) {
                     $sheet->setCellValue($col . '3', $header);
@@ -181,8 +194,8 @@ class WorkersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, 
                     $statusValidation->setErrorStyle(DataValidation::STYLE_STOP);
                     $statusValidation->setAllowBlank(false);
                     $statusValidation->setShowDropDown(true);
-                    $statusValidation->setFormula1('"ACTIF,INACTIF"');
-                    $sheet->setCellValue("I{$row}", 'ACTIF'); // Default to ACTIF
+                    $statusValidation->setFormula1($this->lang === 'en' ? '"ACTIVE,INACTIVE"' : '"ACTIF,INACTIF"');
+                    $sheet->setCellValue("I{$row}", $this->lang === 'en' ? 'ACTIVE' : 'ACTIF'); // Default to active
                 }
 
                 // === PROJECT DROPDOWN VALIDATION ===
@@ -213,36 +226,45 @@ class WorkersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, 
                         $validation->setShowInputMessage(true);
                         $validation->setShowErrorMessage(true);
                         $validation->setShowDropDown(true);
-                        $validation->setErrorTitle('Erreur');
-                        $validation->setError('Veuillez sélectionner un projet valide dans la liste.');
-                        $validation->setPromptTitle('Projet');
-                        $validation->setPrompt('Sélectionnez un projet');
+                        $validation->setErrorTitle($this->tr('Erreur', 'Error'));
+                        $validation->setError($this->tr('Veuillez sélectionner un projet valide dans la liste.', 'Please select a valid project from the list.'));
+                        $validation->setPromptTitle($this->tr('Projet', 'Project'));
+                        $validation->setPrompt($this->tr('Sélectionnez un projet', 'Select a project'));
                         $validation->setFormula1($projectRange);
                     }
                 }
 
                 // === COMMENTS/TOOLTIPS ===
                 $sheet->getComment('D3')->getText()->createTextRun(
-                    "CIN = IDENTIFIANT UNIQUE\n\nObligatoire pour chaque travailleur.\nLes doublons seront fusionnés."
+                    $this->tr(
+                        "CIN = IDENTIFIANT UNIQUE\n\nObligatoire pour chaque travailleur.\nLes doublons seront fusionnés.",
+                        "CIN = UNIQUE IDENTIFIER\n\nRequired for each worker.\nDuplicates will be merged."
+                    )
                 );
                 $sheet->getComment('D3')->setWidth('200px');
                 $sheet->getComment('D3')->setHeight('70px');
 
-                $sheet->getComment('E3')->getText()->createTextRun("Format: JJ/MM/AAAA");
+                $sheet->getComment('E3')->getText()->createTextRun($this->tr('Format: JJ/MM/AAAA', 'Format: DD/MM/YYYY'));
                 $sheet->getComment('E3')->setWidth('120px');
 
-                $sheet->getComment('H3')->getText()->createTextRun("Format: JJ/MM/AAAA");
+                $sheet->getComment('H3')->getText()->createTextRun($this->tr('Format: JJ/MM/AAAA', 'Format: DD/MM/YYYY'));
                 $sheet->getComment('H3')->setWidth('120px');
 
                 if (!empty($projects)) {
                     $sheet->getComment('G3')->getText()->createTextRun(
-                        "Utilisez la liste déroulante\npour sélectionner un projet."
+                        $this->tr(
+                            "Utilisez la liste déroulante\npour sélectionner un projet.",
+                            "Use the dropdown\nto select a project."
+                        )
                     );
                     $sheet->getComment('G3')->setWidth('180px');
                 }
 
                 $sheet->getComment('I3')->getText()->createTextRun(
-                    "ACTIF = visible dans le projet\nINACTIF = masqué du projet"
+                    $this->tr(
+                        "ACTIF = visible dans le projet\nINACTIF = masqué du projet",
+                        "ACTIVE = visible in the project\nINACTIVE = hidden from the project"
+                    )
                 );
                 $sheet->getComment('I3')->setWidth('180px');
 

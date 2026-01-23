@@ -85,7 +85,9 @@ class HeavyMachineryMachineController extends Controller
 
             $filename = 'SGTM-Machines-Template.xlsx';
 
-            return Excel::download(new MachinesTemplateExport(200, $projectCodes), $filename);
+            $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
+
+            return Excel::download(new MachinesTemplateExport(200, $projectCodes, $lang), $filename);
         } catch (\Throwable $e) {
             Log::error('Machines template generation failed', [
                 'error' => $e->getMessage(),

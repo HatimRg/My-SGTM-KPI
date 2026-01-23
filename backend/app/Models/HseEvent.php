@@ -25,6 +25,7 @@ class HseEvent extends Model
         'lost_time',
         'lost_days',
         'location',
+        'details',
     ];
 
     protected $casts = [
@@ -35,6 +36,7 @@ class HseEvent extends Model
         'week_year' => 'integer',
         'lost_time' => 'boolean',
         'lost_days' => 'integer',
+        'details' => 'array',
     ];
 
     public function project()
