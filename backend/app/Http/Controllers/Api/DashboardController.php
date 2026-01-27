@@ -14,6 +14,10 @@ use App\Models\Inspection;
 use App\Models\Machine;
 use App\Models\HseEvent;
 use App\Models\RegulatoryWatchSubmission;
+use App\Models\Worker;
+use App\Models\WorkerMedicalAptitude;
+use App\Models\MonthlyKpiMeasurement;
+use App\Models\LightingMeasurement;
 use App\Helpers\WeekHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -92,6 +96,169 @@ class DashboardController extends Controller
             'score' => $score,
             'label' => self::SAFETY_PERFORMANCE_SEVERITY_LABELS[$score] ?? 'near_miss',
         ];
+    }
+
+    /**
+     * Monthly environmental dashboard data sourced from measurement tables.
+     */
+    public function environmentalMonthly(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || (!$user->isAdminLike() && !$user->isHseManager())) {
+            return $this->error('Access denied', 403);
+        }
+        $year = (int) $request->get('year', (int) date('Y'));
+        $month = $request->get('month');
+        $month = $month !== null && $month !== '' && $month !== 'all' ? (int) $month : null;
+
+        $projectId = $request->get('project_id');
+        $pole = $request->get('pole');
+
+        $projectIds = $user?->visibleProjectIds();
+        if ($projectIds !== null && count($projectIds) === 0) {
+            return $this->success([
+                'year' => $year,
+                'month' => $month,
+                'series' => [],
+                'stats' => [
+                    'noise_avg' => 0,
+                    'water_total' => 0,
+                    'electricity_total' => 0,
+                    'lux_avg' => 0,
+                    'lux_compliance_rate' => 0,
+                    'lux_count' => 0,
+                ],
+            ]);
+        }
+
+        $months = range(1, 12);
+        $series = collect($months)->map(fn ($m) => [
+            'month' => $m,
+            'noise_avg' => 0,
+            'water_total' => 0,
+            'electricity_total' => 0,
+            'lux_avg' => 0,
+            'lux_compliance_rate' => 0,
+            'lux_count' => 0,
+        ])->keyBy('month');
+
+        $monthlyQuery = MonthlyKpiMeasurement::query()->where('year', $year);
+        if ($projectIds !== null) {
+            $monthlyQuery->whereIn('project_id', $projectIds);
+        }
+        if ($projectId) {
+            $monthlyQuery->where('project_id', (int) $projectId);
+        }
+        if ($pole !== null && $pole !== '') {
+            $monthlyQuery->whereHas('project', function ($q) use ($pole) {
+                $q->where('pole', $pole);
+            });
+        }
+        if ($month !== null) {
+            $monthlyQuery->where('month', $month);
+        }
+
+        $indicators = ['noise_monitoring', 'water_consumption', 'electricity_consumption'];
+        $monthlyRows = (clone $monthlyQuery)
+            ->whereIn('indicator', $indicators)
+            ->selectRaw('month, indicator, SUM(value) as total_value, AVG(value) as avg_value')
+            ->groupBy('month', 'indicator')
+            ->get();
+
+        foreach ($monthlyRows as $row) {
+            $m = (int) $row->month;
+            if (!$series->has($m)) {
+                continue;
+            }
+            $entry = $series->get($m);
+            $indicator = (string) $row->indicator;
+            if ($indicator === 'noise_monitoring') {
+                $entry['noise_avg'] = round((float) ($row->avg_value ?? 0), 1);
+            } elseif ($indicator === 'water_consumption') {
+                $entry['water_total'] = round((float) ($row->total_value ?? 0), 2);
+            } elseif ($indicator === 'electricity_consumption') {
+                $entry['electricity_total'] = round((float) ($row->total_value ?? 0), 2);
+            }
+            $series->put($m, $entry);
+        }
+
+        $lightingQuery = LightingMeasurement::query()->where('year', $year);
+        if ($projectIds !== null) {
+            $lightingQuery->whereIn('project_id', $projectIds);
+        }
+        if ($projectId) {
+            $lightingQuery->where('project_id', (int) $projectId);
+        }
+        if ($pole !== null && $pole !== '') {
+            $lightingQuery->whereHas('project', function ($q) use ($pole) {
+                $q->where('pole', $pole);
+            });
+        }
+        if ($month !== null) {
+            $lightingQuery->where('month', $month);
+        }
+
+        $luxRows = (clone $lightingQuery)
+            ->selectRaw('month, AVG(lux_value) as avg_lux, COUNT(*) as total_count, SUM(CASE WHEN is_compliant = 1 THEN 1 ELSE 0 END) as compliant_count, SUM(CASE WHEN is_compliant IS NOT NULL THEN 1 ELSE 0 END) as compliance_total')
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get();
+
+        foreach ($luxRows as $row) {
+            $m = (int) $row->month;
+            if (!$series->has($m)) {
+                continue;
+            }
+            $entry = $series->get($m);
+            $entry['lux_avg'] = round((float) ($row->avg_lux ?? 0), 1);
+            $entry['lux_count'] = (int) ($row->total_count ?? 0);
+            $den = (int) ($row->compliance_total ?? 0);
+            $num = (int) ($row->compliant_count ?? 0);
+            $entry['lux_compliance_rate'] = $den > 0 ? round(($num * 100.0) / $den, 1) : 0;
+            $series->put($m, $entry);
+        }
+
+        $seriesList = $series->values()->all();
+
+        // Stats: if a month is selected, use that month; otherwise use YTD values.
+        $stats = [
+            'noise_avg' => 0,
+            'water_total' => 0,
+            'electricity_total' => 0,
+            'lux_avg' => 0,
+            'lux_compliance_rate' => 0,
+            'lux_count' => 0,
+        ];
+
+        if ($month !== null) {
+            $stats = $series->get($month) ?? $stats;
+        } else {
+            $noiseValues = array_map(fn ($r) => (float) ($r['noise_avg'] ?? 0), $seriesList);
+            $noiseNonZero = array_values(array_filter($noiseValues, fn ($v) => $v > 0));
+            $stats['noise_avg'] = count($noiseNonZero) > 0 ? round(array_sum($noiseNonZero) / count($noiseNonZero), 1) : 0;
+            $stats['water_total'] = round(array_sum(array_map(fn ($r) => (float) ($r['water_total'] ?? 0), $seriesList)), 2);
+            $stats['electricity_total'] = round(array_sum(array_map(fn ($r) => (float) ($r['electricity_total'] ?? 0), $seriesList)), 2);
+
+            $luxValues = array_map(fn ($r) => (float) ($r['lux_avg'] ?? 0), $seriesList);
+            $luxNonZero = array_values(array_filter($luxValues, fn ($v) => $v > 0));
+            $stats['lux_avg'] = count($luxNonZero) > 0 ? round(array_sum($luxNonZero) / count($luxNonZero), 1) : 0;
+            $stats['lux_count'] = (int) array_sum(array_map(fn ($r) => (int) ($r['lux_count'] ?? 0), $seriesList));
+
+            $compliancePairs = array_map(fn ($r) => [
+                'rate' => (float) ($r['lux_compliance_rate'] ?? 0),
+                'count' => (int) ($r['lux_count'] ?? 0),
+            ], $seriesList);
+            $weightedDen = array_sum(array_map(fn ($p) => $p['count'], $compliancePairs));
+            $weightedNum = array_sum(array_map(fn ($p) => $p['rate'] * $p['count'], $compliancePairs));
+            $stats['lux_compliance_rate'] = $weightedDen > 0 ? round($weightedNum / $weightedDen, 1) : 0;
+        }
+
+        return $this->success([
+            'year' => $year,
+            'month' => $month,
+            'series' => $seriesList,
+            'stats' => $stats,
+        ]);
     }
 
     private function victimsCountFromDetails(?array $details): int
@@ -232,7 +399,7 @@ class DashboardController extends Controller
             if (!isset($byProject[$projectKey])) {
                 $byProject[$projectKey] = [
                     'project_id' => (int) ($p?->id ?? $e->project_id),
-                    'project_name' => (string) ($p?->name ?? 'Unknown'),
+                    'project_name' => (string) ($p?->name ?? 'unknown'),
                     'project_code' => $p?->code,
                     'near_miss' => 0,
                     'first_aid' => 0,
@@ -253,7 +420,7 @@ class DashboardController extends Controller
             if ($loc === '' && is_array($details)) {
                 $loc = (string) ($details['exact_location'] ?? '');
             }
-            $loc = $loc !== '' ? $loc : 'Unknown';
+            $loc = $loc !== '' ? $loc : 'unknown';
             $byLocation[$loc] = ($byLocation[$loc] ?? 0) + $score;
 
             // Activity driver
@@ -264,7 +431,7 @@ class DashboardController extends Controller
                     $activity = $details['activity_other'];
                 }
             }
-            $activity = $activity ? (string) $activity : 'Unknown';
+            $activity = $activity ? (string) $activity : 'unknown';
             $byActivity[$activity] = ($byActivity[$activity] ?? 0) + 1;
 
             // Conditions Matrix
@@ -274,8 +441,8 @@ class DashboardController extends Controller
                 $ground = $details['ground_condition'] ?? null;
                 $lighting = $details['lighting'] ?? null;
             }
-            $ground = $ground ? (string) $ground : 'Unknown';
-            $lighting = $lighting ? (string) $lighting : 'Unknown';
+            $ground = $ground ? (string) $ground : 'unknown';
+            $lighting = $lighting ? (string) $lighting : 'unknown';
             $grounds[$ground] = true;
             $lightings[$lighting] = true;
             if (!isset($conditionsMatrix[$ground])) {
@@ -296,9 +463,9 @@ class DashboardController extends Controller
                     $roots = array_values(array_filter(array_map('strval', $rootsRaw)));
                 }
             }
-            $immediate = $immediate ? (string) $immediate : 'Unknown';
+            $immediate = $immediate ? (string) $immediate : 'unknown';
             if (empty($roots)) {
-                $roots = ['Unknown'];
+                $roots = ['unknown'];
             }
 
             foreach ($roots as $r) {
@@ -761,6 +928,188 @@ class DashboardController extends Controller
                 ];
             });
 
+        // Compliance (medical + HSE) should be computed from authoritative sources:
+        // - Medical: workers + medical aptitudes (based on exam_date)
+        // - HSE: regulatory watch submissions (based on overall_score)
+
+        $workersQuery = Worker::query();
+        if ($projectIdsForPole !== null) {
+            if (count($projectIdsForPole) === 0) {
+                $workersQuery->whereRaw('1 = 0');
+            } else {
+                $workersQuery->whereIn('project_id', $projectIdsForPole);
+            }
+        }
+        if ($projectId) {
+            $workersQuery->where('project_id', $projectId);
+        }
+        $totalWorkers = (int) (clone $workersQuery)->count();
+
+        // Overall medical compliance rate should match Worker Management:
+        // total workers vs workers having at least one "apte" medical aptitude (no exam_date filtering).
+        $medicalAptWorkersCount = (int) WorkerMedicalAptitude::query()
+            ->join('workers', 'workers.id', '=', 'worker_medical_aptitudes.worker_id')
+            ->where(function ($q) {
+                $q->where('worker_medical_aptitudes.aptitude_status', 'apte')
+                    ->orWhereRaw('LOWER(worker_medical_aptitudes.aptitude_status) REGEXP ?', ['^apte$']);
+            })
+            ->when($projectIdsForPole !== null, function ($q) use ($projectIdsForPole) {
+                if (count($projectIdsForPole) === 0) {
+                    return $q->whereRaw('1 = 0');
+                }
+                return $q->whereIn('workers.project_id', $projectIdsForPole);
+            })
+            ->when($projectId, function ($q) use ($projectId) {
+                return $q->where('workers.project_id', $projectId);
+            })
+            ->distinct()
+            ->count('worker_medical_aptitudes.worker_id');
+
+        $medicalComplianceRate = $totalWorkers > 0
+            ? round(($medicalAptWorkersCount * 100.0) / $totalWorkers, 1)
+            : 0.0;
+
+        // Weekly medical trend must use the date of the medical visit (exam_date).
+        $medicalYearStart = WeekHelper::getWeek1Start($year)->startOfDay();
+        $medicalYearEnd = WeekHelper::getWeekDates(52, $year)['end']->endOfDay();
+        if ($week && $week >= 1 && $week <= 52) {
+            $dates = WeekHelper::getWeekDates((int) $week, $year);
+            $medicalYearStart = $dates['start']->startOfDay();
+            $medicalYearEnd = $dates['end']->endOfDay();
+        }
+
+        // Seed cumulative curve with all prior years' (and prior weeks') apte visits,
+        // so Week 1 starts where the previous years left off.
+        $medicalBaselineWorkerIds = WorkerMedicalAptitude::query()
+            ->join('workers', 'workers.id', '=', 'worker_medical_aptitudes.worker_id')
+            ->where('worker_medical_aptitudes.exam_date', '<', $medicalYearStart->toDateString())
+            ->where(function ($q) {
+                $q->where('worker_medical_aptitudes.aptitude_status', 'apte')
+                    ->orWhereRaw('LOWER(worker_medical_aptitudes.aptitude_status) REGEXP ?', ['^apte$']);
+            })
+            ->when($projectIdsForPole !== null, function ($q) use ($projectIdsForPole) {
+                if (count($projectIdsForPole) === 0) {
+                    return $q->whereRaw('1 = 0');
+                }
+                return $q->whereIn('workers.project_id', $projectIdsForPole);
+            })
+            ->when($projectId, function ($q) use ($projectId) {
+                return $q->where('workers.project_id', $projectId);
+            })
+            ->distinct()
+            ->pluck('worker_medical_aptitudes.worker_id');
+
+        $medicalAptitudesForTrend = WorkerMedicalAptitude::query()
+            ->join('workers', 'workers.id', '=', 'worker_medical_aptitudes.worker_id')
+            ->whereBetween('worker_medical_aptitudes.exam_date', [
+                $medicalYearStart->toDateString(),
+                $medicalYearEnd->toDateString(),
+            ])
+            ->where(function ($q) {
+                $q->where('worker_medical_aptitudes.aptitude_status', 'apte')
+                    ->orWhereRaw('LOWER(worker_medical_aptitudes.aptitude_status) REGEXP ?', ['^apte$']);
+            })
+            ->when($projectIdsForPole !== null, function ($q) use ($projectIdsForPole) {
+                if (count($projectIdsForPole) === 0) {
+                    return $q->whereRaw('1 = 0');
+                }
+                return $q->whereIn('workers.project_id', $projectIdsForPole);
+            })
+            ->when($projectId, function ($q) use ($projectId) {
+                return $q->where('workers.project_id', $projectId);
+            })
+            ->get([
+                'worker_medical_aptitudes.worker_id',
+                'worker_medical_aptitudes.exam_date',
+            ]);
+
+        $medicalWorkersByWeek = array_fill(1, 52, []);
+        foreach ($medicalAptitudesForTrend as $row) {
+            $date = $row->exam_date instanceof Carbon
+                ? $row->exam_date
+                : Carbon::parse($row->exam_date);
+            $info = WeekHelper::getWeekFromDate($date);
+            if ((int) ($info['year'] ?? 0) !== (int) $year) {
+                continue;
+            }
+            $w = (int) ($info['week'] ?? 0);
+            if ($w < 1 || $w > 52) {
+                continue;
+            }
+            $workerId = (int) $row->worker_id;
+            $medicalWorkersByWeek[$w][$workerId] = true;
+        }
+
+        // Cumulative weekly compliance: cumulative % of workers with at least one "apte" visit
+        // from week 1 up to week w (based on exam_date).
+        $medicalComplianceByWeek = [];
+        $cumulativeWorkers = [];
+        foreach ($medicalBaselineWorkerIds as $workerId) {
+            $cumulativeWorkers[(int) $workerId] = true;
+        }
+        for ($w = 1; $w <= 52; $w++) {
+            foreach (($medicalWorkersByWeek[$w] ?? []) as $workerId => $_) {
+                $cumulativeWorkers[$workerId] = true;
+            }
+            $count = count($cumulativeWorkers);
+            $medicalComplianceByWeek[$w] = $totalWorkers > 0
+                ? round(($count * 100.0) / $totalWorkers, 1)
+                : 0.0;
+        }
+
+        $regulatoryWatchQuery = RegulatoryWatchSubmission::query()
+            ->where('week_year', $year)
+            ->whereNotNull('overall_score');
+        if ($projectIdsForPole !== null) {
+            if (count($projectIdsForPole) === 0) {
+                $regulatoryWatchQuery->whereRaw('1 = 0');
+            } else {
+                $regulatoryWatchQuery->whereIn('project_id', $projectIdsForPole);
+            }
+        }
+        if ($projectId) {
+            $regulatoryWatchQuery->where('project_id', $projectId);
+        }
+        if ($week && $week >= 1 && $week <= 53) {
+            $regulatoryWatchQuery->where('week_number', $week);
+        }
+
+        $regulatoryWatchAvg = null;
+        $rwValue = (clone $regulatoryWatchQuery)->avg('overall_score');
+        $regulatoryWatchAvg = $rwValue !== null ? round((float) $rwValue, 2) : null;
+
+        $regulatoryWatchByWeek = (clone $regulatoryWatchQuery)
+            ->select('week_number', DB::raw('AVG(overall_score) as avg_overall_score'))
+            ->groupBy('week_number')
+            ->orderBy('week_number')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'week_number' => (int) $item->week_number,
+                    'avg_overall_score' => round((float) $item->avg_overall_score, 1),
+                ];
+            });
+
+        $regulatoryWatchScoreByWeek = [];
+        foreach ($regulatoryWatchByWeek as $row) {
+            $regulatoryWatchScoreByWeek[(int) $row['week_number']] = (float) $row['avg_overall_score'];
+        }
+
+        // Override the KPI-computed compliance fields with authoritative values.
+        if ($kpiSummary) {
+            $kpiSummary->avg_medical_compliance = $medicalComplianceRate;
+            $kpiSummary->avg_hse_compliance = $regulatoryWatchAvg ?? 0;
+            $kpiSummary->medical_total_workers = $totalWorkers;
+            $kpiSummary->medical_apt_workers = $medicalAptWorkersCount;
+        }
+
+        $weeklyTrends = $weeklyTrends->map(function ($row) use ($medicalComplianceByWeek, $regulatoryWatchScoreByWeek) {
+            $weekNumber = (int) ($row['week'] ?? 0);
+            $row['medical_compliance'] = $medicalComplianceByWeek[$weekNumber] ?? 0;
+            $row['hse_compliance'] = $regulatoryWatchScoreByWeek[$weekNumber] ?? 0;
+            return $row;
+        });
+
         // Project performance
         // Compute TF/TG per project using weighted sums (Fedris formulas), respecting the optional week filter.
         $projectKpiMetricsQuery = KpiReport::selectRaw('
@@ -1101,23 +1450,7 @@ class DashboardController extends Controller
             ->orderBy('week_number')
             ->get();
 
-        $regulatoryWatchAvg = null;
-        if ($projectIdsForPole !== null && count($projectIdsForPole) === 0) {
-            $regulatoryWatchAvg = null;
-        } else {
-            $regulatoryWatchQuery = RegulatoryWatchSubmission::query()->where('week_year', $year);
-            if ($projectIdsForPole !== null) {
-                $regulatoryWatchQuery->whereIn('project_id', $projectIdsForPole);
-            }
-            if ($projectId) {
-                $regulatoryWatchQuery->where('project_id', $projectId);
-            }
-            if ($week && $week >= 1 && $week <= 53) {
-                $regulatoryWatchQuery->where('week_number', $week);
-            }
-            $value = (clone $regulatoryWatchQuery)->whereNotNull('overall_score')->avg('overall_score');
-            $regulatoryWatchAvg = $value !== null ? round((float) $value, 2) : null;
-        }
+        // (regulatory watch compliance is computed earlier from RegulatoryWatchSubmission)
 
         return $this->success([
             'projects' => $allProjectsForStatus,
@@ -1167,6 +1500,7 @@ class DashboardController extends Controller
             ],
             'regulatory_watch' => [
                 'avg_overall_score' => $regulatoryWatchAvg,
+                'by_week' => $regulatoryWatchByWeek,
             ],
         ]);
     }

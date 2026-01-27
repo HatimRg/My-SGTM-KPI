@@ -63,8 +63,8 @@ class HseEventController extends Controller
             'details.immediate_cause' => $baseRule . '|string|max:50',
             'details.immediate_cause_other' => 'nullable|string|max:255',
 
-            'details.root_causes' => 'nullable|array',
-            'details.root_causes.*' => 'string|max:50',
+            'details.root_causes' => $baseRule . '|array|min:1',
+            'details.root_causes.*' => $baseRule . '|string|max:50',
             'details.method_conformity' => 'nullable|string|max:50',
 
             'details.immediate_actions' => 'nullable|array',
@@ -161,7 +161,7 @@ class HseEventController extends Controller
 
     private function ensureWriteAccess($user, HseEvent $hseEvent): void
     {
-        if (!$user->isAdminLike() && (int) $hseEvent->entered_by !== (int) $user->id) {
+        if (!$user->canManageProjectActions() && (int) $hseEvent->entered_by !== (int) $user->id) {
             abort(403, 'Access denied');
         }
     }

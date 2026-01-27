@@ -208,10 +208,6 @@ class DailyKpiSnapshotController extends Controller
             return $this->error('Only admins and responsables can manage daily KPI entries', 403);
         }
 
-        if (!$user->isAdminLike() && $dailyKpiSnapshot->submitted_by !== $user->id) {
-            return $this->error('You can only edit your own daily KPI entries', 403);
-        }
-
         $project = Project::findOrFail($dailyKpiSnapshot->project_id);
         if (!$user->canAccessProject($project)) {
             return $this->error('Access denied', 403);
@@ -258,10 +254,6 @@ class DailyKpiSnapshotController extends Controller
 
         if (!$user->isAdminLike() && !$user->isResponsable()) {
             return $this->error('Only admins and responsables can delete daily KPI entries', 403);
-        }
-
-        if (!$user->isAdminLike() && $dailyKpiSnapshot->submitted_by !== $user->id) {
-            return $this->error('You can only delete your own daily KPI entries', 403);
         }
 
         $project = Project::findOrFail($dailyKpiSnapshot->project_id);

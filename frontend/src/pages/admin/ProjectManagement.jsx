@@ -354,13 +354,21 @@ export default function ProjectManagement() {
     cancelled: 'badge-danger'
   }
 
+  const statusLabel = (status) => {
+    const s = String(status || '').trim()
+    if (!s) return ''
+    const key = `projects.${s}`
+    const value = t(key)
+    return value === key ? s.replace(/_/g, ' ') : value
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Project Management</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Manage projects and assign responsible users</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('projects.projectList')}</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">{t('projects.assignedUsers')}</p>
         </div>
         <div className="flex items-center gap-2">
           {user?.role === 'admin' && (
@@ -370,7 +378,7 @@ export default function ProjectManagement() {
               className="btn-secondary flex items-center gap-2"
             >
               <FolderKanban className="w-4 h-4" />
-              Export
+              {t('common.export')}
             </button>
           )}
           <div ref={bulkRef} className="relative">
@@ -380,7 +388,7 @@ export default function ProjectManagement() {
               className="btn-secondary flex items-center gap-2"
             >
               <Upload className="w-4 h-4" />
-              Massive Add
+              {t('common.import')}
             </button>
             {bulkOpen && (
               <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4 z-50">
@@ -390,7 +398,7 @@ export default function ProjectManagement() {
                     onClick={handleDownloadTemplate}
                     className="btn-secondary w-full"
                   >
-                    Download Template
+                    {t('common.downloadTemplate')}
                   </button>
 
                   <div className="space-y-2">
@@ -410,14 +418,14 @@ export default function ProjectManagement() {
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            Select XLSX file
+                            {t('common.chooseFile')}
                           </div>
                           <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                            {bulkFile ? bulkFile.name : 'Choose the filled template (.xlsx)'}
+                            {bulkFile ? bulkFile.name : `${t('common.chooseFile')} (.xlsx)`}
                           </div>
                         </div>
                         <div className="text-xs font-semibold px-2 py-1 rounded-md bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
-                          Browse
+                          {t('common.chooseFile')}
                         </div>
                       </div>
                     </button>
@@ -425,7 +433,7 @@ export default function ProjectManagement() {
                     {bulkFile && (
                       <div className="flex items-center justify-between gap-3">
                         <div className="text-xs text-gray-600 dark:text-gray-300 truncate">
-                          Selected: <span className="font-semibold">{bulkFile.name}</span>
+                          {t('common.selected')}: <span className="font-semibold">{bulkFile.name}</span>
                         </div>
                         <button
                           type="button"
@@ -435,7 +443,7 @@ export default function ProjectManagement() {
                           }}
                           className="text-xs font-semibold text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
                         >
-                          Clear
+                          {t('common.clear')}
                         </button>
                       </div>
                     )}
@@ -450,10 +458,10 @@ export default function ProjectManagement() {
                     {bulkUploading ? (
                       <span className="flex items-center justify-center gap-2">
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Uploading...
+                        {t('common.loading')}
                       </span>
                     ) : (
-                      'Upload'
+                      t('common.upload')
                     )}
                   </button>
                 </div>
@@ -463,7 +471,7 @@ export default function ProjectManagement() {
 
           <button onClick={() => openModal()} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />
-            Add Project
+            {t('projects.newProject')}
           </button>
         </div>
       </div>
@@ -475,7 +483,7 @@ export default function ProjectManagement() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search projects..."
+              placeholder={t('common.search')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="input pl-10"
@@ -488,11 +496,11 @@ export default function ProjectManagement() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full sm:w-40"
             >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-              <option value="on_hold">On Hold</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="">{t('common.all')}</option>
+              <option value="active">{statusLabel('active')}</option>
+              <option value="completed">{statusLabel('completed')}</option>
+              <option value="on_hold">{statusLabel('on_hold')}</option>
+              <option value="cancelled">{statusLabel('cancelled')}</option>
             </Select>
             <Select
               value={poleFilter}
@@ -530,7 +538,7 @@ export default function ProjectManagement() {
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <span className={`badge ${statusColors[project.status]}`}>
-                      {project.status.replace('_', ' ')}
+                      {statusLabel(project.status)}
                     </span>
                     {project.pole && (
                       <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
@@ -564,7 +572,7 @@ export default function ProjectManagement() {
                   )}
                   <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                     <Users className="w-4 h-4" />
-                    <span>{project.users?.length ?? 0} assigned users</span>
+                    <span>{project.users?.length ?? 0} {t('projects.assignedUsers')}</span>
                   </div>
                 </div>
 
@@ -593,7 +601,7 @@ export default function ProjectManagement() {
                     <Link
                       to={`/admin/projects/${project.id}`}
                       className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                      title="View"
+                      title={t('common.view')}
                     >
                       <Eye className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                     </Link>

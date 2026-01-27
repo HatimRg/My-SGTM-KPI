@@ -11,6 +11,7 @@ use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class WorkerQualificationsMassTemplateExport implements FromArray, WithColumnWidths, WithEvents, WithTitle
@@ -19,6 +20,23 @@ class WorkerQualificationsMassTemplateExport implements FromArray, WithColumnWid
     private string $lang;
 
     private string $qualificationTypesCsv = 'elingueur,equipier_premiere_intervention,habilitation_electrique,inspecteur_echafaudage,monteur_echafaudage,monteur_grue_a_tour,operateur_bulldozer,operateur_chargeuse,operateur_chariot_elevateur,operateur_compacteur,operateur_dumper,operateur_grue_a_tour,operateur_grue_mobile,operateur_niveleuse,operateur_nacelle,operateur_pelle,sst,soudeur,utilisation_meule,other';
+
+    private function labelizeKey(string $value): string
+    {
+        $v = trim($value);
+        if ($v === '') {
+            return '';
+        }
+        if ($v === 'sst') {
+            return 'SST';
+        }
+        if ($v === 'other') {
+            return $this->lang === 'en' ? 'Other' : 'Autre';
+        }
+        $v = str_replace('_', ' ', $v);
+        $v = preg_replace('/\s+/', ' ', $v);
+        return ucwords(strtolower($v));
+    }
 
     public function __construct(int $dataRows = 200, string $lang = 'fr')
     {
@@ -54,10 +72,12 @@ class WorkerQualificationsMassTemplateExport implements FromArray, WithColumnWid
         $rows = [];
         $rows[] = [$this->tr("SGTM - MODÈLE D'IMPORT QUALIFICATIONS (MASS)", 'SGTM - QUALIFICATIONS MASS IMPORT TEMPLATE')];
         $rows[] = [$this->tr(
-            'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, TYPE_QUALIFICATION* et DATE_DEBUT* obligatoires. Si type=other, LIBELLE_QUALIFICATION est obligatoire.',
+            'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, Type qualification* et Date début* obligatoires. Si Type qualification = Autre, Libellé qualification est obligatoire.',
             'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf. CIN*, TYPE_QUALIFICATION* and DATE_DEBUT* are required. If type=other, LIBELLE_QUALIFICATION is required.'
         )];
-        $rows[] = ['CIN*', 'TYPE_QUALIFICATION*', 'NIVEAU_QUALIFICATION', 'LIBELLE_QUALIFICATION', 'DATE_DEBUT*', 'DATE_EXPIRATION'];
+        $rows[] = $this->lang === 'en'
+            ? ['CIN*', 'TYPE_QUALIFICATION*', 'NIVEAU_QUALIFICATION', 'LIBELLE_QUALIFICATION', 'DATE_DEBUT*', 'DATE_EXPIRATION']
+            : ['CIN*', 'Type qualification*', 'Niveau qualification', 'Libellé qualification', 'Date début*', 'Date expiration'];
 
         for ($i = 0; $i < $this->dataRows; $i++) {
             $rows[] = ['', '', '', '', '', ''];
@@ -77,8 +97,9 @@ class WorkerQualificationsMassTemplateExport implements FromArray, WithColumnWid
                 $spreadsheet->addSheet($listsSheet);
                 $listsSheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
 
-                $types = array_values(array_filter(array_map('trim', explode(',', $this->qualificationTypesCsv)), fn ($v) => $v !== ''));
-                sort($types, SORT_NATURAL | SORT_FLAG_CASE);
+                $typeKeys = array_values(array_filter(array_map('trim', explode(',', $this->qualificationTypesCsv)), fn ($v) => $v !== ''));
+                sort($typeKeys, SORT_NATURAL | SORT_FLAG_CASE);
+                $types = array_values(array_filter(array_map(fn ($k) => $this->labelizeKey((string) $k), $typeKeys), fn ($v) => $v !== ''));
                 $rowIndex = 1;
                 foreach ($types as $type) {
                     $listsSheet->setCellValue('A' . $rowIndex, $type);
@@ -110,7 +131,7 @@ class WorkerQualificationsMassTemplateExport implements FromArray, WithColumnWid
                 $sheet->getRowDimension(1)->setRowHeight(40);
 
                 $sheet->setCellValue('A2', $this->tr(
-                    'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, TYPE_QUALIFICATION* et DATE_DEBUT* obligatoires. Si type=other, LIBELLE_QUALIFICATION est obligatoire.',
+                    'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, Type qualification* et Date début* obligatoires. Si Type qualification = Autre, Libellé qualification est obligatoire.',
                     'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf. CIN*, TYPE_QUALIFICATION* and DATE_DEBUT* are required. If type=other, LIBELLE_QUALIFICATION is required.'
                 ));
                 $sheet->mergeCells('A2:F2');
@@ -128,7 +149,9 @@ class WorkerQualificationsMassTemplateExport implements FromArray, WithColumnWid
                 ]);
                 $sheet->getRowDimension(2)->setRowHeight(46);
 
-                $headers = ['CIN*', 'TYPE_QUALIFICATION*', 'NIVEAU_QUALIFICATION', 'LIBELLE_QUALIFICATION', 'DATE_DEBUT*', 'DATE_EXPIRATION'];
+                $headers = $this->lang === 'en'
+                    ? ['CIN*', 'TYPE_QUALIFICATION*', 'NIVEAU_QUALIFICATION', 'LIBELLE_QUALIFICATION', 'DATE_DEBUT*', 'DATE_EXPIRATION']
+                    : ['CIN*', 'Type qualification*', 'Niveau qualification', 'Libellé qualification', 'Date début*', 'Date expiration'];
                 $col = 'A';
                 foreach ($headers as $header) {
                     $sheet->setCellValue($col . '3', $header);
@@ -177,8 +200,11 @@ class WorkerQualificationsMassTemplateExport implements FromArray, WithColumnWid
                     $typeValidation->setShowErrorMessage(true);
                     $typeValidation->setErrorTitle($this->tr('Type qualification', 'Qualification type'));
                     $typeValidation->setError($this->tr('Veuillez sélectionner un type de qualification valide dans la liste.', 'Please select a valid qualification type from the list.'));
-                    $typeValidation->setFormula1("='Lists'!\$A\$1:\$A\${typesLastRow}");
+                    $typeValidation->setFormula1("='Lists'!\$A\$1:\$A\$" . $typesLastRow);
                 }
+
+                $sheet->getStyle("E{$dataStartRow}:E{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
+                $sheet->getStyle("F{$dataStartRow}:F{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
 
                 $sheet->getComment('A3')->getText()->createTextRun($this->tr(
                     "CIN = IDENTIFIANT UNIQUE\n\nLe PDF dans le ZIP doit s'appeler: CIN.pdf",
@@ -187,10 +213,10 @@ class WorkerQualificationsMassTemplateExport implements FromArray, WithColumnWid
                 $sheet->getComment('A3')->setWidth('220px');
                 $sheet->getComment('A3')->setHeight('90px');
 
-                $sheet->getComment('E3')->getText()->createTextRun($this->tr('Format recommandé: AAAA-MM-JJ', 'Recommended format: YYYY-MM-DD'));
+                $sheet->getComment('E3')->getText()->createTextRun($this->tr('Format recommandé: JJ/MM/AAAA', 'Recommended format: DD/MM/YYYY'));
                 $sheet->getComment('E3')->setWidth('170px');
 
-                $sheet->getComment('F3')->getText()->createTextRun($this->tr('Optionnel. Format recommandé: AAAA-MM-JJ', 'Optional. Recommended format: YYYY-MM-DD'));
+                $sheet->getComment('F3')->getText()->createTextRun($this->tr('Optionnel. Format recommandé: JJ/MM/AAAA', 'Optional. Recommended format: DD/MM/YYYY'));
                 $sheet->getComment('F3')->setWidth('190px');
 
                 $sheet->freezePane('A4');
@@ -198,7 +224,6 @@ class WorkerQualificationsMassTemplateExport implements FromArray, WithColumnWid
 
                 $sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
                 $sheet->getPageSetup()->setFitToWidth(1);
-                $sheet->getPageSetup()->setPrintArea("A1:F{$lastRow}");
 
                 $spreadsheet->setActiveSheetIndex(0);
             },

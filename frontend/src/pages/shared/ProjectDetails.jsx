@@ -33,7 +33,7 @@ import toast from 'react-hot-toast'
 export default function ProjectDetails() {
   const { id } = useParams()
   const location = useLocation()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [project, setProject] = useState(null)
   const [trends, setTrends] = useState([])
   const [loading, setLoading] = useState(true)
@@ -60,18 +60,27 @@ export default function ProjectDetails() {
       setProject(projectRes.data.data)
       setTrends(trendsRes.data.data || [])
     } catch (error) {
-      toast.error('Failed to load project details')
+      toast.error(t('projects.loadFailed'))
     } finally {
       setLoading(false)
     }
   }
 
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const locale = language === 'en' ? 'en-GB' : 'fr-FR'
+
+  const monthLabel = (year, month) => {
+    const y = Number(year)
+    const m = Number(month)
+    if (!y || !m) return ''
+    const d = new Date(y, m - 1, 1)
+    return d.toLocaleString(locale, { month: 'short' })
+  }
 
   const formatTrends = () => {
+    const weekPrefix = t('common.weekAbbrev')
     return trends.map(t => ({
       ...t,
-      month: monthNames[t.report_month - 1],
+      week: t.week_number ? `${weekPrefix}${String(t.week_number).padStart(2, '0')}` : monthLabel(t.report_year, t.report_month),
       tf: Number(t.tf_value).toFixed(2),
       tg: Number(t.tg_value).toFixed(2)
     }))
@@ -95,9 +104,9 @@ export default function ProjectDetails() {
   if (!project) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-gray-900">Project not found</h2>
+        <h2 className="text-xl font-semibold text-gray-900">{t('projects.notFound')}</h2>
         <Link to={isAdmin() ? '/admin/projects' : '/my-projects'} className="btn-primary mt-4">
-          Back to Projects
+          {t('projects.backToProjects')}
         </Link>
       </div>
     )
@@ -127,7 +136,7 @@ export default function ProjectDetails() {
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{project.name}</h1>
                 <span className={`badge ${statusColors[project.status]}`}>
-                  {project.status.replace('_', ' ')}
+                  {t(`projects.${project.status}`) ?? project.status.replace('_', ' ')}
                 </span>
                 {project.pole && (
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
@@ -193,18 +202,18 @@ export default function ProjectDetails() {
             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
               <Calendar className="w-4 h-4 text-gray-400" />
               <span className="text-sm">
-                {new Date(project.start_date).toLocaleDateString()}
-                {project.end_date && ` - ${new Date(project.end_date).toLocaleDateString()}`}
+                {new Date(project.start_date).toLocaleDateString(locale)}
+                {project.end_date && ` - ${new Date(project.end_date).toLocaleDateString(locale)}`}
               </span>
             </div>
           )}
           <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
             <Users className="w-4 h-4 text-gray-400" />
-            <span className="text-sm">{project.users?.length ?? 0} assigned users</span>
+            <span className="text-sm">{t('projects.assignedUsersCount', { count: project.users?.length ?? 0 })}</span>
           </div>
           {project.client_name && (
             <div className="text-sm text-gray-600 dark:text-gray-300">
-              <span className="text-gray-400">Client:</span> {project.client_name}
+              <span className="text-gray-400">{t('projects.clientLabel')}</span> {project.client_name}
             </div>
           )}
         </div>
@@ -227,37 +236,37 @@ export default function ProjectDetails() {
       {/* KPI Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         <SummaryCard
-          title="Accidents"
+          title={t('projects.summary.accidents')}
           value={kpiSummary.total_accidents ?? 0}
           icon={AlertTriangle}
           color={kpiSummary.total_accidents > 0 ? 'red' : 'green'}
         />
         <SummaryCard
-          title="Trainings"
+          title={t('projects.summary.trainings')}
           value={kpiSummary.total_trainings ?? 0}
           icon={GraduationCap}
           color="blue"
         />
         <SummaryCard
-          title="Inspections"
+          title={t('projects.summary.inspections')}
           value={kpiSummary.total_inspections ?? 0}
           icon={ClipboardCheck}
           color="green"
         />
         <SummaryCard
-          title="Hours Worked"
+          title={t('projects.summary.hoursWorked')}
           value={Number(kpiSummary.total_hours_worked ?? 0).toLocaleString()}
           icon={TrendingUp}
           color="purple"
         />
         <SummaryCard
-          title="Avg TF"
+          title={t('projects.summary.avgTf')}
           value={Number(kpiSummary.avg_tf ?? 0).toFixed(2)}
           icon={TrendingUp}
           color="amber"
         />
         <SummaryCard
-          title="Avg TG"
+          title={t('projects.summary.avgTg')}
           value={Number(kpiSummary.avg_tg ?? 0).toFixed(2)}
           icon={TrendingUp}
           color="purple"
@@ -269,7 +278,7 @@ export default function ProjectDetails() {
         {/* Monthly KPI Trends */}
         <div className="card">
           <div className="card-header">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Monthly KPI Trends</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('projects.charts.kpiTrends')}</h3>
           </div>
           <div className="card-body">
             <div className="h-80">
@@ -277,18 +286,18 @@ export default function ProjectDetails() {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={formatTrends()}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                    <XAxis dataKey="week" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="accidents" stroke="#dc2626" name="Accidents" />
-                    <Line type="monotone" dataKey="trainings_conducted" stroke="#3b82f6" name="Trainings" />
-                    <Line type="monotone" dataKey="inspections_completed" stroke="#16a34a" name="Inspections" />
+                    <Line type="monotone" dataKey="accidents" stroke="#dc2626" name={t('projects.metrics.accidents')} />
+                    <Line type="monotone" dataKey="trainings_conducted" stroke="#3b82f6" name={t('projects.metrics.trainings')} />
+                    <Line type="monotone" dataKey="inspections_completed" stroke="#16a34a" name={t('projects.metrics.inspections')} />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-                  No data available
+                  {t('common.noData')}
                 </div>
               )}
             </div>
@@ -298,7 +307,7 @@ export default function ProjectDetails() {
         {/* TF/TG Trends */}
         <div className="card">
           <div className="card-header">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">TF & TG Rate Trends</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('projects.charts.tfTgTrends')}</h3>
           </div>
           <div className="card-body">
             <div className="h-80">
@@ -306,17 +315,17 @@ export default function ProjectDetails() {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={formatTrends()}>
                     <CartesianGrid strokeDasharray="3 3" className="dark:opacity-20" />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} className="dark:text-gray-400" />
+                    <XAxis dataKey="week" tick={{ fontSize: 12 }} className="dark:text-gray-400" />
                     <YAxis tick={{ fontSize: 12 }} className="dark:text-gray-400" />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="tf" stroke="#f59e0b" name="TF Rate" />
-                    <Line type="monotone" dataKey="tg" stroke="#8b5cf6" name="TG Rate" />
+                    <Line type="monotone" dataKey="tf" stroke="#f59e0b" name={t('projects.metrics.tfRate')} />
+                    <Line type="monotone" dataKey="tg" stroke="#8b5cf6" name={t('projects.metrics.tgRate')} />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-                  No data available
+                  {t('common.noData')}
                 </div>
               )}
             </div>
@@ -328,7 +337,7 @@ export default function ProjectDetails() {
       {project.users && project.users.length > 0 && (
         <div className="card">
           <div className="card-header">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Assigned Team Members</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('projects.assignedTeamMembers')}</h3>
           </div>
           <div className="p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -341,7 +350,7 @@ export default function ProjectDetails() {
                   </div>
                   <div>
                     <p className="font-medium text-gray-900 dark:text-gray-100">{user.name}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{user.role}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{t(`roles.${user.role}`) ?? user.role}</p>
                   </div>
                 </div>
               ))}
@@ -354,25 +363,25 @@ export default function ProjectDetails() {
       {project.kpiReports && project.kpiReports.length > 0 && (
         <div className="card">
           <div className="card-header">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Recent KPI Reports</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('projects.recentKpiReports')}</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Period</th>
-                  <th>Accidents</th>
-                  <th>Trainings</th>
-                  <th>Inspections</th>
+                  <th>{t('projects.period')}</th>
+                  <th>{t('projects.metrics.accidents')}</th>
+                  <th>{t('projects.metrics.trainings')}</th>
+                  <th>{t('projects.metrics.inspections')}</th>
                   <th>TF</th>
                   <th>TG</th>
-                  <th>Status</th>
+                  <th>{t('projects.status')}</th>
                 </tr>
               </thead>
               <tbody>
                 {project.kpiReports.map((report) => (
                   <tr key={report.id}>
-                    <td>{monthNames[report.report_month - 1]} {report.report_year}</td>
+                    <td>{monthLabel(report.report_year, report.report_month)} {report.report_year}</td>
                     <td className={report.accidents > 0 ? 'text-red-600 font-semibold' : ''}>
                       {report.accidents}
                     </td>
@@ -386,7 +395,7 @@ export default function ProjectDetails() {
                         report.status === 'submitted' ? 'badge-warning' :
                         report.status === 'rejected' ? 'badge-danger' : 'badge-info'
                       }`}>
-                        {report.status}
+                        {t(`kpi.status.${report.status}`) ?? report.status}
                       </span>
                     </td>
                   </tr>

@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Project;
+use App\Support\MachineTypeCatalog;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithTitle;
@@ -16,62 +17,19 @@ use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 
 class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle, WithEvents
 {
-    private const MACHINE_TYPES = [
-        'Grue mobile',
-        'Grue a tour',
-        'Pelle sur chenille',
-        'Pelle sur pneu',
-        'Mini pelle',
-        'Chargeuse',
-        'Mini chargeuse',
-        'Compresseur',
-        'Compacteur',
-        'Rouleaux vibrant',
-        'Chariot élévateur',
-        'Nacelle articulé',
-        'Nacelle télescopique',
-        'Nacelle ciseaux',
-        'Bulldozer',
-        'Camion a benne',
-        'Camion citerne à eau',
-        'Camion citerne à gasoil',
-        'Tractopelle',
-        'Autre',
-    ];
-
-    private const MACHINE_TYPES_EN = [
-        'Mobile crane',
-        'Tower crane',
-        'Crawler excavator',
-        'Wheeled excavator',
-        'Mini excavator',
-        'Loader',
-        'Mini loader',
-        'Compressor',
-        'Compactor',
-        'Vibratory roller',
-        'Forklift',
-        'Articulating boom lift',
-        'Telescopic boom lift',
-        'Scissor lift',
-        'Bulldozer',
-        'Dump truck',
-        'Water tanker truck',
-        'Diesel tanker truck',
-        'Backhoe loader',
-        'Other',
-    ];
-
     protected int $dataRows;
-    protected array $projectCodes;
+    protected array $projectNames;
     protected string $lang;
+    protected array $machineTypes;
 
-    public function __construct(int $dataRows = 200, array $projectCodes = [], string $lang = 'fr')
+    public function __construct(int $dataRows = 200, array $projectNames = [], string $lang = 'fr', array $machineTypes = [])
     {
         $this->dataRows = $dataRows;
-        $this->projectCodes = $projectCodes;
+        $this->projectNames = $projectNames;
         $lang = strtolower(trim($lang));
         $this->lang = in_array($lang, ['en', 'fr'], true) ? $lang : 'fr';
+
+        $this->machineTypes = array_values(array_unique(array_filter(array_map('trim', $machineTypes), fn ($v) => $v !== '')));
     }
 
     private function tr(string $fr, string $en): string
@@ -105,10 +63,10 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
     public function registerEvents(): array
     {
         $dataRows = $this->dataRows;
-        $projectCodes = $this->projectCodes;
+        $projectNames = $this->projectNames;
 
         return [
-            AfterSheet::class => function (AfterSheet $event) use ($dataRows, $projectCodes) {
+            AfterSheet::class => function (AfterSheet $event) use ($dataRows, $projectNames) {
                 $sheet = $event->sheet->getDelegate();
 
                 $spreadsheet = $sheet->getParent();
@@ -116,8 +74,34 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                 $spreadsheet->addSheet($listsSheet);
                 $listsSheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
 
-                $machineTypes = $this->lang === 'en' ? self::MACHINE_TYPES_EN : self::MACHINE_TYPES;
-                sort($machineTypes, SORT_NATURAL | SORT_FLAG_CASE);
+                $machineTypes = MachineTypeCatalog::labels($this->lang);
+                $machineTypesSet = array_fill_keys($machineTypes, true);
+                foreach ($this->machineTypes as $rawType) {
+                    $mappedKey = MachineTypeCatalog::keyFromInput($rawType);
+                    if (!$mappedKey) {
+                        continue;
+                    }
+                    $label = MachineTypeCatalog::labelForKey($mappedKey, $this->lang);
+                    if ($label !== '' && !isset($machineTypesSet[$label])) {
+                        $machineTypes[] = $label;
+                        $machineTypesSet[$label] = true;
+                    }
+                }
+
+                usort($machineTypes, function ($a, $b) {
+                    $aStr = trim((string) $a);
+                    $bStr = trim((string) $b);
+                    $aOther = strcasecmp($aStr, $this->lang === 'en' ? 'Other' : 'Autres') === 0;
+                    $bOther = strcasecmp($bStr, $this->lang === 'en' ? 'Other' : 'Autres') === 0;
+                    if ($aOther && !$bOther) {
+                        return 1;
+                    }
+                    if ($bOther && !$aOther) {
+                        return -1;
+                    }
+                    return strnatcasecmp($aStr, $bStr);
+                });
+
                 $machineTypes = array_values(array_filter(array_map('trim', $machineTypes), fn ($v) => $v !== ''));
 
                 $rowIndex = 1;
@@ -127,13 +111,27 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                 }
                 $machineTypesLastRow = max(1, count($machineTypes));
 
-                $projectCodes = array_values(array_filter(array_map('trim', $projectCodes), fn ($v) => $v !== ''));
+                $projectNames = array_values(array_unique(array_filter(array_map('trim', $projectNames), fn ($v) => $v !== '')));
+                $projectNamesCount = count($projectNames);
+                if ($projectNamesCount > 0) {
+                    $rowIndex = 1;
+                    foreach ($projectNames as $name) {
+                        $listsSheet->setCellValue('B' . $rowIndex, $name);
+                        $rowIndex++;
+                    }
+                } else {
+                    // Keep a valid range even when user has no visible projects.
+                    $listsSheet->setCellValue('B1', '');
+                    $projectNamesCount = 1;
+                }
+
+                $activeValues = $this->lang === 'en' ? ['ACTIVE', 'INACTIVE'] : ['ACTIF', 'INACTIF'];
                 $rowIndex = 1;
-                foreach ($projectCodes as $code) {
-                    $listsSheet->setCellValue('B' . $rowIndex, $code);
+                foreach ($activeValues as $v) {
+                    $listsSheet->setCellValue('C' . $rowIndex, $v);
                     $rowIndex++;
                 }
-                $projectCodesLastRow = max(1, count($projectCodes));
+                $activeLastRow = max(1, count($activeValues));
 
                 $primaryOrange = 'F97316';
                 $darkOrange = 'EA580C';
@@ -156,8 +154,8 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                 $sheet->getRowDimension(1)->setRowHeight(40);
 
                 $sheet->setCellValue('A2', $this->tr(
-                    'Instructions: SERIAL_NUMBER* obligatoire et unique. MACHINE_TYPE* et BRAND* obligatoires. PROJECT_CODE (optionnel) doit correspondre à un code projet existant dans votre périmètre. ACTIF: ACTIF/INACTIF (optionnel, par défaut ACTIF).',
-                    'Instructions: SERIAL_NUMBER* is required and must be unique. MACHINE_TYPE* and BRAND* are required. PROJECT_CODE (optional) must match an existing project code within your scope. ACTIVE: ACTIVE/INACTIVE (optional, defaults to ACTIVE).'
+                    'Instructions: Numéro de série* obligatoire et unique. Type engin* et Marque* obligatoires. Nom projet (optionnel) doit correspondre à un projet existant dans votre périmètre. Actif: ACTIF/INACTIF (optionnel, par défaut ACTIF).',
+                    'Instructions: SERIAL_NUMBER* is required and must be unique. MACHINE_TYPE* and BRAND* are required. PROJECT_NAME (optional) must match an existing project within your scope. ACTIVE: ACTIVE/INACTIVE (optional, defaults to ACTIVE).'
                 ));
                 $sheet->mergeCells('A2:G2');
                 $sheet->getStyle('A2:G2')->applyFromArray([
@@ -175,8 +173,8 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                 $sheet->getRowDimension(2)->setRowHeight(42);
 
                 $headers = $this->lang === 'en'
-                    ? ['SERIAL_NUMBER*', 'INTERNAL_CODE', 'MACHINE_TYPE*', 'BRAND*', 'MODEL', 'PROJECT_CODE', 'ACTIVE']
-                    : ['SERIAL_NUMBER*', 'INTERNAL_CODE', 'MACHINE_TYPE*', 'BRAND*', 'MODEL', 'PROJECT_CODE', 'ACTIF'];
+                    ? ['SERIAL_NUMBER*', 'INTERNAL_CODE', 'MACHINE_TYPE*', 'BRAND*', 'MODEL', 'PROJECT_NAME', 'ACTIVE']
+                    : ['Numéro de série*', 'Code interne', 'Type engin*', 'Marque*', 'Modèle', 'Nom du projet', 'Actif'];
                 $col = 'A';
                 foreach ($headers as $header) {
                     $sheet->setCellValue($col . '3', $header);
@@ -219,7 +217,10 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                     $activeValidation->setErrorStyle(DataValidation::STYLE_STOP);
                     $activeValidation->setAllowBlank(true);
                     $activeValidation->setShowDropDown(true);
-                    $activeValidation->setFormula1($this->lang === 'en' ? '"ACTIVE,INACTIVE"' : '"ACTIF,INACTIF"');
+                    $activeValidation->setShowErrorMessage(true);
+                    $activeValidation->setErrorTitle($this->tr('Statut', 'Status'));
+                    $activeValidation->setError($this->tr('Choisissez une valeur dans la liste.', 'Choose a value from the list.'));
+                    $activeValidation->setFormula1("='Lists'!\$C\$1:\$C\$" . $activeLastRow);
                     $sheet->setCellValue("G{$row}", $this->lang === 'en' ? 'ACTIVE' : 'ACTIF');
 
                     $typeValidation = $sheet->getCell("C{$row}")->getDataValidation();
@@ -230,17 +231,17 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                     $typeValidation->setShowErrorMessage(true);
                     $typeValidation->setErrorTitle($this->tr('Type engin', 'Machine type'));
                     $typeValidation->setError($this->tr('Sélectionnez un type d\'engin dans la liste, ou saisissez une nouvelle valeur si nécessaire.', 'Select a machine type from the list, or type a new value if needed.'));
-                    $typeValidation->setFormula1("='Lists'!\$A\$1:\$A\${machineTypesLastRow}");
+                    $typeValidation->setFormula1("='Lists'!\$A\$1:\$A\$" . $machineTypesLastRow);
 
-                    if (!empty($projectCodes)) {
-                        $projectValidation = $sheet->getCell("F{$row}")->getDataValidation();
-                        $projectValidation->setType(DataValidation::TYPE_LIST);
-                        $projectValidation->setErrorStyle(DataValidation::STYLE_STOP);
-                        $projectValidation->setAllowBlank(true);
-                        $projectValidation->setShowDropDown(true);
-
-                        $projectValidation->setFormula1("='Lists'!\$B\$1:\$B\${projectCodesLastRow}");
-                    }
+                    $projectValidation = $sheet->getCell("F{$row}")->getDataValidation();
+                    $projectValidation->setType(DataValidation::TYPE_LIST);
+                    $projectValidation->setErrorStyle(DataValidation::STYLE_STOP);
+                    $projectValidation->setAllowBlank(true);
+                    $projectValidation->setShowDropDown(true);
+                    $projectValidation->setShowErrorMessage(true);
+                    $projectValidation->setErrorTitle($this->tr('Projet', 'Project'));
+                    $projectValidation->setError($this->tr('Choisissez un projet existant dans la liste.', 'Choose an existing project from the list.'));
+                    $projectValidation->setFormula1("='Lists'!\$B\$1:\$B\$" . $projectNamesCount);
                 }
 
                 $sheet->freezePane('A4');
@@ -248,7 +249,6 @@ class MachinesTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
 
                 $sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
                 $sheet->getPageSetup()->setFitToWidth(1);
-                $sheet->getPageSetup()->setPrintArea("A1:G{$lastRow}");
 
                 $spreadsheet->setActiveSheetIndex(0);
             },

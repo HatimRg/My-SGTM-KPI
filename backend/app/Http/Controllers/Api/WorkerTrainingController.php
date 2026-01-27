@@ -329,7 +329,7 @@ class WorkerTrainingController extends Controller
 
         $validated = $request->validate([
             'excel' => 'required|file',
-            'zip' => 'required|file',
+            'zip' => 'nullable|file',
             'progress_id' => 'nullable|string|max:120',
         ]);
 
@@ -341,7 +341,7 @@ class WorkerTrainingController extends Controller
 
         try {
             $service = new WorkerTrainingMassImportService();
-            $result = $service->handle($user, $validated['excel'], $validated['zip'], $progressId);
+            $result = $service->handle($user, $validated['excel'], $validated['zip'] ?? null, $progressId);
 
             if ($progress && $progressId) {
                 $progress->complete($progressId, [

@@ -8,10 +8,11 @@ use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
 class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, WithEvents, WithTitle
 {
@@ -19,6 +20,17 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
     private string $lang;
 
     private string $trainingTypesCsv = 'bypassing_safety_controls,formation_coactivite,formation_coffrage_decoffrage,formation_conduite_defensive,formation_analyse_des_risques,formation_elingage_manutention,formation_ergonomie,formation_excavations,formation_outils_electroportatifs,formation_epi,formation_environnement,formation_espaces_confines,formation_flagman,formation_jha,formation_line_of_fire,formation_manutention_manuelle,formation_manutention_mecanique,formation_point_chaud,formation_produits_chimiques,formation_risques_electriques,induction_hse,travail_en_hauteur';
+
+    private function labelizeKey(string $value): string
+    {
+        $v = trim($value);
+        if ($v === '') {
+            return '';
+        }
+        $v = str_replace('_', ' ', $v);
+        $v = preg_replace('/\s+/', ' ', $v);
+        return ucwords(strtolower($v));
+    }
 
     public function __construct(int $dataRows = 200, string $lang = 'fr')
     {
@@ -52,10 +64,12 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
         $rows = [];
         $rows[] = [$this->tr("SGTM - MODÈLE D'IMPORT FORMATIONS (MASS)", 'SGTM - TRAININGS MASS IMPORT TEMPLATE')];
         $rows[] = [$this->tr(
-            'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, TYPE_FORMATION* et DATE_FORMATION* obligatoires.',
-            'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf. CIN*, TYPE_FORMATION* and DATE_FORMATION* are required.'
+            'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf (optionnel pour Induction HSE). CIN*, Type formation* et Date formation* obligatoires.',
+            'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf (optional for Induction HSE). CIN*, TYPE_FORMATION* and DATE_FORMATION* are required.'
         )];
-        $rows[] = ['CIN*', 'TYPE_FORMATION*', 'DATE_FORMATION*', 'DATE_EXPIRATION'];
+        $rows[] = $this->lang === 'en'
+            ? ['CIN*', 'TYPE_FORMATION*', 'DATE_FORMATION*', 'DATE_EXPIRATION']
+            : ['CIN*', 'Type formation*', 'Date formation*', 'Date expiration'];
 
         for ($i = 0; $i < $this->dataRows; $i++) {
             $rows[] = ['', '', '', ''];
@@ -75,8 +89,9 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
                 $spreadsheet->addSheet($listsSheet);
                 $listsSheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
 
-                $types = array_values(array_filter(array_map('trim', explode(',', $this->trainingTypesCsv)), fn ($v) => $v !== ''));
-                sort($types, SORT_NATURAL | SORT_FLAG_CASE);
+                $typeKeys = array_values(array_filter(array_map('trim', explode(',', $this->trainingTypesCsv)), fn ($v) => $v !== ''));
+                sort($typeKeys, SORT_NATURAL | SORT_FLAG_CASE);
+                $types = array_values(array_filter(array_map(fn ($k) => $this->labelizeKey((string) $k), $typeKeys), fn ($v) => $v !== ''));
                 $rowIndex = 1;
                 foreach ($types as $type) {
                     $listsSheet->setCellValue('A' . $rowIndex, $type);
@@ -111,8 +126,8 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
 
                 // === ROW 2: Instructions ===
                 $sheet->setCellValue('A2', $this->tr(
-                    'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, TYPE_FORMATION* et DATE_FORMATION* obligatoires.',
-                    'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf. CIN*, TYPE_FORMATION* and DATE_FORMATION* are required.'
+                    'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf (optionnel pour Induction HSE). CIN*, Type formation* et Date formation* obligatoires.',
+                    'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf (optional for Induction HSE). CIN*, TYPE_FORMATION* and DATE_FORMATION* are required.'
                 ));
                 $sheet->mergeCells('A2:D2');
                 $sheet->getStyle('A2:D2')->applyFromArray([
@@ -130,7 +145,9 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
                 $sheet->getRowDimension(2)->setRowHeight(42);
 
                 // === ROW 3: Headers ===
-                $headers = ['CIN*', 'TYPE_FORMATION*', 'DATE_FORMATION*', 'DATE_EXPIRATION'];
+                $headers = $this->lang === 'en'
+                    ? ['CIN*', 'TYPE_FORMATION*', 'DATE_FORMATION*', 'DATE_EXPIRATION']
+                    : ['CIN*', 'Type formation*', 'Date formation*', 'Date expiration'];
                 $col = 'A';
                 foreach ($headers as $header) {
                     $sheet->setCellValue($col . '3', $header);
@@ -179,8 +196,11 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
                     $typeValidation->setShowErrorMessage(true);
                     $typeValidation->setErrorTitle($this->tr('Type formation', 'Training type'));
                     $typeValidation->setError($this->tr('Veuillez sélectionner un type de formation valide dans la liste.', 'Please select a valid training type from the list.'));
-                    $typeValidation->setFormula1("='Lists'!\$A\$1:\$A\${typesLastRow}");
+                    $typeValidation->setFormula1("='Lists'!\$A\$1:\$A\$" . $typesLastRow);
                 }
+
+                $sheet->getStyle("C{$dataStartRow}:C{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
+                $sheet->getStyle("D{$dataStartRow}:D{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
 
                 // Header hints
                 $sheet->getComment('A3')->getText()->createTextRun($this->tr(
@@ -190,10 +210,10 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
                 $sheet->getComment('A3')->setWidth('220px');
                 $sheet->getComment('A3')->setHeight('90px');
 
-                $sheet->getComment('C3')->getText()->createTextRun($this->tr('Format recommandé: AAAA-MM-JJ', 'Recommended format: YYYY-MM-DD'));
+                $sheet->getComment('C3')->getText()->createTextRun($this->tr('Format recommandé: JJ/MM/AAAA', 'Recommended format: DD/MM/YYYY'));
                 $sheet->getComment('C3')->setWidth('170px');
 
-                $sheet->getComment('D3')->getText()->createTextRun($this->tr('Optionnel. Format recommandé: AAAA-MM-JJ', 'Optional. Recommended format: YYYY-MM-DD'));
+                $sheet->getComment('D3')->getText()->createTextRun($this->tr('Optionnel. Format recommandé: JJ/MM/AAAA', 'Optional. Recommended format: DD/MM/YYYY'));
                 $sheet->getComment('D3')->setWidth('190px');
 
                 // Freeze & print settings
@@ -202,7 +222,6 @@ class WorkerTrainingsMassTemplateExport implements FromArray, WithColumnWidths, 
 
                 $sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
                 $sheet->getPageSetup()->setFitToWidth(1);
-                $sheet->getPageSetup()->setPrintArea("A1:D{$lastRow}");
 
                 $spreadsheet->setActiveSheetIndex(0);
             },

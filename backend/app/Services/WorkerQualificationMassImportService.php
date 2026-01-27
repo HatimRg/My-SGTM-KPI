@@ -164,8 +164,8 @@ class WorkerQualificationMassImportService
                 $cin = $this->normalizeCin($this->getColumnValue($row, ['cin', 'cni', 'numero_cin', 'id']));
                 $qualificationType = $this->getColumnValue($row, ['type_qualification', 'qualification_type', 'type']);
                 $qualificationLevel = $this->getColumnValue($row, ['niveau_qualification', 'qualification_level', 'niveau', 'level']);
-                $qualificationLabel = $this->getColumnValue($row, ['libelle_qualification', 'qualification_label', 'libelle', 'label']);
-                $startDate = $this->parseDate($this->getColumnValue($row, ['date_debut', 'start_date', 'date_start', 'date']));
+                $qualificationLabel = $this->getColumnValue($row, ['libelle_qualification', 'libellé_qualification', 'qualification_label', 'libelle', 'label']);
+                $startDate = $this->parseDate($this->getColumnValue($row, ['date_debut', 'date_début', 'start_date', 'date_start', 'date']));
                 $expiryDate = $this->parseDate($this->getColumnValue($row, ['date_expiration', 'expiry_date', 'expiration_date']));
 
                 $qualificationTypeRaw = $qualificationType !== null ? trim((string) $qualificationType) : null;
@@ -559,6 +559,11 @@ class WorkerQualificationMassImportService
     {
         $s = trim(str_replace("\u{00A0}", ' ', $value));
         $s = preg_replace('/\s+/u', ' ', $s);
+
+        // Accept labelized values coming from Excel dropdowns (e.g. "Equipier Premiere Intervention")
+        // by mapping spaces/dashes/apostrophes back to underscore keys.
+        $s = str_replace(['’', "'", '-', ' '], '_', $s);
+        $s = preg_replace('/_+/', '_', $s);
 
         if (function_exists('iconv')) {
             $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);

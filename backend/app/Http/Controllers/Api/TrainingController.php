@@ -160,7 +160,7 @@ class TrainingController extends Controller
         }
 
         // Check access
-        if (!$user->isAdminLike() && $training->submitted_by !== $user->id) {
+        if (!$user->canManageProjectActions() && $training->submitted_by !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -213,7 +213,7 @@ class TrainingController extends Controller
         }
 
         // Only admin or submitter can delete
-        if (!$user->isAdminLike() && $training->submitted_by !== $user->id) {
+        if (!$user->canManageProjectActions() && $training->submitted_by !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 

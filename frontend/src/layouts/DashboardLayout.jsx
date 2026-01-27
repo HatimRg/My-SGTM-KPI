@@ -96,6 +96,14 @@ export default function DashboardLayout() {
   const isUserAdminLike = isUserAdmin || (user?.role === 'dev' && !simulatedRole) || adminLikeRoles.includes(effectiveRole)
   const isAdminArea = location.pathname.startsWith('/admin')
 
+  const roleLabel = (role) => {
+    const r = String(role || '').trim()
+    if (!r) return ''
+    const key = `roles.${r}`
+    const value = t(key)
+    return value === key ? r : value
+  }
+
   // Fetch notifications (only when user is authenticated)
   useEffect(() => {
     if (!user) return // Don't fetch if user is not logged in
@@ -606,7 +614,7 @@ export default function DashboardLayout() {
           {/* Role label */}
           <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-700">
             <span className="text-xs text-gray-400">
-              {t(`roles.${effectiveRole}`) ?? effectiveRole}
+              {roleLabel(effectiveRole)}
             </span>
           </div>
 
@@ -620,7 +628,7 @@ export default function DashboardLayout() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user?.name}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{user?.role}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{roleLabel(user?.role)}</p>
               </div>
             </div>
           </div>

@@ -231,6 +231,11 @@ class User extends Authenticatable
         return $this->isAdminLike() || $this->isHseManager() || $this->isRegionalHseManager() || $this->isResponsable() || $this->isSupervisor();
     }
 
+    public function canManageProjectActions(): bool
+    {
+        return $this->isAdminLike() || $this->isHseManager() || $this->isRegionalHseManager() || $this->isResponsable() || $this->isSupervisor();
+    }
+
     // Relationships
     public function projects()
     {

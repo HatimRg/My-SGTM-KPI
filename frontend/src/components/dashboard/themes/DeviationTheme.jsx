@@ -325,7 +325,7 @@ const DeviationTheme = memo(function DeviationTheme({ year, projects: _projects,
         />
         <MetricCard
           title={t('dashboard.deviations.analytics.worstProject')}
-          value={worstProject?.code ?? (worstProject?.name ?? '—')}
+          value={worstProject?.name ?? (worstProject?.code ?? '—')}
           icon={Layers}
           color="amber"
           subtitle={worstUser ? `${worstUser.name} · ${formatHours(worstUser.avg_resolution_hours)}` : '—'}

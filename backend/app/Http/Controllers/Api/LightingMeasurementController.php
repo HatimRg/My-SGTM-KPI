@@ -112,7 +112,7 @@ class LightingMeasurementController extends Controller
             return $this->error('Access denied', 403);
         }
 
-        if (!$user->isAdminLike() && $lightingMeasurement->entered_by !== $user->id) {
+        if (!$user->canManageProjectActions() && $lightingMeasurement->entered_by !== $user->id) {
             return $this->error('Access denied', 403);
         }
 
@@ -155,7 +155,7 @@ class LightingMeasurementController extends Controller
             return $this->error('Access denied', 403);
         }
 
-        if (!$user->isAdminLike() && $lightingMeasurement->entered_by !== $user->id) {
+        if (!$user->canManageProjectActions() && $lightingMeasurement->entered_by !== $user->id) {
             return $this->error('Access denied', 403);
         }
 

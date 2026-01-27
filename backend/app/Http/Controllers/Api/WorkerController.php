@@ -584,12 +584,57 @@ class WorkerController extends Controller
 
         $today = now()->startOfDay();
 
+        $hseTeamKeywords = [
+            'infirmier',
+            'infirmière',
+            'infirmiere',
+            'ambulancier',
+            'ambulancière',
+            'ambulanciere',
+            'animateur',
+            'animatrice',
+            'coordinateur',
+            'coordinatrice',
+            'coordonnateur',
+            'hse',
+            'qhse',
+            'nurse',
+            'paramedic',
+            'animator',
+            'coordinator',
+            'infermier',
+            'infermière',
+            'infermiere',
+            'ambulencier',
+            'ambulenciere',
+            'animateure',
+            'coordonateur',
+            'coordinnateur',
+            'coordinnatrice',
+            'h.s.e',
+            'q.h.s.e',
+            'nurce',
+            'paramedicc',
+            'animater',
+            'coordinatorr',
+            'h-s-e',
+            'q-h-s-e',
+        ];
+
         $stats = [
             'total' => (clone $base)->count(),
             'active' => (clone $base)->where('is_active', true)->count(),
             'inactive' => (clone $base)->where('is_active', false)->count(),
             'hse_team' => (clone $base)->where('is_active', true)
-                ->whereRaw('LOWER(fonction) LIKE ?', ['%hse%'])
+                ->where(function ($q) use ($hseTeamKeywords) {
+                    foreach ($hseTeamKeywords as $keyword) {
+                        $keyword = strtolower(trim((string) $keyword));
+                        if ($keyword === '') {
+                            continue;
+                        }
+                        $q->orWhereRaw('LOWER(fonction) LIKE ?', ['%' . $keyword . '%']);
+                    }
+                })
                 ->count(),
             'induction_hse' => (clone $base)
                 ->whereHas('trainings', function ($q) {

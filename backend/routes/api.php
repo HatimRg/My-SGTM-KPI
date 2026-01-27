@@ -96,6 +96,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/admin', [DashboardController::class, 'adminDashboard'])->middleware(['cache.api:2']);
         Route::get('/user', [DashboardController::class, 'userDashboard']);
         Route::get('/safety-performance', [DashboardController::class, 'safetyPerformance'])->middleware(['cache.api:2']);
+        Route::get('/environmental-monthly', [DashboardController::class, 'environmentalMonthly'])->middleware(['cache.api:2']);
         Route::get('/charts/accidents', [DashboardController::class, 'accidentCharts']);
         Route::get('/charts/trainings', [DashboardController::class, 'trainingCharts']);
         Route::get('/charts/inspections', [DashboardController::class, 'inspectionCharts']);

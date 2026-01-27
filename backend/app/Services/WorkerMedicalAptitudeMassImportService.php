@@ -28,16 +28,19 @@ class WorkerMedicalAptitudeMassImportService
         'visite_spontanee',
     ];
 
-    public function handle(User $user, UploadedFile $excelFile, UploadedFile $zipFile, ?string $progressId = null): array
+    public function handle(User $user, UploadedFile $excelFile, ?UploadedFile $zipFile, ?string $progressId = null): array
     {
-        if (!class_exists(ZipArchive::class) || !extension_loaded('zip')) {
-            throw new \RuntimeException('ZipArchive extension is required for ZIP imports');
-        }
+        $zip = null;
+        if ($zipFile !== null) {
+            if (!class_exists(ZipArchive::class) || !extension_loaded('zip')) {
+                throw new \RuntimeException('ZipArchive extension is required for ZIP imports');
+            }
 
-        $zip = new ZipArchive();
-        $opened = $zip->open($zipFile->getRealPath());
-        if ($opened !== true) {
-            throw new \RuntimeException('Invalid ZIP file');
+            $zip = new ZipArchive();
+            $opened = $zip->open($zipFile->getRealPath());
+            if ($opened !== true) {
+                throw new \RuntimeException('Invalid ZIP file');
+            }
         }
 
         $pdfByCin = [];
@@ -46,42 +49,44 @@ class WorkerMedicalAptitudeMassImportService
         $importedCount = 0;
         $usedPdfCins = [];
 
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $stat = $zip->statIndex($i);
-            $name = $stat['name'] ?? null;
-            if (!$name || str_ends_with($name, '/')) {
-                continue;
-            }
+        if ($zip !== null) {
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $stat = $zip->statIndex($i);
+                $name = $stat['name'] ?? null;
+                if (!$name || str_ends_with($name, '/')) {
+                    continue;
+                }
 
-            // Ignore macOS metadata entries
-            if (str_starts_with($name, '__MACOSX/')) {
-                continue;
-            }
+                // Ignore macOS metadata entries
+                if (str_starts_with($name, '__MACOSX/')) {
+                    continue;
+                }
 
-            $zipBaseName = basename($name);
-            if (str_starts_with($zipBaseName, '._')) {
-                continue;
-            }
+                $zipBaseName = basename($name);
+                if (str_starts_with($zipBaseName, '._')) {
+                    continue;
+                }
 
-            $ext = strtolower(pathinfo($zipBaseName, PATHINFO_EXTENSION));
-            if ($ext !== 'pdf') {
-                $zipErrors[] = ['file' => $name, 'error' => 'Non-PDF file in ZIP (ignored)'];
-                continue;
-            }
+                $ext = strtolower(pathinfo($zipBaseName, PATHINFO_EXTENSION));
+                if ($ext !== 'pdf') {
+                    $zipErrors[] = ['file' => $name, 'error' => 'Non-PDF file in ZIP (ignored)'];
+                    continue;
+                }
 
-            $base = pathinfo($zipBaseName, PATHINFO_FILENAME);
-            $cin = $this->normalizeCin($base);
-            if (!$cin) {
-                $zipErrors[] = ['file' => $name, 'error' => 'Invalid CIN filename'];
-                continue;
-            }
+                $base = pathinfo($zipBaseName, PATHINFO_FILENAME);
+                $cin = $this->normalizeCin($base);
+                if (!$cin) {
+                    $zipErrors[] = ['file' => $name, 'error' => 'Invalid CIN filename'];
+                    continue;
+                }
 
-            if (isset($pdfByCin[$cin])) {
-                $zipErrors[] = ['file' => $name, 'error' => 'Duplicate PDF for CIN'];
-                continue;
-            }
+                if (isset($pdfByCin[$cin])) {
+                    $zipErrors[] = ['file' => $name, 'error' => 'Duplicate PDF for CIN'];
+                    continue;
+                }
 
-            $pdfByCin[$cin] = $name;
+                $pdfByCin[$cin] = $name;
+            }
         }
 
         $import = new WorkerMedicalAptitudesMassImport();
@@ -149,9 +154,9 @@ class WorkerMedicalAptitudeMassImportService
 
             try {
                 $cin = $this->normalizeCin($this->getColumnValue($row, ['cin', 'cni', 'numero_cin', 'id']));
-                $aptitudeStatus = $this->getColumnValue($row, ['aptitude_status', 'status']);
-                $examNature = $this->getColumnValue($row, ['exam_nature', 'nature']);
-                $ableToRaw = $this->getColumnValue($row, ['able_to', 'apte_a', 'ableto']);
+                $aptitudeStatus = $this->getColumnValue($row, ['aptitude_status', 'statut_aptitude', 'status']);
+                $examNature = $this->getColumnValue($row, ['exam_nature', 'nature_examen', 'nature']);
+                $ableToRaw = $this->getColumnValue($row, ['able_to', 'apte_a', 'apte_à', 'ableto']);
                 $examDate = $this->parseDate($this->getColumnValue($row, ['exam_date', 'date_examen', 'date']));
                 $expiryDate = $this->parseDate($this->getColumnValue($row, ['date_expiration', 'expiry_date', 'expiration_date']));
 
@@ -216,13 +221,7 @@ class WorkerMedicalAptitudeMassImportService
                     continue;
                 }
 
-                if (!isset($pdfByCin[$cin])) {
-                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Missing PDF in ZIP for CIN');
-                    $rowFailed = true;
-                    continue;
-                }
-
-                $usedPdfCins[$cin] = true;
+                $hasPdf = isset($pdfByCin[$cin]);
 
                 $worker = Worker::query()->where('cin', $cin)->first();
                 if (!$worker) {
@@ -257,18 +256,23 @@ class WorkerMedicalAptitudeMassImportService
                     continue;
                 }
 
-                $zipEntry = $pdfByCin[$cin];
-                $pdfContent = $zip->getFromName($zipEntry);
-                if ($pdfContent === false) {
-                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Failed to read PDF from ZIP');
-                    $rowFailed = true;
-                    continue;
-                }
+                $storedPath = null;
+                if ($hasPdf) {
+                    $usedPdfCins[$cin] = true;
 
-                $safeCin = preg_replace('/[^A-Za-z0-9_-]/', '_', $cin);
-                $uuid = (string) Str::uuid();
-                $storedPath = "worker_certificates/mass_medical_aptitudes/{$safeCin}_{$uuid}.pdf";
-                Storage::disk('public')->put($storedPath, $pdfContent);
+                    $zipEntry = $pdfByCin[$cin];
+                    $pdfContent = $zip ? $zip->getFromName($zipEntry) : false;
+                    if ($pdfContent === false) {
+                        $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Failed to read PDF from ZIP');
+                        $rowFailed = true;
+                        continue;
+                    }
+
+                    $safeCin = preg_replace('/[^A-Za-z0-9_-]/', '_', $cin);
+                    $uuid = (string) Str::uuid();
+                    $storedPath = "worker_certificates/mass_medical_aptitudes/{$safeCin}_{$uuid}.pdf";
+                    Storage::disk('public')->put($storedPath, $pdfContent);
+                }
 
                 WorkerMedicalAptitude::create([
                     'worker_id' => $worker->id,
@@ -301,12 +305,16 @@ class WorkerMedicalAptitudeMassImportService
             }
         }
 
-        $zip->close();
+        if ($zip) {
+            $zip->close();
+        }
 
         $unusedPdfs = [];
-        foreach ($pdfByCin as $cin => $entryName) {
-            if (!isset($usedPdfCins[$cin])) {
-                $unusedPdfs[] = ['cin' => $cin, 'file' => $entryName];
+        if ($zip) {
+            foreach ($pdfByCin as $cin => $entryName) {
+                if (!isset($usedPdfCins[$cin])) {
+                    $unusedPdfs[] = ['cin' => $cin, 'file' => $entryName];
+                }
             }
         }
 
@@ -479,7 +487,7 @@ class WorkerMedicalAptitudeMassImportService
                 return $row['col_0'];
             }
         }
-        if (in_array('aptitude_status', $possibleNames, true) || in_array('status', $possibleNames, true)) {
+        if (in_array('aptitude_status', $possibleNames, true) || in_array('statut_aptitude', $possibleNames, true) || in_array('status', $possibleNames, true)) {
             if (isset($row['col_1']) && $row['col_1'] !== null && $row['col_1'] !== '') {
                 return $row['col_1'];
             }
@@ -580,6 +588,11 @@ class WorkerMedicalAptitudeMassImportService
     {
         $s = trim(str_replace("\u{00A0}", ' ', $value));
         $s = preg_replace('/\s+/u', ' ', $s);
+
+        // Accept labelized values coming from Excel dropdowns (e.g. "Visite Systematique")
+        // by mapping spaces/dashes/apostrophes back to underscore keys.
+        $s = str_replace(['’', "'", '-', ' '], '_', $s);
+        $s = preg_replace('/_+/', '_', $s);
 
         if (function_exists('iconv')) {
             $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);

@@ -69,6 +69,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [safetyPerformance, setSafetyPerformance] = useState(null)
   const [safetyLoading, setSafetyLoading] = useState(false)
+  const [environmentalMonthly, setEnvironmentalMonthly] = useState(null)
+  const [environmentalLoading, setEnvironmentalLoading] = useState(false)
   const [year, setYear] = useState(getCurrentWeek().year)
   const [compareYear, setCompareYear] = useState(getCurrentWeek().year - 1)
   const [compareData, setCompareData] = useState(null)
@@ -78,6 +80,7 @@ export default function AdminDashboard() {
   const [poles, setPoles] = useState([])
   const [focusProjectId, setFocusProjectId] = useState('all')
   const [focusWeek, setFocusWeek] = useState('all')
+  const [focusMonth, setFocusMonth] = useState('all')
   const [selectedWeek, setSelectedWeek] = useState(null)
   const [selectedStatusProject, setSelectedStatusProject] = useState('all')
   const [selectedStatusWeek, setSelectedStatusWeek] = useState(null)
@@ -107,6 +110,29 @@ export default function AdminDashboard() {
     }
   }, [year, focusPole, focusProjectId, focusWeek])
 
+  const fetchEnvironmentalMonthly = useCallback(async () => {
+    try {
+      setEnvironmentalLoading(true)
+      const params = { year }
+      if (focusPole) params.pole = focusPole
+      if (focusProjectId !== 'all') params.project_id = focusProjectId
+      if (focusMonth !== 'all') params.month = focusMonth
+
+      const response = await cachedApiCall(
+        dashboardService.getEnvironmentalMonthly,
+        '/dashboard/environmental-monthly',
+        params,
+        30000,
+      )
+      setEnvironmentalMonthly(response.data.data)
+    } catch (error) {
+      setEnvironmentalMonthly(null)
+      toast.error(t('dashboard.loadFailed') || t('errors.failedToLoad'))
+    } finally {
+      setEnvironmentalLoading(false)
+    }
+  }, [year, focusPole, focusProjectId, focusMonth])
+
   const fetchPoles = useCallback(async () => {
     try {
       const res = await projectService.getPoles()
@@ -116,6 +142,25 @@ export default function AdminDashboard() {
       setPoles([])
     }
   }, [])
+
+  const getReportStatusLabel = useCallback((status) => {
+    const s = String(status || '').trim()
+    if (!s) return t('common.unknown')
+    const map = {
+      approved: 'status.approved',
+      submitted: 'status.pending',
+      rejected: 'status.rejected',
+      draft: 'status.draft',
+      partial: 'status.partial',
+      missing: 'status.missing',
+      not_submitted: 'status.notSubmitted',
+      pending: 'status.pending',
+    }
+
+    const key = map[s]
+    if (!key) return t('common.unknown')
+    return t(key)
+  }, [t])
 
   const fetchCompareData = useCallback(async () => {
     if (!compareYear) {
@@ -167,6 +212,11 @@ export default function AdminDashboard() {
     if (activeTheme !== 'safety') return
     fetchSafetyPerformance()
   }, [activeTheme, fetchSafetyPerformance])
+
+  useEffect(() => {
+    if (activeTheme !== 'environmental') return
+    fetchEnvironmentalMonthly()
+  }, [activeTheme, fetchEnvironmentalMonthly])
 
   useEffect(() => {
     fetchPoles()
@@ -540,7 +590,7 @@ export default function AdminDashboard() {
               </option>
             ))}
           </select>
-          {activeTheme !== 'ppe' && (
+          {activeTheme !== 'ppe' && activeTheme !== 'environmental' && (
             <>
               <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700" />
               <select
@@ -554,6 +604,31 @@ export default function AdminDashboard() {
                     {w.label}
                   </option>
                 ))}
+              </select>
+            </>
+          )}
+
+          {activeTheme === 'environmental' && (
+            <>
+              <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700" />
+              <select
+                value={focusMonth}
+                onChange={(e) => setFocusMonth(e.target.value)}
+                className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm w-full sm:w-auto"
+              >
+                <option value="all">{t('common.all')}</option>
+                <option value="1">{t('months.january')}</option>
+                <option value="2">{t('months.february')}</option>
+                <option value="3">{t('months.march')}</option>
+                <option value="4">{t('months.april')}</option>
+                <option value="5">{t('months.may')}</option>
+                <option value="6">{t('months.june')}</option>
+                <option value="7">{t('months.july')}</option>
+                <option value="8">{t('months.august')}</option>
+                <option value="9">{t('months.september')}</option>
+                <option value="10">{t('months.october')}</option>
+                <option value="11">{t('months.november')}</option>
+                <option value="12">{t('months.december')}</option>
               </select>
             </>
           )}
@@ -583,9 +658,7 @@ export default function AdminDashboard() {
         <ComplianceTheme 
           kpiSummary={focusedKpiSummary} 
           weeklyTrends={filteredWeeklyTrends} 
-          projectPerformance={filteredProjectPerformance} 
           inspectionData={inspectionData}
-          sorData={sorData}
           regulatoryWatch={data?.regulatory_watch}
         />
       )}
@@ -597,8 +670,8 @@ export default function AdminDashboard() {
       )}
       {activeTheme === 'environmental' && (
         <EnvironmentalTheme 
-          kpiSummary={focusedKpiSummary} 
-          weeklyTrends={filteredWeeklyTrends} 
+          data={environmentalMonthly}
+          loading={environmentalLoading}
         />
       )}
 
@@ -957,12 +1030,17 @@ export default function AdminDashboard() {
                       const showAsMissing = isNotSubmitted && isPastWeek
                       const showAsNotYet = isNotSubmitted && !isPastWeek
 
+                      const projectLabel = proj.project_name || proj.project_code
+                      const projectTitle = proj.project_name && proj.project_code
+                        ? `${proj.project_name} (${proj.project_code})`
+                        : (proj.project_name || proj.project_code || '')
+
                       return (
                         <div
                           key={proj.project_id}
                           className="flex items-center justify-between gap-2 bg-gray-800 rounded px-2 py-1.5"
                         >
-                          <span className="truncate font-medium">{proj.project_code}</span>
+                          <span className="truncate font-medium" title={projectTitle}>{projectLabel}</span>
                           <span
                             className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium ${
                               proj.status === 'approved'
@@ -1199,10 +1277,10 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-gray-900 dark:text-gray-100">
-                    {report.project?.name || 'Unknown Project'}
+                    {report.project?.name || t('common.unknown')}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {report.report_month}/{report.report_year} • Submitted by {report.submitter?.name}
+                    {report.report_month}/{report.report_year} • {t('common.submittedBy')}: {report.submitter?.name || t('common.unknown')}
                   </p>
                 </div>
                 <span className={`badge ${
@@ -1210,7 +1288,7 @@ export default function AdminDashboard() {
                   report.status === 'submitted' ? 'badge-warning' :
                   report.status === 'rejected' ? 'badge-danger' : 'badge-info'
                 }`}>
-                  {report.status}
+                  {getReportStatusLabel(report.status)}
                 </span>
               </div>
             </div>

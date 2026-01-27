@@ -89,6 +89,17 @@ export default function UserManagement() {
     return t('users.saveError')
   }
 
+  const roleLabel = (role) => {
+    const r = String(role || '').trim()
+    if (!r) return ''
+    const key1 = `users.roles.${r}`
+    const v1 = t(key1)
+    if (v1 !== key1) return v1
+    const key2 = `roles.${r}`
+    const v2 = t(key2)
+    return v2 === key2 ? r : v2
+  }
+
   const buildUserPayload = (data, isEdit) => {
     const normalizedProjectIds = Array.isArray(data.project_ids)
       ? data.project_ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
@@ -536,7 +547,7 @@ export default function UserManagement() {
                     </div>
                     <div className="flex flex-col items-end gap-1 text-xs">
                       <span className={`badge ${user.role === 'admin' ? 'badge-info' : 'badge-success'}`}>
-                        {user.role}
+                        {roleLabel(user.role)}
                       </span>
                       <span className={`badge ${user.is_active ? 'badge-success' : 'badge-danger'}`}>
                         {user.is_active ? t('users.status.active') : t('users.status.inactive')}
@@ -611,7 +622,7 @@ export default function UserManagement() {
                       </td>
                       <td>
                         <span className={`badge ${user.role === 'admin' ? 'badge-info' : 'badge-success'}`}>
-                          {user.role}
+                          {roleLabel(user.role)}
                         </span>
                       </td>
                       <td>

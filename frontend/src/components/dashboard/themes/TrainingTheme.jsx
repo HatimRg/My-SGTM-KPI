@@ -152,40 +152,133 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* TBM (Awareness) Stats Row */}
+      {awarenessMetrics.totalSessions > 0 && (
+        <div>
+          <div className="mb-3">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+              {t('dashboard.training.sections.awareness') || 'TBT/TBM'}
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <MetricCard
+              title={t('dashboard.training.totalAwareness')}
+              value={awarenessMetrics.totalSessions}
+              icon={Users}
+              color="green"
+              trend={`${awarenessMetrics.totalParticipants} participants`}
+            />
+            <MetricCard
+              title={t('dashboard.training.awarenessParticipants')}
+              value={awarenessMetrics.totalParticipants}
+              icon={Users}
+              color="purple"
+            />
+            <MetricCard
+              title={t('dashboard.training.awarenessHours')}
+              value={Math.round(awarenessMetrics.totalHours ?? 0)}
+              icon={Clock}
+              color="amber"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* TBM (Awareness) Charts */}
+      {awarenessByTheme.length > 0 && (
+        <div>
+          <div className="mb-3">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+              {t('dashboard.training.sections.awarenessCharts') || 'TBT/TBM Charts'}
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 gap-6">
+            {/* Awareness Sessions by Theme (TBT/TBM) */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.training.awarenessByTheme')}</h3>
+              </div>
+              <div className="card-body">
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={awarenessByTheme} layout="vertical" margin={{ left: 10, right: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
+                      <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        tick={{ fontSize: 10 }}
+                        width={120}
+                      />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                        labelStyle={{ color: '#f3f4f6' }}
+                        formatter={(value, name, props) => [
+                          `${value} ${t('dashboard.training.metrics.sessions') || 'sessions'} (${props.payload.participants} ${t('dashboard.training.metrics.participants') || 'participants'})`,
+                          t('dashboard.training.metrics.sessions') || 'Sessions'
+                        ]}
+                      />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                        {awarenessByTheme.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Training Metrics Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard
-          title={t('dashboard.training.totalTrainings')}
-          value={trainingMetrics.totalTrainings}
-          icon={GraduationCap}
-          color="blue"
-          trend={t('dashboard.training.sessionsCompleted')}
-        />
-        <MetricCard
-          title={t('dashboard.training.employeesTrained')}
-          value={trainingMetrics.employeesTrained}
-          icon={Users}
-          color="green"
-          trend={t('dashboard.training.uniqueAttendees')}
-        />
-        <MetricCard
-          title={t('dashboard.training.trainingHours')}
-          value={trainingMetrics.trainingHours}
-          icon={Clock}
-          color="purple"
-          trend={t('dashboard.training.totalHoursDelivered')}
-        />
-        <MetricCard
-          title={t('dashboard.training.completionRate')}
-          value={trainingMetrics.completionRate !== null ? `${trainingMetrics.completionRate}%` : '—'}
-          icon={CheckCircle}
-          color="amber"
-          trend={`${t('dashboard.training.target')}: 95%`}
-        />
+      <div>
+        <div className="mb-3">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+            {t('dashboard.training.sections.training') || 'Training'}
+          </h3>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <MetricCard
+            title={t('dashboard.training.totalTrainings')}
+            value={trainingMetrics.totalTrainings}
+            icon={GraduationCap}
+            color="blue"
+            trend={t('dashboard.training.sessionsCompleted')}
+          />
+          <MetricCard
+            title={t('dashboard.training.employeesTrained')}
+            value={trainingMetrics.employeesTrained}
+            icon={Users}
+            color="green"
+            trend={t('dashboard.training.uniqueAttendees')}
+          />
+          <MetricCard
+            title={t('dashboard.training.trainingHours')}
+            value={trainingMetrics.trainingHours}
+            icon={Clock}
+            color="purple"
+            trend={t('dashboard.training.totalHoursDelivered')}
+          />
+          <MetricCard
+            title={t('dashboard.training.completionRate')}
+            value={trainingMetrics.completionRate !== null ? `${trainingMetrics.completionRate}%` : '—'}
+            icon={CheckCircle}
+            color="amber"
+            trend={`${t('dashboard.training.target')}: 95%`}
+          />
+        </div>
       </div>
 
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Training Charts Grid */}
+      <div>
+        <div className="mb-3">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+            {t('dashboard.training.sections.trainingCharts') || 'Training Charts'}
+          </h3>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Training Trends */}
         <div className="card">
           <div className="card-header">
@@ -213,7 +306,7 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                     dataKey="trainings" 
                     stroke="#3b82f6" 
                     fill="url(#trainingGradient)" 
-                    name="Trainings"
+                    name={t('dashboard.training.metrics.sessions') || 'Sessions'}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -243,8 +336,8 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
                       formatter={(value, name, props) => [
-                        `${value} sessions (${props.payload.participants} participants)`,
-                        'Count'
+                        `${value} ${t('dashboard.training.metrics.sessions') || 'sessions'} (${props.payload.participants} ${t('dashboard.training.metrics.participants') || 'participants'})`,
+                        t('dashboard.training.metrics.sessions') || 'Sessions'
                       ]}
                     />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]}>
@@ -282,51 +375,14 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
-                      formatter={(value, name) => [value, name === 'count' ? 'Sessions' : 'Participants']}
-                    />
-                    <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Sessions" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-gray-400">
-                  <p className="font-medium">{t('dashboard.training.noTrainingData')}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Awareness Sessions by Theme (TBT/TBM) */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.training.awarenessByTheme')}</h3>
-          </div>
-          <div className="card-body">
-            <div className="h-72">
-              {awarenessByTheme.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={awarenessByTheme} layout="vertical" margin={{ left: 10, right: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
-                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <YAxis 
-                      type="category" 
-                      dataKey="name" 
-                      tick={{ fontSize: 10 }} 
-                      width={120}
-                    />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                      labelStyle={{ color: '#f3f4f6' }}
-                      formatter={(value, name, props) => [
-                        `${value} sessions (${props.payload.participants} participants)`,
-                        'Count'
+                      formatter={(value, name) => [
+                        value,
+                        name === 'count'
+                          ? (t('dashboard.training.metrics.sessions') || 'Sessions')
+                          : (t('dashboard.training.metrics.participants') || 'Participants')
                       ]}
                     />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                      {awarenessByTheme.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
+                    <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} name={t('dashboard.training.metrics.sessions') || 'Sessions'} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -379,32 +435,8 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Awareness Stats Row */}
-      {awarenessMetrics.totalSessions > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <MetricCard
-            title={t('dashboard.training.totalAwareness')}
-            value={awarenessMetrics.totalSessions}
-            icon={Users}
-            color="green"
-            trend={`${awarenessMetrics.totalParticipants} participants`}
-          />
-          <MetricCard
-            title={t('dashboard.training.awarenessParticipants')}
-            value={awarenessMetrics.totalParticipants}
-            icon={Users}
-            color="purple"
-          />
-          <MetricCard
-            title={t('dashboard.training.awarenessHours')}
-            value={Math.round(awarenessMetrics.totalHours ?? 0)}
-            icon={Clock}
-            color="amber"
-          />
         </div>
-      )}
+      </div>
     </div>
   )
 })

@@ -93,7 +93,7 @@ class AwarenessSessionsImport implements ToModel, WithHeadingRow, SkipsOnError, 
                 return null;
             }
 
-            $carbon = Carbon::parse($date);
+            $carbon = Carbon::createFromFormat('Y-m-d', $date);
             $weekNumber = $this->emptyToNull($row['week_number'] ?? null);
             $weekYear = $this->emptyToNull($row['week_year'] ?? null);
 
@@ -157,8 +157,38 @@ class AwarenessSessionsImport implements ToModel, WithHeadingRow, SkipsOnError, 
             $key = str_replace(['*', '#'], '', $key);
             $key = preg_replace('/\s+/', ' ', $key);
             $key = str_replace(' ', '_', $key);
+            $asciiKey = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $key);
+            if ($asciiKey !== false && $asciiKey !== null) {
+                $key = $asciiKey;
+            }
+            $key = preg_replace('/[^a-z0-9_]/', '_', $key);
+            $key = preg_replace('/_+/', '_', $key);
+            $key = trim($key, '_');
             $out[$key] = $v;
         }
+
+        $aliases = [
+            'code_projet' => 'project_code',
+            'projet' => 'project_code',
+            'anime_par' => 'by_name',
+            'animateur' => 'by_name',
+            'theme' => 'theme',
+            'duree_minutes' => 'duration_minutes',
+            'duree_en_minutes' => 'duration_minutes',
+            'participants' => 'participants',
+            'nb_participants' => 'participants',
+            'n_semaine' => 'week_number',
+            'numero_semaine' => 'week_number',
+            'annee_semaine' => 'week_year',
+            'heures_session' => 'session_hours',
+        ];
+
+        foreach ($aliases as $from => $to) {
+            if (!array_key_exists($to, $out) && array_key_exists($from, $out)) {
+                $out[$to] = $out[$from];
+            }
+        }
+
         return $out;
     }
 
@@ -187,7 +217,20 @@ class AwarenessSessionsImport implements ToModel, WithHeadingRow, SkipsOnError, 
                 return Carbon::instance($dt)->format('Y-m-d');
             }
 
-            return Carbon::parse((string) $value)->format('Y-m-d');
+            $raw = trim((string) $value);
+            if ($raw === '') {
+                return null;
+            }
+
+            $formats = ['d/m/Y', 'd-m-Y', 'd.m.Y', 'Y-m-d', 'm/d/Y'];
+            foreach ($formats as $format) {
+                try {
+                    return Carbon::createFromFormat($format, $raw)->format('Y-m-d');
+                } catch (\Throwable $e) {
+                }
+            }
+
+            return Carbon::parse($raw)->format('Y-m-d');
         } catch (\Throwable $e) {
             return null;
         }

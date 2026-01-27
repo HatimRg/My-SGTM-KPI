@@ -11,6 +11,7 @@ use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnWidths, WithEvents, WithTitle
@@ -21,6 +22,17 @@ class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnW
     private string $aptitudeStatusCsv = 'apte,inapte';
 
     private string $examNatureCsv = 'embauche_reintegration,visite_systematique,surveillance_medical_special,visite_de_reprise,visite_spontanee';
+
+    private function labelizeKey(string $value): string
+    {
+        $v = trim($value);
+        if ($v === '') {
+            return '';
+        }
+        $v = str_replace('_', ' ', $v);
+        $v = preg_replace('/\s+/', ' ', $v);
+        return ucwords(strtolower($v));
+    }
 
     public function __construct(int $dataRows = 200, string $lang = 'fr')
     {
@@ -56,10 +68,12 @@ class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnW
         $rows = [];
         $rows[] = [$this->tr("SGTM - MODÈLE D'IMPORT APTITUDES MÉDICALES (MASS)", 'SGTM - MEDICAL APTITUDES MASS IMPORT TEMPLATE')];
         $rows[] = [$this->tr(
-            'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, APTITUDE_STATUS*, EXAM_NATURE* et EXAM_DATE* obligatoires. ABLE_TO optionnel (valeurs séparées par virgule).',
-            'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf. CIN*, APTITUDE_STATUS*, EXAM_NATURE* and EXAM_DATE* are required. ABLE_TO is optional (comma-separated values).'
+            'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf (optionnel). CIN*, Statut aptitude*, Nature examen* et Date examen* obligatoires. Apte à optionnel (valeurs séparées par virgule).',
+            'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf (optional). CIN*, APTITUDE_STATUS*, EXAM_NATURE* and EXAM_DATE* are required. ABLE_TO is optional (comma-separated values).'
         )];
-        $rows[] = ['CIN*', 'APTITUDE_STATUS*', 'EXAM_NATURE*', 'ABLE_TO', 'EXAM_DATE*', 'DATE_EXPIRATION'];
+        $rows[] = $this->lang === 'en'
+            ? ['CIN*', 'APTITUDE_STATUS*', 'EXAM_NATURE*', 'ABLE_TO', 'EXAM_DATE*', 'DATE_EXPIRATION']
+            : ['CIN*', 'Statut aptitude*', 'Nature examen*', 'Apte à', 'Date examen*', 'Date expiration'];
 
         for ($i = 0; $i < $this->dataRows; $i++) {
             $rows[] = ['', '', '', '', '', ''];
@@ -88,8 +102,9 @@ class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnW
                 }
                 $statusesLastRow = max(1, count($statuses));
 
-                $natures = array_values(array_filter(array_map('trim', explode(',', $this->examNatureCsv)), fn ($v) => $v !== ''));
-                sort($natures, SORT_NATURAL | SORT_FLAG_CASE);
+                $natureKeys = array_values(array_filter(array_map('trim', explode(',', $this->examNatureCsv)), fn ($v) => $v !== ''));
+                sort($natureKeys, SORT_NATURAL | SORT_FLAG_CASE);
+                $natures = array_values(array_filter(array_map(fn ($k) => $this->labelizeKey((string) $k), $natureKeys), fn ($v) => $v !== ''));
                 $rowIndex = 1;
                 foreach ($natures as $v) {
                     $listsSheet->setCellValue('B' . $rowIndex, $v);
@@ -121,8 +136,8 @@ class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnW
                 $sheet->getRowDimension(1)->setRowHeight(40);
 
                 $sheet->setCellValue('A2', $this->tr(
-                    'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf. CIN*, APTITUDE_STATUS*, EXAM_NATURE* et EXAM_DATE* obligatoires. ABLE_TO optionnel (valeurs séparées par virgule).',
-                    'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf. CIN*, APTITUDE_STATUS*, EXAM_NATURE* and EXAM_DATE* are required. ABLE_TO is optional (comma-separated values).'
+                    'Instructions: 1 ligne par CIN. PDF dans le ZIP: CIN.pdf (optionnel). CIN*, Statut aptitude*, Nature examen* et Date examen* obligatoires. Apte à optionnel (valeurs séparées par virgule).',
+                    'Instructions: 1 row per CIN. PDF in the ZIP: CIN.pdf (optional). CIN*, APTITUDE_STATUS*, EXAM_NATURE* and EXAM_DATE* are required. ABLE_TO is optional (comma-separated values).'
                 ));
                 $sheet->mergeCells('A2:F2');
                 $sheet->getStyle('A2:F2')->applyFromArray([
@@ -139,7 +154,9 @@ class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnW
                 ]);
                 $sheet->getRowDimension(2)->setRowHeight(46);
 
-                $headers = ['CIN*', 'APTITUDE_STATUS*', 'EXAM_NATURE*', 'ABLE_TO', 'EXAM_DATE*', 'DATE_EXPIRATION'];
+                $headers = $this->lang === 'en'
+                    ? ['CIN*', 'APTITUDE_STATUS*', 'EXAM_NATURE*', 'ABLE_TO', 'EXAM_DATE*', 'DATE_EXPIRATION']
+                    : ['CIN*', 'Statut aptitude*', 'Nature examen*', 'Apte à', 'Date examen*', 'Date expiration'];
                 $col = 'A';
                 foreach ($headers as $header) {
                     $sheet->setCellValue($col . '3', $header);
@@ -188,7 +205,7 @@ class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnW
                     $statusValidation->setShowErrorMessage(true);
                     $statusValidation->setErrorTitle($this->tr('Statut aptitude', 'Aptitude status'));
                     $statusValidation->setError($this->tr('Veuillez sélectionner un statut valide dans la liste.', 'Please select a valid status from the list.'));
-                    $statusValidation->setFormula1("='Lists'!\$A\$1:\$A\${statusesLastRow}");
+                    $statusValidation->setFormula1("='Lists'!\$A\$1:\$A\$" . $statusesLastRow);
 
                     $natureValidation = $sheet->getCell("C{$row}")->getDataValidation();
                     $natureValidation->setType(DataValidation::TYPE_LIST);
@@ -198,8 +215,11 @@ class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnW
                     $natureValidation->setShowErrorMessage(true);
                     $natureValidation->setErrorTitle($this->tr('Nature examen', 'Exam nature'));
                     $natureValidation->setError($this->tr('Veuillez sélectionner une nature d\'examen valide dans la liste.', 'Please select a valid exam nature from the list.'));
-                    $natureValidation->setFormula1("='Lists'!\$B\$1:\$B\${naturesLastRow}");
+                    $natureValidation->setFormula1("='Lists'!\$B\$1:\$B\$" . $naturesLastRow);
                 }
+
+                $sheet->getStyle("E{$dataStartRow}:E{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
+                $sheet->getStyle("F{$dataStartRow}:F{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
 
                 $sheet->getComment('A3')->getText()->createTextRun($this->tr(
                     "CIN = IDENTIFIANT UNIQUE\n\nLe PDF dans le ZIP doit s'appeler: CIN.pdf",
@@ -211,10 +231,10 @@ class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnW
                 $sheet->getComment('D3')->getText()->createTextRun($this->tr('Optionnel. Ex: travaux_en_hauteur, operateur', 'Optional. Example: travail_en_hauteur, operateur'));
                 $sheet->getComment('D3')->setWidth('220px');
 
-                $sheet->getComment('E3')->getText()->createTextRun($this->tr('Format recommandé: AAAA-MM-JJ', 'Recommended format: YYYY-MM-DD'));
+                $sheet->getComment('E3')->getText()->createTextRun($this->tr('Format recommandé: JJ/MM/AAAA', 'Recommended format: DD/MM/YYYY'));
                 $sheet->getComment('E3')->setWidth('170px');
 
-                $sheet->getComment('F3')->getText()->createTextRun($this->tr('Optionnel. Format recommandé: AAAA-MM-JJ', 'Optional. Recommended format: YYYY-MM-DD'));
+                $sheet->getComment('F3')->getText()->createTextRun($this->tr('Optionnel. Format recommandé: JJ/MM/AAAA', 'Optional. Recommended format: DD/MM/YYYY'));
                 $sheet->getComment('F3')->setWidth('190px');
 
                 $sheet->freezePane('A4');
@@ -222,7 +242,6 @@ class WorkerMedicalAptitudesMassTemplateExport implements FromArray, WithColumnW
 
                 $sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
                 $sheet->getPageSetup()->setFitToWidth(1);
-                $sheet->getPageSetup()->setPrintArea("A1:F{$lastRow}");
 
                 $spreadsheet->setActiveSheetIndex(0);
             },

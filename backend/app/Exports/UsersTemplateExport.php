@@ -104,6 +104,10 @@ class UsersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, Wi
             AfterSheet::class => function (AfterSheet $event) use ($dataRows, $roleOptions) {
                 $sheet = $event->sheet->getDelegate();
 
+                $spreadsheet = $sheet->getParent();
+                $listsSheet = $spreadsheet->createSheet();
+                $listsSheet->setTitle('Lists');
+
                 $primaryOrange = 'F97316';
                 $darkOrange = 'EA580C';
                 $lightOrange = 'FED7AA';
@@ -170,6 +174,28 @@ class UsersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, Wi
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $black]],
                 ]);
 
+                $roleLabels = !empty($roleOptions)
+                    ? array_map(fn ($r) => $this->roleLabel((string) $r), $roleOptions)
+                    : ($this->lang === 'en'
+                        ? ['Administrator', 'Viewer', 'HSE Manager', 'Regional HSE Manager', 'HSE Responsible', 'HSE Supervisor', 'Administrative Manager', 'HSE Officer', 'Developer', 'Pole Director', 'Works Director', 'HSE Director', 'HR Director']
+                        : ['Administrateur', 'Consultation', 'Manager HSE', 'Manager HSE Régional', 'Responsable HSE', 'Superviseur HSE', 'Responsable administratif', 'Animateur HSE', 'Développeur', 'Directeur de pôle', 'Directeur Travaux', 'Directeur HSE', 'Directeur RH']);
+                $rowIndex = 1;
+                foreach ($roleLabels as $label) {
+                    $listsSheet->setCellValue('A' . $rowIndex, $label);
+                    $rowIndex++;
+                }
+                $rolesLastRow = max(1, count($roleLabels));
+
+                $activeValues = $this->lang === 'en' ? ['ACTIVE', 'INACTIVE'] : ['ACTIF', 'INACTIF'];
+                $rowIndex = 1;
+                foreach ($activeValues as $v) {
+                    $listsSheet->setCellValue('B' . $rowIndex, $v);
+                    $rowIndex++;
+                }
+                $activeLastRow = max(1, count($activeValues));
+
+                $listsSheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
+
                 $lastRow = 3 + $dataRows;
                 for ($row = 4; $row <= $lastRow; $row++) {
                     $bgColor = ($row % 2 == 0) ? $grayLight : $white;
@@ -188,20 +214,16 @@ class UsersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, Wi
                     $roleValidation->setErrorStyle(DataValidation::STYLE_STOP);
                     $roleValidation->setAllowBlank(false);
                     $roleValidation->setShowDropDown(true);
-                    $roleLabels = !empty($roleOptions)
-                        ? array_map(fn ($r) => $this->roleLabel((string) $r), $roleOptions)
-                        : ($this->lang === 'en'
-                            ? ['Administrator', 'Viewer', 'HSE Manager', 'Regional HSE Manager', 'HSE Responsible', 'HSE Supervisor', 'Administrative Manager', 'HSE Officer', 'Developer', 'Pole Director', 'Works Director', 'HSE Director', 'HR Director']
-                            : ['Administrateur', 'Consultation', 'Manager HSE', 'Manager HSE Régional', 'Responsable HSE', 'Superviseur HSE', 'Responsable administratif', 'Animateur HSE', 'Développeur', 'Directeur de pôle', 'Directeur Travaux', 'Directeur HSE', 'Directeur RH']);
-                    $rolesCsv = implode(',', $roleLabels);
-                    $roleValidation->setFormula1('"' . $rolesCsv . '"');
+                    $roleValidation->setShowErrorMessage(true);
+                    $roleValidation->setFormula1("='Lists'!\$A\$1:\$A\$" . $rolesLastRow);
 
                     $activeValidation = $sheet->getCell("G{$row}")->getDataValidation();
                     $activeValidation->setType(DataValidation::TYPE_LIST);
                     $activeValidation->setErrorStyle(DataValidation::STYLE_STOP);
                     $activeValidation->setAllowBlank(true);
                     $activeValidation->setShowDropDown(true);
-                    $activeValidation->setFormula1($this->lang === 'en' ? '"ACTIVE,INACTIVE"' : '"ACTIF,INACTIF"');
+                    $activeValidation->setShowErrorMessage(true);
+                    $activeValidation->setFormula1("='Lists'!\$B\$1:\$B\$" . $activeLastRow);
                     $sheet->setCellValue("G{$row}", $this->lang === 'en' ? 'ACTIVE' : 'ACTIF');
                 }
 
@@ -210,9 +232,7 @@ class UsersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, Wi
 
                 $sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
                 $sheet->getPageSetup()->setFitToWidth(1);
-                $sheet->getPageSetup()->setPrintArea("A1:H{$lastRow}");
 
-                $spreadsheet = $sheet->getParent();
                 $spreadsheet->setActiveSheetIndex(0);
             },
         ];

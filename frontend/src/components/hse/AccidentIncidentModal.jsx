@@ -226,6 +226,22 @@ export default function AccidentIncidentModal({
     }
   }
 
+  const optionKey = (value) => {
+    return String(value)
+      .trim()
+      .replaceAll('<', 'lt_')
+      .replaceAll('>', 'gt_')
+      .replaceAll('-', '_')
+      .replaceAll('/', '_')
+      .replaceAll(' ', '_')
+  }
+
+  const optionLabel = (group, value, keyOverride) => {
+    if (!value) return ''
+    const key = keyOverride ?? value
+    return tf(`hseEvents.accidentForm.options.${group}.${key}`, String(value))
+  }
+
   const [form, setForm] = useState(() => ({
     project_id: selectedProjectId || '',
     category: 'work_accident',
@@ -336,13 +352,20 @@ export default function AccidentIncidentModal({
     try {
       const d = new Date(form.event_date)
       if (Number.isNaN(d.getTime())) return ''
-      return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()]
+      return new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(d)
     } catch {
       return ''
     }
   }, [form.event_date])
 
-  const severityFromVictims = useMemo(() => computeSeverityFromVictims(form.victims), [form.victims])
+  const severityFromVictims = useMemo(() => {
+    return computeSeverityFromVictims(form.victims)
+  }, [form.victims])
+
+  const derivedSeverityLabel = useMemo(() => {
+    if (!severityFromVictims) return ''
+    return tf(`hseEvents.severities.${severityFromVictims}`, severityFromVictims)
+  }, [severityFromVictims])
   const lostTimeFromVictims = useMemo(() => computeLostTime(form.victims), [form.victims])
 
   const setVictimsCount = (count) => {
@@ -473,43 +496,109 @@ export default function AccidentIncidentModal({
     e.preventDefault()
     if (saving) return
 
-    if (!form.project_id) return
-    if (!form.category) return
-    if (!form.location) return
-    if (!form.event_date) return
-    if (!form.shift) return
+    const requiredError = () => {
+      toast.error(t?.('common.fillRequired') ?? 'Please fill in all required fields')
+    }
 
-    if (!form.victims_count || form.victims_count < 1) return
+    if (!form.project_id) {
+      requiredError()
+      return
+    }
+    if (!form.category) {
+      requiredError()
+      return
+    }
+    if (!form.location) {
+      requiredError()
+      return
+    }
+    if (!form.event_date) {
+      requiredError()
+      return
+    }
+    if (!form.shift) {
+      requiredError()
+      return
+    }
+
+    if (!form.victims_count || form.victims_count < 1) {
+      requiredError()
+      return
+    }
 
     const victims = Array.isArray(form.victims) ? form.victims : []
-    if (victims.length !== form.victims_count) return
+    if (victims.length !== form.victims_count) {
+      requiredError()
+      return
+    }
 
     for (const v of victims) {
-      if (!v.full_name || !v.outcome) return
-      if (v.company === 'subcontractor' && !v.subcontractor_name) return
+      if (!v.full_name || !v.outcome) {
+        requiredError()
+        return
+      }
+      if (v.company === 'subcontractor' && !v.subcontractor_name) {
+        requiredError()
+        return
+      }
       if (v.outcome !== 'no_injury') {
-        if (!v.body_part || !v.injury_type) return
-        if (v.injury_type === 'other' && !v.injury_type_other) return
+        if (!v.body_part || !v.injury_type) {
+          requiredError()
+          return
+        }
+        if (v.injury_type === 'other' && !v.injury_type_other) {
+          requiredError()
+          return
+        }
       }
       if (v.outcome === 'fatal') {
-        if (!v.death_timing || !v.death_place) return
-        if (v.death_timing === 'later' && !v.death_date) return
+        if (!v.death_timing || !v.death_place) {
+          requiredError()
+          return
+        }
+        if (v.death_timing === 'later' && !v.death_date) {
+          requiredError()
+          return
+        }
       }
     }
 
-    if (!form.activity) return
-    if (form.activity === 'other' && !form.activity_other) return
+    if (!form.activity) {
+      requiredError()
+      return
+    }
+    if (form.activity === 'other' && !form.activity_other) {
+      requiredError()
+      return
+    }
 
-    if (!form.ground_condition || !form.lighting || !form.weather || !form.work_area) return
+    if (!form.ground_condition || !form.lighting || !form.weather || !form.work_area) {
+      requiredError()
+      return
+    }
 
-    if (!form.immediate_cause) return
-    if (form.immediate_cause === 'other' && !form.immediate_cause_other) return
+    if (!form.immediate_cause) {
+      requiredError()
+      return
+    }
+    if (form.immediate_cause === 'other' && !form.immediate_cause_other) {
+      requiredError()
+      return
+    }
+
+    if (!Array.isArray(form.root_causes) || form.root_causes.length === 0) {
+      requiredError()
+      return
+    }
 
     const severity = severityFromVictims
     const lost_time = lostTimeFromVictims
 
     const needsMethodConformity = ['major', 'critical', 'fatal'].includes(severity)
-    if (needsMethodConformity && !form.method_conformity) return
+    if (needsMethodConformity && !form.method_conformity) {
+      requiredError()
+      return
+    }
 
     if (lost_time && Number(form.lost_days) < 0) return
 
@@ -592,7 +681,7 @@ export default function AccidentIncidentModal({
               <select className="input" value={form.category} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} required>
                 {ACCIDENT_CATEGORIES.map((c) => (
                   <option key={c.value} value={c.value}>
-                    {c.value}
+                    {optionLabel('accidentCategory', c.value)}
                   </option>
                 ))}
               </select>
@@ -625,7 +714,7 @@ export default function AccidentIncidentModal({
               <select className="input" value={form.shift} onChange={(e) => setForm((p) => ({ ...p, shift: e.target.value }))} required>
                 {SHIFT_OPTIONS.map((s) => (
                   <option key={s.value} value={s.value}>
-                    {s.value}
+                    {optionLabel('shift', s.value)}
                   </option>
                 ))}
               </select>
@@ -654,7 +743,7 @@ export default function AccidentIncidentModal({
             </div>
             <div>
               <label className="label">{tf('hseEvents.accidentForm.fields.derivedSeverity', 'Derived severity')}</label>
-              <input className="input" value={severityFromVictims || '-'} readOnly />
+              <input className="input" value={derivedSeverityLabel || '-'} readOnly />
             </div>
           </div>
         </div>
@@ -706,7 +795,7 @@ export default function AccidentIncidentModal({
                       <option value="">{t?.('common.select') ?? 'Select'}</option>
                       {AGE_RANGES.map((a) => (
                         <option key={a.value} value={a.value}>
-                          {a.value}
+                          {optionLabel('ageRange', a.value, optionKey(a.value))}
                         </option>
                       ))}
                     </select>
@@ -718,7 +807,7 @@ export default function AccidentIncidentModal({
                       <option value="">{t?.('common.select') ?? 'Select'}</option>
                       {EXPERIENCE_RANGES.map((x) => (
                         <option key={x.value} value={x.value}>
-                          {x.value}
+                          {optionLabel('experienceRange', x.value)}
                         </option>
                       ))}
                     </select>
@@ -730,7 +819,7 @@ export default function AccidentIncidentModal({
                       <option value="">{t?.('common.select') ?? 'Select'}</option>
                       {OUTCOMES.map((o) => (
                         <option key={o.value} value={o.value}>
-                          {o.value}
+                          {optionLabel('outcome', o.value)}
                         </option>
                       ))}
                     </select>
@@ -744,7 +833,7 @@ export default function AccidentIncidentModal({
                           <option value="">{t?.('common.select') ?? 'Select'}</option>
                           {BODY_PARTS.map((b) => (
                             <option key={b.value} value={b.value}>
-                              {b.value}
+                              {optionLabel('bodyPart', b.value)}
                             </option>
                           ))}
                         </select>
@@ -755,7 +844,7 @@ export default function AccidentIncidentModal({
                           <option value="">{t?.('common.select') ?? 'Select'}</option>
                           {INJURY_TYPES.map((it) => (
                             <option key={it.value} value={it.value}>
-                              {it.value}
+                              {optionLabel('injuryType', it.value)}
                             </option>
                           ))}
                         </select>
@@ -812,7 +901,7 @@ export default function AccidentIncidentModal({
                 <option value="">{t?.('common.select') ?? 'Select'}</option>
                 {ACTIVITIES.map((a) => (
                   <option key={a.value} value={a.value}>
-                    {a.value}
+                    {optionLabel('activity', a.value)}
                   </option>
                 ))}
               </select>
@@ -835,7 +924,7 @@ export default function AccidentIncidentModal({
                 <option value="">{t?.('common.select') ?? 'Select'}</option>
                 {GROUND_CONDITIONS.map((g) => (
                   <option key={g.value} value={g.value}>
-                    {g.value}
+                    {optionLabel('groundCondition', g.value)}
                   </option>
                 ))}
               </select>
@@ -846,7 +935,7 @@ export default function AccidentIncidentModal({
                 <option value="">{t?.('common.select') ?? 'Select'}</option>
                 {LIGHTING_OPTIONS.map((l) => (
                   <option key={l.value} value={l.value}>
-                    {l.value}
+                    {optionLabel('lighting', l.value)}
                   </option>
                 ))}
               </select>
@@ -857,7 +946,7 @@ export default function AccidentIncidentModal({
                 <option value="">{t?.('common.select') ?? 'Select'}</option>
                 {WEATHER_OPTIONS.map((w) => (
                   <option key={w.value} value={w.value}>
-                    {w.value}
+                    {optionLabel('weather', w.value)}
                   </option>
                 ))}
               </select>
@@ -868,7 +957,7 @@ export default function AccidentIncidentModal({
                 <option value="">{t?.('common.select') ?? 'Select'}</option>
                 {WORK_AREA_OPTIONS.map((w) => (
                   <option key={w.value} value={w.value}>
-                    {w.value}
+                    {optionLabel('workArea', w.value)}
                   </option>
                 ))}
               </select>
@@ -885,7 +974,7 @@ export default function AccidentIncidentModal({
                 {PPE_OPTIONS.map((p) => (
                   <label key={p.value} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <input type="checkbox" checked={form.ppe_worn.includes(p.value)} onChange={() => toggleInList('ppe_worn', p.value)} />
-                    {p.value}
+                    {optionLabel('ppe', p.value)}
                   </label>
                 ))}
               </div>
@@ -904,7 +993,7 @@ export default function AccidentIncidentModal({
               <select className="input" value={form.collective_protections} onChange={(e) => setForm((p) => ({ ...p, collective_protections: e.target.value }))}>
                 {COLLECTIVE_PROTECTIONS.map((c) => (
                   <option key={c.value} value={c.value}>
-                    {c.value}
+                    {optionLabel('collectiveProtections', c.value)}
                   </option>
                 ))}
               </select>
@@ -921,7 +1010,7 @@ export default function AccidentIncidentModal({
                 <option value="">{t?.('common.select') ?? 'Select'}</option>
                 {IMMEDIATE_CAUSES.map((c) => (
                   <option key={c.value} value={c.value}>
-                    {c.value}
+                    {optionLabel('immediateCause', c.value)}
                   </option>
                 ))}
               </select>
@@ -944,7 +1033,7 @@ export default function AccidentIncidentModal({
                 {ROOT_CAUSE_CATEGORIES.map((c) => (
                   <label key={c.value} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <input type="checkbox" checked={form.root_causes.includes(c.value)} onChange={() => toggleInList('root_causes', c.value)} />
-                    {c.value}
+                    {optionLabel('rootCause', c.value)}
                   </label>
                 ))}
               </div>
@@ -956,7 +1045,7 @@ export default function AccidentIncidentModal({
                 <option value="">{t?.('common.select') ?? 'Select'}</option>
                 {METHOD_CONFORMITY.map((m) => (
                   <option key={m.value} value={m.value}>
-                    {m.value}
+                    {optionLabel('methodConformity', m.value)}
                   </option>
                 ))}
               </select>
@@ -970,7 +1059,7 @@ export default function AccidentIncidentModal({
             {IMMEDIATE_ACTIONS.map((a) => (
               <label key={a.value} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <input type="checkbox" checked={form.immediate_actions.includes(a.value)} onChange={() => toggleInList('immediate_actions', a.value)} />
-                {a.value}
+                {optionLabel('immediateAction', a.value)}
               </label>
             ))}
           </div>
@@ -992,7 +1081,7 @@ export default function AccidentIncidentModal({
                     <option value="">{tf('hseEvents.accidentForm.fields.actionType', 'Action type')}</option>
                     {PREVENTIVE_ACTION_TYPES.map((tpe) => (
                       <option key={tpe.value} value={tpe.value}>
-                        {tpe.value}
+                        {optionLabel('actionType', tpe.value)}
                       </option>
                     ))}
                   </select>
@@ -1013,7 +1102,7 @@ export default function AccidentIncidentModal({
                     <select className="input" value={row.status} onChange={(e) => updateCorrectiveAction(idx, 'status', e.target.value)}>
                       {ACTION_STATUSES.map((s) => (
                         <option key={s.value} value={s.value}>
-                          {s.value}
+                          {optionLabel('actionStatus', s.value)}
                         </option>
                       ))}
                     </select>

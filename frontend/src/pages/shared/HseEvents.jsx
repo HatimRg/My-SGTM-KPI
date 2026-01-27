@@ -43,14 +43,16 @@ export default function HseEvents() {
   }
 
   const [projects, setProjects] = useState([])
+  const [poles, setPoles] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
   const [items, setItems] = useState([])
+  const [selectedPole, setSelectedPole] = useState('')
   const [selectedProjectId, setSelectedProjectId] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [severityFilter, setSeverityFilter] = useState('')
-  const [yearFilter, setYearFilter] = useState('')
+  const [yearFilter, setYearFilter] = useState(String(new Date().getFullYear()))
   const [monthFilter, setMonthFilter] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
@@ -92,7 +94,17 @@ export default function HseEvents() {
         setLoading(false)
       }
     }
+    const fetchPoles = async () => {
+      try {
+        const res = await projectService.getPoles()
+        const values = res.data?.data?.poles || res.data?.poles || []
+        setPoles(Array.isArray(values) ? values : [])
+      } catch (e) {
+        setPoles([])
+      }
+    }
     fetchProjects()
+    fetchPoles()
   }, [])
 
   const fetchItems = async () => {
@@ -101,6 +113,7 @@ export default function HseEvents() {
       const params = {
         per_page: 100,
       }
+      if (selectedPole) params.pole = selectedPole
       if (selectedProjectId) params.project_id = selectedProjectId
       if (yearFilter) params.year = yearFilter
       if (monthFilter) params.month = monthFilter
@@ -144,7 +157,13 @@ export default function HseEvents() {
   useEffect(() => {
     fetchItems()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProjectId, yearFilter, monthFilter, fromDate, toDate])
+  }, [selectedPole, selectedProjectId, yearFilter, monthFilter, fromDate, toDate])
+
+  useEffect(() => {
+    if (!selectedPole) return
+    setSelectedProjectId('')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPole])
 
   const openCreate = () => {
     if (activeTab === 'accidents') {
@@ -360,6 +379,20 @@ export default function HseEvents() {
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
         <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
           <div>
+            <label className="label">{t('filters.pole') ?? t('common.pole') ?? 'Pole'}</label>
+            <select
+              className="input"
+              value={selectedPole}
+              onChange={(e) => setSelectedPole(e.target.value)}
+            >
+              <option value="">{t('common.allPoles') ?? 'All poles'}</option>
+              {poles.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
             <label className="label">{t('projects.title') ?? 'Project'}</label>
             <select
               className="input"
@@ -367,7 +400,9 @@ export default function HseEvents() {
               onChange={(e) => setSelectedProjectId(e.target.value)}
             >
               <option value="">{t('common.all') ?? 'All'}</option>
-              {sortedProjects.map((p) => (
+              {sortedProjects
+                .filter((p) => !selectedPole || String(p.pole ?? '') === String(selectedPole))
+                .map((p) => (
                 <option key={p.id} value={String(p.id)}>
                   {p.code ? `${p.code} - ${p.name}` : p.name}
                 </option>
@@ -396,12 +431,30 @@ export default function HseEvents() {
 
           <div>
             <label className="label">{t('hseEvents.filters.year') ?? 'Year'}</label>
-            <input className="input" type="number" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} placeholder={t('hseEvents.placeholders.year') ?? '2026'} />
+            <select className="input" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}>
+              {Array.from({ length: 6 }, (_, i) => String(new Date().getFullYear() - i)).map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
           </div>
 
           <div>
             <label className="label">{t('hseEvents.filters.month') ?? 'Month'}</label>
-            <input className="input" type="number" min="1" max="12" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} placeholder={t('hseEvents.placeholders.month') ?? '1-12'} />
+            <select className="input" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)}>
+              <option value="">{t('common.all') ?? 'All'}</option>
+              <option value="1">{t('months.january')}</option>
+              <option value="2">{t('months.february')}</option>
+              <option value="3">{t('months.march')}</option>
+              <option value="4">{t('months.april')}</option>
+              <option value="5">{t('months.may')}</option>
+              <option value="6">{t('months.june')}</option>
+              <option value="7">{t('months.july')}</option>
+              <option value="8">{t('months.august')}</option>
+              <option value="9">{t('months.september')}</option>
+              <option value="10">{t('months.october')}</option>
+              <option value="11">{t('months.november')}</option>
+              <option value="12">{t('months.december')}</option>
+            </select>
           </div>
 
           <div>

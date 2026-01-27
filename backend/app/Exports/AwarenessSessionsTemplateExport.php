@@ -11,6 +11,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 
 class AwarenessSessionsTemplateExport implements WithStyles, WithColumnWidths, WithTitle, WithEvents
@@ -121,8 +122,8 @@ class AwarenessSessionsTemplateExport implements WithStyles, WithColumnWidths, W
                 $sheet->getRowDimension(1)->setRowHeight(40);
 
                 $sheet->setCellValue('A2', $this->tr(
-                    'Instructions: 1 ligne = 1 session TBM/TBT. Champs obligatoires: PROJECT_CODE*, DATE*, BY_NAME*, THEME*, DURATION_MINUTES*, PARTICIPANTS*. DATE au format YYYY-MM-DD. WEEK_NUMBER/WEEK_YEAR/SESSION_HOURS peuvent être laissés vides (calculés automatiquement).',
-                    'Instructions: 1 row = 1 TBM/TBT session. Required fields: PROJECT_CODE*, DATE*, BY_NAME*, THEME*, DURATION_MINUTES*, PARTICIPANTS*. DATE in YYYY-MM-DD format. WEEK_NUMBER/WEEK_YEAR/SESSION_HOURS can be left empty (auto-calculated).'
+                    'Instructions: 1 ligne = 1 session TBM/TBT. Champs obligatoires: Code projet*, Date*, Animé par*, Thème*, Durée (minutes)*, Participants*. Date au format JJ/MM/AAAA. N° semaine/Année semaine/Heures session peuvent être laissés vides (calculés automatiquement).',
+                    'Instructions: 1 row = 1 TBM/TBT session. Required fields: PROJECT_CODE*, DATE*, BY_NAME*, THEME*, DURATION_MINUTES*, PARTICIPANTS*. DATE in DD/MM/YYYY format. WEEK_NUMBER/WEEK_YEAR/SESSION_HOURS can be left empty (auto-calculated).'
                 ));
                 $sheet->mergeCells('A2:I2');
                 $sheet->getStyle('A2:I2')->applyFromArray([
@@ -139,17 +140,29 @@ class AwarenessSessionsTemplateExport implements WithStyles, WithColumnWidths, W
                 ]);
                 $sheet->getRowDimension(2)->setRowHeight(42);
 
-                $headers = [
-                    'PROJECT_CODE*',
-                    'DATE*',
-                    'BY_NAME*',
-                    'THEME*',
-                    'DURATION_MINUTES*',
-                    'PARTICIPANTS*',
-                    'WEEK_NUMBER',
-                    'WEEK_YEAR',
-                    'SESSION_HOURS',
-                ];
+                $headers = $this->lang === 'en'
+                    ? [
+                        'PROJECT_CODE*',
+                        'DATE*',
+                        'BY_NAME*',
+                        'THEME*',
+                        'DURATION_MINUTES*',
+                        'PARTICIPANTS*',
+                        'WEEK_NUMBER',
+                        'WEEK_YEAR',
+                        'SESSION_HOURS',
+                    ]
+                    : [
+                        'Code projet*',
+                        'Date*',
+                        'Animé par*',
+                        'Thème*',
+                        'Durée (minutes)*',
+                        'Participants*',
+                        'N° semaine',
+                        'Année semaine',
+                        'Heures session',
+                    ];
 
                 $col = 'A';
                 foreach ($headers as $header) {
@@ -206,7 +219,7 @@ class AwarenessSessionsTemplateExport implements WithStyles, WithColumnWidths, W
                         $projectValidation->setShowErrorMessage(true);
                         $projectValidation->setErrorTitle($this->tr('Code projet', 'Project code'));
                         $projectValidation->setError($this->tr('Veuillez sélectionner un code projet valide dans la liste.', 'Please select a valid project code from the list.'));
-                        $projectValidation->setFormula1("='Lists'!\$A\$1:\$A\${projectCodesLastRow}");
+                        $projectValidation->setFormula1("='Lists'!\$A\$1:\$A\$" . $projectCodesLastRow);
                     }
 
                     if (!empty($themes)) {
@@ -218,7 +231,7 @@ class AwarenessSessionsTemplateExport implements WithStyles, WithColumnWidths, W
                         $themeValidation->setShowErrorMessage(true);
                         $themeValidation->setErrorTitle($this->tr('Thème', 'Theme'));
                         $themeValidation->setError($this->tr('Veuillez sélectionner un thème valide dans la liste.', 'Please select a valid theme from the list.'));
-                        $themeValidation->setFormula1("='Lists'!\$B\$1:\$B\${themesLastRow}");
+                        $themeValidation->setFormula1("='Lists'!\$B\$1:\$B\$" . $themesLastRow);
                     }
 
                     $durationValidation = $sheet->getCell("E{$row}")->getDataValidation();
@@ -229,18 +242,20 @@ class AwarenessSessionsTemplateExport implements WithStyles, WithColumnWidths, W
                     $durationValidation->setShowErrorMessage(true);
                     $durationValidation->setErrorTitle($this->tr('Durée', 'Duration'));
                     $durationValidation->setError($this->tr('Veuillez sélectionner une durée valide.', 'Please select a valid duration.'));
-                    $durationValidation->setFormula1("='Lists'!\$C\$1:\$C\${durationsLastRow}");
+                    $durationValidation->setFormula1("='Lists'!\$C\$1:\$C\$" . $durationsLastRow);
                 }
 
+                $sheet->getStyle("B{$dataStartRow}:B{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
+
                 $sheet->getComment('A3')->getText()->createTextRun($this->tr('Code projet (ex: PRJ001).', 'Project code (e.g., PRJ001).'));
-                $sheet->getComment('B3')->getText()->createTextRun($this->tr('Format recommandé: YYYY-MM-DD', 'Recommended format: YYYY-MM-DD'));
+                $sheet->getComment('B3')->getText()->createTextRun($this->tr('Format recommandé: JJ/MM/AAAA', 'Recommended format: DD/MM/YYYY'));
                 $sheet->getComment('D3')->getText()->createTextRun($this->tr('Choisir un thème dans la liste (ou utiliser "Autre" si applicable).', 'Choose a theme from the list (or use "Other" when applicable).'));
                 $sheet->getComment('E3')->getText()->createTextRun($this->tr('Durée en minutes (15/30/45/60).', 'Duration in minutes (15/30/45/60).'));
                 $sheet->getComment('I3')->getText()->createTextRun($this->tr('Optionnel, calculé automatiquement si vide.', 'Optional, auto-calculated when empty.'));
 
                 // Example row (kept out of imports by skipping PROJECT_CODE=EXEMPLE/EXAMPLE in the import logic)
                 $sheet->setCellValue('A4', 'EXEMPLE');
-                $sheet->setCellValue('B4', '2026-01-15');
+                $sheet->setCellValue('B4', '15/01/2026');
                 $sheet->setCellValue('C4', $this->tr('Nom Prénom', 'First Last'));
                 $sheet->setCellValue('D4', !empty($themes) ? $themes[0] : 'Other');
                 $sheet->setCellValue('E4', '30');
@@ -254,7 +269,6 @@ class AwarenessSessionsTemplateExport implements WithStyles, WithColumnWidths, W
 
                 $sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
                 $sheet->getPageSetup()->setFitToWidth(1);
-                $sheet->getPageSetup()->setPrintArea("A1:I{$lastRow}");
 
                 $spreadsheet->setActiveSheetIndex(0);
             },

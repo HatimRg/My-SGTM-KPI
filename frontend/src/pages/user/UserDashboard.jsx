@@ -568,10 +568,15 @@ export default function UserDashboard() {
                     const isNotSubmitted = proj.status === 'not_submitted'
                     const showAsMissing = isNotSubmitted && isPastWeek
                     const showAsNotYet = isNotSubmitted && !isPastWeek
+
+                    const projectLabel = proj.project_name || proj.project_code
+                    const projectTitle = proj.project_name && proj.project_code
+                      ? `${proj.project_name} (${proj.project_code})`
+                      : (proj.project_name || proj.project_code || '')
                     
                     return (
                       <div key={proj.project_id} className="flex items-center justify-between gap-2 bg-gray-800 rounded px-2 py-1.5">
-                        <span className="truncate font-medium">{proj.project_code}</span>
+                        <span className="truncate font-medium" title={projectTitle}>{projectLabel}</span>
                         <span className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium ${
                           proj.status === 'approved' ? 'bg-green-500' :
                           proj.status === 'submitted' ? 'bg-amber-400' :

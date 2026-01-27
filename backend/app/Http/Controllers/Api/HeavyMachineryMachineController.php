@@ -12,16 +12,30 @@ use App\Models\MachineInspection;
 use App\Models\Project;
 use App\Models\Worker;
 use App\Models\WorkerQualification;
+use App\Support\MachineTypeCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
 class HeavyMachineryMachineController extends Controller
 {
+    private function normalizeMachineTypeOrFail(?string $input): string
+    {
+        $key = MachineTypeCatalog::keyFromInput($input);
+        if (!$key) {
+            throw ValidationException::withMessages([
+                'machine_type' => ['Invalid machine type. Please choose a value from the official list.'],
+            ]);
+        }
+
+        return $key;
+    }
+
     private function isOperatorQualifiedWorker(int $workerId): bool
     {
         $today = now()->startOfDay();
@@ -77,17 +91,35 @@ class HeavyMachineryMachineController extends Controller
                 if (count($visibleProjectIds) === 0) {
                     $projectCodes = [];
                 } else {
-                    $projectCodes = Project::whereIn('id', $visibleProjectIds)->orderBy('code')->pluck('code')->toArray();
+                    $projectCodes = Project::whereIn('id', $visibleProjectIds)->orderBy('name')->pluck('name')->toArray();
                 }
             } else {
-                $projectCodes = Project::query()->orderBy('code')->pluck('code')->toArray();
+                $projectCodes = Project::query()->orderBy('name')->pluck('name')->toArray();
             }
+
+            $machineTypesQuery = Machine::query()->whereNotNull('machine_type');
+            if ($visibleProjectIds !== null) {
+                if (count($visibleProjectIds) === 0) {
+                    $machineTypesQuery->whereRaw('1=0');
+                } else {
+                    $machineTypesQuery->whereIn('project_id', $visibleProjectIds);
+                }
+            }
+            $machineTypes = $machineTypesQuery
+                ->select('machine_type')
+                ->distinct()
+                ->orderBy('machine_type')
+                ->pluck('machine_type')
+                ->map(fn ($v) => trim((string) $v))
+                ->filter(fn ($v) => $v !== '')
+                ->values()
+                ->toArray();
 
             $filename = 'SGTM-Machines-Template.xlsx';
 
             $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
 
-            return Excel::download(new MachinesTemplateExport(200, $projectCodes, $lang), $filename);
+            return Excel::download(new MachinesTemplateExport(200, $projectCodes, $lang, $machineTypes), $filename);
         } catch (\Throwable $e) {
             Log::error('Machines template generation failed', [
                 'error' => $e->getMessage(),
@@ -319,11 +351,17 @@ class HeavyMachineryMachineController extends Controller
             $project = ['id' => $machine->project->id, 'name' => $machine->project->name];
         }
 
+        $machineTypeRaw = $machine->machine_type;
+        $machineTypeKey = $machineTypeRaw !== null ? MachineTypeCatalog::keyFromInput((string) $machineTypeRaw) : null;
+
         return [
             'id' => $machine->id,
             'serial_number' => $machine->serial_number,
             'internal_code' => $machine->internal_code,
             'machine_type' => $machine->machine_type,
+            'machine_type_key' => $machineTypeKey,
+            'machine_type_label_fr' => $machineTypeKey ? MachineTypeCatalog::labelForKey($machineTypeKey, 'fr') : null,
+            'machine_type_label_en' => $machineTypeKey ? MachineTypeCatalog::labelForKey($machineTypeKey, 'en') : null,
             'brand' => $machine->brand,
             'model' => $machine->model,
             'project_id' => $machine->project_id,
@@ -450,12 +488,14 @@ class HeavyMachineryMachineController extends Controller
             'image' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:5120',
         ]);
 
+        $machineTypeKey = $this->normalizeMachineTypeOrFail($validated['machine_type']);
+
         $this->ensureAccessToProjectId($request, array_key_exists('project_id', $validated) ? ($validated['project_id'] !== null ? (int) $validated['project_id'] : null) : null);
 
         $data = [
             'serial_number' => trim($validated['serial_number']),
             'internal_code' => array_key_exists('internal_code', $validated) ? ($validated['internal_code'] !== null ? trim((string) $validated['internal_code']) : null) : null,
-            'machine_type' => trim($validated['machine_type']),
+            'machine_type' => $machineTypeKey,
             'brand' => trim($validated['brand']),
             'model' => array_key_exists('model', $validated) ? ($validated['model'] !== null ? trim((string) $validated['model']) : null) : null,
             'project_id' => $validated['project_id'] ?? null,
@@ -502,6 +542,10 @@ class HeavyMachineryMachineController extends Controller
             'project_id' => 'nullable|exists:projects,id',
             'is_active' => 'nullable|boolean',
         ]);
+
+        if (array_key_exists('machine_type', $validated)) {
+            $validated['machine_type'] = $this->normalizeMachineTypeOrFail($validated['machine_type']);
+        }
 
         if (array_key_exists('project_id', $validated)) {
             $this->ensureAccessToProjectId($request, $validated['project_id'] !== null ? (int) $validated['project_id'] : null);

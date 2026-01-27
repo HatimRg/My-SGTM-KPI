@@ -111,7 +111,7 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
         // Row 8: Hidden date row for import parsing
         $dateRow = ['_DATES_'];
         foreach ($days as $day) {
-            $dateRow[] = $day['iso'];
+            $dateRow[] = $day['date'];
         }
         $rows[] = $dateRow;
 

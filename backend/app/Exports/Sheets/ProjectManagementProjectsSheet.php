@@ -2,6 +2,7 @@
 
 namespace App\Exports\Sheets;
 
+use App\Helpers\WeekHelper;
 use App\Models\AwarenessSession;
 use App\Models\Inspection;
 use App\Models\KpiReport;
@@ -14,6 +15,7 @@ use App\Models\Worker;
 use App\Models\WorkerMedicalAptitude;
 use App\Models\WorkerPpeIssue;
 use App\Models\WorkerTraining;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
@@ -27,16 +29,16 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
 {
     protected int $year;
     protected string $lang;
-    protected int $maxResponsables;
-    protected bool $hasExtraResponsables;
+    protected int $maxHseManagers;
+    protected bool $hasExtraHseManagers;
 
     public function __construct(int $year, string $lang = 'fr')
     {
         $this->year = $year;
         $lang = strtolower(trim($lang));
         $this->lang = in_array($lang, ['en', 'fr'], true) ? $lang : 'fr';
-        $this->maxResponsables = 0;
-        $this->hasExtraResponsables = false;
+        $this->maxHseManagers = 0;
+        $this->hasExtraHseManagers = false;
     }
 
     private function tr(string $fr, string $en): string
@@ -52,32 +54,58 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
     private function formatWeeks(array $weeks): string
     {
         $weeks = array_values(array_unique(array_filter($weeks, fn ($w) => $w !== null && $w !== '')));
-        $weeks = array_map(fn ($w) => (int) $w, $weeks);
+        $weeks = array_map(function ($w) {
+            if (is_string($w) && preg_match('/(\d{1,2})/', $w, $m)) {
+                return (int) $m[1];
+            }
+            return (int) $w;
+        }, $weeks);
         sort($weeks);
         $labels = array_map(fn ($w) => $this->weekLabel($w), $weeks);
         return implode(', ', $labels);
     }
 
-    private function buildResponsableColumns(): void
+    private function normalizeKpiWeekNumber(KpiReport $report): ?int
     {
-        $projects = Project::query()->with('responsables')->get();
+        $week = (int) ($report->week_number ?? 0);
+        if ($week >= 1 && $week <= 52) {
+            return $week;
+        }
+
+        $date = $report->start_date ?: $report->report_date;
+        if (!$date) {
+            return null;
+        }
+
+        $info = WeekHelper::getWeekFromDate(Carbon::parse($date));
+        if ((int) ($info['year'] ?? 0) !== $this->year) {
+            return null;
+        }
+
+        $w = (int) ($info['week'] ?? 0);
+        return ($w >= 1 && $w <= 52) ? $w : null;
+    }
+
+    private function buildHseManagerColumns(): void
+    {
+        $projects = Project::query()->with('hseManagers')->get();
         $max = 0;
         foreach ($projects as $project) {
-            $count = $project->responsables?->count() ?? 0;
+            $count = $project->hseManagers?->count() ?? 0;
             if ($count > $max) {
                 $max = $count;
             }
         }
 
         $cap = 10;
-        $this->maxResponsables = min($max, $cap);
-        $this->hasExtraResponsables = $max > $cap;
+        $this->maxHseManagers = max(1, min($max, $cap));
+        $this->hasExtraHseManagers = $max > $cap;
     }
 
     public function headings(): array
     {
-        if ($this->maxResponsables === 0 && !$this->hasExtraResponsables) {
-            $this->buildResponsableColumns();
+        if ($this->maxHseManagers === 0 && !$this->hasExtraHseManagers) {
+            $this->buildHseManagerColumns();
         }
 
         $headings = [
@@ -87,13 +115,13 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
             $this->tr('Pôle', 'Pole'),
         ];
 
-        for ($i = 1; $i <= $this->maxResponsables; $i++) {
+        for ($i = 1; $i <= $this->maxHseManagers; $i++) {
             $headings[] = $this->tr("Responsable {$i} Nom", "Responsable {$i} Name");
             $headings[] = $this->tr("Responsable {$i} Rôle", "Responsable {$i} Role");
             $headings[] = $this->tr("Responsable {$i} Email", "Responsable {$i} Email");
         }
 
-        if ($this->hasExtraResponsables) {
+        if ($this->hasExtraHseManagers) {
             $headings[] = $this->tr('Autres responsables', 'Other responsables');
         }
 
@@ -106,7 +134,7 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
             $this->tr("TBT ({$this->year})", "TBT ({$this->year})"),
             $this->tr('Semaines veille réglementaire', 'Regulatory watch weeks'),
             $this->tr('Effectif (actifs)', 'Workforce (active workers)'),
-            $this->tr("Effectif avec induction ({$this->year})", "Workforce with induction ({$this->year})"),
+            $this->tr('Effectif avec induction', 'Workforce with induction'),
             $this->tr("Effectif avec aptitude médicale ({$this->year})", "Workforce with medical aptitude ({$this->year})"),
             $this->tr('Nombre machines', 'Machines count'),
             $this->tr('EPI distribués (total)', 'PPE distributed (total)'),
@@ -115,17 +143,17 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
 
     public function array(): array
     {
-        if ($this->maxResponsables === 0 && !$this->hasExtraResponsables) {
-            $this->buildResponsableColumns();
+        if ($this->maxHseManagers === 0 && !$this->hasExtraHseManagers) {
+            $this->buildHseManagerColumns();
         }
 
         $projects = Project::query()
-            ->with(['responsables'])
+            ->with(['hseManagers'])
             ->orderBy('name')
             ->get();
 
         $kpiRows = KpiReport::query()
-            ->select(['project_id', 'week_number', 'toolbox_talks', 'status'])
+            ->select(['project_id', 'week_number', 'toolbox_talks', 'status', 'start_date', 'report_date', 'report_year'])
             ->where('report_year', $this->year)
             ->where('status', '!=', KpiReport::STATUS_DRAFT)
             ->get();
@@ -175,9 +203,13 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
             ->join('workers', 'workers.id', '=', 'worker_trainings.worker_id')
             ->select('workers.project_id', DB::raw('COUNT(DISTINCT worker_trainings.worker_id) as c'))
             ->where('workers.is_active', true)
-            ->whereYear('worker_trainings.training_date', $this->year)
             ->where(function ($q) {
-                $q->whereRaw('LOWER(worker_trainings.training_type) LIKE ?', ['%induction%'])
+                // Generalized induction detection:
+                // - covers mass imports which use training_type = induction_hse
+                // - covers legacy/free-text variants
+                $q->where('worker_trainings.training_type', 'induction_hse')
+                    ->orWhereRaw('LOWER(worker_trainings.training_type) REGEXP ?', ['induction[^a-z0-9]*hse'])
+                    ->orWhereRaw('LOWER(worker_trainings.training_type) LIKE ?', ['%induction%'])
                     ->orWhereRaw('LOWER(worker_trainings.training_label) LIKE ?', ['%induction%']);
             })
             ->groupBy('workers.project_id')
@@ -203,8 +235,8 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
         $rows = [];
 
         foreach ($projects as $project) {
-            $responsables = $project->responsables ?? collect();
-            $respArray = $responsables->values()->all();
+            $hseManagers = $project->hseManagers ?? collect();
+            $hmArray = $hseManagers->values()->all();
 
             $base = [
                 $project->name,
@@ -213,15 +245,15 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
                 $project->pole,
             ];
 
-            for ($i = 0; $i < $this->maxResponsables; $i++) {
-                $u = $respArray[$i] ?? null;
+            for ($i = 0; $i < $this->maxHseManagers; $i++) {
+                $u = $hmArray[$i] ?? null;
                 $base[] = $u?->name;
                 $base[] = $u?->role;
                 $base[] = $u?->email;
             }
 
-            if ($this->hasExtraResponsables) {
-                $extra = array_slice($respArray, $this->maxResponsables);
+            if ($this->hasExtraHseManagers) {
+                $extra = array_slice($hmArray, $this->maxHseManagers);
                 $base[] = collect($extra)
                     ->map(fn ($u) => trim(($u->name ?? '') . ' (' . ($u->role ?? '') . ') ' . ($u->email ?? '')))
                     ->filter(fn ($s) => $s !== '')
@@ -229,7 +261,10 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
             }
 
             $kpisForProject = $kpiGrouped->get($project->id, collect());
-            $kpiWeeks = $kpisForProject->pluck('week_number')->filter()->all();
+            $kpiWeeks = $kpisForProject
+                ->map(fn (KpiReport $r) => $this->normalizeKpiWeekNumber($r))
+                ->filter(fn ($w) => $w !== null)
+                ->all();
             $tbt = (int) $kpisForProject->sum('toolbox_talks');
 
             $rows[] = array_merge($base, [

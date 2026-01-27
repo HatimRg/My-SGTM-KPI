@@ -200,7 +200,7 @@ class InspectionController extends Controller
         }
 
         // Check access
-        if (!$user->isAdminLike() && $inspection->created_by !== $user->id) {
+        if (!$user->canManageProjectActions() && $inspection->created_by !== $user->id) {
             return $this->error('Access denied', 403);
         }
 
@@ -243,7 +243,7 @@ class InspectionController extends Controller
         }
 
         // Check access
-        if (!$user->isAdminLike() && $inspection->created_by !== $user->id) {
+        if (!$user->canManageProjectActions() && $inspection->created_by !== $user->id) {
             return $this->error('Access denied', 403);
         }
 

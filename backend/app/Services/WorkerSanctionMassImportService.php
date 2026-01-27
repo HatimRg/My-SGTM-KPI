@@ -142,7 +142,7 @@ class WorkerSanctionMassImportService
                 $cin = $this->normalizeCin($this->getColumnValue($row, ['cin', 'cni', 'numero_cin', 'id']));
                 $sanctionDate = $this->parseDate($this->getColumnValue($row, ['date_sanction', 'sanction_date', 'date']));
                 $sanctionType = $this->getColumnValue($row, ['type_sanction', 'sanction_type', 'type']);
-                $miseAPiedDays = $this->getColumnValue($row, ['mise_a_pied_days', 'days']);
+                $miseAPiedDays = $this->getColumnValue($row, ['mise_a_pied_days', 'mise_a_pied_jours', 'jours_mise_a_pied', 'jours_mise_à_pied', 'days']);
                 $reason = $this->getColumnValue($row, ['reason', 'motif']);
 
                 $sanctionTypeRaw = $sanctionType !== null ? trim((string) $sanctionType) : null;
@@ -459,7 +459,14 @@ class WorkerSanctionMassImportService
                 return $row['col_2'];
             }
         }
-        if (in_array('mise_a_pied_days', $possibleNames, true) || in_array('mise_a_pied', $possibleNames, true) || in_array('days', $possibleNames, true)) {
+        if (
+            in_array('mise_a_pied_days', $possibleNames, true) ||
+            in_array('mise_a_pied_jours', $possibleNames, true) ||
+            in_array('jours_mise_a_pied', $possibleNames, true) ||
+            in_array('jours_mise_à_pied', $possibleNames, true) ||
+            in_array('mise_a_pied', $possibleNames, true) ||
+            in_array('days', $possibleNames, true)
+        ) {
             if (isset($row['col_3']) && $row['col_3'] !== null && $row['col_3'] !== '') {
                 return $row['col_3'];
             }
@@ -529,6 +536,11 @@ class WorkerSanctionMassImportService
     {
         $s = trim(str_replace("\u{00A0}", ' ', $value));
         $s = preg_replace('/\s+/u', ' ', $s);
+
+        // Accept labelized values coming from Excel dropdowns (e.g. "Mise à pied")
+        // by mapping spaces/dashes/apostrophes back to underscore keys.
+        $s = str_replace(['’', "'", '-', ' '], '_', $s);
+        $s = preg_replace('/_+/', '_', $s);
 
         if (function_exists('iconv')) {
             $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);

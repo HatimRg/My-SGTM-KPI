@@ -31,13 +31,7 @@ export default defineConfig({
         entryFileNames: 'assets/index.js',
         chunkFileNames: 'assets/[name].js',
         assetFileNames: 'assets/[name][extname]',
-        manualChunks: {
-          // Vendor chunks - loaded separately
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-ui': ['lucide-react', 'react-hot-toast'],
-          'vendor-charts': ['recharts'],
-          'vendor-utils': ['axios', 'zustand', 'date-fns'],
-        },
+        inlineDynamicImports: true,
       },
     },
     // Increase chunk size warning limit

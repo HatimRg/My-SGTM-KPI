@@ -11,6 +11,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 
 class ProjectsTemplateExport implements WithStyles, WithColumnWidths, WithTitle, WithEvents
@@ -64,6 +65,19 @@ class ProjectsTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
             AfterSheet::class => function (AfterSheet $event) use ($dataRows) {
                 $sheet = $event->sheet->getDelegate();
 
+                $spreadsheet = $sheet->getParent();
+                $listsSheet = $spreadsheet->createSheet();
+                $listsSheet->setTitle('Lists');
+
+                $projectStatuses = ['active', 'completed', 'on_hold', 'cancelled'];
+                $rowIndex = 1;
+                foreach ($projectStatuses as $status) {
+                    $listsSheet->setCellValue('A' . $rowIndex, $status);
+                    $rowIndex++;
+                }
+                $projectStatusesLastRow = max(1, count($projectStatuses));
+                $listsSheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
+
                 $primaryOrange = 'F97316';
                 $darkOrange = 'EA580C';
                 $lightOrange = 'FED7AA';
@@ -85,8 +99,8 @@ class ProjectsTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                 $sheet->getRowDimension(1)->setRowHeight(40);
 
                 $sheet->setCellValue('A2', $this->tr(
-                    'Instructions: CODE et NOM obligatoires. STATUT: active/completed/on_hold/cancelled. Les dates peuvent être au format YYYY-MM-DD.',
-                    'Instructions: CODE and NAME are required. STATUS: active/completed/on_hold/cancelled. Dates can be in YYYY-MM-DD format.'
+                    'Instructions: CODE et NOM obligatoires. STATUT: active/completed/on_hold/cancelled. Format dates: JJ/MM/AAAA.',
+                    'Instructions: CODE and NAME are required. STATUS: active/completed/on_hold/cancelled. Date format: DD/MM/YYYY.'
                 ));
                 $sheet->mergeCells('A2:J2');
                 $sheet->getStyle('A2:J2')->applyFromArray([
@@ -147,17 +161,19 @@ class ProjectsTemplateExport implements WithStyles, WithColumnWidths, WithTitle,
                     $statusValidation->setErrorStyle(DataValidation::STYLE_STOP);
                     $statusValidation->setAllowBlank(true);
                     $statusValidation->setShowDropDown(true);
-                    $statusValidation->setFormula1('"active,completed,on_hold,cancelled"');
+                    $statusValidation->setShowErrorMessage(true);
+                    $statusValidation->setFormula1("='Lists'!\$A\$1:\$A\$" . $projectStatusesLastRow);
                 }
+
+                $sheet->getStyle("F4:F{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
+                $sheet->getStyle("G4:G{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
 
                 $sheet->freezePane('A4');
                 $sheet->setSelectedCell('A4');
 
                 $sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
                 $sheet->getPageSetup()->setFitToWidth(1);
-                $sheet->getPageSetup()->setPrintArea("A1:J{$lastRow}");
 
-                $spreadsheet = $sheet->getParent();
                 $spreadsheet->setActiveSheetIndex(0);
             },
         ];

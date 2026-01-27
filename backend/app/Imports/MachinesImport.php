@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\Machine;
 use App\Models\Project;
+use App\Support\MachineTypeCatalog;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -46,6 +47,22 @@ class MachinesImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunk
         try {
             $row = array_change_key_case($row, CASE_LOWER);
 
+            $normalized = [];
+            foreach ($row as $k => $v) {
+                $kNorm = trim((string) $k);
+                $kNorm = rtrim($kNorm, " \t\n\r\0\x0B*");
+                if ($kNorm === '') {
+                    continue;
+                }
+
+                if (!array_key_exists($kNorm, $row) && !array_key_exists($kNorm, $normalized)) {
+                    $normalized[$kNorm] = $v;
+                }
+            }
+            if (!empty($normalized)) {
+                $row = $row + $normalized;
+            }
+
             $serial = $this->getColumnValue($row, ['serial_number', 'serial', 'sn']);
             $type = $this->getColumnValue($row, ['machine_type', 'type']);
             $brand = $this->getColumnValue($row, ['brand', 'marque']);
@@ -57,6 +74,12 @@ class MachinesImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunk
             $serial = trim((string) $serial);
             $type = trim((string) $type);
             $brand = trim((string) $brand);
+
+            $typeKey = MachineTypeCatalog::keyFromInput($type);
+            if (!$typeKey) {
+                $this->rowErrors[] = ['serial_number' => $serial, 'error' => "Invalid MACHINE_TYPE: {$type}"];
+                return null;
+            }
 
             if (isset($this->seenSerials[$serial])) {
                 $this->rowErrors[] = ['serial_number' => $serial, 'error' => 'Duplicate SERIAL_NUMBER in import file'];
@@ -83,24 +106,16 @@ class MachinesImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunk
             $activeRaw = $this->getColumnValue($row, ['actif', 'is_active', 'active']);
             $isActive = $this->parseActive($activeRaw);
 
-            $projectCode = $this->emptyToNull($this->getColumnValue($row, ['project_code', 'project', 'code_projet', 'projet']));
-            $projectId = null;
-            if ($projectCode !== null) {
-                $projectCode = strtoupper(trim((string) $projectCode));
-                if ($projectCode !== '') {
-                    $project = Project::where('code', $projectCode)->first();
-                    if (!$project) {
-                        $this->rowErrors[] = ['serial_number' => $serial, 'error' => "Unknown project code: {$projectCode}"];
-                    } else {
-                        $projectId = (int) $project->id;
-
-                        if ($this->allowedProjectIds !== null && !in_array($projectId, $this->allowedProjectIds, true)) {
-                            $this->rowErrors[] = ['serial_number' => $serial, 'error' => 'Project not allowed for your access scope'];
-                            $projectId = null;
-                        }
-                    }
-                }
-            }
+            $projectInput = $this->emptyToNull($this->getColumnValue($row, [
+                'project_name',
+                'project_code',
+                'project',
+                'nom_du_projet',
+                'nom_projet',
+                'code_projet',
+                'projet',
+            ]));
+            $projectId = $this->resolveProjectId($projectInput, $serial);
 
             if ($internal !== null) {
                 $existingInternal = Machine::where('internal_code', $internal)->first();
@@ -114,7 +129,7 @@ class MachinesImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunk
 
             $data = [
                 'internal_code' => $internal,
-                'machine_type' => $type,
+                'machine_type' => $typeKey,
                 'brand' => $brand,
                 'model' => $model,
                 'project_id' => $projectId,
@@ -190,6 +205,66 @@ class MachinesImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunk
         }
 
         return true;
+    }
+
+    protected function resolveProjectId($input, string $serial): ?int
+    {
+        if ($input === null) {
+            return null;
+        }
+
+        $raw = trim((string) $input);
+        if ($raw === '') {
+            return null;
+        }
+
+        $raw = preg_replace('/\s+/', ' ', $raw);
+
+        $candidateCode = null;
+        if (preg_match('/\(([^)]+)\)\s*$/', $raw, $m)) {
+            $candidateCode = strtoupper(trim((string) $m[1]));
+        }
+
+        if ($candidateCode !== null && $candidateCode !== '') {
+            $project = Project::query()->where('code', $candidateCode);
+            if ($this->allowedProjectIds !== null) {
+                $project->whereIn('id', $this->allowedProjectIds);
+            }
+            $project = $project->first();
+            if (!$project) {
+                $this->rowErrors[] = ['serial_number' => $serial, 'error' => "Unknown project code: {$candidateCode}"];
+                return null;
+            }
+            return (int) $project->id;
+        }
+
+        $projectName = $raw;
+        $query = Project::query()->where('name', $projectName);
+        if ($this->allowedProjectIds !== null) {
+            $query->whereIn('id', $this->allowedProjectIds);
+        }
+        $matches = $query->select(['id', 'code', 'name'])->get();
+
+        if ($matches->count() === 1) {
+            return (int) $matches->first()->id;
+        }
+        if ($matches->count() > 1) {
+            $this->rowErrors[] = ['serial_number' => $serial, 'error' => "Ambiguous project name: {$projectName}"];
+            return null;
+        }
+
+        $code = strtoupper($projectName);
+        $query = Project::query()->where('code', $code);
+        if ($this->allowedProjectIds !== null) {
+            $query->whereIn('id', $this->allowedProjectIds);
+        }
+        $project = $query->first();
+        if ($project) {
+            return (int) $project->id;
+        }
+
+        $this->rowErrors[] = ['serial_number' => $serial, 'error' => "Unknown project: {$projectName}"];
+        return null;
     }
 
     public function chunkSize(): int

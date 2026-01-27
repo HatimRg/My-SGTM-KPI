@@ -7,6 +7,7 @@ use App\Exports\WorkerSanctionsMassTemplateExport;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\Worker;
+use App\Models\WorkerSanction;
 use App\Services\WorkerSanctionMassImportService;
 use App\Services\MassImportProgressService;
 use Illuminate\Http\Request;

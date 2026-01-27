@@ -303,7 +303,7 @@ class AwarenessSessionController extends Controller
         }
 
         // Check access
-        if (!$user->isAdminLike() && $awarenessSession->submitted_by !== $user->id) {
+        if (!$user->canManageProjectActions() && $awarenessSession->submitted_by !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -340,7 +340,7 @@ class AwarenessSessionController extends Controller
         }
 
         // Only admin or submitter can delete
-        if (!$user->isAdminLike() && $awarenessSession->submitted_by !== $user->id) {
+        if (!$user->canManageProjectActions() && $awarenessSession->submitted_by !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 

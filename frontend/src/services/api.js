@@ -477,6 +477,7 @@ export const dashboardService = {
     return cachedGet('/dashboard/user', normalized)
   },
   getSafetyPerformance: (params) => cachedGet('/dashboard/safety-performance', params),
+  getEnvironmentalMonthly: (params) => cachedGet('/dashboard/environmental-monthly', params),
   // Charts are also cached
   getAccidentCharts: (params) => cachedGet('/dashboard/charts/accidents', params),
   getTrainingCharts: (params) => cachedGet('/dashboard/charts/trainings', params),
@@ -598,7 +599,7 @@ export const projectService = {
 
 export const heavyMachineryService = {
   getDocumentKeys: () => api.get('/heavy-machinery/document-keys'),
-  getMachineTypes: () => api.get('/heavy-machinery/machine-types'),
+  getMachineTypes: () => api.get('/heavy-machinery/machine-types', { params: { lang: getUiLang(), format: 'options' } }),
   downloadMachinesTemplate: () => api.get('/heavy-machinery/machines/template', { params: { lang: getUiLang() }, responseType: 'blob' }),
   importMachines: (formData) => api.post('/heavy-machinery/machines/import', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }

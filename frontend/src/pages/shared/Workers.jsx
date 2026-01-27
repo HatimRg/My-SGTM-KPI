@@ -655,7 +655,42 @@ export default function Workers() {
   const hseTeamCount = statistics?.hse_team ?? workers.filter((w) => {
     const fonction = String(w?.fonction ?? '').toLowerCase()
     if (!fonction) return false
-    const keywords = ['animateur', 'animatrice', 'hse', 'coordinateur', 'coordinatrice']
+    const keywords = [
+      'infirmier',
+      'infirmière',
+      'infirmiere',
+      'ambulancier',
+      'ambulancière',
+      'ambulanciere',
+      'animateur',
+      'animatrice',
+      'coordinateur',
+      'coordinatrice',
+      'coordonnateur',
+      'hse',
+      'qhse',
+      'nurse',
+      'paramedic',
+      'animator',
+      'coordinator',
+      'infermier',
+      'infermière',
+      'infermiere',
+      'ambulencier',
+      'ambulenciere',
+      'animateure',
+      'coordonateur',
+      'coordinnateur',
+      'coordinnatrice',
+      'h.s.e',
+      'q.h.s.e',
+      'nurce',
+      'paramedicc',
+      'animater',
+      'coordinatorr',
+      'h-s-e',
+      'q-h-s-e',
+    ]
     return keywords.some((k) => fonction.includes(k))
   }).length
 
@@ -1083,7 +1118,7 @@ export default function Workers() {
   }, [massSanctionsImporting, massSanctionsProgressId, massSanctionsProgress?.status])
 
   const handleMassTrainingsImport = async () => {
-    if (!massTrainingsExcel || !massTrainingsZip) return
+    if (!massTrainingsExcel) return
 
     setMassTrainingsImporting(true)
     setMassTrainingsResult(null)
@@ -1143,7 +1178,7 @@ export default function Workers() {
   }
 
   const handleMassMedicalImport = async () => {
-    if (!massMedicalExcel || !massMedicalZip) return
+    if (!massMedicalExcel) return
 
     setMassMedicalImporting(true)
     setMassMedicalResult(null)
@@ -4095,7 +4130,7 @@ export default function Workers() {
               <button
                 type="button"
                 onClick={handleMassTrainingsImport}
-                disabled={!massTrainingsExcel || !massTrainingsZip || massTrainingsImporting}
+                disabled={!massTrainingsExcel || massTrainingsImporting}
                 className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {massTrainingsImporting && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -4319,7 +4354,7 @@ export default function Workers() {
               <button
                 type="button"
                 onClick={handleMassMedicalImport}
-                disabled={!massMedicalExcel || !massMedicalZip || massMedicalImporting}
+                disabled={!massMedicalExcel || massMedicalImporting}
                 className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {massMedicalImporting && <Loader2 className="w-4 h-4 animate-spin" />}

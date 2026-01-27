@@ -12,6 +12,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 
 class SorReportsTemplateExport implements WithStyles, WithColumnWidths, WithTitle, WithEvents
@@ -88,7 +89,9 @@ class SorReportsTemplateExport implements WithStyles, WithColumnWidths, WithTitl
                 }
                 $projectCodesLastRow = max(1, count($projectCodes));
 
-                $categories = array_keys(SorReport::CATEGORIES);
+                $categories = $this->lang === 'en'
+                    ? array_keys(SorReport::CATEGORIES)
+                    : array_values(SorReport::CATEGORIES);
                 sort($categories, SORT_NATURAL | SORT_FLAG_CASE);
                 $rowIndex = 1;
                 foreach ($categories as $cat) {
@@ -126,8 +129,8 @@ class SorReportsTemplateExport implements WithStyles, WithColumnWidths, WithTitl
                 $sheet->getRowDimension(1)->setRowHeight(40);
 
                 $sheet->setCellValue('A2', $this->tr(
-                    'Instructions: 1 ligne = 1 observation. Champs obligatoires: PROJECT_CODE*, OBSERVATION_DATE*, CATEGORY*, NON_CONFORMITY*. Les dates au format YYYY-MM-DD. CATEGORY = clé (ex: epi, levage). STATUS optionnel: open/in_progress/closed. CORRECTIVE_ACTION_DATE/CORRECTIVE_ACTION_TIME optionnels.',
-                    'Instructions: 1 row = 1 observation. Required fields: PROJECT_CODE*, OBSERVATION_DATE*, CATEGORY*, NON_CONFORMITY*. Dates in YYYY-MM-DD format. CATEGORY must be a key (e.g., epi, levage). Optional STATUS: open/in_progress/closed. Optional CORRECTIVE_ACTION_DATE/CORRECTIVE_ACTION_TIME.'
+                    'Instructions: 1 ligne = 1 observation. Champs obligatoires: Code projet*, Date d\'observation*, Catégorie*, Non-conformité*. Format dates: JJ/MM/AAAA. Statut optionnel: open/in_progress/closed. Date/Heure action corrective optionnelles.',
+                    'Instructions: 1 row = 1 observation. Required fields: PROJECT_CODE*, OBSERVATION_DATE*, CATEGORY*, NON_CONFORMITY*. Date format: DD/MM/YYYY. CATEGORY must be a key (e.g., epi, levage). Optional STATUS: open/in_progress/closed. Optional CORRECTIVE_ACTION_DATE/CORRECTIVE_ACTION_TIME.'
                 ));
                 $sheet->mergeCells('A2:O2');
                 $sheet->getStyle('A2:O2')->applyFromArray([
@@ -144,23 +147,41 @@ class SorReportsTemplateExport implements WithStyles, WithColumnWidths, WithTitl
                 ]);
                 $sheet->getRowDimension(2)->setRowHeight(42);
 
-                $headers = [
-                    'PROJECT_CODE*',
-                    'COMPANY',
-                    'OBSERVATION_DATE*',
-                    'OBSERVATION_TIME',
-                    'ZONE',
-                    'SUPERVISOR',
-                    'CATEGORY*',
-                    'NON_CONFORMITY*',
-                    'RESPONSIBLE_PERSON',
-                    'DEADLINE',
-                    'CORRECTIVE_ACTION',
-                    'CORRECTIVE_ACTION_DATE',
-                    'CORRECTIVE_ACTION_TIME',
-                    'STATUS',
-                    'NOTES',
-                ];
+                $headers = $this->lang === 'en'
+                    ? [
+                        'PROJECT_CODE*',
+                        'COMPANY',
+                        'OBSERVATION_DATE*',
+                        'OBSERVATION_TIME',
+                        'ZONE',
+                        'SUPERVISOR',
+                        'CATEGORY*',
+                        'NON_CONFORMITY*',
+                        'RESPONSIBLE_PERSON',
+                        'DEADLINE',
+                        'CORRECTIVE_ACTION',
+                        'CORRECTIVE_ACTION_DATE',
+                        'CORRECTIVE_ACTION_TIME',
+                        'STATUS',
+                        'NOTES',
+                    ]
+                    : [
+                        'Code projet*',
+                        'Entreprise',
+                        "Date d'observation*",
+                        "Heure d'observation",
+                        'Zone',
+                        'Superviseur',
+                        'Catégorie*',
+                        'Non-conformité*',
+                        'Responsable',
+                        'Échéance',
+                        'Action corrective',
+                        "Date action corrective",
+                        "Heure action corrective",
+                        'Statut',
+                        'Notes',
+                    ];
 
                 $col = 'A';
                 foreach ($headers as $header) {
@@ -196,6 +217,10 @@ class SorReportsTemplateExport implements WithStyles, WithColumnWidths, WithTitl
                 $lastRow = 3 + $dataRows;
                 $sheet->setAutoFilter('A3:O3');
 
+                $sheet->getStyle("C{$dataStartRow}:C{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
+                $sheet->getStyle("J{$dataStartRow}:J{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
+                $sheet->getStyle("L{$dataStartRow}:L{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
+
                 for ($row = $dataStartRow; $row <= $lastRow; $row++) {
                     $bgColor = ($row % 2 == 0) ? $grayLight : $white;
 
@@ -217,7 +242,7 @@ class SorReportsTemplateExport implements WithStyles, WithColumnWidths, WithTitl
                         $projectValidation->setShowErrorMessage(true);
                         $projectValidation->setErrorTitle($this->tr('Code projet', 'Project code'));
                         $projectValidation->setError($this->tr('Veuillez sélectionner un code projet valide dans la liste.', 'Please select a valid project code from the list.'));
-                        $projectValidation->setFormula1("='Lists'!\$A\$1:\$A\${projectCodesLastRow}");
+                        $projectValidation->setFormula1("='Lists'!\$A\$1:\$A\$" . $projectCodesLastRow);
                     }
 
                     $catValidation = $sheet->getCell("G{$row}")->getDataValidation();
@@ -228,45 +253,42 @@ class SorReportsTemplateExport implements WithStyles, WithColumnWidths, WithTitl
                     $catValidation->setShowErrorMessage(true);
                     $catValidation->setErrorTitle($this->tr('Catégorie', 'Category'));
                     $catValidation->setError($this->tr('Veuillez sélectionner une catégorie valide dans la liste.', 'Please select a valid category from the list.'));
-                    $catValidation->setFormula1("='Lists'!\$B\$1:\$B\${categoriesLastRow}");
+                    $catValidation->setFormula1("='Lists'!\$B\$1:\$B\$" . $categoriesLastRow);
 
                     $statusValidation = $sheet->getCell("N{$row}")->getDataValidation();
                     $statusValidation->setType(DataValidation::TYPE_LIST);
                     $statusValidation->setErrorStyle(DataValidation::STYLE_STOP);
                     $statusValidation->setAllowBlank(true);
                     $statusValidation->setShowDropDown(true);
-                    $statusValidation->setFormula1("='Lists'!\$C\$1:\$C\${statusesLastRow}");
+                    $statusValidation->setFormula1("='Lists'!\$C\$1:\$C\$" . $statusesLastRow);
                 }
 
                 $sheet->getComment('A3')->getText()->createTextRun($this->tr('Code projet (ex: PRJ001).', 'Project code (e.g., PRJ001).'));
-                $sheet->getComment('C3')->getText()->createTextRun($this->tr('Format recommandé: YYYY-MM-DD', 'Recommended format: YYYY-MM-DD'));
+                $sheet->getComment('C3')->getText()->createTextRun($this->tr('Format recommandé: JJ/MM/AAAA', 'Recommended format: DD/MM/YYYY'));
                 $sheet->getComment('G3')->getText()->createTextRun($this->tr('Utiliser une clé de catégorie (ex: epi, levage).', 'Use a category key (e.g., epi, levage).'));
-                $sheet->getComment('H3')->getText()->createTextRun($this->tr('Description obligatoire.', 'Description is required.'));
-                $sheet->getComment('J3')->getText()->createTextRun($this->tr('Optionnel. Format recommandé: YYYY-MM-DD', 'Optional. Recommended format: YYYY-MM-DD'));
 
-                // Example row (kept out of imports by skipping PROJECT_CODE=EXEMPLE/EXAMPLE in the import logic)
-                $sheet->setCellValue('A4', 'EXEMPLE');
-                $sheet->setCellValue('B4', 'SGTM');
-                $sheet->setCellValue('C4', '2026-01-15');
-                $sheet->setCellValue('D4', '08:30');
-                $sheet->setCellValue('E4', 'Zone A');
-                $sheet->setCellValue('F4', 'Chef chantier');
-                $sheet->setCellValue('G4', !empty($categories) ? $categories[0] : 'epi');
-                $sheet->setCellValue('H4', 'Ex: Port des EPI incomplet (lunettes absentes)');
-                $sheet->setCellValue('I4', 'Responsable HSE');
-                $sheet->setCellValue('J4', '2026-01-20');
-                $sheet->setCellValue('K4', 'Rappel EPI + contrôle quotidien');
-                $sheet->setCellValue('L4', '2026-01-18');
-                $sheet->setCellValue('M4', '14:00');
-                $sheet->setCellValue('N4', 'open');
-                $sheet->setCellValue('O4', 'Exemple de ligne à supprimer avant import');
+        // Example row (kept out of imports by skipping PROJECT_CODE=EXEMPLE/EXAMPLE in the import logic)
+        $sheet->setCellValue('A4', 'EXEMPLE');
+        $sheet->setCellValue('B4', $this->tr('Entreprise X', 'Company X'));
+        $sheet->setCellValue('C4', '15/01/2026');
+        $sheet->setCellValue('D4', '08:30');
+        $sheet->setCellValue('E4', $this->tr('Zone A', 'Zone A'));
+        $sheet->setCellValue('F4', $this->tr('Nom Superviseur', 'Supervisor Name'));
+        $sheet->setCellValue('G4', !empty($categories) ? $categories[0] : 'epi');
+        $sheet->setCellValue('H4', $this->tr('Non-conformité exemple', 'Example non-conformity'));
+        $sheet->setCellValue('I4', $this->tr('Responsable X', 'Responsible X'));
+        $sheet->setCellValue('J4', '01/02/2026');
+        $sheet->setCellValue('K4', $this->tr('Action corrective', 'Corrective action'));
+        $sheet->setCellValue('L4', '');
+        $sheet->setCellValue('M4', '');
+        $sheet->setCellValue('N4', 'open');
+        $sheet->setCellValue('O4', '');
 
-                $sheet->freezePane('A5');
-                $sheet->setSelectedCell('A5');
+        $sheet->freezePane('A5');
+        $sheet->setSelectedCell('A5');
 
-                $sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
-                $sheet->getPageSetup()->setFitToWidth(1);
-                $sheet->getPageSetup()->setPrintArea("A1:O{$lastRow}");
+        $sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
+        $sheet->getPageSetup()->setFitToWidth(1);
 
                 $spreadsheet->setActiveSheetIndex(0);
             },

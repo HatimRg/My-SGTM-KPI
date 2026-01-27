@@ -29,7 +29,7 @@ const MACHINE_IMAGE_BLOB_CACHE_MAX = 50
 const machineImageBlobCache = new Map()
 
 export default function ViewMachines() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const { user, token } = useAuthStore()
 
   const MachineImage = ({ machineId, updatedAt, alt, className }) => {
@@ -228,11 +228,43 @@ export default function ViewMachines() {
     try {
       const res = await heavyMachineryService.getMachineTypes()
       const list = res.data?.data ?? []
-      setMachineTypes(Array.isArray(list) ? list : [])
+      const normalized = Array.isArray(list)
+        ? list
+            .filter((v) => v && typeof v === 'object')
+            .map((v) => ({
+              value: String(v.value ?? ''),
+              label: String(v.label ?? ''),
+            }))
+            .filter((v) => v.value.trim() !== '' && v.label.trim() !== '')
+        : []
+      setMachineTypes(normalized)
     } catch (e) {
       setMachineTypes([])
     }
-  }, [])
+  }, [language])
+
+  const machineTypeValueSet = useMemo(() => {
+    const s = new Set()
+    for (const mt of machineTypes) {
+      if (mt?.value) s.add(mt.value)
+    }
+    return s
+  }, [machineTypes])
+
+  const getMachineTypeLabel = useCallback(
+    (m) => {
+      if (!m) return ''
+      const lang = language === 'en' ? 'en' : 'fr'
+      const label = lang === 'en' ? m.machine_type_label_en : m.machine_type_label_fr
+      if (label) return label
+
+      const key = m.machine_type_key ?? m.machine_type
+      if (!key) return ''
+      const found = machineTypes.find((opt) => opt.value === key)
+      return found?.label ?? String(m.machine_type ?? '')
+    },
+    [language, machineTypes],
+  )
 
   const extractFilename = (contentDisposition) => {
     if (!contentDisposition) return null
@@ -368,6 +400,8 @@ export default function ViewMachines() {
         m.serial_number,
         m.internal_code,
         m.machine_type,
+        m.machine_type_label_fr,
+        m.machine_type_label_en,
         m.brand,
         m.model,
         m.project?.name,
@@ -407,19 +441,19 @@ export default function ViewMachines() {
       const found = res.data?.data?.machine ?? null
 
       if (found?.id) {
-        const type = found.machine_type ?? ''
-        const inList = type && machineTypes.includes(type)
+        const typeKey = found.machine_type_key ?? found.machine_type ?? ''
+        const inList = typeKey && machineTypeValueSet.has(typeKey)
 
         setCreateExistingMachineId(found.id)
-        setCreateMachineTypeChoice(machineTypes.length > 0 ? (inList ? type : '__custom__') : '')
+        setCreateMachineTypeChoice(machineTypes.length > 0 ? (inList ? typeKey : '') : '')
         setCreateData({
           serial_number: found.serial_number ?? serial,
           internal_code: found.internal_code ?? '',
-          machine_type: type,
+          machine_type: inList ? typeKey : '',
           brand: found.brand ?? '',
           model: found.model ?? '',
           project_id: found.project_id ? String(found.project_id) : '',
-          is_active: !!found.is_active,
+          is_active: found.is_active !== undefined ? !!found.is_active : true,
           image: null,
         })
       } else {
@@ -450,20 +484,20 @@ export default function ViewMachines() {
     const m = details?.machine
     if (!m) return
 
-    const type = m.machine_type ?? ''
-    const inList = type && machineTypes.includes(type)
+    const typeKey = m.machine_type_key ?? m.machine_type ?? ''
+    const inList = typeKey && machineTypeValueSet.has(typeKey)
 
     setEditData({
       serial_number: m.serial_number ?? '',
       internal_code: m.internal_code ?? '',
-      machine_type: type,
+      machine_type: inList ? typeKey : '',
       brand: m.brand ?? '',
       model: m.model ?? '',
       project_id: m.project_id ? String(m.project_id) : '',
       is_active: !!m.is_active,
       image: null,
     })
-    setEditMachineTypeChoice(inList ? type : '__custom__')
+    setEditMachineTypeChoice(inList ? typeKey : '')
     setEditOpen(true)
   }
 
@@ -944,7 +978,7 @@ export default function ViewMachines() {
                     {m.internal_code ? `${m.internal_code} · ${m.serial_number}` : m.serial_number}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
-                    {(m.machine_type ?? '') + (m.brand ? ` · ${m.brand}` : '') + (m.model ? ` · ${m.model}` : '')}
+                    {getMachineTypeLabel(m) + (m.brand ? ` · ${m.brand}` : '') + (m.model ? ` · ${m.model}` : '')}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">{m.project?.name ?? '-'}</p>
                 </div>
@@ -1066,31 +1100,17 @@ export default function ViewMachines() {
                       onChange={(e) => {
                         const v = e.target.value
                         setCreateMachineTypeChoice(v)
-                        if (v === '__custom__' || v === 'Autre') {
-                          setCreateData((p) => ({ ...p, machine_type: '' }))
-                        } else {
-                          setCreateData((p) => ({ ...p, machine_type: v }))
-                        }
+                        setCreateData((p) => ({ ...p, machine_type: v }))
                       }}
                       required
                     >
                       <option value="">{t('common.select')}</option>
                       {machineTypes.map((mt) => (
-                        <option key={mt} value={mt}>
-                          {mt}
+                        <option key={mt.value} value={mt.value}>
+                          {mt.label}
                         </option>
                       ))}
-                      <option value="__custom__">Autre...</option>
                     </Select>
-
-                    {(createMachineTypeChoice === '__custom__' || createMachineTypeChoice === 'Autre') && (
-                      <input
-                        className="input"
-                        value={createData.machine_type}
-                        onChange={(e) => setCreateData((p) => ({ ...p, machine_type: e.target.value }))}
-                        required
-                      />
-                    )}
                   </div>
                 ) : (
                   <input
@@ -1252,7 +1272,7 @@ export default function ViewMachines() {
                         : details.machine?.serial_number}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                      {(details.machine?.machine_type ?? '') +
+                      {getMachineTypeLabel(details.machine) +
                         (details.machine?.brand ? ` · ${details.machine.brand}` : '') +
                         (details.machine?.model ? ` · ${details.machine.model}` : '')}
                     </p>
@@ -1616,31 +1636,17 @@ export default function ViewMachines() {
                       onChange={(e) => {
                         const v = e.target.value
                         setEditMachineTypeChoice(v)
-                        if (v === '__custom__' || v === 'Autre') {
-                          setEditData((p) => ({ ...p, machine_type: '' }))
-                        } else {
-                          setEditData((p) => ({ ...p, machine_type: v }))
-                        }
+                        setEditData((p) => ({ ...p, machine_type: v }))
                       }}
                       required
                     >
                       <option value="">{t('common.select')}</option>
                       {machineTypes.map((mt) => (
-                        <option key={mt} value={mt}>
-                          {mt}
+                        <option key={mt.value} value={mt.value}>
+                          {mt.label}
                         </option>
                       ))}
-                      <option value="__custom__">Autre...</option>
                     </Select>
-
-                    {(editMachineTypeChoice === '__custom__' || editMachineTypeChoice === 'Autre') && (
-                      <input
-                        className="input"
-                        value={editData.machine_type}
-                        onChange={(e) => setEditData((p) => ({ ...p, machine_type: e.target.value }))}
-                        required
-                      />
-                    )}
                   </div>
                 ) : (
                   <input

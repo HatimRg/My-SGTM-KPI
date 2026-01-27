@@ -61,6 +61,14 @@ const MetricCard = memo(function MetricCard({ title, value, icon: Icon, color, t
 const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projectPerformance, safetyPerformance, safetyLoading }) {
   const t = useTranslation()
 
+  const normalizeLabel = (value) => {
+    if (value === null || value === undefined) return t('common.unknown')
+    const s = String(value).trim()
+    if (!s) return t('common.unknown')
+    if (s.toLowerCase() === 'unknown') return t('common.unknown')
+    return s
+  }
+
   const hasSafetyPerformance = !!safetyPerformance?.kpis
 
   const spKpis = useMemo(() => {
@@ -83,29 +91,47 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
 
   const projectHotspots = useMemo(() => {
     const rows = spCharts?.project_hotspots
-    return Array.isArray(rows) ? rows.slice(0, 10) : []
-  }, [spCharts])
+    if (!Array.isArray(rows)) return []
+    return rows.slice(0, 10).map((r) => ({
+      ...r,
+      project_name: normalizeLabel(r?.project_name),
+    }))
+  }, [spCharts, t])
 
   const activityPareto = useMemo(() => {
     const rows = spCharts?.activity_driver
-    return Array.isArray(rows) ? rows.slice(0, 10) : []
-  }, [spCharts])
+    if (!Array.isArray(rows)) return []
+    return rows.slice(0, 10).map((r) => ({
+      ...r,
+      activity: normalizeLabel(r?.activity),
+    }))
+  }, [spCharts, t])
 
   const conditions = useMemo(() => {
     const m = spCharts?.conditions_matrix || {}
     const data = Array.isArray(m.data) ? m.data : []
     const rows = Array.isArray(m.rows) ? m.rows : []
     const cols = Array.isArray(m.cols) ? m.cols : []
-    const max = data.reduce((acc, d) => Math.max(acc, Number(d?.value ?? 0)), 0)
-    return { rows, cols, data, max }
-  }, [spCharts])
+    const mappedRows = rows.map((r) => normalizeLabel(r))
+    const mappedCols = cols.map((c) => normalizeLabel(c))
+    const mappedData = data.map((d) => ({
+      ...d,
+      ground_condition: normalizeLabel(d?.ground_condition),
+      lighting: normalizeLabel(d?.lighting),
+    }))
+    const max = mappedData.reduce((acc, d) => Math.max(acc, Number(d?.value ?? 0)), 0)
+    return { rows: mappedRows, cols: mappedCols, data: mappedData, max }
+  }, [spCharts, t])
 
   const sankeyData = useMemo(() => {
     const cp = spCharts?.cause_path || {}
     const nodes = Array.isArray(cp.nodes) ? cp.nodes : []
     const links = Array.isArray(cp.links) ? cp.links : []
-    return { nodes, links }
-  }, [spCharts])
+    return {
+      nodes: nodes.map((n) => ({ ...n, name: normalizeLabel(n?.name) })),
+      links,
+    }
+  }, [spCharts, t])
 
   const bubbleData = useMemo(() => {
     const rows = spCharts?.severity_vs_victims
@@ -114,14 +140,18 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
       severity: Number(r?.severity_score ?? 0),
       victims: Number(r?.victims ?? 0),
       events: Number(r?.events ?? 0),
-      activity: r?.activity ?? 'Unknown',
+      activity: normalizeLabel(r?.activity),
     }))
-  }, [spCharts])
+  }, [spCharts, t])
 
   const actionsHealth = useMemo(() => {
     const rows = spCharts?.actions_health
-    return Array.isArray(rows) ? rows.slice(0, 10) : []
-  }, [spCharts])
+    if (!Array.isArray(rows)) return []
+    return rows.slice(0, 10).map((r) => ({
+      ...r,
+      type: normalizeLabel(r?.type),
+    }))
+  }, [spCharts, t])
 
   // Safety metrics
   const safetyMetrics = useMemo(() => ({
@@ -256,7 +286,7 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
               value={spKpis.severityWeightedIndex}
               icon={TrendingUp}
               color={spKpis.severityWeightedIndex > 0 ? 'red' : 'green'}
-              trend={spKpis.worstProject ? `${t('dashboard.safety.worstProject') || 'Worst project'}: ${spKpis.worstProject.project_name}` : null}
+              trend={spKpis.worstProject ? `${t('dashboard.safety.worstProject') || 'Worst project'}: ${normalizeLabel(spKpis.worstProject.project_name)}` : null}
             />
             <MetricCard
               title={t('dashboard.safety.severeShare') || 'Severe share'}
@@ -270,7 +300,7 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
               value={`${Number(spKpis.pctActionsOverdue ?? 0).toFixed(1)}%`}
               icon={Clock}
               color={spKpis.pctActionsOverdue > 0 ? 'amber' : 'green'}
-              trend={spKpis.worstLocation ? `${t('dashboard.safety.worstLocation') || 'Worst location'}: ${spKpis.worstLocation.location}` : null}
+              trend={spKpis.worstLocation ? `${t('dashboard.safety.worstLocation') || 'Worst location'}: ${normalizeLabel(spKpis.worstLocation.location)}` : null}
             />
           </div>
 
@@ -295,12 +325,12 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                       />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="fatal" stackId="a" fill="#dc2626" name="fatal" />
-                      <Bar dataKey="serious" stackId="a" fill="#f59e0b" name="serious" />
-                      <Bar dataKey="lta" stackId="a" fill="#8b5cf6" name="lta" />
-                      <Bar dataKey="medical" stackId="a" fill="#3b82f6" name="medical" />
-                      <Bar dataKey="first_aid" stackId="a" fill="#16a34a" name="first_aid" />
-                      <Bar dataKey="near_miss" stackId="a" fill="#14b8a6" name="near_miss" />
+                      <Bar dataKey="fatal" stackId="a" fill="#dc2626" name={t('dashboard.safety.eventTypes.fatal') || t('dashboard.safety.fatal') || 'Fatal'} />
+                      <Bar dataKey="serious" stackId="a" fill="#f59e0b" name={t('dashboard.safety.eventTypes.serious') || t('dashboard.safety.serious') || 'Serious'} />
+                      <Bar dataKey="lta" stackId="a" fill="#8b5cf6" name={t('dashboard.safety.eventTypes.lta') || 'LTA'} />
+                      <Bar dataKey="medical" stackId="a" fill="#3b82f6" name={t('dashboard.safety.eventTypes.medical') || 'Medical'} />
+                      <Bar dataKey="first_aid" stackId="a" fill="#16a34a" name={t('dashboard.safety.eventTypes.firstAid') || 'First aid'} />
+                      <Bar dataKey="near_miss" stackId="a" fill="#14b8a6" name={t('dashboard.safety.eventTypes.nearMiss') || 'Near miss'} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -322,8 +352,8 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                       <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fontSize: 11 }} />
                       <Tooltip />
                       <Legend />
-                      <Bar yAxisId="left" dataKey="count" fill="#dc2626" name="count" />
-                      <Line yAxisId="right" type="monotone" dataKey="cumulative_pct" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} name="cumulative %" />
+                      <Bar yAxisId="left" dataKey="count" fill="#dc2626" name={t('dashboard.safety.metrics.count') || 'Count'} />
+                      <Line yAxisId="right" type="monotone" dataKey="cumulative_pct" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} name={t('dashboard.safety.metrics.cumulativePct') || 'Cumulative %'} />
                     </ComposedChart>
                   </ResponsiveContainer>
                 </div>
@@ -377,12 +407,12 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                   <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
-                      <XAxis type="number" dataKey="severity" name="severity" domain={[1, 6]} tick={{ fontSize: 11 }} />
-                      <YAxis type="number" dataKey="victims" name="victims" allowDecimals={false} tick={{ fontSize: 11 }} />
-                      <ZAxis type="number" dataKey="events" range={[80, 600]} name="events" />
+                      <XAxis type="number" dataKey="severity" name={t('dashboard.safety.metrics.severity') || 'Severity'} domain={[1, 6]} tick={{ fontSize: 11 }} />
+                      <YAxis type="number" dataKey="victims" name={t('dashboard.safety.metrics.victims') || 'Victims'} allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <ZAxis type="number" dataKey="events" range={[80, 600]} name={t('dashboard.safety.metrics.events') || 'Events'} />
                       <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                       <Legend />
-                      <Scatter name="events" data={bubbleData} fill="#dc2626" />
+                      <Scatter name={t('dashboard.safety.metrics.events') || 'Events'} data={bubbleData} fill="#dc2626" />
                     </ScatterChart>
                   </ResponsiveContainer>
                 </div>
@@ -403,10 +433,10 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                       <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="overdue" stackId="a" fill="#f59e0b" name="overdue" />
-                      <Bar dataKey="open" stackId="a" fill="#dc2626" name="open" />
-                      <Bar dataKey="in_progress" stackId="a" fill="#3b82f6" name="in_progress" />
-                      <Bar dataKey="closed" stackId="a" fill="#16a34a" name="closed" />
+                      <Bar dataKey="overdue" stackId="a" fill="#f59e0b" name={t('dashboard.safety.actionStatus.overdue') || 'Overdue'} />
+                      <Bar dataKey="open" stackId="a" fill="#dc2626" name={t('dashboard.safety.actionStatus.open') || 'Open'} />
+                      <Bar dataKey="in_progress" stackId="a" fill="#3b82f6" name={t('dashboard.safety.actionStatus.inProgress') || 'In progress'} />
+                      <Bar dataKey="closed" stackId="a" fill="#16a34a" name={t('dashboard.safety.actionStatus.closed') || 'Closed'} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -479,7 +509,7 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                         dataKey="accidents" 
                         stroke="#dc2626" 
                         fill="url(#accidentGradient)" 
-                        name="Accidents"
+                        name={t('dashboard.accidents') || 'Accidents'}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -551,7 +581,7 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                         stroke={COLORS.tf} 
                         strokeWidth={2}
                         dot={{ fill: COLORS.tf, r: 3 }}
-                        name="TF Rate"
+                        name={t('dashboard.safety.tfRate') || 'TF Rate'}
                       />
                       <Line 
                         type="monotone" 
@@ -559,7 +589,7 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                         stroke={COLORS.tg} 
                         strokeWidth={2}
                         dot={{ fill: COLORS.tg, r: 3 }}
-                        name="TG Rate"
+                        name={t('dashboard.safety.tgRate') || 'TG Rate'}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -587,7 +617,7 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                         dataKey="accidents" 
                         fill="#dc2626" 
                         radius={[0, 4, 4, 0]}
-                        name="Accidents"
+                        name={t('dashboard.accidents') || 'Accidents'}
                       />
                     </BarChart>
                   </ResponsiveContainer>

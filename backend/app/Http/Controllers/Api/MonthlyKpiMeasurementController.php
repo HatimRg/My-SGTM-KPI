@@ -128,7 +128,7 @@ class MonthlyKpiMeasurementController extends Controller
             return $this->error('Access denied', 403);
         }
 
-        if (!$user->isAdminLike() && $monthlyKpiMeasurement->entered_by !== $user->id) {
+        if (!$user->canManageProjectActions() && $monthlyKpiMeasurement->entered_by !== $user->id) {
             return $this->error('Access denied', 403);
         }
 
@@ -152,7 +152,7 @@ class MonthlyKpiMeasurementController extends Controller
             return $this->error('Access denied', 403);
         }
 
-        if (!$user->isAdminLike() && $monthlyKpiMeasurement->entered_by !== $user->id) {
+        if (!$user->canManageProjectActions() && $monthlyKpiMeasurement->entered_by !== $user->id) {
             return $this->error('Access denied', 403);
         }
 

@@ -11,7 +11,9 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
+use PhpOffice\PhpSpreadsheet\NamedRange;
 
 class WorkersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, WithEvents
 {
@@ -64,6 +66,20 @@ class WorkersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, 
         return [
             AfterSheet::class => function(AfterSheet $event) use ($projects, $dataRows) {
                 $sheet = $event->sheet->getDelegate();
+
+                $spreadsheet = $sheet->getParent();
+                $listsSheet = $spreadsheet->createSheet();
+                $listsSheet->setTitle('Lists');
+
+                $activeValues = $this->lang === 'en' ? ['ACTIVE', 'INACTIVE'] : ['ACTIF', 'INACTIF'];
+                $rowIndex = 1;
+                foreach ($activeValues as $v) {
+                    $listsSheet->setCellValue('A' . $rowIndex, $v);
+                    $rowIndex++;
+                }
+                $activeLastRow = max(1, count($activeValues));
+                $spreadsheet->addNamedRange(new NamedRange('WorkerActiveList', $listsSheet, '$A$1:$A$' . $activeLastRow));
+                $listsSheet->setSheetState(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::SHEETSTATE_HIDDEN);
                 
                 // SGTM Theme colors - Orange and Black
                 $primaryOrange = 'F97316';   // Orange-500
@@ -194,9 +210,13 @@ class WorkersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, 
                     $statusValidation->setErrorStyle(DataValidation::STYLE_STOP);
                     $statusValidation->setAllowBlank(false);
                     $statusValidation->setShowDropDown(true);
-                    $statusValidation->setFormula1($this->lang === 'en' ? '"ACTIVE,INACTIVE"' : '"ACTIF,INACTIF"');
+                    $statusValidation->setShowErrorMessage(true);
+                    $statusValidation->setFormula1('=WorkerActiveList');
                     $sheet->setCellValue("I{$row}", $this->lang === 'en' ? 'ACTIVE' : 'ACTIF'); // Default to active
                 }
+
+                $sheet->getStyle("E4:E{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
+                $sheet->getStyle("H4:H{$lastRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
 
                 // === PROJECT DROPDOWN VALIDATION ===
                 if (!empty($projects)) {
@@ -211,12 +231,14 @@ class WorkersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, 
                         $projectSheet->setCellValue("A{$projectRow}", $project);
                         $projectRow++;
                     }
+
+                    $spreadsheet->addNamedRange(new NamedRange('WorkerProjectsList', $projectSheet, '$A$1:$A$' . count($projects)));
                     
                     // Hide the project sheet
                     $projectSheet->setSheetState(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::SHEETSTATE_HIDDEN);
                     
                     // Apply data validation to PROJET column (G) for all data rows
-                    $projectRange = '_Projets!$A$1:$A$' . count($projects);
+                    $projectRange = '=WorkerProjectsList';
                     
                     for ($row = 4; $row <= $lastRow; $row++) {
                         $validation = $sheet->getCell("G{$row}")->getDataValidation();
@@ -274,10 +296,8 @@ class WorkersTemplateExport implements WithStyles, WithColumnWidths, WithTitle, 
                 
                 $sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
                 $sheet->getPageSetup()->setFitToWidth(1);
-                $sheet->getPageSetup()->setPrintArea("A1:I{$lastRow}");
 
                 // Set active sheet back to main
-                $spreadsheet = $sheet->getParent();
                 $spreadsheet->setActiveSheetIndex(0);
             },
         ];

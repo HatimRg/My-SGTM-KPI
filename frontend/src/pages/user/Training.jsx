@@ -446,7 +446,7 @@ export default function Training() {
                     : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-l-4 border-transparent'
                 }`}
               >
-                <span>{label}</span>
+                <span>{label === 'Other' ? t('common.other') : label}</span>
                 {selectedTheme === label && (
                   <Check className="w-4 h-4 text-hse-primary flex-shrink-0" />
                 )}

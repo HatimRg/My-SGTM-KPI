@@ -133,7 +133,6 @@ class ProjectTeamTemplateExport implements WithStyles, WithColumnWidths, WithTit
 
                 $sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
                 $sheet->getPageSetup()->setFitToWidth(1);
-                $sheet->getPageSetup()->setPrintArea("A1:B{$lastRow}");
 
                 $spreadsheet = $sheet->getParent();
                 $spreadsheet->setActiveSheetIndex(0);

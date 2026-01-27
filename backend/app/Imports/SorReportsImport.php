@@ -168,8 +168,40 @@ class SorReportsImport implements ToModel, WithHeadingRow, SkipsOnError, WithChu
             $key = str_replace(['*', '#'], '', $key);
             $key = preg_replace('/\s+/', ' ', $key);
             $key = str_replace(' ', '_', $key);
+            $asciiKey = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $key);
+            if ($asciiKey !== false && $asciiKey !== null) {
+                $key = $asciiKey;
+            }
+            $key = preg_replace('/[^a-z0-9_]/', '_', $key);
+            $key = preg_replace('/_+/', '_', $key);
+            $key = trim($key, '_');
             $out[$key] = $v;
         }
+
+        $aliases = [
+            'code_projet' => 'project_code',
+            'projet' => 'project_code',
+            'entreprise' => 'company',
+            'societe' => 'company',
+            'date_d_observation' => 'observation_date',
+            'heure_d_observation' => 'observation_time',
+            'superviseur' => 'supervisor',
+            'categorie' => 'category',
+            'non_conformite' => 'non_conformity',
+            'responsable' => 'responsible_person',
+            'echeance' => 'deadline',
+            'action_corrective' => 'corrective_action',
+            'date_action_corrective' => 'corrective_action_date',
+            'heure_action_corrective' => 'corrective_action_time',
+            'statut' => 'status',
+        ];
+
+        foreach ($aliases as $from => $to) {
+            if (!array_key_exists($to, $out) && array_key_exists($from, $out)) {
+                $out[$to] = $out[$from];
+            }
+        }
+
         return $out;
     }
 
@@ -198,7 +230,20 @@ class SorReportsImport implements ToModel, WithHeadingRow, SkipsOnError, WithChu
                 return Carbon::instance($dt)->format('Y-m-d');
             }
 
-            return Carbon::parse((string) $value)->format('Y-m-d');
+            $raw = trim((string) $value);
+            if ($raw === '') {
+                return null;
+            }
+
+            $formats = ['d/m/Y', 'd-m-Y', 'd.m.Y', 'Y-m-d', 'm/d/Y'];
+            foreach ($formats as $format) {
+                try {
+                    return Carbon::createFromFormat($format, $raw)->format('Y-m-d');
+                } catch (\Throwable $e) {
+                }
+            }
+
+            return Carbon::parse($raw)->format('Y-m-d');
         } catch (\Throwable $e) {
             return null;
         }

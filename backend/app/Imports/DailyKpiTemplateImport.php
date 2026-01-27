@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use Carbon\Carbon;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class DailyKpiTemplateImport
 {
@@ -63,7 +64,10 @@ class DailyKpiTemplateImport
         $dailyData = [];
         foreach ($dates as $colIndex => $dateStr) {
             try {
-                $date = Carbon::parse($dateStr);
+                $date = self::parseTemplateDate($dateStr);
+                if (!$date) {
+                    continue;
+                }
                 $dayData = [
                     'entry_date' => $date->format('Y-m-d'),
                     'day_name' => $date->englishDayOfWeek,
@@ -81,6 +85,40 @@ class DailyKpiTemplateImport
         }
 
         return $dailyData;
+    }
+
+    private static function parseTemplateDate($value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            if ($value instanceof \DateTimeInterface) {
+                return Carbon::instance($value);
+            }
+
+            if (is_numeric($value)) {
+                return Carbon::instance(ExcelDate::excelToDateTimeObject((float) $value));
+            }
+
+            $raw = trim((string) $value);
+            if ($raw === '') {
+                return null;
+            }
+
+            $formats = ['d/m/Y', 'd-m-Y', 'd.m.Y', 'Y-m-d', 'm/d/Y'];
+            foreach ($formats as $format) {
+                try {
+                    return Carbon::createFromFormat($format, $raw);
+                } catch (\Throwable $e) {
+                }
+            }
+
+            return Carbon::parse($raw);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     private static function normalizeNumeric($value): ?float

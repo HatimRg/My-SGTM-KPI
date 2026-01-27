@@ -3,8 +3,7 @@ import { useTranslation } from '../../../i18n'
 import {
   Droplets,
   Zap,
-  ClipboardCheck,
-  Stethoscope,
+  Volume2,
   FileCheck,
   AlertTriangle,
   GraduationCap
@@ -55,73 +54,130 @@ const MetricCard = memo(function MetricCard({ title, value, icon: Icon, color, t
   )
 })
 
-const EnvironmentalTheme = memo(function EnvironmentalTheme({ kpiSummary, weeklyTrends }) {
+const EnvironmentalTheme = memo(function EnvironmentalTheme({ data, loading }) {
   const t = useTranslation()
 
-  // Real environmental metrics from KPI data
-  const envMetrics = useMemo(() => ({
-    waterConsumption: Number(kpiSummary?.total_water_consumption ?? 0),
-    electricityUsage: Number(kpiSummary?.total_electricity_consumption ?? 0),
-    hseCompliance: Math.round(Number(kpiSummary?.avg_hse_compliance ?? 0)),
-    medicalCompliance: Math.round(Number(kpiSummary?.avg_medical_compliance ?? 0)),
-    trainingHours: Math.round(Number(kpiSummary?.total_training_hours ?? 0)),
-    nearMisses: Number(kpiSummary?.total_near_misses ?? 0),
-    workPermits: Number(kpiSummary?.total_work_permits ?? 0)
-  }), [kpiSummary])
+  const monthLabel = useMemo(() => ({
+    1: t('months.january'),
+    2: t('months.february'),
+    3: t('months.march'),
+    4: t('months.april'),
+    5: t('months.may'),
+    6: t('months.june'),
+    7: t('months.july'),
+    8: t('months.august'),
+    9: t('months.september'),
+    10: t('months.october'),
+    11: t('months.november'),
+    12: t('months.december'),
+  }), [t])
+
+  const series = useMemo(() => {
+    const rows = Array.isArray(data?.series) ? data.series : []
+    return rows.map((r) => ({
+      month: r.month,
+      month_label: monthLabel[r.month] ?? String(r.month),
+      noise_avg: Number(r.noise_avg ?? 0),
+      water_total: Number(r.water_total ?? 0),
+      electricity_total: Number(r.electricity_total ?? 0),
+      lux_avg: Number(r.lux_avg ?? 0),
+      lux_compliance_rate: Number(r.lux_compliance_rate ?? 0),
+      lux_count: Number(r.lux_count ?? 0),
+    }))
+  }, [data, monthLabel])
+
+  const stats = useMemo(() => {
+    const s = data?.stats || {}
+    return {
+      noise_avg: Number(s.noise_avg ?? 0),
+      water_total: Number(s.water_total ?? 0),
+      electricity_total: Number(s.electricity_total ?? 0),
+      lux_avg: Number(s.lux_avg ?? 0),
+      lux_compliance_rate: Number(s.lux_compliance_rate ?? 0),
+      lux_count: Number(s.lux_count ?? 0),
+    }
+  }, [data])
+
+  const envMetrics = useMemo(() => {
+    const monthsWithLux = series.filter((r) => Number(r.lux_count ?? 0) > 0).length
+    const coverage = series.length > 0 ? Math.round((monthsWithLux * 100) / series.length) : 0
+    return {
+      waterConsumption: stats.water_total,
+      electricityUsage: stats.electricity_total,
+      noiseMonitoring: stats.noise_avg,
+      luxAvg: stats.lux_avg,
+      luxComplianceRate: stats.lux_compliance_rate,
+      luxCount: stats.lux_count,
+      luxCoverageRate: coverage,
+    }
+  }, [series, stats])
 
   // Resource consumption trends from real data
   const consumptionTrends = useMemo(() => {
-    return (weeklyTrends ?? []).map((w) => ({
-      week: w.week_label,
-      water: w.water ?? 0,
-      electricity: w.electricity ?? 0,
-      training_hours: w.training_hours ?? 0
+    return series.map((r) => ({
+      month: r.month_label,
+      water: r.water_total ?? 0,
+      electricity: r.electricity_total ?? 0,
     }))
-  }, [weeklyTrends])
+  }, [series])
 
   // Compliance trends from real data
   const complianceTrends = useMemo(() => {
-    return (weeklyTrends ?? []).map((w) => ({
-      week: w.week_label,
-      hse: w.hse_compliance ?? 0,
-      medical: w.medical_compliance ?? 0
+    return series.map((r) => ({
+      month: r.month_label,
+      lux_avg: r.lux_avg ?? 0,
+      lux_compliance_rate: r.lux_compliance_rate ?? 0,
     }))
-  }, [weeklyTrends])
+  }, [series])
 
   // Safety trends from real data
   const safetyTrends = useMemo(() => {
-    return (weeklyTrends ?? []).map((w) => ({
-      week: w.week_label,
-      near_misses: w.near_misses ?? 0,
-      accidents: w.accidents ?? 0,
-      inspections: w.inspections ?? 0
+    return series.map((r) => ({
+      month: r.month_label,
+      noise_avg: r.noise_avg ?? 0,
     }))
-  }, [weeklyTrends])
+  }, [series])
+
+  const lightingInsights = useMemo(() => {
+    return series.map((r) => ({
+      month: r.month_label,
+      lux_count: r.lux_count ?? 0,
+      lux_compliance_rate: r.lux_compliance_rate ?? 0,
+    }))
+  }, [series])
 
   // Compliance KPIs progress - LIVE DATA
   const complianceKPIs = useMemo(() => [
-    { name: t('dashboard.environmental.hseCompliance'), current: envMetrics.hseCompliance, target: 95, color: COLORS.hse },
-    { name: t('dashboard.environmental.medicalCompliance'), current: envMetrics.medicalCompliance, target: 95, color: COLORS.medical }
+    { name: t('dashboard.environmental.luxComplianceRate'), current: Math.round(envMetrics.luxComplianceRate), target: 95, color: COLORS.hse },
+    { name: t('dashboard.environmental.luxDataCoverage'), current: Math.round(envMetrics.luxCoverageRate), target: 100, color: COLORS.medical }
   ], [t, envMetrics])
+
+  const hasAnyData = useMemo(() => series.some((r) => {
+    return (
+      Number(r.noise_avg ?? 0) > 0 ||
+      Number(r.water_total ?? 0) > 0 ||
+      Number(r.electricity_total ?? 0) > 0 ||
+      Number(r.lux_avg ?? 0) > 0 ||
+      Number(r.lux_compliance_rate ?? 0) > 0
+    )
+  }), [series])
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {loading && (
+        <div className="text-sm text-gray-500 dark:text-gray-400">{t('common.loading')}</div>
+      )}
+      {!loading && !hasAnyData && (
+        <div className="text-sm text-gray-500 dark:text-gray-400">{t('common.noData')}</div>
+      )}
       {/* Environmental Metrics Grid - LIVE DATA */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <MetricCard
-          title={t('dashboard.environmental.hseCompliance')}
-          value={envMetrics.hseCompliance}
-          icon={ClipboardCheck}
-          color="green"
-          unit="%"
-          trend={t('dashboard.environmental.yearToDate')}
-        />
-        <MetricCard
-          title={t('dashboard.environmental.medicalCompliance')}
-          value={envMetrics.medicalCompliance}
-          icon={Stethoscope}
+          title={t('dashboard.environmental.noiseMonitoring')}
+          value={Number(envMetrics.noiseMonitoring ?? 0).toFixed(1)}
+          icon={Volume2}
           color="purple"
-          unit="%"
+          unit="dB"
           trend={t('dashboard.environmental.yearToDate')}
         />
         <MetricCard
@@ -147,15 +203,16 @@ const EnvironmentalTheme = memo(function EnvironmentalTheme({ kpiSummary, weekly
         {/* Compliance Trends */}
         <div className="card">
           <div className="card-header">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.environmental.complianceTrends')}</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.environmental.lightingTrends')}</h3>
           </div>
           <div className="card-body">
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={complianceTrends}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
-                  <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 11 }} domain={[0, 100]} />
+                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                     labelStyle={{ color: '#f3f4f6' }}
@@ -163,19 +220,21 @@ const EnvironmentalTheme = memo(function EnvironmentalTheme({ kpiSummary, weekly
                   <Legend />
                   <Line 
                     type="monotone" 
-                    dataKey="hse" 
+                    yAxisId="left"
+                    dataKey="lux_compliance_rate" 
                     stroke={COLORS.hse} 
                     strokeWidth={2}
                     dot={{ fill: COLORS.hse, r: 3 }}
-                    name={t('dashboard.environmental.hseCompliance')}
+                    name={t('dashboard.environmental.luxComplianceRate')}
                   />
                   <Line 
                     type="monotone" 
-                    dataKey="medical" 
+                    yAxisId="right"
+                    dataKey="lux_avg" 
                     stroke={COLORS.medical} 
                     strokeWidth={2}
                     dot={{ fill: COLORS.medical, r: 3 }}
-                    name={t('dashboard.environmental.medicalCompliance')}
+                    name={t('dashboard.environmental.luxAverage')}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -193,7 +252,7 @@ const EnvironmentalTheme = memo(function EnvironmentalTheme({ kpiSummary, weekly
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={consumptionTrends}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
-                  <XAxis dataKey="week" tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis 
                     yAxisId="left" 
                     tick={{ fontSize: 11 }} 
@@ -221,23 +280,21 @@ const EnvironmentalTheme = memo(function EnvironmentalTheme({ kpiSummary, weekly
         {/* Safety Trends - Near Misses, Accidents, Inspections */}
         <div className="card">
           <div className="card-header">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.environmental.safetyTrends')}</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.environmental.noiseTrends')}</h3>
           </div>
           <div className="card-body">
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={safetyTrends}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
-                  <XAxis dataKey="week" tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                     labelStyle={{ color: '#f3f4f6' }}
                   />
                   <Legend />
-                  <Area type="monotone" dataKey="inspections" stroke={COLORS.hse} fill={COLORS.hse} fillOpacity={0.6} name={t('dashboard.inspections')} />
-                  <Area type="monotone" dataKey="near_misses" stroke={COLORS.training} fill={COLORS.training} fillOpacity={0.6} name={t('dashboard.nearMisses')} />
-                  <Area type="monotone" dataKey="accidents" stroke={COLORS.nearMiss} fill={COLORS.nearMiss} fillOpacity={0.6} name={t('dashboard.accidents')} />
+                  <Area type="monotone" dataKey="noise_avg" stroke={COLORS.medical} fill={COLORS.medical} fillOpacity={0.35} name={t('dashboard.environmental.noiseMonitoring')} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -247,51 +304,39 @@ const EnvironmentalTheme = memo(function EnvironmentalTheme({ kpiSummary, weekly
         {/* Compliance Progress Bars */}
         <div className="card">
           <div className="card-header">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.environmental.complianceProgress')}</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.environmental.lightingSummary')}</h3>
           </div>
           <div className="card-body">
-            <div className="space-y-6 py-4">
-              {complianceKPIs.map((kpi, index) => (
-                <div key={kpi.name}>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{kpi.name}</span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      {kpi.current}% / {kpi.target}%
-                    </span>
-                  </div>
-                  <div className="relative h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <div 
-                      className="absolute h-full rounded-full transition-all duration-500"
-                      style={{ 
-                        width: `${Math.min(kpi.current, 100)}%`, 
-                        backgroundColor: kpi.color 
-                      }}
-                    />
-                    <div 
-                      className="absolute h-full w-0.5 bg-gray-800 dark:bg-gray-300"
-                      style={{ left: `${kpi.target}%` }}
-                      title={`Target: ${kpi.target}%`}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    {kpi.current >= kpi.target ? `✓ ${t('dashboard.environmental.targetAchieved')}` : `${kpi.target - kpi.current}% ${t('dashboard.environmental.toTarget')}`}
-                  </p>
-                </div>
-              ))}
-              
-              {/* Additional stats */}
-              <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  <div>
-                    <p className="text-2xl font-bold text-amber-600">{envMetrics.trainingHours.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{t('dashboard.environmental.trainingHoursYTD')}</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-red-600">{envMetrics.nearMisses}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{t('dashboard.environmental.nearMissesYTD')}</p>
-                  </div>
-                </div>
-              </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={lightingInsights}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} domain={[0, 100]} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                    labelStyle={{ color: '#f3f4f6' }}
+                  />
+                  <Legend />
+                  <Bar
+                    yAxisId="left"
+                    dataKey="lux_count"
+                    fill={COLORS.medical}
+                    name={t('dashboard.environmental.luxMeasurements')}
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="lux_compliance_rate"
+                    stroke={COLORS.hse}
+                    strokeWidth={2}
+                    dot={{ fill: COLORS.hse, r: 3 }}
+                    name={t('dashboard.environmental.luxComplianceRate')}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>

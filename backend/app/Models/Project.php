@@ -49,6 +49,11 @@ class Project extends Model
         return $this->users()->where('role', User::ROLE_RESPONSABLE);
     }
 
+    public function hseManagers()
+    {
+        return $this->users()->where('role', User::ROLE_HSE_MANAGER);
+    }
+
     /**
      * Team members (HSE Officers) assigned by HSE Managers
      */

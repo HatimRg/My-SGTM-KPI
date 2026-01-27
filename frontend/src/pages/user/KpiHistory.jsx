@@ -283,14 +283,14 @@ export default function KpiHistory() {
             <DatePicker
               value={filterFromDate}
               onChange={(val) => setFilterFromDate(val)}
-              placeholder="From date"
+              placeholder={t('hseEvents.filters.from')}
             />
           </div>
           <div className="w-full sm:w-40">
             <DatePicker
               value={filterToDate}
               onChange={(val) => setFilterToDate(val)}
-              placeholder="To date"
+              placeholder={t('hseEvents.filters.to')}
             />
           </div>
           <button
@@ -329,8 +329,8 @@ export default function KpiHistory() {
         ) : filteredReports.length === 0 ? (
           <div className="p-12 text-center">
             <FileText className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No reports found</h3>
-            <p className="text-gray-500 dark:text-gray-400">Try adjusting your filters or submit a new KPI report.</p>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">{t('kpi.noReports')}</h3>
+            <p className="text-gray-500 dark:text-gray-400">{t('common.noData')}</p>
           </div>
         ) : (
           <>
@@ -344,7 +344,7 @@ export default function KpiHistory() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-medium text-gray-900 dark:text-gray-100">
-                        {report.project?.name || 'Unknown'}
+                        {report.project?.name || t('common.unknown')}
                       </p>
                       {report.project?.code && (
                         <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -362,18 +362,18 @@ export default function KpiHistory() {
                       <div className="flex items-center gap-1 text-xs">
                         {statusIcons[report.status]}
                         <span className={`badge ${statusColors[report.status]}`}>
-                          {report.status}
+                          {t(`kpi.status.${report.status}`)}
                         </span>
                       </div>
                       <div className="mt-1 flex flex-wrap gap-1 justify-end text-[11px] text-gray-600 dark:text-gray-300">
                         <span className={report.accidents > 0 ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-green-600'}>
-                          {report.accidents} acc.
+                          {report.accidents} {t('kpi.accidents.title')}
                         </span>
                         <span className="px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                          {report.trainings_conducted} tr.
+                          {report.trainings_conducted} {t('kpi.training.title')}
                         </span>
                         <span className="px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
-                          {report.inspections_completed} insp.
+                          {report.inspections_completed} {t('kpi.inspections.title')}
                         </span>
                       </div>
                     </div>
@@ -383,23 +383,23 @@ export default function KpiHistory() {
                     <button
                       onClick={() => handleViewReport(report)}
                       className="inline-flex items-center gap-1 text-xs text-hse-primary hover:underline"
-                      title="View Details"
+                      title={t('common.viewDetails')}
                     >
                       <Eye className="w-4 h-4" />
-                      <span>View details</span>
+                      <span>{t('common.viewDetails')}</span>
                     </button>
                     {report.status === 'draft' && (
                       <div className="flex items-center gap-2">
                         <button
                           className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
-                          title="Edit"
+                          title={t('common.edit')}
                         >
                           <Edit className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                         </button>
                         <button
                           onClick={() => handleDelete(report)}
                           className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30"
-                          title="Delete"
+                          title={t('common.delete')}
                         >
                           <Trash2 className="w-4 h-4 text-red-600" />
                         </button>
@@ -415,13 +415,13 @@ export default function KpiHistory() {
               <table className="table w-full">
                 <thead>
                   <tr>
-                    <th>Project</th>
-                    <th>Week / Year</th>
-                    <th>Accidents</th>
-                    <th>Trainings</th>
-                    <th>Inspections</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th>{t('common.project')}</th>
+                    <th>{t('kpi.projectInfo.reportPeriod')}</th>
+                    <th>{t('kpi.accidents.title')}</th>
+                    <th>{t('kpi.training.title')}</th>
+                    <th>{t('kpi.inspections.title')}</th>
+                    <th>{t('common.status')}</th>
+                    <th>{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -429,7 +429,7 @@ export default function KpiHistory() {
                     <tr key={report.id}>
                       <td>
                         <div>
-                          <p className="font-medium">{report.project?.name || 'Unknown'}</p>
+                          <p className="font-medium">{report.project?.name || t('common.unknown')}</p>
                           <p className="text-xs text-gray-500">{report.project?.code}</p>
                         </div>
                       </td>
@@ -450,7 +450,7 @@ export default function KpiHistory() {
                         <div className="flex items-center gap-2">
                           {statusIcons[report.status]}
                           <span className={`badge ${statusColors[report.status]}`}>
-                            {report.status}
+                            {t(`kpi.status.${report.status}`)}
                           </span>
                         </div>
                       </td>
@@ -459,7 +459,7 @@ export default function KpiHistory() {
                           <button
                             onClick={() => handleViewReport(report)}
                             className="p-2 hover:bg-gray-100 rounded-lg"
-                            title="View Details"
+                            title={t('common.viewDetails')}
                           >
                             <Eye className="w-4 h-4 text-gray-600" />
                           </button>
@@ -467,14 +467,14 @@ export default function KpiHistory() {
                             <>
                               <button
                                 className="p-2 hover:bg-gray-100 rounded-lg"
-                                title="Edit"
+                                title={t('common.edit')}
                               >
                                 <Edit className="w-4 h-4 text-gray-600" />
                               </button>
                               <button
                                 onClick={() => handleDelete(report)}
                                 className="p-2 hover:bg-gray-100 rounded-lg"
-                                title="Delete"
+                                title={t('common.delete')}
                               >
                                 <Trash2 className="w-4 h-4 text-red-600" />
                               </button>
@@ -494,7 +494,7 @@ export default function KpiHistory() {
         {pagination.last_page > 1 && (
           <div className="flex items-center justify-between p-4 border-t border-gray-100">
             <p className="text-sm text-gray-500">
-              Page {pagination.current_page} of {pagination.last_page}
+              {t('common.page')} {pagination.current_page} {t('common.of')} {pagination.last_page}
             </p>
             <div className="flex gap-2">
               <button
@@ -502,14 +502,14 @@ export default function KpiHistory() {
                 disabled={pagination.current_page === 1}
                 className="btn-secondary text-sm"
               >
-                Previous
+                {t('common.previous')}
               </button>
               <button
                 onClick={() => fetchReports(pagination.current_page + 1)}
                 disabled={pagination.current_page === pagination.last_page}
                 className="btn-secondary text-sm"
               >
-                Next
+                {t('common.next')}
               </button>
             </div>
           </div>
@@ -520,7 +520,7 @@ export default function KpiHistory() {
       <Modal
         isOpen={!!selectedReport}
         onClose={() => setSelectedReport(null)}
-        title={selectedReport?.project?.name || 'Détails du rapport'}
+        title={selectedReport?.project?.name || t('kpi.management.detailsTitle')}
         size="lg"
       >
         {selectedReport && (
@@ -530,60 +530,60 @@ export default function KpiHistory() {
                 {formatPeriod(selectedReport)}
               </p>
               <span className={`badge ${statusColors[selectedReport.status]}`}>
-                {selectedReport.status}
+                {t(`kpi.status.${selectedReport.status}`)}
               </span>
             </div>
 
             {/* Accidents */}
             <div>
-              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Indicateurs d'accidents</h4>
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('kpi.accidents.title')}</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <MetricItem label="Total" value={selectedReport.accidents} danger={selectedReport.accidents > 0} />
-                <MetricItem label="Mortels" value={selectedReport.accidents_fatal} danger={selectedReport.accidents_fatal > 0} />
-                <MetricItem label="Graves" value={selectedReport.accidents_serious} />
-                <MetricItem label="Mineurs" value={selectedReport.accidents_minor} />
-                <MetricItem label="Presqu'accidents" value={selectedReport.near_misses} />
-                <MetricItem label="Premiers soins" value={selectedReport.first_aid_cases} />
+                <MetricItem label={t('kpi.accidents.total')} value={selectedReport.accidents} danger={selectedReport.accidents > 0} />
+                <MetricItem label={t('kpi.accidents.fatal')} value={selectedReport.accidents_fatal} danger={selectedReport.accidents_fatal > 0} />
+                <MetricItem label={t('kpi.accidents.serious')} value={selectedReport.accidents_serious} />
+                <MetricItem label={t('kpi.accidents.minor')} value={selectedReport.accidents_minor} />
+                <MetricItem label={t('kpi.accidents.nearMisses')} value={selectedReport.near_misses} />
+                <MetricItem label={t('kpi.accidents.firstAidCases')} value={selectedReport.first_aid_cases} />
               </div>
             </div>
 
             {/* Training */}
             <div>
-              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Indicateurs de formation</h4>
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('kpi.training.title')}</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <MetricItem label="Réalisées" value={selectedReport.trainings_conducted} />
-                <MetricItem label="Planifiées" value={selectedReport.trainings_planned} />
-                <MetricItem label="Employés" value={selectedReport.employees_trained} />
-                <MetricItem label="Heures" value={selectedReport.training_hours} />
-                <MetricItem label="Sensibilisations" value={selectedReport.toolbox_talks} />
+                <MetricItem label={t('kpi.training.conducted')} value={selectedReport.trainings_conducted} />
+                <MetricItem label={t('kpi.training.planned')} value={selectedReport.trainings_planned} />
+                <MetricItem label={t('kpi.training.employeesTrained')} value={selectedReport.employees_trained} />
+                <MetricItem label={t('kpi.training.trainingHours')} value={selectedReport.training_hours} />
+                <MetricItem label={t('kpi.training.toolboxTalks')} value={selectedReport.toolbox_talks} />
               </div>
             </div>
 
             {/* Inspections */}
             <div>
-              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Indicateurs d'inspection</h4>
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('kpi.inspections.title')}</h4>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <MetricItem label="Réalisées" value={selectedReport.inspections_completed} />
-                <MetricItem label="Planifiées" value={selectedReport.inspections_planned} />
-                <MetricItem label="Écarts ouverts" value={selectedReport.findings_open} />
-                <MetricItem label="Écarts fermés" value={selectedReport.findings_closed} />
+                <MetricItem label={t('kpi.inspections.completed')} value={selectedReport.inspections_completed} />
+                <MetricItem label={t('kpi.inspections.planned')} value={selectedReport.inspections_planned} />
+                <MetricItem label={t('kpi.inspections.findingsOpen')} value={selectedReport.findings_open} />
+                <MetricItem label={t('kpi.inspections.findingsClosed')} value={selectedReport.findings_closed} />
               </div>
             </div>
 
             {/* Rates */}
             <div>
-              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Taux de sécurité</h4>
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('kpi.rates.title')}</h4>
               <div className="grid grid-cols-2 gap-4">
-                <MetricItem label="TF" value={Number(selectedReport.tf_value).toFixed(4)} />
-                <MetricItem label="TG" value={Number(selectedReport.tg_value).toFixed(4)} />
-                <MetricItem label="Heures travaillées" value={Number(selectedReport.hours_worked).toLocaleString()} />
-                <MetricItem label="Jours perdus" value={selectedReport.lost_workdays} />
+                <MetricItem label={t('kpi.rates.frequencyRate')} value={Number(selectedReport.tf_value).toFixed(4)} />
+                <MetricItem label={t('kpi.rates.severityRate')} value={Number(selectedReport.tg_value).toFixed(4)} />
+                <MetricItem label={t('kpi.rates.hoursWorked')} value={Number(selectedReport.hours_worked).toLocaleString()} />
+                <MetricItem label={t('kpi.rates.lostWorkdays')} value={selectedReport.lost_workdays} />
               </div>
             </div>
 
             {selectedReport.notes && (
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Notes</h4>
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">{t('kpi.notes')}</h4>
                 <p className="text-gray-600 dark:text-gray-300 text-sm bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
                   {selectedReport.notes}
                 </p>
@@ -594,7 +594,7 @@ export default function KpiHistory() {
             {loadingDetails ? (
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-                <span className="ml-2 text-sm text-gray-500">Chargement des données journalières...</span>
+                <span className="ml-2 text-sm text-gray-500">{t('kpi.dailyKpi.loadingDaily')}</span>
               </div>
             ) : (
               <DailyKpiPreview dailySnapshots={dailySnapshots} />
@@ -605,7 +605,7 @@ export default function KpiHistory() {
                 onClick={() => { setSelectedReport(null); setDailySnapshots([]); }}
                 className="btn-secondary w-full"
               >
-                Fermer
+                {t('common.close')}
               </button>
             </div>
           </div>
@@ -614,10 +614,10 @@ export default function KpiHistory() {
 
       <ConfirmDialog
         isOpen={!!confirmReport}
-        title="Confirm deletion"
-        message="Are you sure you want to delete this report?"
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        title={t('common.delete')}
+        message={t('kpi.confirmDelete')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
         variant="danger"
         onConfirm={confirmDeleteReport}
         onCancel={() => setConfirmReport(null)}
