@@ -58,6 +58,7 @@ import {
   Square,
   Play,
   Send,
+  Trash2,
 } from 'lucide-react'
 import appLogo from '../App_Logo.png'
 
@@ -258,6 +259,7 @@ export default function DashboardLayout() {
     { to: '/admin/hse-events', icon: Siren, label: t('nav.hseEvents') },
     { to: '/admin/monthly-measurements', icon: CalendarDays, label: t('nav.monthlyMeasurements') },
     { to: '/admin/lighting', icon: Lightbulb, label: t('nav.lightingMeasurements') },
+    { to: '/admin/waste-management', icon: Trash2, label: t('nav.wasteManagement') },
     { to: '/admin/effectif', icon: UserRound, label: t('effectif.title') },
     { to: '/admin/training', icon: GraduationCap, label: t('training.navLabel') },
     { to: '/admin/awareness', icon: Megaphone, label: t('awareness.navLabel') },
@@ -278,6 +280,7 @@ export default function DashboardLayout() {
     { to: '/admin/hse-events', icon: Siren, label: t('nav.hseEvents') },
     { to: '/admin/monthly-measurements', icon: CalendarDays, label: t('nav.monthlyMeasurements') },
     { to: '/admin/lighting', icon: Lightbulb, label: t('nav.lightingMeasurements') },
+    { to: '/admin/waste-management', icon: Trash2, label: t('nav.wasteManagement') },
     { to: '/admin/training', icon: GraduationCap, label: t('training.navLabel') },
     { to: '/admin/awareness', icon: Megaphone, label: t('awareness.navLabel') },
     { to: '/admin/sor', icon: ShieldAlert, label: t('sor.title') },
@@ -420,6 +423,7 @@ export default function DashboardLayout() {
     { to: '/hse-events', icon: Siren, label: t('nav.hseEvents') },
     { to: '/monthly-measurements', icon: CalendarDays, label: t('nav.monthlyMeasurements') },
     { to: '/lighting', icon: Lightbulb, label: t('nav.lightingMeasurements') },
+    { to: '/waste-management', icon: Trash2, label: t('nav.wasteManagement') },
     { to: '/workers', icon: HardHat, label: t('workers.title') },
     { to: '/ppe', icon: ShieldCheck, label: t('ppe.nav') },
     { to: '/subcontractors', icon: Handshake, label: t('subcontractors.title') },

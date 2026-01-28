@@ -438,6 +438,7 @@ export default {
     hseEvents: 'Accidents, incidents et visites médicales',
     monthlyMeasurements: 'Mesures mensuelles',
     lightingMeasurements: 'Mesures d\'éclairement (Lux)',
+    wasteManagement: 'Gestion des déchets',
   },
 
   bugReport: {
@@ -2143,6 +2144,124 @@ export default {
     modal: {
       newTitle: 'Nouvelle mesure d\'éclairement',
       editTitle: 'Modifier la mesure d\'éclairement',
+    },
+  },
+
+  wasteManagement: {
+    title: 'Gestion des déchets',
+    subtitle: 'Suivi des exportations de déchets par projet',
+    emptyState: 'Aucun enregistrement',
+
+    actions: {
+      add: 'Ajouter',
+    },
+
+    tabs: {
+      all: 'Tous',
+    },
+
+    filters: {
+      dateFrom: 'Date du',
+      dateTo: 'Date au',
+      plateSearch: 'Matriculation',
+      plateSearchPlaceholder: 'Rechercher par matriculation',
+      includeArchived: 'Inclure les éléments archivés',
+    },
+
+    table: {
+      date: 'Date',
+      wasteType: 'Type des déchets',
+      quantity: 'Quantité',
+      tripsCount: 'Nombre des voyages',
+      transportMethod: 'Moyen de transport',
+      plateNumber: 'Matriculation',
+      treatment: 'Traitement',
+    },
+
+    modal: {
+      createTitle: 'Ajouter un enregistrement',
+      editTitle: 'Modifier un enregistrement',
+    },
+
+    form: {
+      date: 'Date',
+      wasteType: 'Type des déchets',
+      wasteTypeOther: 'Autre (type des déchets)',
+      quantity: 'Quantité',
+      tripsCount: 'Nombre des voyages',
+      transportMethod: 'Moyen de transport',
+      transportMethodOther: 'Autre (moyen de transport)',
+      plateNumber: 'Matriculation',
+      treatment: 'Traitement',
+      treatmentOther: 'Autre (traitement)',
+    },
+
+    wasteTypes: {
+      banales: 'Banales',
+      betons: 'Bétons',
+      liquides_sanitaires: 'Liquides sanitaires',
+      melange_banales: 'Mélange banales',
+      ferraile: 'Ferraile',
+      huiles_usees: 'Huiles usées',
+      solides_dangereux: 'Solides dangereux',
+      medicaux: 'Médicaux',
+      autre: 'Autre',
+    },
+
+    transportMethods: {
+      benne_satellite: 'Benne satellite',
+      camion_hydrocureur: 'Camion hydrocureur',
+      camion_plateau: 'Camion plateau',
+      camion_8x4: 'Camion 8x4',
+      camion_citerne: 'Camion citerne',
+      remorque_a_benne: 'Remorque à benne',
+      autre: 'Autre',
+    },
+
+    treatments: {
+      decharge: 'Décharge',
+      incineration: 'Incinération',
+      recyclage: 'Recyclage',
+      pretraitement_incineration: 'Prétraitement + incinération',
+      recyclage_sur_chantier: 'Recyclage sur chantier',
+      traitement_physico_chimique: 'Traitement physico-chimique',
+      regeneration_huiles_usees: 'Régénération (huiles usées)',
+      valorisation: 'Valorisation (ferraile / mélange)',
+      stockage_temporaire: 'Stockage temporaire (dangereux / médicaux)',
+      neutralisation: 'Neutralisation (dangereux)',
+      autre: 'Autre',
+    },
+
+    delete: {
+      title: 'Supprimer',
+      message: 'Êtes-vous sûr de vouloir supprimer cet élément ?',
+    },
+
+    toasts: {
+      created: 'Enregistrement créé',
+      updated: 'Enregistrement mis à jour',
+      deleted: 'Enregistrement supprimé',
+    },
+
+    pagination: {
+      prev: 'Précédent',
+      next: 'Suivant',
+      pageOf: 'Page {page} de {last}',
+      total: 'Total : {total}',
+    },
+
+    validation: {
+      projectRequired: 'Veuillez sélectionner un projet',
+      dateRequired: 'Veuillez sélectionner une date',
+      wasteTypeRequired: 'Veuillez sélectionner un type de déchets',
+      wasteTypeOtherRequired: 'Veuillez préciser le type de déchets',
+      quantityRequired: 'Veuillez saisir une quantité valide',
+      tripsCountRequired: 'Veuillez saisir un nombre de voyages valide',
+      transportMethodRequired: 'Veuillez sélectionner un moyen de transport',
+      transportMethodOtherRequired: 'Veuillez préciser le moyen de transport',
+      plateNumberRequired: 'Veuillez saisir la matriculation',
+      treatmentRequired: 'Veuillez sélectionner un traitement',
+      treatmentOtherRequired: 'Veuillez préciser le traitement',
     },
   },
 

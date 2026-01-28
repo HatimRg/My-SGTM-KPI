@@ -835,6 +835,13 @@ export const lightingMeasurementService = {
   delete: (id) => api.delete(`/lighting-measurements/${id}`),
 }
 
+export const wasteExportService = {
+  getAll: (params) => api.get('/waste-exports', { params }),
+  create: (data) => api.post('/waste-exports', data),
+  update: (id, data) => api.put(`/waste-exports/${id}`, data),
+  delete: (id) => api.delete(`/waste-exports/${id}`),
+}
+
 export const dailyEffectifService = {
   upsert: (data) => api.post('/daily-effectif', data),
   entry: (params) => api.get('/daily-effectif/entry', { params }),

@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\HseEventController;
 use App\Http\Controllers\Api\MonthlyKpiMeasurementController;
 use App\Http\Controllers\Api\LightingMeasurementController;
 use App\Http\Controllers\Api\BugReportController;
+use App\Http\Controllers\Api\WasteExportController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -309,6 +310,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{lightingMeasurement}', [LightingMeasurementController::class, 'show']);
         Route::put('/{lightingMeasurement}', [LightingMeasurementController::class, 'update']);
         Route::delete('/{lightingMeasurement}', [LightingMeasurementController::class, 'destroy']);
+    });
+
+    // Waste Exports (Waste Management)
+    Route::prefix('waste-exports')->group(function () {
+        Route::get('/', [WasteExportController::class, 'index']);
+        Route::post('/', [WasteExportController::class, 'store']);
+        Route::put('/{wasteExport}', [WasteExportController::class, 'update']);
+        Route::delete('/{wasteExport}', [WasteExportController::class, 'destroy']);
     });
 
     // Awareness Sessions (TBM/TBT)

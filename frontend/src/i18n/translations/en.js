@@ -427,7 +427,7 @@ export default {
     projects: 'Projects',
     myProjects: 'My Projects',
     users: 'Users',
-    bugReports: 'Bug reports',
+    bugReports: 'Bug Reports',
     kpiSubmission: 'KPI Submission',
     kpiHistory: 'KPI History',
     reports: 'Reports',
@@ -438,6 +438,7 @@ export default {
     hseEvents: 'Accidents, Incidents & Medical Visits',
     monthlyMeasurements: 'Monthly Measurements',
     lightingMeasurements: 'Lighting Measurements (Lux)',
+    wasteManagement: 'Waste Management',
   },
 
   bugReport: {
@@ -2143,6 +2144,124 @@ export default {
     modal: {
       newTitle: 'New lighting measurement',
       editTitle: 'Edit lighting measurement',
+    },
+  },
+
+  wasteManagement: {
+    title: 'Waste Management',
+    subtitle: 'Track waste exports per project',
+    emptyState: 'No records',
+
+    actions: {
+      add: 'Add',
+    },
+
+    tabs: {
+      all: 'All',
+    },
+
+    filters: {
+      dateFrom: 'Date from',
+      dateTo: 'Date to',
+      plateSearch: 'Plate number',
+      plateSearchPlaceholder: 'Search by plate number',
+      includeArchived: 'Include archived records',
+    },
+
+    table: {
+      date: 'Date',
+      wasteType: 'Waste type',
+      quantity: 'Quantity',
+      tripsCount: 'Trips count',
+      transportMethod: 'Transport method',
+      plateNumber: 'Plate number',
+      treatment: 'Treatment',
+    },
+
+    modal: {
+      createTitle: 'Add record',
+      editTitle: 'Edit record',
+    },
+
+    form: {
+      date: 'Date',
+      wasteType: 'Waste type',
+      wasteTypeOther: 'Other (waste type)',
+      quantity: 'Quantity',
+      tripsCount: 'Trips count',
+      transportMethod: 'Transport method',
+      transportMethodOther: 'Other (transport method)',
+      plateNumber: 'Plate number',
+      treatment: 'Treatment',
+      treatmentOther: 'Other (treatment)',
+    },
+
+    wasteTypes: {
+      banales: 'General waste',
+      betons: 'Concrete',
+      liquides_sanitaires: 'Sanitary liquids',
+      melange_banales: 'Mixed (general)',
+      ferraile: 'Scrap metal',
+      huiles_usees: 'Used oils',
+      solides_dangereux: 'Hazardous solids',
+      medicaux: 'Medical',
+      autre: 'Other',
+    },
+
+    transportMethods: {
+      benne_satellite: 'Satellite skip',
+      camion_hydrocureur: 'Hydrocurer truck',
+      camion_plateau: 'Flatbed truck',
+      camion_8x4: '8x4 truck',
+      camion_citerne: 'Tanker truck',
+      remorque_a_benne: 'Tipper trailer',
+      autre: 'Other',
+    },
+
+    treatments: {
+      decharge: 'Landfill',
+      incineration: 'Incineration',
+      recyclage: 'Recycling',
+      pretraitement_incineration: 'Pretreatment + incineration',
+      recyclage_sur_chantier: 'On-site recycling',
+      traitement_physico_chimique: 'Physico-chemical treatment',
+      regeneration_huiles_usees: 'Regeneration (used oils)',
+      valorisation: 'Recovery (scrap / mixed)',
+      stockage_temporaire: 'Temporary storage (hazardous / medical)',
+      neutralisation: 'Neutralization (hazardous)',
+      autre: 'Other',
+    },
+
+    delete: {
+      title: 'Delete',
+      message: 'Are you sure you want to delete this item?',
+    },
+
+    toasts: {
+      created: 'Record created',
+      updated: 'Record updated',
+      deleted: 'Record deleted',
+    },
+
+    pagination: {
+      prev: 'Previous',
+      next: 'Next',
+      pageOf: 'Page {page} of {last}',
+      total: 'Total: {total}',
+    },
+
+    validation: {
+      projectRequired: 'Please select a project',
+      dateRequired: 'Please select a date',
+      wasteTypeRequired: 'Please select a waste type',
+      wasteTypeOtherRequired: 'Please specify the waste type',
+      quantityRequired: 'Please enter a valid quantity',
+      tripsCountRequired: 'Please enter a valid trips count',
+      transportMethodRequired: 'Please select a transport method',
+      transportMethodOtherRequired: 'Please specify the transport method',
+      plateNumberRequired: 'Please enter the plate number',
+      treatmentRequired: 'Please select a treatment',
+      treatmentOtherRequired: 'Please specify the treatment',
     },
   },
 

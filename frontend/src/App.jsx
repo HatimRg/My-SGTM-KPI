@@ -53,6 +53,7 @@ const VeilleReglementaireForm = lazy(() => import('./pages/shared/VeilleReglemen
 const HseEvents = lazy(() => import('./pages/shared/HseEvents'))
 const MonthlyMeasurements = lazy(() => import('./pages/shared/MonthlyMeasurements'))
 const LightingMeasurements = lazy(() => import('./pages/shared/LightingMeasurements'))
+const WasteManagement = lazy(() => import('./pages/shared/WasteManagement'))
 
 // Heavy Machinery Tracking (lazy-loaded)
 const HeavyMachineryViewMachines = lazy(() => import('./pages/shared/heavyMachinery/ViewMachines'))
@@ -257,6 +258,7 @@ function App() {
         <Route path="/admin/hse-events" element={<HseEvents />} />
         <Route path="/admin/monthly-measurements" element={<MonthlyMeasurements />} />
         <Route path="/admin/lighting" element={<LightingMeasurements />} />
+        <Route path="/admin/waste-management" element={<WasteManagement />} />
       </Route>
 
       <Route
@@ -429,6 +431,7 @@ function App() {
         <Route path="/hse-events" element={<HseEvents />} />
         <Route path="/monthly-measurements" element={<MonthlyMeasurements />} />
         <Route path="/lighting" element={<LightingMeasurements />} />
+        <Route path="/waste-management" element={<WasteManagement />} />
       </Route>
 
       {/* HR Routes */}
