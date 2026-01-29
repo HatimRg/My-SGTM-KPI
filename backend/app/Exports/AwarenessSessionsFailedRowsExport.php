@@ -11,9 +11,8 @@ use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
-class WorkerMedicalAptitudesMassFailedRowsExport implements FromArray, WithColumnWidths, WithEvents, WithTitle
+class AwarenessSessionsFailedRowsExport implements FromArray, WithColumnWidths, WithEvents, WithTitle
 {
     private array $rows;
     private string $lang;
@@ -44,12 +43,12 @@ class WorkerMedicalAptitudesMassFailedRowsExport implements FromArray, WithColum
     {
         return [
             'A' => 6,
-            'B' => 18,
+            'B' => 16,
             'C' => 16,
-            'D' => 28,
-            'E' => 30,
-            'F' => 16,
-            'G' => 16,
+            'D' => 24,
+            'E' => 34,
+            'F' => 18,
+            'G' => 14,
             'H' => 60,
         ];
     }
@@ -57,27 +56,27 @@ class WorkerMedicalAptitudesMassFailedRowsExport implements FromArray, WithColum
     public function array(): array
     {
         $out = [];
-        $out[] = [$this->tr('SGTM - RAPPORT DES LIGNES EN ERREUR (APTITUDES MÉDICALES)', 'SGTM - FAILED ROWS REPORT (MEDICAL APTITUDES)')];
+        $out[] = [$this->tr('SGTM - RAPPORT DES LIGNES EN ERREUR (SENSIBILISATIONS)', 'SGTM - FAILED ROWS REPORT (AWARENESS SESSIONS)')];
         $out[] = [$this->tr(
             "Ce fichier contient uniquement les lignes qui n'ont pas été importées.",
             'This file contains only the rows that were not imported.'
         )];
 
         $out[] = $this->lang === 'en'
-            ? ['#', 'CIN', 'APTITUDE_STATUS', 'EXAM_NATURE', 'ABLE_TO', 'EXAM_DATE', 'DATE_EXPIRATION', 'ERROR']
-            : ['#', 'CIN', "Statut d'aptitude", "Nature d'examen", 'Apte à', "Date d'examen", 'Date expiration', 'Erreur'];
+            ? ['#', 'PROJECT_CODE', 'DATE', 'BY_NAME', 'THEME', 'DURATION_MINUTES', 'PARTICIPANTS', 'ERROR']
+            : ['#', 'Code projet', 'Date', 'Animé par', 'Thème', 'Durée (min)', 'Participants', 'Erreur'];
 
         $i = 0;
         foreach ($this->rows as $r) {
             $i++;
             $out[] = [
                 $i,
-                $r['cin'] ?? null,
-                $r['aptitude_status'] ?? null,
-                $r['exam_nature'] ?? null,
-                $r['able_to'] ?? null,
-                $r['exam_date'] ?? null,
-                $r['expiry_date'] ?? null,
+                $r['project_code'] ?? null,
+                $r['date'] ?? null,
+                $r['by_name'] ?? null,
+                $r['theme'] ?? null,
+                $r['duration_minutes'] ?? null,
+                $r['participants'] ?? null,
                 $this->translateError($r['error'] ?? null),
             ];
         }
@@ -155,8 +154,6 @@ class WorkerMedicalAptitudesMassFailedRowsExport implements FromArray, WithColum
 
                 $sheet->freezePane('A4');
                 $sheet->setAutoFilter('A3:H3');
-
-                $sheet->getStyle("F{$dataStartRow}:G{$highestRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
             },
         ];
     }

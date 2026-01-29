@@ -63,11 +63,27 @@ class MachinesImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunk
                 $row = $row + $normalized;
             }
 
-            $serial = $this->getColumnValue($row, ['serial_number', 'serial', 'sn']);
-            $type = $this->getColumnValue($row, ['machine_type', 'type']);
+            $serial = $this->getColumnValue($row, ['serial_number', 'serial', 'sn', 'numero_de_serie', 'numero_de_serie', 'numero_de_série']);
+            $type = $this->getColumnValue($row, ['machine_type', 'type', 'type_engin', 'type_d_engin', 'type_dengin']);
             $brand = $this->getColumnValue($row, ['brand', 'marque']);
 
             if (empty($serial) || empty($type) || empty($brand)) {
+                if (!$this->isRowEmpty($row)) {
+                    $missing = [];
+                    if (empty($serial)) {
+                        $missing[] = 'SERIAL_NUMBER';
+                    }
+                    if (empty($type)) {
+                        $missing[] = 'MACHINE_TYPE';
+                    }
+                    if (empty($brand)) {
+                        $missing[] = 'BRAND';
+                    }
+                    $this->rowErrors[] = [
+                        'serial_number' => $serial ? trim((string) $serial) : null,
+                        'error' => 'Missing required fields: ' . implode(', ', $missing),
+                    ];
+                }
                 return null;
             }
 
@@ -168,6 +184,19 @@ class MachinesImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunk
             }
         }
         return null;
+    }
+
+    protected function isRowEmpty(array $row): bool
+    {
+        foreach ($row as $v) {
+            if ($v === null) {
+                continue;
+            }
+            if (trim((string) $v) !== '') {
+                return false;
+            }
+        }
+        return true;
     }
 
     protected function emptyToNull($value)

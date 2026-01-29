@@ -36,13 +36,44 @@ class UsersImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunkRea
             $role = $this->getColumnValue($row, ['role']);
             $pole = $this->emptyToNull($this->getColumnValue($row, ['pole']));
 
+            $hasAnyValue = false;
+            foreach ([$email, $name, $role, $pole] as $v) {
+                if ($v !== null && trim((string) $v) !== '') {
+                    $hasAnyValue = true;
+                    break;
+                }
+            }
+
+            if (!$hasAnyValue) {
+                return null;
+            }
+
             if (empty($email) || empty($name) || empty($role)) {
+                $missing = [];
+                if (empty($email)) {
+                    $missing[] = 'EMAIL';
+                }
+                if (empty($name)) {
+                    $missing[] = 'NAME';
+                }
+                if (empty($role)) {
+                    $missing[] = 'ROLE';
+                }
+                $this->rowErrors[] = [
+                    'email' => $email ? strtolower(trim((string) $email)) : null,
+                    'error' => 'Missing required fields' . (count($missing) ? ': ' . implode(',', $missing) : ''),
+                ];
                 return null;
             }
 
             $email = strtolower(trim((string) $email));
             $name = trim((string) $name);
             $role = $this->normalizeRole($role);
+
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $this->rowErrors[] = ['email' => $email, 'error' => 'Invalid email'];
+                return null;
+            }
 
             if ($role === User::ROLE_POLE_DIRECTOR || $role === User::ROLE_REGIONAL_HSE_MANAGER) {
                 $pole = $pole !== null ? trim((string) $pole) : null;

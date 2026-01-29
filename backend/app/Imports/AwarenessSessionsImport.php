@@ -69,19 +69,43 @@ class AwarenessSessionsImport implements ToModel, WithHeadingRow, SkipsOnError, 
             $projectCode = strtoupper(trim((string) $projectCode));
             $project = Project::where('code', $projectCode)->first();
             if (!$project) {
-                $this->rowErrors[] = ['project_code' => $projectCode, 'error' => "Unknown project code: {$projectCode}"];
+                $this->rowErrors[] = [
+                    'project_code' => $projectCode,
+                    'date' => $dateRaw,
+                    'by_name' => $byName,
+                    'theme' => $theme,
+                    'duration_minutes' => $durationMinutes,
+                    'participants' => $participants,
+                    'error' => "Unknown project code: {$projectCode}",
+                ];
                 return null;
             }
 
             $projectId = (int) $project->id;
             if ($this->allowedProjectIds !== null && !in_array($projectId, $this->allowedProjectIds, true)) {
-                $this->rowErrors[] = ['project_code' => $projectCode, 'error' => 'Project not allowed for your access scope'];
+                $this->rowErrors[] = [
+                    'project_code' => $projectCode,
+                    'date' => $dateRaw,
+                    'by_name' => $byName,
+                    'theme' => $theme,
+                    'duration_minutes' => $durationMinutes,
+                    'participants' => $participants,
+                    'error' => 'Project not allowed for your access scope',
+                ];
                 return null;
             }
 
             $date = $this->parseDateToYmd($dateRaw);
             if (!$date) {
-                $this->rowErrors[] = ['project_code' => $projectCode, 'error' => 'Invalid DATE'];
+                $this->rowErrors[] = [
+                    'project_code' => $projectCode,
+                    'date' => $dateRaw,
+                    'by_name' => $byName,
+                    'theme' => $theme,
+                    'duration_minutes' => $durationMinutes,
+                    'participants' => $participants,
+                    'error' => 'Invalid DATE',
+                ];
                 return null;
             }
 
@@ -89,7 +113,15 @@ class AwarenessSessionsImport implements ToModel, WithHeadingRow, SkipsOnError, 
             $participants = (int) $participants;
 
             if ($durationMinutes <= 0 || $participants <= 0) {
-                $this->rowErrors[] = ['project_code' => $projectCode, 'error' => 'Invalid DURATION_MINUTES or PARTICIPANTS'];
+                $this->rowErrors[] = [
+                    'project_code' => $projectCode,
+                    'date' => $dateRaw,
+                    'by_name' => $byName,
+                    'theme' => $theme,
+                    'duration_minutes' => $durationMinutes,
+                    'participants' => $participants,
+                    'error' => 'Invalid DURATION_MINUTES or PARTICIPANTS',
+                ];
                 return null;
             }
 

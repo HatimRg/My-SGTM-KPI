@@ -10,8 +10,11 @@ use App\Support\PasswordPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Excel as ExcelFormat;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\UsersFailedRowsExport;
 
 class UserController extends Controller
 {
@@ -458,10 +461,24 @@ class UserController extends Controller
             return $this->error('Failed to import users: ' . $e->getMessage(), 422);
         }
 
+        $errors = $import->getErrors();
+        $failedRowsUrl = null;
+        if (!empty($errors)) {
+            $user = $request->user();
+            $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
+            $filename = 'users_failed_rows_' . now()->format('Ymd_His') . '.xlsx';
+            $path = 'imports/failed_rows/' . $filename;
+            $contents = Excel::raw(new UsersFailedRowsExport($errors, $lang), ExcelFormat::XLSX);
+            Storage::disk('public')->put($path, $contents);
+            $failedRowsUrl = '/api/imports/failed-rows/' . $filename;
+        }
+
         return $this->success([
             'imported' => $import->getImportedCount(),
             'updated' => $import->getUpdatedCount(),
-            'errors' => $import->getErrors(),
+            'failed_count' => count($errors),
+            'failed_rows_url' => $failedRowsUrl,
+            'errors' => $errors,
         ], 'Users imported');
     }
 }

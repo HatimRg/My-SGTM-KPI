@@ -93,6 +93,54 @@ class WorkerMedicalAptitudeMassImportService
         Excel::import($import, $excelFile);
         $rows = $import->getRows();
 
+        $firstRow = null;
+        foreach ($rows as $r0) {
+            $r0 = array_change_key_case((array) $r0, CASE_LOWER);
+            if ($this->isRowEmpty($r0)) {
+                continue;
+            }
+            $firstRow = $r0;
+            break;
+        }
+
+        if ($firstRow === null) {
+            $failedRows[] = $this->failRow(null, null, null, null, null, null, 'No data rows found in Excel');
+        } else {
+            $keys = array_keys($firstRow);
+            $keys = array_map(fn ($k) => is_string($k) ? strtolower(trim($k)) : (string) $k, $keys);
+
+            $hasCin = count(array_intersect($keys, ['cin', 'cni', 'numero_cin', 'id', 'col_0'])) > 0;
+            $hasStatus = count(array_intersect($keys, ['aptitude_status', 'statut_aptitude', 'status', 'col_1'])) > 0;
+            $hasExamDate = count(array_intersect($keys, ['exam_date', 'date_examen', 'date', 'col_4'])) > 0;
+
+            if (!$hasCin || !$hasStatus || !$hasExamDate) {
+                $failedRows[] = $this->failRow(null, null, null, null, null, null, 'Invalid template headers: please use the provided template (Medical Aptitudes)');
+            }
+        }
+
+        if (!empty($failedRows)) {
+            if ($zip) {
+                $zip->close();
+            }
+
+            $failedRowsUrl = null;
+            $filename = 'worker_medical_aptitudes_failed_rows_' . now()->format('Ymd_His') . '.xlsx';
+            $path = 'imports/failed_rows/' . $filename;
+            $lang = (string) ($user->preferred_language ?? 'fr');
+            $contents = Excel::raw(new WorkerMedicalAptitudesMassFailedRowsExport($failedRows, $lang), ExcelFormat::XLSX);
+            Storage::disk('public')->put($path, $contents);
+            $failedRowsUrl = '/api/imports/failed-rows/' . $filename;
+
+            return [
+                'imported' => 0,
+                'failed_count' => count($failedRows),
+                'failed_rows_url' => $failedRowsUrl,
+                'zip_errors' => $zipErrors,
+                'unused_pdfs' => [],
+                'errors' => $failedRows,
+            ];
+        }
+
         $excelCins = [];
         foreach ($rows as $rowForCin) {
             $rowForCin = array_change_key_case($rowForCin, CASE_LOWER);
@@ -211,6 +259,12 @@ class WorkerMedicalAptitudeMassImportService
 
                 if (!$examDate) {
                     $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Invalid or missing exam_date');
+                    $rowFailed = true;
+                    continue;
+                }
+
+                if (Carbon::parse($examDate)->gt(now()->startOfDay())) {
+                    $failedRows[] = $this->failRow($cin, $aptitudeStatus, $examNature, $ableToRaw, $examDate, $expiryDate, 'Future date not allowed: exam_date');
                     $rowFailed = true;
                     continue;
                 }
@@ -346,7 +400,8 @@ class WorkerMedicalAptitudeMassImportService
         if (!empty($failedRows)) {
             $filename = 'worker_medical_aptitudes_failed_rows_' . now()->format('Ymd_His') . '.xlsx';
             $path = 'imports/failed_rows/' . $filename;
-            $contents = Excel::raw(new WorkerMedicalAptitudesMassFailedRowsExport($failedRows), ExcelFormat::XLSX);
+            $lang = (string) ($user->preferred_language ?? 'fr');
+            $contents = Excel::raw(new WorkerMedicalAptitudesMassFailedRowsExport($failedRows, $lang), ExcelFormat::XLSX);
             Storage::disk('public')->put($path, $contents);
             $failedRowsUrl = '/api/imports/failed-rows/' . $filename;
         }

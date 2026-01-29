@@ -81,6 +81,52 @@ class WorkerSanctionMassImportService
         Excel::import($import, $excelFile);
         $rows = $import->getRows();
 
+        $firstRow = null;
+        foreach ($rows as $r0) {
+            $r0 = array_change_key_case((array) $r0, CASE_LOWER);
+            if ($this->isRowEmpty($r0)) {
+                continue;
+            }
+            $firstRow = $r0;
+            break;
+        }
+
+        if ($firstRow === null) {
+            $zip->close();
+            $failedRows[] = $this->failRow(null, null, null, null, null, 'No data rows found in Excel');
+        } else {
+            $keys = array_keys($firstRow);
+            $keys = array_map(fn ($k) => is_string($k) ? strtolower(trim($k)) : (string) $k, $keys);
+
+            $hasCin = count(array_intersect($keys, ['cin', 'cni', 'numero_cin', 'id', 'col_0'])) > 0;
+            $hasDate = count(array_intersect($keys, ['date_sanction', 'sanction_date', 'date', 'col_1'])) > 0;
+            $hasType = count(array_intersect($keys, ['type_sanction', 'sanction_type', 'type', 'col_2'])) > 0;
+
+            if (!$hasCin || !$hasDate || !$hasType) {
+                $zip->close();
+                $failedRows[] = $this->failRow(null, null, null, null, null, 'Invalid template headers: please use the provided template (Sanctions)');
+            }
+        }
+
+        if (!empty($failedRows)) {
+            $failedRowsUrl = null;
+            $filename = 'worker_sanctions_failed_rows_' . now()->format('Ymd_His') . '.xlsx';
+            $path = 'imports/failed_rows/' . $filename;
+            $lang = (string) ($user->preferred_language ?? 'fr');
+            $contents = Excel::raw(new WorkerSanctionsMassFailedRowsExport($failedRows, $lang), ExcelFormat::XLSX);
+            Storage::disk('public')->put($path, $contents);
+            $failedRowsUrl = '/api/imports/failed-rows/' . $filename;
+
+            return [
+                'imported' => 0,
+                'failed_count' => count($failedRows),
+                'failed_rows_url' => $failedRowsUrl,
+                'zip_errors' => $zipErrors,
+                'unused_pdfs' => [],
+                'errors' => $failedRows,
+            ];
+        }
+
         $excelCins = [];
         foreach ($rows as $rowForCin) {
             $rowForCin = array_change_key_case($rowForCin, CASE_LOWER);
@@ -166,6 +212,12 @@ class WorkerSanctionMassImportService
 
                 if (!$sanctionDate) {
                     $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Invalid or missing sanction_date');
+                    $rowFailed = true;
+                    continue;
+                }
+
+                if (Carbon::parse($sanctionDate)->gt(now()->startOfDay())) {
+                    $failedRows[] = $this->failRow($cin, $sanctionDate, $sanctionType, $miseAPiedDays, $reason, 'Future date not allowed: sanction_date');
                     $rowFailed = true;
                     continue;
                 }
@@ -320,7 +372,8 @@ class WorkerSanctionMassImportService
         if (!empty($failedRows)) {
             $filename = 'worker_sanctions_failed_rows_' . now()->format('Ymd_His') . '.xlsx';
             $path = 'imports/failed_rows/' . $filename;
-            $contents = Excel::raw(new WorkerSanctionsMassFailedRowsExport($failedRows), ExcelFormat::XLSX);
+            $lang = (string) ($user->preferred_language ?? 'fr');
+            $contents = Excel::raw(new WorkerSanctionsMassFailedRowsExport($failedRows, $lang), ExcelFormat::XLSX);
             Storage::disk('public')->put($path, $contents);
             $failedRowsUrl = '/api/imports/failed-rows/' . $filename;
         }

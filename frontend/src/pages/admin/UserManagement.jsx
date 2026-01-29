@@ -194,8 +194,19 @@ export default function UserManagement() {
       const imported = payload.imported ?? 0
       const updated = payload.updated ?? 0
       const errors = payload.errors ?? []
+      const failedRowsUrl = payload.failed_rows_url
       toast.success(t('users.bulk.importSummary', { imported, updated }))
       if (errors.length > 0) toast.error(t('users.bulk.importIssues', { count: errors.length }))
+
+      if (failedRowsUrl) {
+        try {
+          const r = await fetch(failedRowsUrl)
+          const blob = await r.blob()
+          downloadBlob(blob, 'users_failed_rows.xlsx')
+        } catch {
+          // ignore
+        }
+      }
       setBulkFile(null)
       setBulkOpen(false)
       fetchUsers()

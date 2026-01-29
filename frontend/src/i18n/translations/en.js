@@ -4,6 +4,7 @@ export default {
     appName: 'HSE KPI Tracker',
     companyName: 'SGTM',
     loading: 'Loading...',
+    other: 'Other',
     showMore: 'Show more',
     save: 'Save',
     saved: 'Saved',

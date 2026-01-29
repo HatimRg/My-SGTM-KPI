@@ -67,25 +67,53 @@ class SorReportsImport implements ToModel, WithHeadingRow, SkipsOnError, WithChu
             $projectCode = strtoupper(trim((string) $projectCode));
             $project = Project::where('code', $projectCode)->first();
             if (!$project) {
-                $this->rowErrors[] = ['project_code' => $projectCode, 'error' => "Unknown project code: {$projectCode}"];
+                $this->rowErrors[] = [
+                    'project_code' => $projectCode,
+                    'observation_date' => $observationDateRaw,
+                    'category' => $categoryRaw,
+                    'non_conformity' => $nonConformity,
+                    'status' => $row['status'] ?? null,
+                    'error' => "Unknown project code: {$projectCode}",
+                ];
                 return null;
             }
 
             $projectId = (int) $project->id;
             if ($this->allowedProjectIds !== null && !in_array($projectId, $this->allowedProjectIds, true)) {
-                $this->rowErrors[] = ['project_code' => $projectCode, 'error' => 'Project not allowed for your access scope'];
+                $this->rowErrors[] = [
+                    'project_code' => $projectCode,
+                    'observation_date' => $observationDateRaw,
+                    'category' => $categoryRaw,
+                    'non_conformity' => $nonConformity,
+                    'status' => $row['status'] ?? null,
+                    'error' => 'Project not allowed for your access scope',
+                ];
                 return null;
             }
 
             $observationDate = $this->parseDateToYmd($observationDateRaw);
             if (!$observationDate) {
-                $this->rowErrors[] = ['project_code' => $projectCode, 'error' => 'Invalid OBSERVATION_DATE'];
+                $this->rowErrors[] = [
+                    'project_code' => $projectCode,
+                    'observation_date' => $observationDateRaw,
+                    'category' => $categoryRaw,
+                    'non_conformity' => $nonConformity,
+                    'status' => $row['status'] ?? null,
+                    'error' => 'Invalid OBSERVATION_DATE',
+                ];
                 return null;
             }
 
             $category = SorReport::normalizeCategory($categoryRaw);
             if (empty($category)) {
-                $this->rowErrors[] = ['project_code' => $projectCode, 'error' => 'Invalid CATEGORY'];
+                $this->rowErrors[] = [
+                    'project_code' => $projectCode,
+                    'observation_date' => $observationDateRaw,
+                    'category' => $categoryRaw,
+                    'non_conformity' => $nonConformity,
+                    'status' => $row['status'] ?? null,
+                    'error' => 'Invalid CATEGORY',
+                ];
                 return null;
             }
 
@@ -93,7 +121,14 @@ class SorReportsImport implements ToModel, WithHeadingRow, SkipsOnError, WithChu
             if ($status !== null) {
                 $status = strtolower(trim((string) $status));
                 if (!in_array($status, [SorReport::STATUS_OPEN, SorReport::STATUS_IN_PROGRESS, SorReport::STATUS_CLOSED], true)) {
-                    $this->rowErrors[] = ['project_code' => $projectCode, 'error' => "Invalid STATUS: {$status}"];
+                    $this->rowErrors[] = [
+                        'project_code' => $projectCode,
+                        'observation_date' => $observationDateRaw,
+                        'category' => $categoryRaw,
+                        'non_conformity' => $nonConformity,
+                        'status' => $row['status'] ?? null,
+                        'error' => "Invalid STATUS: {$status}",
+                    ];
                     $status = null;
                 }
             }

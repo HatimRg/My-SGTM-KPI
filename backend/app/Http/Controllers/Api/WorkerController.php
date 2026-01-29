@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Worker;
 use App\Models\Project;
 use App\Exports\WorkersExport;
+use App\Exports\WorkersFailedRowsExport;
 use App\Exports\WorkersTemplateExport;
 use App\Imports\WorkersImport;
 use Illuminate\Http\Request;
@@ -308,10 +309,25 @@ class WorkerController extends Controller
         $import = new WorkersImport((int) $user->id, $projectId, $visibleProjectIds, $allowNoProject);
         Excel::import($import, $validated['file']);
 
+        $errors = $import->getErrors();
+        $failedRowsUrl = null;
+        if (!empty($errors)) {
+            $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
+            $filename = 'workers_failed_rows_' . now()->format('Ymd_His') . '.xlsx';
+            $path = 'imports/failed_rows/' . $filename;
+            $contents = Excel::raw(new WorkersFailedRowsExport($errors, $lang), ExcelFormat::XLSX);
+            Storage::disk('public')->put($path, $contents);
+            $failedRowsUrl = '/api/imports/failed-rows/' . $filename;
+        }
+
         return $this->success([
             'imported' => $import->getRowCount(),
             'merged' => $import->getMergedCount(),
-            'errors' => $import->getErrors(),
+            'imported_count' => $import->getRowCount(),
+            'merged_count' => $import->getMergedCount(),
+            'failed_count' => count($errors),
+            'failed_rows_url' => $failedRowsUrl,
+            'errors' => $errors,
         ], 'Import completed');
     }
 

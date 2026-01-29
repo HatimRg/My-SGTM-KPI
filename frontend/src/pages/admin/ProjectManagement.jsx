@@ -168,9 +168,20 @@ export default function ProjectManagement() {
       const imported = payload.imported ?? 0
       const updated = payload.updated ?? 0
       const errors = payload.errors ?? []
+      const failedRowsUrl = payload.failed_rows_url
       toast.success(t('projects.bulk.importSummary', { imported, updated }))
       if (errors.length > 0) {
         toast.error(t('projects.bulk.importIssues', { count: errors.length }))
+      }
+
+      if (failedRowsUrl) {
+        try {
+          const r = await fetch(failedRowsUrl)
+          const blob = await r.blob()
+          downloadBlob(blob, 'projects_failed_rows.xlsx')
+        } catch {
+          // ignore
+        }
       }
       setBulkFile(null)
       setBulkOpen(false)

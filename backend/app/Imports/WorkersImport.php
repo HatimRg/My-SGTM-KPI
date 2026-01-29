@@ -65,7 +65,33 @@ class WorkersImport implements ToModel, WithHeadingRow, SkipsOnError, WithBatchI
             $cin = $this->normalizeCin($cin);
         
             // Skip empty rows
+            $hasAnyValue = false;
+            foreach ([$cin, $nom, $prenom] as $v) {
+                if ($v !== null && trim((string) $v) !== '') {
+                    $hasAnyValue = true;
+                    break;
+                }
+            }
+
+            if (!$hasAnyValue) {
+                return null;
+            }
+
             if (empty($cin) || empty($nom) || empty($prenom)) {
+                $missing = [];
+                if (empty($cin)) {
+                    $missing[] = 'CIN';
+                }
+                if (empty($nom)) {
+                    $missing[] = 'NOM';
+                }
+                if (empty($prenom)) {
+                    $missing[] = 'PRENOM';
+                }
+                $this->errors[] = [
+                    'cin' => $cin ? (string) $cin : null,
+                    'error' => 'Missing required fields' . (count($missing) ? ': ' . implode(',', $missing) : ''),
+                ];
                 return null;
             }
 
@@ -99,6 +125,18 @@ class WorkersImport implements ToModel, WithHeadingRow, SkipsOnError, WithBatchI
 
             // Get project ID
             $projectId = $this->getProjectId($projet);
+
+            if ($projectId === null && $this->defaultProjectId === null) {
+                $projectRaw = $projet !== null ? trim((string) $projet) : '';
+                if ($projectRaw !== '') {
+                    $this->errors[] = [
+                        'cin' => $cin,
+                        'project' => $projectRaw,
+                        'error' => 'Unknown project',
+                    ];
+                    return null;
+                }
+            }
 
             if ($projectId === null && $this->defaultProjectId === null && !$this->allowNoProject) {
                 $this->errors[] = [

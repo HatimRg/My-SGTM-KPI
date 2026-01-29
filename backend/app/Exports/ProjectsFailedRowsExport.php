@@ -11,9 +11,8 @@ use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
-class WorkerMedicalAptitudesMassFailedRowsExport implements FromArray, WithColumnWidths, WithEvents, WithTitle
+class ProjectsFailedRowsExport implements FromArray, WithColumnWidths, WithEvents, WithTitle
 {
     private array $rows;
     private string $lang;
@@ -45,39 +44,29 @@ class WorkerMedicalAptitudesMassFailedRowsExport implements FromArray, WithColum
         return [
             'A' => 6,
             'B' => 18,
-            'C' => 16,
-            'D' => 28,
-            'E' => 30,
-            'F' => 16,
-            'G' => 16,
-            'H' => 60,
+            'C' => 80,
         ];
     }
 
     public function array(): array
     {
         $out = [];
-        $out[] = [$this->tr('SGTM - RAPPORT DES LIGNES EN ERREUR (APTITUDES MÉDICALES)', 'SGTM - FAILED ROWS REPORT (MEDICAL APTITUDES)')];
+        $out[] = [$this->tr('SGTM - RAPPORT DES LIGNES EN ERREUR (PROJETS)', 'SGTM - FAILED ROWS REPORT (PROJECTS)')];
         $out[] = [$this->tr(
             "Ce fichier contient uniquement les lignes qui n'ont pas été importées.",
             'This file contains only the rows that were not imported.'
         )];
 
         $out[] = $this->lang === 'en'
-            ? ['#', 'CIN', 'APTITUDE_STATUS', 'EXAM_NATURE', 'ABLE_TO', 'EXAM_DATE', 'DATE_EXPIRATION', 'ERROR']
-            : ['#', 'CIN', "Statut d'aptitude", "Nature d'examen", 'Apte à', "Date d'examen", 'Date expiration', 'Erreur'];
+            ? ['#', 'CODE', 'ERROR']
+            : ['#', 'CODE', 'Erreur'];
 
         $i = 0;
         foreach ($this->rows as $r) {
             $i++;
             $out[] = [
                 $i,
-                $r['cin'] ?? null,
-                $r['aptitude_status'] ?? null,
-                $r['exam_nature'] ?? null,
-                $r['able_to'] ?? null,
-                $r['exam_date'] ?? null,
-                $r['expiry_date'] ?? null,
+                $r['code'] ?? null,
                 $this->translateError($r['error'] ?? null),
             ];
         }
@@ -100,8 +89,8 @@ class WorkerMedicalAptitudesMassFailedRowsExport implements FromArray, WithColum
                 $grayLight = 'F9FAFB';
                 $grayBorder = '9CA3AF';
 
-                $sheet->mergeCells('A1:H1');
-                $sheet->getStyle('A1:H1')->applyFromArray([
+                $sheet->mergeCells('A1:C1');
+                $sheet->getStyle('A1:C1')->applyFromArray([
                     'font' => ['bold' => true, 'size' => 16, 'color' => ['rgb' => $white]],
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $black]],
                     'alignment' => [
@@ -111,8 +100,8 @@ class WorkerMedicalAptitudesMassFailedRowsExport implements FromArray, WithColum
                 ]);
                 $sheet->getRowDimension(1)->setRowHeight(34);
 
-                $sheet->mergeCells('A2:H2');
-                $sheet->getStyle('A2:H2')->applyFromArray([
+                $sheet->mergeCells('A2:C2');
+                $sheet->getStyle('A2:C2')->applyFromArray([
                     'font' => ['size' => 11, 'italic' => true, 'color' => ['rgb' => $black]],
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $lightOrange]],
                     'alignment' => [
@@ -126,7 +115,7 @@ class WorkerMedicalAptitudesMassFailedRowsExport implements FromArray, WithColum
                 ]);
                 $sheet->getRowDimension(2)->setRowHeight(34);
 
-                $sheet->getStyle('A3:H3')->applyFromArray([
+                $sheet->getStyle('A3:C3')->applyFromArray([
                     'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => $white]],
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $primaryOrange]],
                     'alignment' => [
@@ -143,7 +132,7 @@ class WorkerMedicalAptitudesMassFailedRowsExport implements FromArray, WithColum
                 $dataStartRow = 4;
                 for ($row = $dataStartRow; $row <= $highestRow; $row++) {
                     $bgColor = ($row % 2 === 0) ? $grayLight : $white;
-                    $sheet->getStyle("A{$row}:H{$row}")->applyFromArray([
+                    $sheet->getStyle("A{$row}:C{$row}")->applyFromArray([
                         'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bgColor]],
                         'borders' => [
                             'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => $grayBorder]],
@@ -154,9 +143,7 @@ class WorkerMedicalAptitudesMassFailedRowsExport implements FromArray, WithColum
                 }
 
                 $sheet->freezePane('A4');
-                $sheet->setAutoFilter('A3:H3');
-
-                $sheet->getStyle("F{$dataStartRow}:G{$highestRow}")->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_DATE_DDMMYYYY);
+                $sheet->setAutoFilter('A3:C3');
             },
         ];
     }

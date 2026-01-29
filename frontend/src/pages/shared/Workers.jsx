@@ -1328,10 +1328,17 @@ export default function Workers() {
       }
 
       const res = await workerService.import(formData)
+      const result = res.data?.data ?? res.data
+      const imported = result?.imported_count ?? result?.imported ?? 0
+      const merged = result?.merged_count ?? result?.merged ?? 0
       toast.success(t('workers.importSuccess', {
-        imported: res.data.data.imported_count,
-        merged: res.data.data.merged_count,
+        imported,
+        merged,
       }))
+
+      if (result?.failed_rows_url) {
+        await downloadFromUrl(result.failed_rows_url, 'workers_failed_rows.xlsx')
+      }
       setShowImportModal(false)
       setImportFile(null)
       setCurrentPage(1)

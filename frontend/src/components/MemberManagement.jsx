@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { projectService } from '../services/api'
+import api, { projectService } from '../services/api'
 import { useLanguage } from '../i18n'
 import { useAuthStore } from '../store/authStore'
 import ConfirmDialog from './ui/ConfirmDialog'
@@ -91,6 +91,17 @@ export default function MemberManagement({ projectId, projectName }) {
     return value !== '' ? value : null
   }
 
+  const normalizeApiPath = (url) => {
+    let path = String(url || '').replace(/^https?:\/\/[^/]+/i, '')
+    if (!path) return null
+    if (path.startsWith('/api/')) {
+      path = path.replace(/^\/api\//, '/')
+    } else if (path === '/api') {
+      path = '/'
+    }
+    return path
+  }
+
   const downloadBlob = (blob, filename) => {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -100,6 +111,14 @@ export default function MemberManagement({ projectId, projectName }) {
     a.click()
     a.remove()
     setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const downloadFromUrl = async (url, fallbackFilename) => {
+    const path = normalizeApiPath(url)
+    if (!path) return
+    const res = await api.get(path, { responseType: 'blob' })
+    const filename = extractFilename(res.headers?.['content-disposition']) ?? fallbackFilename
+    downloadBlob(res.data, filename)
   }
 
   const handleDownloadTeamTemplate = async () => {
@@ -125,8 +144,16 @@ export default function MemberManagement({ projectId, projectName }) {
       const payload = res.data?.data ?? {}
       const added = payload.added_count ?? 0
       const errors = payload.errors ?? []
+      const failedRowsUrl = payload.failed_rows_url
       toast.success(t('common.addedCount', { added }))
       if (errors.length > 0) toast.error(t('common.importIssues', { count: errors.length }))
+      if (failedRowsUrl) {
+        try {
+          await downloadFromUrl(failedRowsUrl, 'project_team_failed_rows.xlsx')
+        } catch {
+          // ignore
+        }
+      }
       setBulkFile(null)
       setBulkOpen(false)
       fetchAllMembers()

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Exports\MachinesFailedRowsExport;
 use App\Exports\MachinesTemplateExport;
 use App\Imports\MachinesImport;
 use App\Models\Machine;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Excel as ExcelFormat;
 use Maatwebsite\Excel\Facades\Excel;
 
 class HeavyMachineryMachineController extends Controller
@@ -159,10 +161,23 @@ class HeavyMachineryMachineController extends Controller
             return $this->error('Failed to import machines: ' . $e->getMessage(), 422);
         }
 
+        $errors = $import->getErrors();
+        $failedRowsUrl = null;
+        if (!empty($errors)) {
+            $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
+            $filename = 'machines_failed_rows_' . now()->format('Ymd_His') . '.xlsx';
+            $path = 'imports/failed_rows/' . $filename;
+            $contents = Excel::raw(new MachinesFailedRowsExport($errors, $lang), ExcelFormat::XLSX);
+            Storage::disk('public')->put($path, $contents);
+            $failedRowsUrl = '/api/imports/failed-rows/' . $filename;
+        }
+
         return $this->success([
             'imported' => $import->getImportedCount(),
             'updated' => $import->getUpdatedCount(),
-            'errors' => $import->getErrors(),
+            'failed_count' => count($errors),
+            'failed_rows_url' => $failedRowsUrl,
+            'errors' => $errors,
         ], 'Machines imported');
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Exports\AwarenessSessionsExport;
+use App\Exports\AwarenessSessionsFailedRowsExport;
 use App\Exports\AwarenessSessionsTemplateExport;
 use App\Imports\AwarenessSessionsImport;
 use App\Models\AwarenessSession;
@@ -12,6 +13,8 @@ use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Excel as ExcelFormat;
 use Maatwebsite\Excel\Facades\Excel;
 
 class AwarenessSessionController extends Controller
@@ -234,10 +237,23 @@ class AwarenessSessionController extends Controller
             return $this->error('Failed to import awareness sessions: ' . $e->getMessage(), 422);
         }
 
+        $errors = $import->getErrors();
+        $failedRowsUrl = null;
+        if (!empty($errors)) {
+            $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
+            $filename = 'awareness_sessions_failed_rows_' . now()->format('Ymd_His') . '.xlsx';
+            $path = 'imports/failed_rows/' . $filename;
+            $contents = Excel::raw(new AwarenessSessionsFailedRowsExport($errors, $lang), ExcelFormat::XLSX);
+            Storage::disk('public')->put($path, $contents);
+            $failedRowsUrl = '/api/imports/failed-rows/' . $filename;
+        }
+
         return $this->success([
             'imported' => $import->getImportedCount(),
             'updated' => $import->getUpdatedCount(),
-            'errors' => $import->getErrors(),
+            'failed_count' => count($errors),
+            'failed_rows_url' => $failedRowsUrl,
+            'errors' => $errors,
         ], 'Awareness sessions imported');
     }
 

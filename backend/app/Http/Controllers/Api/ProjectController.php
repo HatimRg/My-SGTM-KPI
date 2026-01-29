@@ -9,9 +9,12 @@ use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Excel as ExcelFormat;
 use App\Exports\ProjectsTemplateExport;
 use App\Exports\ProjectManagementExport;
+use App\Exports\ProjectsFailedRowsExport;
 use App\Imports\ProjectsImport;
 
 class ProjectController extends Controller
@@ -173,10 +176,23 @@ class ProjectController extends Controller
             return $this->error('Failed to import projects: ' . $e->getMessage(), 422);
         }
 
+        $errors = $import->getErrors();
+        $failedRowsUrl = null;
+        if (!empty($errors)) {
+            $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
+            $filename = 'projects_failed_rows_' . now()->format('Ymd_His') . '.xlsx';
+            $path = 'imports/failed_rows/' . $filename;
+            $contents = Excel::raw(new ProjectsFailedRowsExport($errors, $lang), ExcelFormat::XLSX);
+            Storage::disk('public')->put($path, $contents);
+            $failedRowsUrl = '/api/imports/failed-rows/' . $filename;
+        }
+
         return $this->success([
             'imported' => $import->getImportedCount(),
             'updated' => $import->getUpdatedCount(),
-            'errors' => $import->getErrors(),
+            'failed_count' => count($errors),
+            'failed_rows_url' => $failedRowsUrl,
+            'errors' => $errors,
         ], 'Projects imported');
     }
 

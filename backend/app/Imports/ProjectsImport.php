@@ -39,7 +39,30 @@ class ProjectsImport implements ToModel, WithHeadingRow, SkipsOnError, WithChunk
             $code = $this->getColumnValue($row, ['code', 'project_code']);
             $name = $this->getColumnValue($row, ['nom', 'name', 'project_name']);
 
+            $hasAnyValue = false;
+            foreach ([$code, $name] as $v) {
+                if ($v !== null && trim((string) $v) !== '') {
+                    $hasAnyValue = true;
+                    break;
+                }
+            }
+
+            if (!$hasAnyValue) {
+                return null;
+            }
+
             if (empty($code) || empty($name)) {
+                $missing = [];
+                if (empty($code)) {
+                    $missing[] = 'CODE';
+                }
+                if (empty($name)) {
+                    $missing[] = 'NAME';
+                }
+                $this->rowErrors[] = [
+                    'code' => $code ? strtoupper(trim((string) $code)) : null,
+                    'error' => 'Missing required fields' . (count($missing) ? ': ' . implode(',', $missing) : ''),
+                ];
                 return null;
             }
 

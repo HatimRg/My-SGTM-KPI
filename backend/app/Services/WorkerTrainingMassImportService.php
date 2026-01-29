@@ -136,6 +136,31 @@ class WorkerTrainingMassImportService
         Excel::import($import, $excelFile);
         $rows = $import->getRows();
 
+        $firstRow = null;
+        foreach ($rows as $r0) {
+            $r0 = array_change_key_case((array) $r0, CASE_LOWER);
+            if ($this->isRowEmpty($r0)) {
+                continue;
+            }
+            $firstRow = $r0;
+            break;
+        }
+
+        if ($firstRow === null) {
+            $failedRows[] = $this->failRow(null, null, null, null, 'No data rows found in Excel');
+        } else {
+            $keys = array_keys($firstRow);
+            $keys = array_map(fn ($k) => is_string($k) ? strtolower(trim($k)) : (string) $k, $keys);
+
+            $hasCin = count(array_intersect($keys, ['cin', 'cni', 'numero_cin', 'id', 'col_0'])) > 0;
+            $hasType = count(array_intersect($keys, ['type_formation', 'training_type', 'type', 'col_1'])) > 0;
+            $hasTrainingDate = count(array_intersect($keys, ['date_formation', 'training_date', 'date', 'col_2'])) > 0;
+
+            if (!$hasCin || !$hasType || !$hasTrainingDate) {
+                $failedRows[] = $this->failRow(null, null, null, null, 'Invalid template headers: please use the provided template (Trainings)');
+            }
+        }
+
         if ($debugImport) {
             $row0 = $rows[0] ?? null;
             Log::info('WorkerTrainingMassImport Excel parsed', [
@@ -145,6 +170,29 @@ class WorkerTrainingMassImportService
                 'row0_keys' => is_array($row0) ? array_keys($row0) : null,
                 'rows_sample' => array_slice($rows, 0, 5),
             ]);
+        }
+
+        if (!empty($failedRows)) {
+            if ($zip) {
+                $zip->close();
+            }
+
+            $failedRowsUrl = null;
+            $filename = 'worker_trainings_failed_rows_' . now()->format('Ymd_His') . '.xlsx';
+            $path = 'imports/failed_rows/' . $filename;
+            $lang = (string) ($user->preferred_language ?? 'fr');
+            $contents = Excel::raw(new WorkerTrainingsMassFailedRowsExport($failedRows, $lang), ExcelFormat::XLSX);
+            Storage::disk('public')->put($path, $contents);
+            $failedRowsUrl = '/api/imports/failed-rows/' . $filename;
+
+            return [
+                'imported' => 0,
+                'failed_count' => count($failedRows),
+                'failed_rows_url' => $failedRowsUrl,
+                'zip_errors' => $zipErrors,
+                'unused_pdfs' => [],
+                'errors' => $failedRows,
+            ];
         }
 
         $excelCins = [];
@@ -264,6 +312,12 @@ class WorkerTrainingMassImportService
                     continue;
                 }
 
+                if (Carbon::parse($trainingDate)->gt(now()->startOfDay())) {
+                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Future date not allowed: training_date');
+                    $rowFailed = true;
+                    continue;
+                }
+
                 if ($expiryDate && Carbon::parse($expiryDate)->lt(Carbon::parse($trainingDate))) {
                     $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'expiry_date must be after or equal to training_date');
                     $rowFailed = true;
@@ -273,7 +327,7 @@ class WorkerTrainingMassImportService
                 $requiresPdf = $trainingType !== 'induction_hse';
                 $hasPdf = isset($pdfByCin[$cin]);
                 if ($requiresPdf && !$hasPdf) {
-                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Missing PDF in ZIP for CIN');
+                    $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Missing PDF in ZIP for CIN: ' . $cin);
                     $rowFailed = true;
                     continue;
                 }
@@ -406,7 +460,8 @@ class WorkerTrainingMassImportService
         if (!empty($failedRows)) {
             $filename = 'worker_trainings_failed_rows_' . now()->format('Ymd_His') . '.xlsx';
             $path = 'imports/failed_rows/' . $filename;
-            $contents = Excel::raw(new WorkerTrainingsMassFailedRowsExport($failedRows), ExcelFormat::XLSX);
+            $lang = (string) ($user->preferred_language ?? 'fr');
+            $contents = Excel::raw(new WorkerTrainingsMassFailedRowsExport($failedRows, $lang), ExcelFormat::XLSX);
             Storage::disk('public')->put($path, $contents);
             $failedRowsUrl = '/api/imports/failed-rows/' . $filename;
         }
