@@ -431,6 +431,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // PPE / EPI Management (same access rules as Workers)
     Route::prefix('ppe')->group(function () {
+        Route::get('/mass/template', [PpeController::class, 'massTemplate']);
+        Route::post('/mass/import', [PpeController::class, 'massImport']);
+
         Route::get('/items', [PpeController::class, 'items']);
         Route::post('/items', [PpeController::class, 'upsertItem']);
         Route::delete('/items/{item}', [PpeController::class, 'deleteItem']);

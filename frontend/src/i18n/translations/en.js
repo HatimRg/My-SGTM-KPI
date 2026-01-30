@@ -44,6 +44,7 @@ export default {
     upload: 'Upload',
     chooseFile: 'Choose file',
     import: 'Import',
+    importing: 'Importing...',
     progress: 'Progress',
     processed: 'Processed',
     imported: 'Imported',
@@ -1932,6 +1933,8 @@ export default {
     },
     issue: {
       button: 'Issue PPE',
+      menuManual: 'Manual issue',
+      menuImport: 'Import & issue',
       title: 'Issue PPE to worker',
       worker: 'Worker',
       workerSearchPlaceholder: 'Search worker by name, CIN...',

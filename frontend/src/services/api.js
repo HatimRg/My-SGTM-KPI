@@ -892,6 +892,18 @@ export const ppeService = {
   upsertItem: (data) => api.post('/ppe/items', data),
   deleteItem: (id) => api.delete(`/ppe/items/${id}`),
 
+  downloadMassTemplate: () => api.get('/ppe/mass/template', { params: { lang: getUiLang() }, responseType: 'blob' }),
+  massImport: ({ excel }) => {
+    const formData = new FormData()
+    if (excel) formData.append('excel', excel)
+    return api.post('/ppe/mass/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: MASS_IMPORT_TIMEOUT,
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+    })
+  },
+
   restock: (data) => api.post('/ppe/restock', data),
 
   issueToWorker: (data) => api.post('/ppe/issue', data),

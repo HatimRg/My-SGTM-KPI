@@ -11,10 +11,13 @@ use App\Models\User;
 use App\Models\Worker;
 use App\Models\WorkerPpeIssue;
 use App\Services\NotificationService;
+use App\Services\PpeIssuesMassImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Excel as ExcelFormat;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PpeController extends Controller
 {
@@ -47,6 +50,38 @@ class PpeController extends Controller
         $visibleProjectIds = $this->normalizeProjectIds($user->visibleProjectIds());
         if ($visibleProjectIds !== null && !in_array((int) $worker->project_id, array_map('intval', $visibleProjectIds), true)) {
             abort(403, 'Access denied');
+        }
+    }
+
+    public function massTemplate(Request $request)
+    {
+        $user = $this->checkAccess($request);
+
+        $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
+
+        $filename = 'ppe_issues_mass_template.xlsx';
+        $contents = Excel::raw(new \App\Exports\PpeIssuesMassTemplateExport(200, $lang), ExcelFormat::XLSX);
+
+        return response($contents, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    public function massImport(Request $request)
+    {
+        $user = $this->checkAccess($request);
+
+        $validated = $request->validate([
+            'excel' => 'required|file',
+        ]);
+
+        try {
+            $service = new PpeIssuesMassImportService();
+            $result = $service->handle($user, $validated['excel']);
+            return $this->success($result, 'Import completed');
+        } catch (\Throwable $e) {
+            return $this->error($e->getMessage() ?: 'Import failed', 500);
         }
     }
 

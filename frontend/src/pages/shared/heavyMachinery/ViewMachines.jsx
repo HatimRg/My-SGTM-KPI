@@ -314,6 +314,14 @@ export default function ViewMachines() {
     setTimeout(() => URL.revokeObjectURL(url), 5000)
   }
 
+  const downloadFromUrl = async (url, fallbackFilename) => {
+    const path = normalizeApiPath(url)
+    if (!path) return
+    const res = await api.get(path, { responseType: 'blob' })
+    const filename = extractFilename(res.headers?.['content-disposition']) ?? fallbackFilename
+    downloadBlob(res.data, filename)
+  }
+
   const handleDownloadTemplate = async () => {
     try {
       const res = await heavyMachineryService.downloadMachinesTemplate()
@@ -343,8 +351,18 @@ export default function ViewMachines() {
       const imported = payload.imported ?? 0
       const updated = payload.updated ?? 0
       const errors = payload.errors ?? []
+      const failedRowsUrl = payload.failed_rows_url
       toast.success(t('heavyMachinery.viewMachines.bulk.importSummary', { imported, updated }))
       if (errors.length > 0) toast.error(t('heavyMachinery.viewMachines.bulk.importIssues', { count: errors.length }))
+
+      if (failedRowsUrl) {
+        try {
+          await downloadFromUrl(failedRowsUrl, 'machines_failed_rows.xlsx')
+        } catch {
+          // ignore
+        }
+      }
+
       setBulkFile(null)
       if (bulkInputRef.current) bulkInputRef.current.value = ''
       fetchMachines()

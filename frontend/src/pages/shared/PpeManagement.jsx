@@ -1,16 +1,53 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ppeService, projectService, workerService } from '../../services/api'
+import api, { ppeService, projectService, workerService } from '../../services/api'
 import { useLanguage } from '../../i18n'
 import { useAuthStore } from '../../store/authStore'
 import Modal from '../../components/ui/Modal'
 import Select from '../../components/ui/Select'
 import DatePicker from '../../components/ui/DatePicker'
-import { Shield, PlusCircle, Pencil, Trash2, Search, Loader2, PackagePlus } from 'lucide-react'
+import { Shield, PlusCircle, Pencil, Trash2, Search, Loader2, PackagePlus, Upload, FileSpreadsheet, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function PpeManagement() {
   const { t } = useLanguage()
   const { user } = useAuthStore()
+
+  const extractFilename = (contentDisposition) => {
+    if (!contentDisposition) return null
+    const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(contentDisposition)
+    const value = decodeURIComponent(match?.[1] ?? match?.[2] ?? '')
+    return value !== '' ? value : null
+  }
+
+  const normalizeApiPath = (url) => {
+    let path = String(url || '').replace(/^https?:\/\/[^/]+/i, '')
+    if (!path) return null
+    if (path.startsWith('/api/')) {
+      path = path.replace(/^\/api\//, '/')
+    } else if (path === '/api') {
+      path = '/'
+    }
+    return path
+  }
+
+  const downloadBlob = (blob, filename) => {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename ?? 'template.xlsx'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  const downloadFromUrl = async (url, fallbackFilename) => {
+    const path = normalizeApiPath(url)
+    if (!path) return
+    const res = await api.get(path, { responseType: 'blob' })
+    const filename = extractFilename(res.headers?.['content-disposition']) ?? fallbackFilename
+    downloadBlob(res.data, filename)
+  }
 
   const [projects, setProjects] = useState([])
   const [loadingProjects, setLoadingProjects] = useState(true)
@@ -49,10 +86,30 @@ export default function PpeManagement() {
   const [workerResults, setWorkerResults] = useState([])
   const workerSearchReq = useRef(0)
 
+  const [distributeMenuOpen, setDistributeMenuOpen] = useState(false)
+  const distributeMenuRef = useRef(null)
+
+  const [bulkModalOpen, setBulkModalOpen] = useState(false)
+  const [bulkFile, setBulkFile] = useState(null)
+  const [bulkUploading, setBulkUploading] = useState(false)
+  const bulkInputRef = useRef(null)
+
   useEffect(() => {
     const id = setTimeout(() => setDebouncedSearch(search.trim()), 300)
     return () => clearTimeout(id)
   }, [search])
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      const target = e.target
+      if (!distributeMenuRef.current || !(target instanceof Node)) return
+      if (!distributeMenuRef.current.contains(target)) {
+        setDistributeMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -243,9 +300,69 @@ export default function PpeManagement() {
     return [...items].sort((a, b) => String(a.name ?? '').localeCompare(String(b.name ?? '')))
   }, [items])
 
+  const openBulkImport = () => {
+    if (!hasSpecificProjectSelected) {
+      toast.error(t('ppe.projectRequired'))
+      return
+    }
+    setBulkFile(null)
+    if (bulkInputRef.current) bulkInputRef.current.value = ''
+    setBulkModalOpen(true)
+  }
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await ppeService.downloadMassTemplate()
+      const filename = extractFilename(res.headers?.['content-disposition']) ?? 'ppe_issues_mass_template.xlsx'
+      downloadBlob(res.data, filename)
+    } catch (e) {
+      toast.error(e.response?.data?.message ?? t('common.downloadTemplateFailed'))
+    }
+  }
+
+  const handleBulkImport = async () => {
+    if (!bulkFile) {
+      toast.error(t('common.chooseFile'))
+      return
+    }
+
+    try {
+      setBulkUploading(true)
+      const res = await ppeService.massImport({ excel: bulkFile })
+      const payload = res.data?.data ?? res.data
+
+      const imported = payload?.imported ?? 0
+      const updated = payload?.updated ?? 0
+      const errors = payload?.errors ?? []
+      const failedRowsUrl = payload?.failed_rows_url
+
+      toast.success(t('common.importSummary', { imported, updated }))
+      if (Array.isArray(errors) && errors.length > 0) {
+        toast.error(t('common.importIssues', { count: errors.length }))
+      }
+
+      if (failedRowsUrl) {
+        try {
+          await downloadFromUrl(failedRowsUrl, 'ppe_issues_failed_rows.xlsx')
+        } catch {
+          // ignore
+        }
+      }
+
+      setBulkModalOpen(false)
+      setBulkFile(null)
+      if (bulkInputRef.current) bulkInputRef.current.value = ''
+      await loadItems()
+    } catch (e) {
+      toast.error(e.response?.data?.message ?? t('common.importFailed'))
+    } finally {
+      setBulkUploading(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <div className="card p-4">
+      <div className="card p-4 overflow-visible">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -256,10 +373,43 @@ export default function PpeManagement() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-outline btn-sm flex items-center gap-2" onClick={openIssue} disabled={!canManage}>
-              <PackagePlus className="w-4 h-4" />
-              {t('ppe.issue.button')}
-            </button>
+            <div className="relative" ref={distributeMenuRef}>
+              <button
+                type="button"
+                className="btn-outline btn-sm flex items-center gap-2"
+                onClick={() => setDistributeMenuOpen((v) => !v)}
+                disabled={!canManage}
+              >
+                <PackagePlus className="w-4 h-4" />
+                {t('ppe.issue.button')}
+                <ChevronDown className="w-4 h-4" />
+              </button>
+
+              {distributeMenuOpen && (
+                <div className="absolute right-0 mt-2 w-56 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg z-50 overflow-hidden">
+                  <button
+                    type="button"
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+                    onClick={() => {
+                      setDistributeMenuOpen(false)
+                      openIssue()
+                    }}
+                  >
+                    {t('ppe.issue.menuManual')}
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+                    onClick={() => {
+                      setDistributeMenuOpen(false)
+                      openBulkImport()
+                    }}
+                  >
+                    {t('ppe.issue.menuImport')}
+                  </button>
+                </div>
+              )}
+            </div>
             <button type="button" className="btn-primary btn-sm flex items-center gap-2" onClick={openCreate} disabled={!canManage}>
               <PlusCircle className="w-4 h-4" />
               {t('ppe.items.add')}
@@ -385,6 +535,46 @@ export default function PpeManagement() {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {bulkModalOpen && (
+        <Modal isOpen={bulkModalOpen} onClose={() => setBulkModalOpen(false)} title={t('common.import')} size="lg">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+              <FileSpreadsheet className="w-4 h-4 text-hse-primary" />
+              <div>{t('ppe.note')}</div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <button type="button" onClick={handleDownloadTemplate} className="btn-secondary" disabled={bulkUploading}>
+                {t('common.downloadTemplate')}
+              </button>
+
+              <label className="flex items-center justify-between border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-xs cursor-pointer hover:border-hse-primary hover:bg-hse-primary/5">
+                <div className="flex items-center gap-2">
+                  <Upload className="w-4 h-4 text-gray-500" />
+                  <span className="text-gray-700 dark:text-gray-200">{bulkFile ? bulkFile.name : t('common.chooseFile')}</span>
+                </div>
+                <input
+                  ref={bulkInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={(e) => setBulkFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button type="button" className="btn-secondary" onClick={() => setBulkModalOpen(false)} disabled={bulkUploading}>
+                {t('common.cancel')}
+              </button>
+              <button type="button" className="btn-primary" onClick={handleBulkImport} disabled={bulkUploading}>
+                {bulkUploading ? t('common.importing') : t('common.import')}
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
 

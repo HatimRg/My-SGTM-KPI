@@ -44,6 +44,7 @@ export default {
     upload: 'Téléverser',
     chooseFile: 'Choisir un fichier',
     import: 'Importer',
+    importing: 'Importation...',
     progress: 'Progression',
     processed: 'Traités',
     imported: 'Importés',
@@ -1930,6 +1931,8 @@ export default {
     },
     issue: {
       button: 'Distribuer des EPI',
+      menuManual: 'Distribution manuelle',
+      menuImport: 'Importer et distribuer',
       title: 'Distribuer des EPI au travailleur',
       worker: 'Travailleur',
       workerSearchPlaceholder: 'Rechercher un travailleur par nom, CIN...',
