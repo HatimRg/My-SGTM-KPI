@@ -57,6 +57,7 @@ import ComplianceTheme from '../../components/dashboard/themes/ComplianceTheme'
 import PpeTheme from '../../components/dashboard/themes/PpeTheme'
 import EnvironmentalTheme from '../../components/dashboard/themes/EnvironmentalTheme'
 import DeviationTheme from '../../components/dashboard/themes/DeviationTheme'
+import MonthlyReportTheme from '../../components/dashboard/themes/MonthlyReportTheme'
 import { getAllWeeksForYear, getCurrentWeek } from '../../utils/weekHelper'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
 
@@ -560,7 +561,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Theme Selector */}
-      <ThemeSelector activeTheme={activeTheme} onThemeChange={setActiveTheme} />
+      <ThemeSelector activeTheme={activeTheme} onThemeChange={setActiveTheme} user={user} />
 
       {/* Theme Focus Filters */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
@@ -673,6 +674,10 @@ export default function AdminDashboard() {
           data={environmentalMonthly}
           loading={environmentalLoading}
         />
+      )}
+
+      {activeTheme === 'monthly_report' && (
+        <MonthlyReportTheme user={user} />
       )}
 
       {/* Overview Theme (existing content) */}

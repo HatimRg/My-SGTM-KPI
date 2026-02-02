@@ -26,6 +26,7 @@ const TRANSPORT_METHODS = [
   { key: 'camion_plateau', value: 'camion plateau' },
   { key: 'camion_8x4', value: 'camion 8x4' },
   { key: 'camion_citerne', value: 'camion citerne' },
+  { key: 'camion_ampliroll', value: 'camion ampliroll' },
   { key: 'remorque_a_benne', value: 'remorque à benne' },
   { key: 'autre', value: 'autre' },
 ]
@@ -68,6 +69,13 @@ export default function WasteManagement() {
 
   const projectListPreference = user?.project_list_preference ?? 'code'
   const sortedProjects = useMemo(() => sortProjects(projects, projectListPreference), [projects, projectListPreference])
+  const projectLabelById = useMemo(() => {
+    const map = new Map()
+    ;(projects ?? []).forEach((p) => {
+      map.set(String(p.id), p.code ? `${p.code} - ${p.name}` : p.name)
+    })
+    return map
+  }, [projects])
 
   const getEmptyForm = () => ({
     project_id: '',
@@ -262,6 +270,12 @@ export default function WasteManagement() {
     return `${day}/${m}/${y}`
   }
 
+  const displayProject = (row) => {
+    const id = row?.project_id
+    if (!id) return '-'
+    return projectLabelById.get(String(id)) ?? row?.project?.name ?? row?.project_name ?? '-'
+  }
+
   const displayWasteType = (row) => {
     if (!row?.waste_type) return '-'
     if (row.waste_type === 'autre') {
@@ -400,6 +414,7 @@ export default function WasteManagement() {
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
                 <th className="text-left px-4 py-2">{t('wasteManagement.table.date')}</th>
+                <th className="text-left px-4 py-2">{t('wasteManagement.table.project')}</th>
                 <th className="text-left px-4 py-2">{t('wasteManagement.table.wasteType')}</th>
                 <th className="text-left px-4 py-2">{t('wasteManagement.table.quantity')}</th>
                 <th className="text-left px-4 py-2">{t('wasteManagement.table.tripsCount')}</th>
@@ -416,6 +431,7 @@ export default function WasteManagement() {
                 return (
                   <tr key={row.id} className={row.deleted_at ? 'opacity-60' : ''}>
                     <td className="px-4 py-2">{formatDate(row.date)}</td>
+                    <td className="px-4 py-2">{displayProject(row)}</td>
                     <td className="px-4 py-2">{displayWasteType(row)}</td>
                     <td className="px-4 py-2">{row.quantity ?? '-'}</td>
                     <td className="px-4 py-2">{row.trips_count ?? '-'}</td>
@@ -442,7 +458,7 @@ export default function WasteManagement() {
 
               {!loading && items.length === 0 && (
                 <tr>
-                  <td colSpan="8" className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan="9" className="px-4 py-10 text-center text-gray-500">
                     {t('wasteManagement.emptyState')}
                   </td>
                 </tr>

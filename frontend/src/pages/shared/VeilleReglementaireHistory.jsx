@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useParams } from 'react-router-dom'
 import { projectService, regulatoryWatchService } from '../../services/api'
 import { useLanguage } from '../../i18n'
 import { useAuthStore } from '../../store/authStore'
@@ -24,10 +24,17 @@ const formatDateTime = (value) => {
   return d.toLocaleString()
 }
 
-const getBasePath = (pathname) => {
-  if (pathname.startsWith('/admin/regulatory-watch')) return '/admin/regulatory-watch'
-  if (pathname.startsWith('/supervisor/regulatory-watch')) return '/supervisor/regulatory-watch'
-  return '/regulatory-watch'
+const normalizeCategory = (value) => {
+  const raw = String(value || '').trim().toLowerCase()
+  if (raw === 'environment' || raw === 'environnement') return 'environment'
+  return 'sst'
+}
+
+const getBasePath = (pathname, category) => {
+  const c = normalizeCategory(category)
+  if (pathname.startsWith('/admin/regulatory-watch')) return `/admin/regulatory-watch/${c}`
+  if (pathname.startsWith('/supervisor/regulatory-watch')) return `/supervisor/regulatory-watch/${c}`
+  return `/regulatory-watch/${c}`
 }
 
 export default function VeilleReglementaireHistory() {
@@ -35,8 +42,12 @@ export default function VeilleReglementaireHistory() {
   const { user } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
+  const params = useParams()
 
-  const basePath = useMemo(() => getBasePath(location.pathname), [location.pathname])
+  const category = useMemo(() => normalizeCategory(params?.category), [params?.category])
+  const basePath = useMemo(() => getBasePath(location.pathname, category), [category, location.pathname])
+
+  const pageTitle = category === 'environment' ? t('regulatoryWatch.environmentNav') : t('regulatoryWatch.sstNav')
 
   const [projects, setProjects] = useState([])
   const [loadingProjects, setLoadingProjects] = useState(true)
@@ -55,8 +66,8 @@ export default function VeilleReglementaireHistory() {
 
   const draftStorageKey = useMemo(() => {
     const userId = user?.id ? String(user.id) : 'anonymous'
-    return `regulatory_watch_draft:new:${userId}:new`
-  }, [user?.id])
+    return `regulatory_watch_draft:${category}:new:${userId}:new`
+  }, [category, user?.id])
 
   const [draft, setDraft] = useState(null)
 
@@ -113,6 +124,7 @@ export default function VeilleReglementaireHistory() {
         setLoading(true)
         const params = {
           per_page: 50,
+          category,
         }
         if (selectedProjectId) params.project_id = Number(selectedProjectId)
 
@@ -133,7 +145,7 @@ export default function VeilleReglementaireHistory() {
     }
 
     loadHistory()
-  }, [selectedProjectId])
+  }, [selectedProjectId, category])
 
   const handleDelete = (submission) => {
     setConfirmDelete(submission)
@@ -148,6 +160,7 @@ export default function VeilleReglementaireHistory() {
 
       const params = {
         per_page: 50,
+        category,
       }
       if (selectedProjectId) params.project_id = Number(selectedProjectId)
 
@@ -196,7 +209,7 @@ export default function VeilleReglementaireHistory() {
             <FileText className="w-5 h-5 text-hse-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('regulatoryWatch.title')}</h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{pageTitle}</h1>
             <p className="text-sm text-gray-600 dark:text-gray-400">{t('regulatoryWatch.historySubtitle')}</p>
           </div>
         </div>

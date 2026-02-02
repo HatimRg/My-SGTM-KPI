@@ -19,6 +19,7 @@ class RegulatoryWatchSubmission extends Model
         'submitted_at',
         'week_year',
         'week_number',
+        'category',
         'schema_version',
         'answers',
         'section_scores',

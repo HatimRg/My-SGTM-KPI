@@ -1,5 +1,5 @@
 import { useEffect, lazy, Suspense } from 'react'
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import { useDevStore } from './store/devStore'
 import useThemeStore from './stores/themeStore'
@@ -117,6 +117,58 @@ const QualifiedPersonnelRedirect = ({ basePath }) => {
 
   // Preserve deep-link query params like ?worker_id=... when migrating legacy routes.
   return <Navigate to={`${basePath}${location.search || ''}`} replace />
+}
+
+const normalizeRegulatoryWatchCategory = (value) => {
+  const raw = String(value || '').trim().toLowerCase()
+  if (raw === 'environment' || raw === 'environnement') return 'environment'
+  return 'sst'
+}
+
+const RegulatoryWatchNewRedirect = ({ basePath }) => {
+  const params = useParams()
+  const category = normalizeRegulatoryWatchCategory(params?.category)
+  return <Navigate to={`${basePath}/${category}/new/1`} replace />
+}
+
+const RegulatoryWatchLegacyNewPageRedirect = ({ basePath }) => {
+  const params = useParams()
+  const page = String(params?.page || '1')
+  return <Navigate to={`${basePath}/sst/new/${page}`} replace />
+}
+
+const RegulatoryWatchLegacyResubmitRedirect = ({ basePath }) => {
+  const params = useParams()
+  const id = params?.id
+  if (!id) return <Navigate to={`${basePath}/sst`} replace />
+  return <Navigate to={`${basePath}/sst/${id}/resubmit`} replace />
+}
+
+const RegulatoryWatchLegacyResubmitPageRedirect = ({ basePath }) => {
+  const params = useParams()
+  const id = params?.id
+  const page = String(params?.page || '1')
+  if (!id) return <Navigate to={`${basePath}/sst`} replace />
+  return <Navigate to={`${basePath}/sst/${id}/resubmit/${page}`} replace />
+}
+
+const RegulatoryWatchCategoryOrLegacyIdRoute = ({ basePath }) => {
+  const params = useParams()
+  const raw = String(params?.category || '').trim().toLowerCase()
+  const normalized = normalizeRegulatoryWatchCategory(raw)
+
+  if (raw === 'sst' || raw === 'environment' || raw === 'environnement') {
+    if (raw !== normalized) {
+      return <Navigate to={`${basePath}/${normalized}`} replace />
+    }
+    return <VeilleReglementaireHistory />
+  }
+
+  if (params?.category) {
+    return <Navigate to={`${basePath}/sst/${params.category}`} replace />
+  }
+
+  return <Navigate to={`${basePath}/sst`} replace />
 }
 
 // Guest Route Component (redirect if already logged in)
@@ -299,19 +351,24 @@ function App() {
         <Route path="/admin/sor" element={<SorSubmission />} />
         <Route path="/admin/work-permits" element={<WorkPermits />} />
         <Route path="/admin/inspections" element={<Inspections />} />
-        <Route path="/admin/regulatory-watch" element={<VeilleReglementaireHistory />} />
-        <Route path="/admin/regulatory-watch/new" element={<Navigate to="/admin/regulatory-watch/new/1" replace />} />
-        <Route path="/admin/regulatory-watch/new/:page" element={<VeilleReglementaireForm mode="new" />} />
+        <Route path="/admin/regulatory-watch" element={<Navigate to="/admin/regulatory-watch/sst" replace />} />
+        <Route path="/admin/regulatory-watch/new" element={<Navigate to="/admin/regulatory-watch/sst/new/1" replace />} />
+        <Route path="/admin/regulatory-watch/new/:page" element={<RegulatoryWatchLegacyNewPageRedirect basePath="/admin/regulatory-watch" />} />
+        <Route path="/admin/regulatory-watch/:id/resubmit" element={<RegulatoryWatchLegacyResubmitRedirect basePath="/admin/regulatory-watch" />} />
+        <Route path="/admin/regulatory-watch/:id/resubmit/:page" element={<RegulatoryWatchLegacyResubmitPageRedirect basePath="/admin/regulatory-watch" />} />
+        <Route path="/admin/regulatory-watch/:category" element={<RegulatoryWatchCategoryOrLegacyIdRoute basePath="/admin/regulatory-watch" />} />
+        <Route path="/admin/regulatory-watch/:category/new" element={<RegulatoryWatchNewRedirect basePath="/admin/regulatory-watch" />} />
+        <Route path="/admin/regulatory-watch/:category/new/:page" element={<VeilleReglementaireForm mode="new" />} />
         <Route
-          path="/admin/regulatory-watch/:id"
+          path="/admin/regulatory-watch/:category/:id"
           element={
             <ProtectedRoute allowedRoles={['admin', 'hse_director', 'hse_manager', 'regional_hse_manager', 'responsable', 'supervisor']} enforceAllowedRoles>
               <VeilleReglementaireDetails />
             </ProtectedRoute>
           }
         />
-        <Route path="/admin/regulatory-watch/:id/resubmit" element={<VeilleReglementaireForm mode="resubmit" />} />
-        <Route path="/admin/regulatory-watch/:id/resubmit/:page" element={<VeilleReglementaireForm mode="resubmit" />} />
+        <Route path="/admin/regulatory-watch/:category/:id/resubmit" element={<VeilleReglementaireForm mode="resubmit" />} />
+        <Route path="/admin/regulatory-watch/:category/:id/resubmit/:page" element={<VeilleReglementaireForm mode="resubmit" />} />
         <Route path="/admin/workers" element={<Workers />} />
         <Route
           path="/admin/ppe"
@@ -357,19 +414,24 @@ function App() {
         <Route path="/supervisor/training" element={<Training />} />
         <Route path="/supervisor/work-permits" element={<WorkPermits />} />
         <Route path="/supervisor/inspections" element={<Inspections />} />
-        <Route path="/supervisor/regulatory-watch" element={<VeilleReglementaireHistory />} />
-        <Route path="/supervisor/regulatory-watch/new" element={<Navigate to="/supervisor/regulatory-watch/new/1" replace />} />
-        <Route path="/supervisor/regulatory-watch/new/:page" element={<VeilleReglementaireForm mode="new" />} />
+        <Route path="/supervisor/regulatory-watch" element={<Navigate to="/supervisor/regulatory-watch/sst" replace />} />
+        <Route path="/supervisor/regulatory-watch/new" element={<Navigate to="/supervisor/regulatory-watch/sst/new/1" replace />} />
+        <Route path="/supervisor/regulatory-watch/new/:page" element={<RegulatoryWatchLegacyNewPageRedirect basePath="/supervisor/regulatory-watch" />} />
+        <Route path="/supervisor/regulatory-watch/:id/resubmit" element={<RegulatoryWatchLegacyResubmitRedirect basePath="/supervisor/regulatory-watch" />} />
+        <Route path="/supervisor/regulatory-watch/:id/resubmit/:page" element={<RegulatoryWatchLegacyResubmitPageRedirect basePath="/supervisor/regulatory-watch" />} />
+        <Route path="/supervisor/regulatory-watch/:category" element={<RegulatoryWatchCategoryOrLegacyIdRoute basePath="/supervisor/regulatory-watch" />} />
+        <Route path="/supervisor/regulatory-watch/:category/new" element={<RegulatoryWatchNewRedirect basePath="/supervisor/regulatory-watch" />} />
+        <Route path="/supervisor/regulatory-watch/:category/new/:page" element={<VeilleReglementaireForm mode="new" />} />
         <Route
-          path="/supervisor/regulatory-watch/:id"
+          path="/supervisor/regulatory-watch/:category/:id"
           element={
             <ProtectedRoute allowedRoles={['admin', 'hse_director', 'hse_manager', 'regional_hse_manager', 'responsable', 'supervisor']} enforceAllowedRoles>
               <VeilleReglementaireDetails />
             </ProtectedRoute>
           }
         />
-        <Route path="/supervisor/regulatory-watch/:id/resubmit" element={<VeilleReglementaireForm mode="resubmit" />} />
-        <Route path="/supervisor/regulatory-watch/:id/resubmit/:page" element={<VeilleReglementaireForm mode="resubmit" />} />
+        <Route path="/supervisor/regulatory-watch/:category/:id/resubmit" element={<VeilleReglementaireForm mode="resubmit" />} />
+        <Route path="/supervisor/regulatory-watch/:category/:id/resubmit/:page" element={<VeilleReglementaireForm mode="resubmit" />} />
         <Route path="/supervisor/workers" element={<Workers />} />
         <Route
           path="/supervisor/ppe"
@@ -403,19 +465,24 @@ function App() {
         <Route path="/user/sor" element={<Navigate to="/deviations" replace />} />
         <Route path="/work-permits" element={<WorkPermits />} />
         <Route path="/inspections" element={<Inspections />} />
-        <Route path="/regulatory-watch" element={<VeilleReglementaireHistory />} />
-        <Route path="/regulatory-watch/new" element={<Navigate to="/regulatory-watch/new/1" replace />} />
-        <Route path="/regulatory-watch/new/:page" element={<VeilleReglementaireForm mode="new" />} />
+        <Route path="/regulatory-watch" element={<Navigate to="/regulatory-watch/sst" replace />} />
+        <Route path="/regulatory-watch/new" element={<Navigate to="/regulatory-watch/sst/new/1" replace />} />
+        <Route path="/regulatory-watch/new/:page" element={<RegulatoryWatchLegacyNewPageRedirect basePath="/regulatory-watch" />} />
+        <Route path="/regulatory-watch/:id/resubmit" element={<RegulatoryWatchLegacyResubmitRedirect basePath="/regulatory-watch" />} />
+        <Route path="/regulatory-watch/:id/resubmit/:page" element={<RegulatoryWatchLegacyResubmitPageRedirect basePath="/regulatory-watch" />} />
+        <Route path="/regulatory-watch/:category" element={<RegulatoryWatchCategoryOrLegacyIdRoute basePath="/regulatory-watch" />} />
+        <Route path="/regulatory-watch/:category/new" element={<RegulatoryWatchNewRedirect basePath="/regulatory-watch" />} />
+        <Route path="/regulatory-watch/:category/new/:page" element={<VeilleReglementaireForm mode="new" />} />
         <Route
-          path="/regulatory-watch/:id"
+          path="/regulatory-watch/:category/:id"
           element={
             <ProtectedRoute allowedRoles={['admin', 'hse_director', 'hse_manager', 'regional_hse_manager', 'responsable', 'supervisor']} enforceAllowedRoles>
               <VeilleReglementaireDetails />
             </ProtectedRoute>
           }
         />
-        <Route path="/regulatory-watch/:id/resubmit" element={<VeilleReglementaireForm mode="resubmit" />} />
-        <Route path="/regulatory-watch/:id/resubmit/:page" element={<VeilleReglementaireForm mode="resubmit" />} />
+        <Route path="/regulatory-watch/:category/:id/resubmit" element={<VeilleReglementaireForm mode="resubmit" />} />
+        <Route path="/regulatory-watch/:category/:id/resubmit/:page" element={<VeilleReglementaireForm mode="resubmit" />} />
         <Route path="/workers" element={<Workers />} />
         <Route
           path="/ppe"

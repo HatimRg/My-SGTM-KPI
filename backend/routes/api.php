@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\SorAnalyticsController;
 use App\Http\Controllers\Api\DailyKpiSnapshotController;
 use App\Http\Controllers\Api\DailyEffectifController;
+use App\Http\Controllers\Api\MonthlyReportController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\WorkPermitController;
@@ -145,6 +146,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/logs', [SecurityController::class, 'logs']);
         Route::post('/block-ip', [SecurityController::class, 'blockIp']);
         Route::post('/unblock-ip', [SecurityController::class, 'unblockIp']);
+    });
+
+    // Monthly Report (strict admin only)
+    Route::middleware('strict_admin')->prefix('admin/reports/monthly')->group(function () {
+        Route::get('/summary', [MonthlyReportController::class, 'summary']);
     });
 
     // Project management

@@ -478,6 +478,7 @@ export const dashboardService = {
   },
   getSafetyPerformance: (params) => cachedGet('/dashboard/safety-performance', params),
   getEnvironmentalMonthly: (params) => cachedGet('/dashboard/environmental-monthly', params),
+  getMonthlyReportSummary: (params) => cachedGet('/admin/reports/monthly/summary', params, 60000),
   // Charts are also cached
   getAccidentCharts: (params) => cachedGet('/dashboard/charts/accidents', params),
   getTrainingCharts: (params) => cachedGet('/dashboard/charts/trainings', params),

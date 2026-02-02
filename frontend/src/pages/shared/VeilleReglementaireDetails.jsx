@@ -5,7 +5,18 @@ import { useLanguage } from '../../i18n'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { ArrowLeft, CheckCircle2, FileText, Loader2, MinusCircle, RotateCcw, Trash2, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { formatBulletText, getArticleSchemaById, getLocalized, getSectionSchemaById } from './veilleReglementaireSchema'
+import {
+  formatBulletText as formatBulletTextSst,
+  getArticleSchemaById as getArticleSchemaByIdSst,
+  getLocalized as getLocalizedSst,
+  getSectionSchemaById as getSectionSchemaByIdSst,
+} from './veilleReglementaireSchema'
+import {
+  formatBulletText as formatBulletTextEnv,
+  getArticleSchemaById as getArticleSchemaByIdEnv,
+  getLocalized as getLocalizedEnv,
+  getSectionSchemaById as getSectionSchemaByIdEnv,
+} from './veilleReglementaireSchemaEnvironment'
 
 const formatDateTime = (value) => {
   if (!value) return '-'
@@ -14,10 +25,17 @@ const formatDateTime = (value) => {
   return d.toLocaleString()
 }
 
-const getBasePath = (pathname) => {
-  if (pathname.startsWith('/admin/regulatory-watch')) return '/admin/regulatory-watch'
-  if (pathname.startsWith('/supervisor/regulatory-watch')) return '/supervisor/regulatory-watch'
-  return '/regulatory-watch'
+const normalizeCategory = (value) => {
+  const raw = String(value || '').trim().toLowerCase()
+  if (raw === 'environment' || raw === 'environnement') return 'environment'
+  return 'sst'
+}
+
+const getBasePath = (pathname, category) => {
+  const c = normalizeCategory(category)
+  if (pathname.startsWith('/admin/regulatory-watch')) return `/admin/regulatory-watch/${c}`
+  if (pathname.startsWith('/supervisor/regulatory-watch')) return `/supervisor/regulatory-watch/${c}`
+  return `/regulatory-watch/${c}`
 }
 
 const Badge = ({ tone = 'gray', icon: Icon, children }) => {
@@ -71,7 +89,26 @@ export default function VeilleReglementaireDetails() {
   const location = useLocation()
   const params = useParams()
 
-  const basePath = useMemo(() => getBasePath(location.pathname), [location.pathname])
+  const category = useMemo(() => normalizeCategory(params?.category), [params?.category])
+  const schema = useMemo(() => {
+    if (category === 'environment') {
+      return {
+        getLocalized: getLocalizedEnv,
+        formatBulletText: formatBulletTextEnv,
+        getArticleSchemaById: getArticleSchemaByIdEnv,
+        getSectionSchemaById: getSectionSchemaByIdEnv,
+      }
+    }
+
+    return {
+      getLocalized: getLocalizedSst,
+      formatBulletText: formatBulletTextSst,
+      getArticleSchemaById: getArticleSchemaByIdSst,
+      getSectionSchemaById: getSectionSchemaByIdSst,
+    }
+  }, [category])
+
+  const basePath = useMemo(() => getBasePath(location.pathname, category), [category, location.pathname])
   const submissionId = params?.id
 
   const [loading, setLoading] = useState(true)
@@ -188,8 +225,8 @@ export default function VeilleReglementaireDetails() {
                     const label = s?.score === null || s?.score === undefined ? '-' : `${Number(s.score).toFixed(2)}%`
                     const ratio = `${s?.total_conforme ?? 0} / ${s?.total_applicable ?? 0}`
 
-                    const sectionSchema = getSectionSchemaById(s.section_id)
-                    const sectionTitle = sectionSchema ? getLocalized(sectionSchema.title, language) : s.section_id
+                    const sectionSchema = schema.getSectionSchemaById(s.section_id)
+                    const sectionTitle = sectionSchema ? schema.getLocalized(sectionSchema.title, language) : s.section_id
                     return (
                       <div key={s.section_id} className="text-sm text-gray-900 dark:text-gray-100 flex items-center justify-between gap-3">
                         <span className="text-gray-600 dark:text-gray-300">{sectionTitle}</span>
@@ -204,8 +241,8 @@ export default function VeilleReglementaireDetails() {
 
           {(Array.isArray(sections) ? sections : []).map((section) => {
             const articles = section?.articles ?? []
-            const sectionSchema = getSectionSchemaById(section.section_id)
-            const sectionTitle = sectionSchema ? getLocalized(sectionSchema.title, language) : section.section_id
+            const sectionSchema = schema.getSectionSchemaById(section.section_id)
+            const sectionTitle = sectionSchema ? schema.getLocalized(sectionSchema.title, language) : section.section_id
             return (
               <div key={section.section_id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -214,10 +251,10 @@ export default function VeilleReglementaireDetails() {
 
                 <div className="p-4 space-y-3">
                   {(Array.isArray(articles) ? articles : []).map((a) => {
-                    const schema = getArticleSchemaById(a.article_id)
-                    const code = schema ? getLocalized(schema.code, language) : (a.code ?? a.article_id)
-                    const rawText = schema ? getLocalized(schema.text, language) : (typeof a.text === 'string' ? a.text : '')
-                    const text = formatBulletText(rawText)
+                    const articleSchema = schema.getArticleSchemaById(a.article_id)
+                    const code = articleSchema ? schema.getLocalized(articleSchema.code, language) : (a.code ?? a.article_id)
+                    const rawText = articleSchema ? schema.getLocalized(articleSchema.text, language) : (typeof a.text === 'string' ? a.text : '')
+                    const text = schema.formatBulletText(rawText)
 
                     const applicabilityBadge = getApplicabilityBadge(t, a.applicable)
                     const complianceBadge = getComplianceBadge(t, a.applicable, a.compliant)

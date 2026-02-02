@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use App\Models\ProjectCodeAlias;
 use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Excel as ExcelFormat;
@@ -293,26 +295,54 @@ class ProjectController extends Controller
             'user_ids.*' => 'exists:users,id',
         ]);
 
-        $project->update($request->only([
+        $oldCode = (string) ($project->code ?? '');
+
+        $payload = $request->only([
             'name', 'code', 'description', 'location',
             'start_date', 'end_date', 'status', 'pole', 'client_name'
-        ]));
+        ]);
+        if (array_key_exists('code', $payload) && $payload['code'] !== null) {
+            $payload['code'] = strtoupper(trim((string) $payload['code']));
+        }
 
-        // Update user assignments if provided
-        if ($request->has('user_ids')) {
-            $currentUsers = $project->users->pluck('id')->toArray();
-            $newUsers = array_diff($request->user_ids, $currentUsers);
-            
-            $project->users()->sync($request->user_ids);
-            
-            // Notify newly assigned users
-            foreach ($newUsers as $userId) {
-                $user = User::find($userId);
-                if ($user) {
-                    NotificationService::projectAssigned($user, $project);
+        DB::transaction(function () use ($request, $project, $payload, $oldCode) {
+            $project->update($payload);
+
+            $newCode = (string) ($project->code ?? '');
+            if ($newCode !== '' && $oldCode !== '' && $newCode !== $oldCode) {
+                try {
+                    if (Schema::hasTable('project_code_aliases')) {
+                        ProjectCodeAlias::firstOrCreate(
+                            ['code' => $oldCode],
+                            ['project_id' => $project->id, 'created_by' => auth()->id()]
+                        );
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to record project code alias', [
+                        'project_id' => $project->id,
+                        'old_code' => $oldCode,
+                        'new_code' => $newCode,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
-        }
+
+            // Update user assignments if provided
+            if ($request->has('user_ids')) {
+                $currentUsers = $project->users->pluck('id')->toArray();
+                $newUsers = array_diff($request->user_ids, $currentUsers);
+
+                $project->users()->sync($request->user_ids);
+
+                // Notify newly assigned users
+                foreach ($newUsers as $userId) {
+                    $user = User::find($userId);
+                    if ($user) {
+                        NotificationService::projectAssigned($user, $project);
+                    }
+                }
+            }
+        });
 
         $project->load('users', 'creator');
 

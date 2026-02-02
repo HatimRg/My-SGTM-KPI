@@ -7,7 +7,8 @@ import {
   GraduationCap,
   ClipboardCheck,
   AlertTriangle,
-  Leaf
+  Leaf,
+  FileText
 } from 'lucide-react'
 
 const HSE_THEMES = [
@@ -52,16 +53,27 @@ const HSE_THEMES = [
     nameKey: 'dashboard.themes.environmental',
     icon: Leaf,
     gradient: 'from-emerald-500 to-emerald-700'
+  },
+  {
+    id: 'monthly_report',
+    nameKey: 'dashboard.themes.monthly_report',
+    icon: FileText,
+    gradient: 'from-sky-600 to-sky-800',
+    adminOnly: true,
   }
 ]
 
-const ThemeSelector = memo(function ThemeSelector({ activeTheme, onThemeChange }) {
+const ThemeSelector = memo(function ThemeSelector({ activeTheme, onThemeChange, user }) {
   const t = useTranslation()
+  const isStrictAdmin = String(user?.role || '') === 'admin'
   
   return (
     <div className="relative mb-4">
       <div className="flex items-center justify-center gap-1 flex-wrap">
-        {HSE_THEMES.map((theme) => {
+        {HSE_THEMES.filter((theme) => {
+          if (!theme.adminOnly) return true
+          return isStrictAdmin
+        }).map((theme) => {
           const Icon = theme.icon
           const isActive = activeTheme === theme.id
           

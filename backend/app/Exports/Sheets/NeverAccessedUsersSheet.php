@@ -3,6 +3,7 @@
 namespace App\Exports\Sheets;
 
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -32,6 +33,10 @@ class NeverAccessedUsersSheet implements FromCollection, WithHeadings, WithMappi
         return User::query()
             ->where('must_change_password', true)
             ->where('is_active', true)
+            ->with([
+                'projects:id,name,code',
+                'teamProjects:id,name,code',
+            ])
             ->orderBy('name')
             ->get();
     }
@@ -42,7 +47,48 @@ class NeverAccessedUsersSheet implements FromCollection, WithHeadings, WithMappi
             $this->tr('Nom', 'Name'),
             $this->tr('Email', 'Email'),
             $this->tr('Rôle', 'Role'),
+            $this->tr('Projets assignés', 'Assigned projects'),
+            $this->tr('Périmètre', 'Scope'),
         ];
+    }
+
+    private function assignedProjectsLabel(User $user): string
+    {
+        $projects = (new Collection($user->projects ?? []))
+            ->merge($user->teamProjects ?? [])
+            ->unique('id')
+            ->sortBy(fn ($p) => (string) ($p->name ?? ''))
+            ->values();
+
+        if ($projects->count() === 0) {
+            return '';
+        }
+
+        return $projects
+            ->map(function ($p) {
+                $code = (string) ($p->code ?? '');
+                $name = (string) ($p->name ?? '');
+                if ($code !== '' && $name !== '') {
+                    return $code . ' - ' . $name;
+                }
+                return $name !== '' ? $name : $code;
+            })
+            ->filter(fn ($v) => $v !== '')
+            ->implode(', ');
+    }
+
+    private function scopeLabel(User $user): string
+    {
+        $scope = $user->getProjectScopeType();
+        if ($scope === 'all') {
+            return $this->tr('Tous', 'All');
+        }
+
+        if ($scope === 'pole') {
+            return (string) ($user->pole ?? '');
+        }
+
+        return $this->tr('Assignés', 'Assigned');
     }
 
     public function map($user): array
@@ -51,6 +97,8 @@ class NeverAccessedUsersSheet implements FromCollection, WithHeadings, WithMappi
             $user->name,
             $user->email,
             $user->role,
+            $this->assignedProjectsLabel($user),
+            $this->scopeLabel($user),
         ];
     }
 

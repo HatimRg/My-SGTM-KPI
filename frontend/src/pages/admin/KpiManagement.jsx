@@ -16,12 +16,13 @@ import {
   XCircle,
   Loader2,
   Download,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Trash2
 } from 'lucide-react'
 import { kpiService, projectService, exportService } from '../../services/api'
 import { useLanguage } from '../../i18n'
 import { useAuthStore } from '../../store/authStore'
-import { Modal } from '../../components/ui'
+import { Modal, ConfirmDialog } from '../../components/ui'
 import DailyKpiPreview from '../../components/kpi/DailyKpiPreview'
 import toast from 'react-hot-toast'
 import { getCurrentWeek } from '../../utils/weekHelper'
@@ -40,6 +41,7 @@ export default function KpiManagement() {
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [actionLoading, setActionLoading] = useState(null)
+  const [confirmDeleteReport, setConfirmDeleteReport] = useState(null)
   
   // Export modal state
   const [showExportModal, setShowExportModal] = useState(false)
@@ -72,6 +74,32 @@ export default function KpiManagement() {
   const formatDate = (value) => {
     if (!value) return t('common.unknown')
     return new Date(value).toLocaleDateString(locale)
+  }
+
+  const canDeleteReport = (report) => {
+    if (!report) return false
+    if (!isApproverAdminLike) return false
+    return report.status !== 'draft'
+  }
+
+  const requestDeleteReport = (report) => {
+    if (!canDeleteReport(report)) return
+    setConfirmDeleteReport(report)
+  }
+
+  const confirmDelete = async () => {
+    if (!confirmDeleteReport?.id) return
+    try {
+      setActionLoading(confirmDeleteReport.id)
+      await kpiService.delete(confirmDeleteReport.id)
+      toast.success(t('kpi.historyPage.deleteSuccess'))
+      setConfirmDeleteReport(null)
+      loadData()
+    } catch (error) {
+      toast.error(error.response?.data?.message ?? t('errors.failedToDelete'))
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   const effectiveRole = user?.role
@@ -483,6 +511,16 @@ export default function KpiManagement() {
                       <Eye className="w-4 h-4" />
                       <span>{t('common.view')}</span>
                     </button>
+                    {canDeleteReport(report) && (
+                      <button
+                        onClick={() => requestDeleteReport(report)}
+                        disabled={actionLoading === report.id}
+                        className="px-2 py-1 text-xs rounded-md bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 flex items-center gap-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>{t('common.delete')}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -569,6 +607,16 @@ export default function KpiManagement() {
                           >
                             <Eye className="w-5 h-5" />
                           </button>
+                          {canDeleteReport(report) && (
+                            <button
+                              onClick={() => requestDeleteReport(report)}
+                              disabled={actionLoading === report.id}
+                              className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                              title={t('common.delete')}
+                            >
+                              {actionLoading === report.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -579,6 +627,17 @@ export default function KpiManagement() {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={!!confirmDeleteReport}
+        title={t('common.delete')}
+        message={t('kpi.confirmDelete')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteReport(null)}
+      />
 
       {/* Reject Modal */}
       <Modal

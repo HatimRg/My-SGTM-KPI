@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useDevStore, DEV_PROJECT_SCOPE } from '../store/devStore'
@@ -55,6 +55,7 @@ import {
   Handshake,
   Bug,
   Eye,
+  FileText,
   Square,
   Play,
   Send,
@@ -88,6 +89,7 @@ export default function DashboardLayout() {
 
   const sidebarNavRef = useRef(null)
   const heavyMachineryLastLinkRef = useRef(null)
+  const regulatoryWatchLastLinkRef = useRef(null)
 
   const isUserAdmin = isAdmin()
 
@@ -469,9 +471,31 @@ export default function DashboardLayout() {
   }
 
   const navItems = getNavItems()
+
+  const canAccessRegulatoryWatch = navItems.some((item) => {
+    const to = String(item?.to || '')
+    return to.endsWith('/regulatory-watch')
+  })
+
+  const regulatoryWatchBasePath = useMemo(() => {
+    if (location.pathname.startsWith('/admin')) return '/admin/regulatory-watch'
+    if (location.pathname.startsWith('/supervisor')) return '/supervisor/regulatory-watch'
+    return '/regulatory-watch'
+  }, [location.pathname])
+
+  const isRegulatoryWatchActive = location.pathname.includes('/regulatory-watch')
+
+  const navItemsFlat = useMemo(() => {
+    return navItems.filter((item) => !String(item?.to || '').endsWith('/regulatory-watch'))
+  }, [navItems])
+
   const canAccessHeavyMachinery = !isHR && !isHrDirector
   const [heavyMachineryOpen, setHeavyMachineryOpen] = useState(() => {
     return location.pathname.startsWith('/heavy-machinery')
+  })
+
+  const [regulatoryWatchOpen, setRegulatoryWatchOpen] = useState(() => {
+    return location.pathname.includes('/regulatory-watch')
   })
 
   useEffect(() => {
@@ -491,6 +515,24 @@ export default function DashboardLayout() {
 
     return () => window.clearTimeout(id)
   }, [heavyMachineryOpen])
+
+  useEffect(() => {
+    if (!regulatoryWatchOpen) return
+    const navEl = sidebarNavRef.current
+    const targetEl = regulatoryWatchLastLinkRef.current
+    if (!navEl || !targetEl) return
+
+    // Defer until submenu is mounted
+    const id = window.setTimeout(() => {
+      try {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      } catch {
+        // ignore
+      }
+    }, 0)
+
+    return () => window.clearTimeout(id)
+  }, [regulatoryWatchOpen])
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -541,7 +583,7 @@ export default function DashboardLayout() {
               </span>
             </div>
             
-            {navItems.map((item) => (
+            {navItemsFlat.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -555,6 +597,62 @@ export default function DashboardLayout() {
                 <span>{item.label}</span>
               </NavLink>
             ))}
+
+            {canAccessRegulatoryWatch && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setRegulatoryWatchOpen((v) => !v)}
+                  className={
+                    regulatoryWatchOpen || isRegulatoryWatchActive
+                      ? 'sidebar-link-active w-full justify-between'
+                      : 'sidebar-link w-full justify-between'
+                  }
+                >
+                  <span className="flex items-center gap-3">
+                    <Gavel className="w-5 h-5" />
+                    <span>{t('regulatoryWatch.nav')}</span>
+                  </span>
+                  <ChevronDown
+                    className={
+                      regulatoryWatchOpen
+                        ? 'w-4 h-4 rotate-180 transition-transform'
+                        : 'w-4 h-4 transition-transform'
+                    }
+                  />
+                </button>
+
+                {regulatoryWatchOpen && (
+                  <div className="mt-1 ml-4 space-y-1">
+                    <NavLink
+                      to={`${regulatoryWatchBasePath}/sst`}
+                      className={({ isActive }) =>
+                        isActive ? 'sidebar-link-active' : 'sidebar-link'
+                      }
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <span className="flex items-center gap-3">
+                        <FileText className="w-5 h-5" />
+                        <span>{t('regulatoryWatch.sstNav')}</span>
+                      </span>
+                    </NavLink>
+                    <NavLink
+                      to={`${regulatoryWatchBasePath}/environment`}
+                      className={({ isActive }) =>
+                        isActive ? 'sidebar-link-active' : 'sidebar-link'
+                      }
+                      onClick={() => setSidebarOpen(false)}
+                      ref={regulatoryWatchLastLinkRef}
+                    >
+                      <span className="flex items-center gap-3">
+                        <Trash2 className="w-5 h-5" />
+                        <span>{t('regulatoryWatch.environmentNav')}</span>
+                      </span>
+                    </NavLink>
+                  </div>
+                )}
+              </div>
+            )}
 
             {canAccessHeavyMachinery && (
               <div className="pt-2">

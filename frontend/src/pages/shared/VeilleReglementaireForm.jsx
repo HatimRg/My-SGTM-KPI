@@ -6,7 +6,20 @@ import { useAuthStore } from '../../store/authStore'
 import Select from '../../components/ui/Select'
 import { ArrowLeft, CheckCircle, FileText, Loader2, Send, XCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { SECTIONS, SCHEMA_VERSION, makeInitialAnswers, getLocalized, formatBulletText } from './veilleReglementaireSchema'
+import {
+  SECTIONS as SECTIONS_SST,
+  SCHEMA_VERSION as SCHEMA_VERSION_SST,
+  makeInitialAnswers as makeInitialAnswersSst,
+  getLocalized as getLocalizedSst,
+  formatBulletText as formatBulletTextSst,
+} from './veilleReglementaireSchema'
+import {
+  SECTIONS as SECTIONS_ENV,
+  SCHEMA_VERSION as SCHEMA_VERSION_ENV,
+  makeInitialAnswers as makeInitialAnswersEnv,
+  getLocalized as getLocalizedEnv,
+  formatBulletText as formatBulletTextEnv,
+} from './veilleReglementaireSchemaEnvironment'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
 
 const safeParseJson = (value) => {
@@ -25,10 +38,17 @@ const getIsoWeek = (date) => {
   return Math.ceil((((d - yearStart) / 86400000) + 1) / 7)
 }
 
-const getBasePath = (pathname) => {
-  if (pathname.startsWith('/admin/regulatory-watch')) return '/admin/regulatory-watch'
-  if (pathname.startsWith('/supervisor/regulatory-watch')) return '/supervisor/regulatory-watch'
-  return '/regulatory-watch'
+const normalizeCategory = (value) => {
+  const raw = String(value || '').trim().toLowerCase()
+  if (raw === 'environment' || raw === 'environnement') return 'environment'
+  return 'sst'
+}
+
+const getBasePath = (pathname, category) => {
+  const c = normalizeCategory(category)
+  if (pathname.startsWith('/admin/regulatory-watch')) return `/admin/regulatory-watch/${c}`
+  if (pathname.startsWith('/supervisor/regulatory-watch')) return `/supervisor/regulatory-watch/${c}`
+  return `/regulatory-watch/${c}`
 }
 
 const computeSectionScore = (section) => {
@@ -53,7 +73,29 @@ export default function VeilleReglementaireForm({ mode }) {
   const location = useLocation()
   const params = useParams()
 
-  const basePath = useMemo(() => getBasePath(location.pathname), [location.pathname])
+  const category = useMemo(() => normalizeCategory(params?.category), [params?.category])
+
+  const schema = useMemo(() => {
+    if (category === 'environment') {
+      return {
+        SECTIONS: SECTIONS_ENV,
+        SCHEMA_VERSION: SCHEMA_VERSION_ENV,
+        makeInitialAnswers: makeInitialAnswersEnv,
+        getLocalized: getLocalizedEnv,
+        formatBulletText: formatBulletTextEnv,
+      }
+    }
+
+    return {
+      SECTIONS: SECTIONS_SST,
+      SCHEMA_VERSION: SCHEMA_VERSION_SST,
+      makeInitialAnswers: makeInitialAnswersSst,
+      getLocalized: getLocalizedSst,
+      formatBulletText: formatBulletTextSst,
+    }
+  }, [category])
+
+  const basePath = useMemo(() => getBasePath(location.pathname, category), [category, location.pathname])
 
   const [projects, setProjects] = useState([])
   const [loadingProjects, setLoadingProjects] = useState(true)
@@ -69,7 +111,7 @@ export default function VeilleReglementaireForm({ mode }) {
   const [loadingSeed, setLoadingSeed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
-  const [answers, setAnswers] = useState(() => makeInitialAnswers())
+  const [answers, setAnswers] = useState(() => schema.makeInitialAnswers())
 
   const draftHydratedRef = useRef({ done: false, key: '' })
   const skipSeedRef = useRef(false)
@@ -95,7 +137,7 @@ export default function VeilleReglementaireForm({ mode }) {
 
   const buildDraftPayload = () => {
     return {
-      schema_version: SCHEMA_VERSION,
+      schema_version: schema.SCHEMA_VERSION,
       mode,
       submission_id: mode === 'resubmit' ? String(params?.id || '') : null,
       selectedProjectId: selectedProjectId ? String(selectedProjectId) : '',
@@ -110,8 +152,8 @@ export default function VeilleReglementaireForm({ mode }) {
   const draftStorageKey = useMemo(() => {
     const userId = user?.id ? String(user.id) : 'anonymous'
     const submissionId = params?.id ? String(params.id) : ''
-    return `regulatory_watch_draft:${mode}:${userId}:${submissionId || 'new'}`
-  }, [mode, params?.id, user?.id])
+    return `regulatory_watch_draft:${category}:${mode}:${userId}:${submissionId || 'new'}`
+  }, [category, mode, params?.id, user?.id])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -126,7 +168,7 @@ export default function VeilleReglementaireForm({ mode }) {
       const parsed = safeParseJson(raw)
       if (!parsed || typeof parsed !== 'object') return
 
-      if (parsed.schema_version !== SCHEMA_VERSION) return
+      if (parsed.schema_version !== schema.SCHEMA_VERSION) return
       if (mode === 'resubmit' && String(parsed.submission_id || '') !== String(params?.id || '')) return
 
       if (parsed.selectedProjectId) setSelectedProjectId(String(parsed.selectedProjectId))
@@ -268,7 +310,7 @@ export default function VeilleReglementaireForm({ mode }) {
           .filter((a) => a && a.applicable === false)
           .map((a) => String(a.article_id))
 
-        setAnswers(makeInitialAnswers({ previousNonApplicableArticleIds: prevNonApplicable }))
+        setAnswers(schema.makeInitialAnswers({ previousNonApplicableArticleIds: prevNonApplicable }))
       } catch (e) {
         toast.error(e.response?.data?.message ?? t('errors.somethingWentWrong'))
       } finally {
@@ -277,7 +319,7 @@ export default function VeilleReglementaireForm({ mode }) {
     }
 
     seedFromPrevious()
-  }, [mode, params?.id])
+  }, [mode, params?.id, schema, t])
 
   useEffect(() => {
     const seedFromLatestProjectSubmission = async () => {
@@ -296,7 +338,7 @@ export default function VeilleReglementaireForm({ mode }) {
       try {
         setLoadingSeed(true)
 
-        const res = await regulatoryWatchService.getLatest({ project_id: projectId })
+        const res = await regulatoryWatchService.getLatest({ project_id: projectId, category })
         const submission = res.data?.data ?? null
         const prevSections = submission?.answers?.sections ?? []
         const prevNonApplicable = (Array.isArray(prevSections) ? prevSections : [])
@@ -304,7 +346,7 @@ export default function VeilleReglementaireForm({ mode }) {
           .filter((a) => a && a.applicable === false)
           .map((a) => String(a.article_id))
 
-        setAnswers(makeInitialAnswers({ previousNonApplicableArticleIds: prevNonApplicable }))
+        setAnswers(schema.makeInitialAnswers({ previousNonApplicableArticleIds: prevNonApplicable }))
       } catch (e) {
         toast.error(e.response?.data?.message ?? t('errors.somethingWentWrong'))
       } finally {
@@ -313,7 +355,7 @@ export default function VeilleReglementaireForm({ mode }) {
     }
 
     seedFromLatestProjectSubmission()
-  }, [mode, selectedProjectId, t])
+  }, [category, mode, schema, selectedProjectId, t])
 
   const sectionScores = useMemo(() => {
     const sections = Array.isArray(answers?.sections) ? answers.sections : []
@@ -338,7 +380,7 @@ export default function VeilleReglementaireForm({ mode }) {
     return map
   }, [answers])
 
-  const totalSections = SECTIONS.length
+  const totalSections = schema.SECTIONS.length
 
   useEffect(() => {
     const clamped = Math.min(Math.max(1, currentPageNumber), totalSections)
@@ -354,8 +396,8 @@ export default function VeilleReglementaireForm({ mode }) {
   }, [currentPageNumber])
 
   const currentSectionSchema = useMemo(() => {
-    return SECTIONS[currentSectionIndex] ?? null
-  }, [currentSectionIndex])
+    return schema.SECTIONS[currentSectionIndex] ?? null
+  }, [currentSectionIndex, schema.SECTIONS])
 
   const articleIndexMaps = useMemo(() => {
     const sections = Array.isArray(answers?.sections) ? answers.sections : []
@@ -420,7 +462,8 @@ export default function VeilleReglementaireForm({ mode }) {
         project_id: Number(selectedProjectId),
         week_year: Number(weekYear),
         week_number: Number(weekNumber),
-        schema_version: SCHEMA_VERSION,
+        category,
+        schema_version: schema.SCHEMA_VERSION,
         answers,
       }
       const res = await regulatoryWatchService.submit(payload)
@@ -573,18 +616,18 @@ export default function VeilleReglementaireForm({ mode }) {
               <div>
                 {t('common.page')} {currentSectionIndex + 1} {t('common.of')} {totalSections}
               </div>
-              <div className="font-medium text-gray-900 dark:text-gray-100">{getLocalized(currentSectionSchema.title, language)}</div>
+              <div className="font-medium text-gray-900 dark:text-gray-100">{schema.getLocalized(currentSectionSchema.title, language)}</div>
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                <div className="font-semibold text-gray-900 dark:text-gray-100">{getLocalized(currentSectionSchema.title, language)}</div>
+                <div className="font-semibold text-gray-900 dark:text-gray-100">{schema.getLocalized(currentSectionSchema.title, language)}</div>
               </div>
 
               <div className="p-4 space-y-6">
                 {(currentSectionSchema.chapters ?? []).map((chapter) => (
                   <div key={chapter.chapter_id} className="space-y-3">
-                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{getLocalized(chapter.title, language)}</div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{schema.getLocalized(chapter.title, language)}</div>
 
                     <div className="space-y-3">
                       {(chapter.articles ?? []).map((schemaArticle) => {
@@ -598,13 +641,13 @@ export default function VeilleReglementaireForm({ mode }) {
                           ? 'border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/40 opacity-70'
                           : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
 
-                        const displayText = formatBulletText(getLocalized(schemaArticle.text, language))
+                        const displayText = schema.formatBulletText(schema.getLocalized(schemaArticle.text, language))
 
                         return (
                           <div key={`${currentSectionSchema.section_id}:${chapter.chapter_id}:${schemaArticle.article_id}`} className={`rounded-xl border ${containerClass} p-3`}>
                             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                               <div className="flex-1">
-                                <div className="font-medium text-gray-900 dark:text-gray-100">{getLocalized(schemaArticle.code, language)}</div>
+                                <div className="font-medium text-gray-900 dark:text-gray-100">{schema.getLocalized(schemaArticle.code, language)}</div>
                                 <div className="text-sm text-gray-600 dark:text-gray-300 mt-1 whitespace-pre-line">{displayText}</div>
                               </div>
 

@@ -9,14 +9,44 @@ use Illuminate\Http\Request;
 
 class RegulatoryWatchController extends Controller
 {
+    private function normalizeCategory(?string $category): string
+    {
+        $raw = trim((string) ($category ?? ''));
+        if ($raw === '') {
+            return 'sst';
+        }
+
+        $c = strtolower($raw);
+        if ($c === 'environnement') {
+            $c = 'environment';
+        }
+
+        if (!in_array($c, ['sst', 'environment'], true)) {
+            abort(422, 'Invalid category');
+        }
+
+        return $c;
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
+
+        $category = $this->normalizeCategory($request->get('category'));
 
         $query = RegulatoryWatchSubmission::query()->with([
             'project:id,name,code',
             'submitter:id,name',
         ]);
+
+        $query->where(function ($q) use ($category) {
+            if ($category === 'sst') {
+                $q->where('category', 'sst')->orWhereNull('category');
+                return;
+            }
+
+            $q->where('category', $category);
+        });
 
         if ($request->project_id) {
             $projectId = (int) $request->project_id;
@@ -83,10 +113,12 @@ class RegulatoryWatchController extends Controller
     {
         $validated = $request->validate([
             'project_id' => 'required|exists:projects,id',
+            'category' => 'nullable|string|max:32',
         ]);
 
         $user = $request->user();
         $projectId = (int) $validated['project_id'];
+        $category = $this->normalizeCategory($validated['category'] ?? null);
 
         if (!$user->hasGlobalProjectScope()) {
             $allowed = Project::query()->visibleTo($user)->whereKey($projectId)->exists();
@@ -97,6 +129,13 @@ class RegulatoryWatchController extends Controller
 
         $submission = RegulatoryWatchSubmission::query()
             ->where('project_id', $projectId)
+            ->where(function ($q) use ($category) {
+                if ($category === 'sst') {
+                    $q->where('category', 'sst')->orWhereNull('category');
+                    return;
+                }
+                $q->where('category', $category);
+            })
             ->orderByDesc('submitted_at')
             ->orderByDesc('id')
             ->first();
@@ -114,6 +153,7 @@ class RegulatoryWatchController extends Controller
             'project_id' => 'required|exists:projects,id',
             'week_year' => 'required|integer|min:2000|max:2100',
             'week_number' => 'required|integer|min:1|max:53',
+            'category' => 'nullable|string|max:32',
             'schema_version' => 'required|string|max:50',
             'answers' => 'required|array',
         ]);
@@ -130,12 +170,15 @@ class RegulatoryWatchController extends Controller
 
         [$sectionScores, $overallScore] = $this->computeScores($validated['answers']);
 
+        $category = $this->normalizeCategory($validated['category'] ?? null);
+
         $submission = RegulatoryWatchSubmission::create([
             'project_id' => $projectId,
             'submitted_by' => $user ? $user->id : null,
             'submitted_at' => now(),
             'week_year' => (int) $validated['week_year'],
             'week_number' => (int) $validated['week_number'],
+            'category' => $category,
             'schema_version' => $validated['schema_version'],
             'answers' => $validated['answers'],
             'section_scores' => $sectionScores,

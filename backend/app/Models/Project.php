@@ -87,6 +87,11 @@ class Project extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function codeAliases()
+    {
+        return $this->hasMany(ProjectCodeAlias::class);
+    }
+
     // Scopes
     public function scopeActive($query)
     {

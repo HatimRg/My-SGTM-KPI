@@ -13,6 +13,8 @@ use App\Models\Worker;
 use App\Models\WorkerTraining;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use App\Support\ProjectCodeResolver;
 
 class BootstrapController extends Controller
 {
@@ -108,7 +110,7 @@ class BootstrapController extends Controller
 
         $projectIdFilter = null;
         if ($projectCode) {
-            $projectIdFilter = Project::where('code', $projectCode)->value('id');
+            $projectIdFilter = ProjectCodeResolver::resolveProjectId((string) $projectCode);
             if (!$projectIdFilter) {
                 return $this->error('Unknown project_code', 422);
             }

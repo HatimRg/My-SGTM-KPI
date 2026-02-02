@@ -15,6 +15,7 @@ use App\Helpers\WeekHelper;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -566,10 +567,34 @@ class KpiReportController extends Controller
             return $this->error('Access denied', 403);
         }
 
-        if ($kpiReport->status === 'draft') {
-            $kpiReport->forceDelete();
-        } else {
-            $kpiReport->delete();
+        $shouldCascadeSnapshots = $user->isAdminLike() && $kpiReport->status !== 'draft';
+        $projectId = (int) $kpiReport->project_id;
+        $weekNumber = (int) ($kpiReport->week_number ?? 0);
+        $year = (int) ($kpiReport->report_year ?? 0);
+
+        try {
+            DB::transaction(function () use ($kpiReport, $shouldCascadeSnapshots, $projectId, $weekNumber, $year) {
+                if ($kpiReport->status === 'draft') {
+                    $kpiReport->forceDelete();
+                } else {
+                    $kpiReport->delete();
+                }
+
+                if ($shouldCascadeSnapshots && $projectId > 0 && $weekNumber > 0 && $year > 0) {
+                    DailyKpiSnapshot::query()
+                        ->where('project_id', $projectId)
+                        ->where('week_number', $weekNumber)
+                        ->where('year', $year)
+                        ->delete();
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::error('KPI report delete failed', [
+                'error' => $e->getMessage(),
+                'kpi_report_id' => $kpiReport->id,
+                'user_id' => $user?->id,
+            ]);
+            return $this->error('Failed to delete KPI report', 500);
         }
 
         return $this->success(null, 'KPI report deleted successfully');
