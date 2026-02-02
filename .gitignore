@@ -7,19 +7,15 @@ frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
 
-backend/storage/logs/*.log
-backend/storage/framework/cache/
-backend/storage/framework/sessions/
-backend/storage/framework/views/
 backend/bootstrap/cache/
-
-backend/storage/app/backups/
 
 *.backup
 *.restore_tmp
 
 *.log
 *.tmp
+
+!backend/storage/**
 
 .DS_Store
 Thumbs.db
