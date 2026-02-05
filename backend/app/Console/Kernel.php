@@ -15,8 +15,8 @@ class Kernel extends ConsoleKernel
             ->dailyAt('00:30')
             ->timezone('Africa/Casablanca');
 
-        $schedule->command('db:backup')
-            ->dailyAt('01:00')
+        $schedule->command('backup:full')
+            ->hourly()
             ->timezone('Africa/Casablanca');
     }
 

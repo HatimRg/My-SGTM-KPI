@@ -17,7 +17,11 @@ use Maatwebsite\Excel\Excel as ExcelFormat;
 use App\Exports\ProjectsTemplateExport;
 use App\Exports\ProjectManagementExport;
 use App\Exports\ProjectsFailedRowsExport;
+use App\Exports\Sheets\NeverAccessedUsersSheet;
+use App\Exports\Sheets\ProjectManagementProjectsSheet;
 use App\Imports\ProjectsImport;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsm;
 
 class ProjectController extends Controller
 {
@@ -137,6 +141,57 @@ class ProjectController extends Controller
             $user = $request->user();
             $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
             $year = (int) ($request->get('year') ?: date('Y'));
+
+            $templatePath = storage_path('app/templates/SGTM-Project-Management-Export-Template.xlsm');
+            if (is_file($templatePath)) {
+                $projectsSheet = new ProjectManagementProjectsSheet($year, $lang);
+                $usersSheet = new NeverAccessedUsersSheet($lang);
+
+                $reader = IOFactory::createReader('Xlsm');
+                $reader->setReadDataOnly(false);
+                $spreadsheet = $reader->load($templatePath);
+                if (method_exists($spreadsheet, 'setHasMacros')) {
+                    $spreadsheet->setHasMacros(true);
+                }
+
+                $ws1 = $spreadsheet->getSheetCount() >= 1 ? $spreadsheet->getSheet(0) : $spreadsheet->createSheet(0);
+                $ws1->setTitle($projectsSheet->title());
+                $ws1->fromArray($projectsSheet->headings(), null, 'A1', true);
+                $ws1->fromArray($projectsSheet->array(), null, 'A2', true);
+
+                $ws1Styles = $projectsSheet->styles($ws1);
+                if (is_array($ws1Styles) && isset($ws1Styles[1]) && is_array($ws1Styles[1])) {
+                    $ws1->getStyle('A1:' . $ws1->getHighestColumn() . '1')->applyFromArray($ws1Styles[1]);
+                }
+
+                $ws2 = $spreadsheet->getSheetCount() >= 2 ? $spreadsheet->getSheet(1) : $spreadsheet->createSheet(1);
+                $ws2->setTitle($usersSheet->title());
+                $ws2->fromArray($usersSheet->headings(), null, 'A1', true);
+
+                $mappedUsers = [];
+                foreach ($usersSheet->collection() as $u) {
+                    $mappedUsers[] = $usersSheet->map($u);
+                }
+                if (!empty($mappedUsers)) {
+                    $ws2->fromArray($mappedUsers, null, 'A2', true);
+                }
+
+                $ws2Styles = $usersSheet->styles($ws2);
+                if (is_array($ws2Styles) && isset($ws2Styles[1]) && is_array($ws2Styles[1])) {
+                    $ws2->getStyle('A1:' . $ws2->getHighestColumn() . '1')->applyFromArray($ws2Styles[1]);
+                }
+
+                $filename = 'SGTM-Project-Management-Export_' . $year . '_' . date('Y-m-d_His') . '.xlsm';
+
+                return response()->streamDownload(function () use ($spreadsheet) {
+                    $writer = new Xlsm($spreadsheet);
+                    $writer->save('php://output');
+                    $spreadsheet->disconnectWorksheets();
+                    unset($spreadsheet);
+                }, $filename, [
+                    'Content-Type' => 'application/vnd.ms-excel.sheet.macroEnabled.12',
+                ]);
+            }
 
             $filename = 'SGTM-Project-Management-Export_' . $year . '_' . date('Y-m-d_His') . '.xlsx';
             return Excel::download(new ProjectManagementExport($year, $lang), $filename);

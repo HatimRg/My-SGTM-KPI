@@ -12,8 +12,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
   ComposedChart,
+  Customized,
 } from 'recharts'
 import JSZip from 'jszip'
 import { Download, Loader2 } from 'lucide-react'
@@ -50,6 +50,54 @@ const fmtInt = (v) => String(Math.round(safeNumber(v)))
 const fmt2 = (v) => safeNumber(v).toFixed(2)
 const fmtPct2 = (v) => `${safeNumber(v).toFixed(2)}%`
 
+const makeBottomLegend = (items, { textColor = CHART_THEME.label } = {}) => {
+  const normalized = Array.isArray(items) ? items : []
+
+  return ({ width, height }) => {
+    const safeWidth = safeNumber(width)
+    const safeHeight = safeNumber(height)
+
+    const iconW = 18
+    const iconH = 10
+    const gap = 18
+    const y = Math.max(8, safeHeight - 22)
+
+    const estimatedItemWidth = (label) => iconW + 8 + Math.min(220, Math.max(40, String(label || '').length * 7))
+    const totalWidth = normalized.reduce((acc, item) => acc + estimatedItemWidth(item?.label) + gap, 0)
+    const startX = Math.max(8, (safeWidth - totalWidth) / 2)
+
+    let cursorX = startX
+
+    return (
+      <g transform={`translate(0, 0)`}>
+        {normalized.map((item, idx) => {
+          const color = String(item?.color || '#111827')
+          const label = String(item?.label || '')
+          const type = String(item?.type || 'box')
+          const w = estimatedItemWidth(label)
+          const x = cursorX
+          cursorX += w + gap
+
+          return (
+            <g key={`${type}-${idx}`} transform={`translate(${x}, ${y})`}>
+              {type === 'line' ? (
+                <g>
+                  <line x1="0" y1={iconH / 2} x2={iconW} y2={iconH / 2} stroke={color} strokeWidth={2} />
+                  <circle cx={iconW / 2} cy={iconH / 2} r={2.5} fill={color} />
+                </g>
+              ) : (
+                <rect x="0" y="0" width={iconW} height={iconH} rx="2" fill={color} />
+              )}
+              <text x={iconW + 8} y={iconH - 1} fontSize="12" fill={textColor}>
+                {label}
+              </text>
+            </g>
+          )
+        })}
+      </g>
+    )
+  }
+}
 
 const svgToPngBlob = async (svgElement, { scale = 5, background = '#ffffff', maxCanvasSize = 8192, title } = {}) => {
   const serializer = new XMLSerializer()
@@ -66,6 +114,10 @@ const svgToPngBlob = async (svgElement, { scale = 5, background = '#ffffff', max
           'circle[stroke="#ffffff"]',
           'circle[fill="#FFFFFF"]',
           'circle[fill="#ffffff"]',
+          'text[fill="#FFFFFF"]',
+          'text[fill="#ffffff"]',
+          'tspan[fill="#FFFFFF"]',
+          'tspan[fill="#ffffff"]',
         ].join(',')
       )
       .forEach((el) => {
@@ -234,11 +286,12 @@ const downloadBlob = (blob, filename) => {
   window.URL.revokeObjectURL(url)
 }
 
-const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
+const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole }) {
   const t = useTranslation()
   const [isDarkMode, setIsDarkMode] = useState(() =>
     typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false
   )
+  const [isPrinting, setIsPrinting] = useState(false)
   useEffect(() => {
     if (typeof document === 'undefined') return
     const el = document.documentElement
@@ -248,6 +301,21 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
     const obs = new MutationObserver(update)
     obs.observe(el, { attributes: true, attributeFilter: ['class'] })
     return () => obs.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const before = () => setIsPrinting(true)
+    const after = () => setIsPrinting(false)
+
+    window.addEventListener('beforeprint', before)
+    window.addEventListener('afterprint', after)
+
+    return () => {
+      window.removeEventListener('beforeprint', before)
+      window.removeEventListener('afterprint', after)
+    }
   }, [])
 
   const trendStroke = isDarkMode ? SGTM_COLORS.white : '#2E2E2E'
@@ -287,6 +355,19 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
 
   const labels = payload?.labels ?? []
   const sections = payload?.sections ?? {}
+
+  const normalizedFocusPole = String(focusPole || '').trim()
+  const filteredPoles = useMemo(() => {
+    if (normalizedFocusPole === '') return labels
+    return labels.filter((p) => String(p) === normalizedFocusPole)
+  }, [labels, normalizedFocusPole])
+
+  const showSinglePole = filteredPoles.length <= 1
+  const xAxisAngle = showSinglePole ? 0 : -20
+  const xAxisHeight = showSinglePole ? 30 : 60
+  const xAxisTextAnchor = showSinglePole ? 'middle' : 'end'
+
+  const legendTextColor = isPrinting ? '#111827' : (isDarkMode ? CHART_THEME.label : '#111827')
   const projectOptions = useMemo(() => {
     const list = Array.isArray(payload?.projects) ? payload.projects : []
     return list
@@ -295,65 +376,100 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
   }, [payload?.projects])
 
   const veilleRows = useMemo(() => {
-    const ds = sections?.veille?.datasets?.[0]
-    const values = Array.isArray(ds?.data) ? ds.data : []
-    return labels.map((pole, idx) => ({ pole, score: safeNumber(values[idx]) }))
-  }, [labels, sections?.veille])
+    const dsSst = sections?.veille?.datasets?.[0]
+    const dsEnv = sections?.veille?.datasets?.[1]
+    const valuesSst = Array.isArray(dsSst?.data) ? dsSst.data : []
+    const valuesEnv = Array.isArray(dsEnv?.data) ? dsEnv.data : []
+    return filteredPoles.map((pole) => {
+      const idx = labels.indexOf(pole)
+      return {
+        pole,
+        score_sst: safeNumber(valuesSst[idx]),
+        score_environment: safeNumber(valuesEnv[idx]),
+      }
+    })
+  }, [filteredPoles, labels, sections?.veille])
 
   const sorRows = useMemo(() => {
     const d0 = sections?.sor?.datasets?.[0]
     const d1 = sections?.sor?.datasets?.[1]
     const totals = Array.isArray(d0?.data) ? d0.data : []
     const closure = Array.isArray(d1?.data) ? d1.data : []
-    return labels.map((pole, idx) => ({ pole, total: safeNumber(totals[idx]), closurePct: safeNumber(closure[idx]) }))
-  }, [labels, sections?.sor])
+    return filteredPoles.map((pole) => {
+      const idx = labels.indexOf(pole)
+      return { pole, total: safeNumber(totals[idx]), closurePct: safeNumber(closure[idx]) }
+    })
+  }, [filteredPoles, labels, sections?.sor])
 
   const sorSubRows = useMemo(() => {
     const d0 = sections?.sor_subcontractors?.datasets?.[0]
     const d1 = sections?.sor_subcontractors?.datasets?.[1]
     const totals = Array.isArray(d0?.data) ? d0.data : []
     const closure = Array.isArray(d1?.data) ? d1.data : []
-    return labels.map((pole, idx) => ({ pole, total: safeNumber(totals[idx]), closurePct: safeNumber(closure[idx]) }))
-  }, [labels, sections?.sor_subcontractors])
+    return filteredPoles.map((pole) => {
+      const idx = labels.indexOf(pole)
+      return { pole, total: safeNumber(totals[idx]), closurePct: safeNumber(closure[idx]) }
+    })
+  }, [filteredPoles, labels, sections?.sor_subcontractors])
 
   const durationRows = useMemo(() => {
     const ds = sections?.closure_duration?.datasets?.[0]
     const values = Array.isArray(ds?.data) ? ds.data : []
-    return labels.map((pole, idx) => ({ pole, avgHours: safeNumber(values[idx]) }))
-  }, [labels, sections?.closure_duration])
+    return filteredPoles.map((pole) => {
+      const idx = labels.indexOf(pole)
+      return { pole, avgHours: safeNumber(values[idx]) }
+    })
+  }, [filteredPoles, labels, sections?.closure_duration])
 
   const durationSubRows = useMemo(() => {
     const ds = sections?.closure_duration_subcontractors?.datasets?.[0]
     const values = Array.isArray(ds?.data) ? ds.data : []
-    return labels.map((pole, idx) => ({ pole, avgHours: safeNumber(values[idx]) }))
-  }, [labels, sections?.closure_duration_subcontractors])
+    return filteredPoles.map((pole) => {
+      const idx = labels.indexOf(pole)
+      return { pole, avgHours: safeNumber(values[idx]) }
+    })
+  }, [filteredPoles, labels, sections?.closure_duration_subcontractors])
 
   const trainingsRows = useMemo(() => {
     const d0 = sections?.trainings?.datasets?.[0]
     const d1 = sections?.trainings?.datasets?.[1]
     const counts = Array.isArray(d0?.data) ? d0.data : []
     const hours = Array.isArray(d1?.data) ? d1.data : []
-    return labels.map((pole, idx) => ({ pole, count: safeNumber(counts[idx]), hours: safeNumber(hours[idx]) }))
-  }, [labels, sections?.trainings])
+    return filteredPoles.map((pole) => {
+      const idx = labels.indexOf(pole)
+      return { pole, count: safeNumber(counts[idx]), hours: safeNumber(hours[idx]) }
+    })
+  }, [filteredPoles, labels, sections?.trainings])
 
   const awarenessRows = useMemo(() => {
     const d0 = sections?.awareness?.datasets?.[0]
     const d1 = sections?.awareness?.datasets?.[1]
     const counts = Array.isArray(d0?.data) ? d0.data : []
     const hours = Array.isArray(d1?.data) ? d1.data : []
-    return labels.map((pole, idx) => ({ pole, count: safeNumber(counts[idx]), hours: safeNumber(hours[idx]) }))
-  }, [labels, sections?.awareness])
+    return filteredPoles.map((pole) => {
+      const idx = labels.indexOf(pole)
+      return { pole, count: safeNumber(counts[idx]), hours: safeNumber(hours[idx]) }
+    })
+  }, [filteredPoles, labels, sections?.awareness])
 
   const medicalRows = useMemo(() => {
     const ds = sections?.medical?.datasets?.[0]
     const values = Array.isArray(ds?.data) ? ds.data : []
-    return labels.map((pole, idx) => ({ pole, pct: safeNumber(values[idx]) }))
-  }, [labels, sections?.medical])
+    return filteredPoles.map((pole) => {
+      const idx = labels.indexOf(pole)
+      return { pole, pct: safeNumber(values[idx]) }
+    })
+  }, [filteredPoles, labels, sections?.medical])
+
+  const tooltipPortal = typeof document !== 'undefined' ? document.body : null
 
   const tooltipDark = {
     contentStyle: { backgroundColor: CHART_THEME.tooltipBg, border: `1px solid ${CHART_THEME.grid}`, borderRadius: 10 },
     labelStyle: { color: CHART_THEME.label, fontWeight: 700 },
     itemStyle: { color: CHART_THEME.label },
+    allowEscapeViewBox: { x: true, y: true },
+    portal: tooltipPortal,
+    wrapperStyle: { zIndex: 9999, pointerEvents: 'none' },
   }
 
   const axisCommon = {
@@ -361,8 +477,6 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
     axisLine: { stroke: CHART_THEME.axis, opacity: 0.7 },
     tickLine: { stroke: CHART_THEME.axis, opacity: 0.5 },
   }
-
-  const legendStyle = { fontSize: 12, color: CHART_THEME.label }
 
   const gridStyle = { stroke: CHART_THEME.grid, opacity: 0.65 }
 
@@ -381,9 +495,9 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
         ) : (
           <div className="max-h-56 overflow-auto pr-1">
             {rows.map((r) => (
-              <div key={String(r.project_id)} className="flex items-center justify-between gap-3 text-xs text-slate-200">
-                <div className="truncate max-w-[220px]">{r.project_name} ({r.project_code})</div>
-                <div className="font-semibold tabular-nums">{safeNumber(valueGetter(r))}</div>
+              <div key={String(r.project_id)} className="grid grid-cols-[1fr_auto] items-center gap-3 text-xs text-slate-200">
+                <div className="min-w-0 truncate">{r.project_name} ({r.project_code})</div>
+                <div className="text-right font-semibold tabular-nums">{safeNumber(valueGetter(r))}</div>
               </div>
             ))}
           </div>
@@ -435,7 +549,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
         const title = exportTitleByKey[key] || key
 
         if (key === 'F_subcontractor_documents') {
-          const rows = (labels || []).flatMap((pole) => {
+          const rows = (filteredPoles || []).flatMap((pole) => {
             const list = sections?.subcontractors?.by_pole?.[pole]
             const items = Array.isArray(list) ? list : []
             if (items.length === 0) {
@@ -533,7 +647,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
     } finally {
       setExporting(false)
     }
-  }, [labels, month, payload, sectionTitle, sections, t])
+  }, [filteredPoles, month, payload, sectionTitle, sections, t])
 
   if (!isAdmin) {
     return (
@@ -614,8 +728,8 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
         </div>
       )}
 
-      {!loading && payload && labels.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {!loading && payload && filteredPoles.length > 0 && (
+        <div className={`grid grid-cols-1 ${normalizedFocusPole ? '' : 'lg:grid-cols-2'} gap-6`}>
           <div className="card" ref={(el) => { chartRefs.current['A_veille_reglementaire'] = el }}>
             <div className="card-header">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">{sectionTitle('veille')}</h3>
@@ -623,13 +737,12 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={veilleRows} margin={{ top: 10, right: 18, left: 8, bottom: 24 }}>
+                  <BarChart data={veilleRows} margin={{ top: 10, right: 18, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
-                    <XAxis dataKey="pole" angle={-20} textAnchor="end" height={60} {...axisCommon} />
+                    <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis domain={[0, 100]} {...axisCommon} />
                     <Tooltip
                       {...tooltipDark}
-                      formatter={(value) => [`${safeNumber(value).toFixed(2)}%`, t('dashboard.monthlyReport.score')]}
                       content={({ active, payload: p, label }) => {
                         if (!active || !p || p.length === 0) return null
                         const pole = String(label || '')
@@ -637,13 +750,27 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
                         return (
                           <div style={tooltipDark.contentStyle}>
                             <div style={tooltipDark.labelStyle}>{t('dashboard.monthlyReport.veilleTooltipTitle')} - {pole}</div>
-                            <div className="text-xs text-slate-200 mt-1">{t('dashboard.monthlyReport.poleAverage')}: {fmtPct2(payloadValue(p, 'score'))}</div>
-                            <div className="mt-2">{renderPoleProjectTooltip(pole, list, (r) => r?.score)}</div>
+                            <div className="text-xs text-slate-200 mt-1">SST: {fmtPct2(payloadValue(p, 'score_sst'))}</div>
+                            <div className="text-xs text-slate-200">ENV: {fmtPct2(payloadValue(p, 'score_environment'))}</div>
+                            <div className="text-[11px] text-slate-300 mt-2">SST</div>
+                            <div className="mt-2">{renderPoleProjectTooltip(pole, list, (r) => r?.score_sst)}</div>
+                            <div className="text-[11px] text-slate-300 mt-2">ENV</div>
+                            <div className="mt-2">{renderPoleProjectTooltip(pole, list, (r) => r?.score_environment)}</div>
                           </div>
                         )
                       }}
                     />
-                    <Bar dataKey="score" name={t('dashboard.monthlyReport.score')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="score_sst" name="Veille SST %" fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="score_environment" name="Veille Environnement %" fill={SGTM_COLORS.darkGray} radius={[6, 6, 0, 0]} />
+                    <Customized
+                      component={makeBottomLegend(
+                        [
+                          { type: 'box', color: SGTM_COLORS.orange, label: 'Veille SST %' },
+                          { type: 'box', color: SGTM_COLORS.darkGray, label: 'Veille Environnement %' },
+                        ],
+                        { textColor: legendTextColor }
+                      )}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -657,12 +784,11 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={sorRows} margin={{ top: 10, right: 22, left: 8, bottom: 24 }}>
+                  <ComposedChart data={sorRows} margin={{ top: 10, right: 22, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
-                    <XAxis dataKey="pole" angle={-20} textAnchor="end" height={60} {...axisCommon} />
+                    <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis yAxisId="left" allowDecimals={false} {...axisCommon} />
                     <YAxis yAxisId="right" orientation="right" domain={[0, 100]} {...axisCommon} />
-                    <Legend wrapperStyle={legendStyle} />
                     <Tooltip
                       {...tooltipDark}
                       content={({ active, payload: p, label }) => {
@@ -683,6 +809,15 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
                     />
                     <Bar yAxisId="left" dataKey="total" name={t('dashboard.monthlyReport.totalDeviations')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
                     <Line yAxisId="right" type="monotone" dataKey="closurePct" name={t('dashboard.monthlyReport.closureRate')} stroke={trendStroke} strokeWidth={2} dot={{ r: 3, fill: trendStroke }} />
+                    <Customized
+                      component={makeBottomLegend(
+                        [
+                          { type: 'box', color: SGTM_COLORS.orange, label: t('dashboard.monthlyReport.totalDeviations') },
+                          { type: 'line', color: trendStroke, label: t('dashboard.monthlyReport.closureRate') },
+                        ],
+                        { textColor: legendTextColor }
+                      )}
+                    />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -696,15 +831,21 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={durationRows} margin={{ top: 10, right: 18, left: 8, bottom: 24 }}>
+                  <BarChart data={durationRows} margin={{ top: 10, right: 18, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
-                    <XAxis dataKey="pole" angle={-20} textAnchor="end" height={60} {...axisCommon} />
+                    <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis {...axisCommon} />
                     <Tooltip
                       {...tooltipDark}
                       formatter={(value) => [`${safeNumber(value).toFixed(2)} ${t('common.hourShort')}`, t('dashboard.monthlyReport.avgHours')]}
                     />
                     <Bar dataKey="avgHours" name={t('dashboard.monthlyReport.avgHours')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
+                    <Customized
+                      component={makeBottomLegend(
+                        [{ type: 'box', color: SGTM_COLORS.orange, label: t('dashboard.monthlyReport.avgHours') }],
+                        { textColor: legendTextColor }
+                      )}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -718,12 +859,11 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={trainingsRows} margin={{ top: 10, right: 22, left: 8, bottom: 24 }}>
+                  <ComposedChart data={trainingsRows} margin={{ top: 10, right: 22, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
-                    <XAxis dataKey="pole" angle={-20} textAnchor="end" height={60} {...axisCommon} />
+                    <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis yAxisId="left" allowDecimals={false} {...axisCommon} />
                     <YAxis yAxisId="right" orientation="right" {...axisCommon} />
-                    <Legend wrapperStyle={legendStyle} />
                     <Tooltip
                       {...tooltipDark}
                       content={({ active, payload: p, label }) => {
@@ -745,6 +885,15 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
                     />
                     <Bar yAxisId="left" dataKey="count" name={t('dashboard.monthlyReport.trainingsCount')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
                     <Line yAxisId="right" type="monotone" dataKey="hours" name={t('dashboard.monthlyReport.hours')} stroke={trendStroke} strokeWidth={2} dot={{ r: 3, fill: trendStroke }} />
+                    <Customized
+                      component={makeBottomLegend(
+                        [
+                          { type: 'box', color: SGTM_COLORS.orange, label: t('dashboard.monthlyReport.trainingsCount') },
+                          { type: 'line', color: trendStroke, label: t('dashboard.monthlyReport.hours') },
+                        ],
+                        { textColor: legendTextColor }
+                      )}
+                    />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -758,12 +907,11 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={awarenessRows} margin={{ top: 10, right: 22, left: 8, bottom: 24 }}>
+                  <ComposedChart data={awarenessRows} margin={{ top: 10, right: 22, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
-                    <XAxis dataKey="pole" angle={-20} textAnchor="end" height={60} {...axisCommon} />
+                    <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis yAxisId="left" allowDecimals={false} {...axisCommon} />
                     <YAxis yAxisId="right" orientation="right" {...axisCommon} />
-                    <Legend wrapperStyle={legendStyle} />
                     <Tooltip
                       {...tooltipDark}
                       content={({ active, payload: p, label }) => {
@@ -785,6 +933,15 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
                     />
                     <Bar yAxisId="left" dataKey="count" name={t('dashboard.monthlyReport.sessionsCount')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
                     <Line yAxisId="right" type="monotone" dataKey="hours" name={t('dashboard.monthlyReport.hours')} stroke={trendStroke} strokeWidth={2} dot={{ r: 3, fill: trendStroke }} />
+                    <Customized
+                      component={makeBottomLegend(
+                        [
+                          { type: 'box', color: SGTM_COLORS.orange, label: t('dashboard.monthlyReport.sessionsCount') },
+                          { type: 'line', color: trendStroke, label: t('dashboard.monthlyReport.hours') },
+                        ],
+                        { textColor: legendTextColor }
+                      )}
+                    />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -798,15 +955,21 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={medicalRows} margin={{ top: 10, right: 18, left: 8, bottom: 24 }}>
+                  <BarChart data={medicalRows} margin={{ top: 10, right: 18, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
-                    <XAxis dataKey="pole" angle={-20} textAnchor="end" height={60} {...axisCommon} />
+                    <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis domain={[0, 100]} {...axisCommon} />
                     <Tooltip
                       {...tooltipDark}
-                      formatter={(value) => [`${safeNumber(value).toFixed(2)}%`, t('dashboard.monthlyReport.medicalConformity')]} 
+                      formatter={(value) => [`${safeNumber(value).toFixed(2)}%`, t('dashboard.monthlyReport.medicalConformity')]}
                     />
                     <Bar dataKey="pct" name={t('dashboard.monthlyReport.medicalConformity')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
+                    <Customized
+                      component={makeBottomLegend(
+                        [{ type: 'box', color: SGTM_COLORS.orange, label: t('dashboard.monthlyReport.medicalConformity') }],
+                        { textColor: legendTextColor }
+                      )}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -835,7 +998,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {labels.flatMap((pole) => {
+                    {filteredPoles.flatMap((pole) => {
                       const rows = sections?.subcontractors?.by_pole?.[pole] || []
                       if (!Array.isArray(rows) || rows.length === 0) {
                         return [
@@ -880,12 +1043,11 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={sorSubRows} margin={{ top: 10, right: 22, left: 8, bottom: 24 }}>
+                  <ComposedChart data={sorSubRows} margin={{ top: 10, right: 22, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
-                    <XAxis dataKey="pole" angle={-20} textAnchor="end" height={60} {...axisCommon} />
+                    <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis yAxisId="left" allowDecimals={false} {...axisCommon} />
                     <YAxis yAxisId="right" orientation="right" domain={[0, 100]} {...axisCommon} />
-                    <Legend wrapperStyle={legendStyle} />
                     <Tooltip
                       {...tooltipDark}
                       content={({ active, payload: p, label }) => {
@@ -906,6 +1068,15 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
                     />
                     <Bar yAxisId="left" dataKey="total" name={t('dashboard.monthlyReport.totalDeviations')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
                     <Line yAxisId="right" type="monotone" dataKey="closurePct" name={t('dashboard.monthlyReport.closureRate')} stroke={trendStroke} strokeWidth={2} dot={{ r: 3, fill: trendStroke }} />
+                    <Customized
+                      component={makeBottomLegend(
+                        [
+                          { type: 'box', color: SGTM_COLORS.orange, label: t('dashboard.monthlyReport.totalDeviations') },
+                          { type: 'line', color: trendStroke, label: t('dashboard.monthlyReport.closureRate') },
+                        ],
+                        { textColor: legendTextColor }
+                      )}
+                    />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -919,15 +1090,21 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user }) {
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={durationSubRows} margin={{ top: 10, right: 18, left: 8, bottom: 24 }}>
+                  <BarChart data={durationSubRows} margin={{ top: 10, right: 18, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
-                    <XAxis dataKey="pole" angle={-20} textAnchor="end" height={60} {...axisCommon} />
+                    <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis {...axisCommon} />
                     <Tooltip
                       {...tooltipDark}
                       formatter={(value) => [`${safeNumber(value).toFixed(2)} ${t('common.hourShort')}`, t('dashboard.monthlyReport.avgHours')]}
                     />
                     <Bar dataKey="avgHours" name={t('dashboard.monthlyReport.avgHours')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
+                    <Customized
+                      component={makeBottomLegend(
+                        [{ type: 'box', color: SGTM_COLORS.orange, label: t('dashboard.monthlyReport.avgHours') }],
+                        { textColor: legendTextColor }
+                      )}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

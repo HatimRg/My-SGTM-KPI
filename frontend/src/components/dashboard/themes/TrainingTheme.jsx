@@ -32,6 +32,9 @@ const COLORS = {
   compliance: '#14b8a6'
 }
 
+const tooltipPortal = typeof document !== 'undefined' ? document.body : null
+const tooltipWrapperStyle = { zIndex: 9999, pointerEvents: 'none' }
+
 const MetricCard = memo(function MetricCard({ title, value, icon: Icon, color, trend }) {
   const colors = {
     blue: 'border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400',
@@ -213,6 +216,9 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                       <Tooltip
                         contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                         labelStyle={{ color: '#f3f4f6' }}
+                        allowEscapeViewBox={{ x: true, y: true }}
+                        portal={tooltipPortal}
+                        wrapperStyle={tooltipWrapperStyle}
                         formatter={(value, name, props) => [
                           `${value} ${t('dashboard.training.metrics.sessions') || 'sessions'} (${props.payload.participants} ${t('dashboard.training.metrics.participants') || 'participants'})`,
                           t('dashboard.training.metrics.sessions') || 'Sessions'
@@ -300,6 +306,9 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                     labelStyle={{ color: '#f3f4f6' }}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    portal={tooltipPortal}
+                    wrapperStyle={tooltipWrapperStyle}
                   />
                   <Area 
                     type="monotone" 
@@ -335,6 +344,9 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
+                      allowEscapeViewBox={{ x: true, y: true }}
+                      portal={tooltipPortal}
+                      wrapperStyle={tooltipWrapperStyle}
                       formatter={(value, name, props) => [
                         `${value} ${t('dashboard.training.metrics.sessions') || 'sessions'} (${props.payload.participants} ${t('dashboard.training.metrics.participants') || 'participants'})`,
                         t('dashboard.training.metrics.sessions') || 'Sessions'
@@ -375,6 +387,9 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
+                      allowEscapeViewBox={{ x: true, y: true }}
+                      portal={tooltipPortal}
+                      wrapperStyle={tooltipWrapperStyle}
                       formatter={(value, name) => [
                         value,
                         name === 'count'
@@ -419,7 +434,12 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value, name) => [value, name]} />
+                    <Tooltip
+                      formatter={(value, name) => [value, name]}
+                      allowEscapeViewBox={{ x: true, y: true }}
+                      portal={tooltipPortal}
+                      wrapperStyle={tooltipWrapperStyle}
+                    />
                     <Legend 
                       verticalAlign="bottom" 
                       height={36}

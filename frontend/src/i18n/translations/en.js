@@ -23,6 +23,7 @@ export default {
     status: 'Status',
     active: 'Active',
     inactive: 'Inactive',
+    deleted: 'Deleted',
     yes: 'Yes',
     no: 'No',
     all: 'All',
@@ -1907,6 +1908,15 @@ export default {
     theme: 'Theme',
     savePreferences: 'Save Preferences',
     preferencesUpdated: 'Preferences updated successfully',
+
+    backup: {
+      title: 'Backups',
+      subtitle: 'Configure automatic backups and download the latest backup bundle.',
+      frequency: 'Backup frequency',
+      lastRun: 'Last backup run',
+      latestFile: 'Latest backup file',
+      downloadLatest: 'Download latest backup',
+    },
   },
 
   // Notifications
@@ -2040,6 +2050,7 @@ export default {
     year: 'Year',
     selectWeek: 'Select week',
     selectYear: 'Select a year',
+    selectProject: 'Select a project',
     lastSubmission: 'Last submission',
     sectionScore: 'Section score',
     overallScore: 'Overall score',
@@ -2195,9 +2206,42 @@ export default {
     pageSubtitle: 'Location + lux value + optional threshold compliance',
     recordsTitle: 'Records',
     noRecords: 'No records',
+    filters: {
+      year: 'Year',
+      yearPlaceholder: '2026',
+      month: 'Month',
+      monthPlaceholder: '1-12',
+    },
+    table: {
+      date: 'Date',
+      project: 'Project',
+      location: 'Location',
+      lux: 'Lux',
+      threshold: 'Threshold',
+      compliant: 'Compliant',
+      actions: 'Actions',
+    },
     modal: {
       newTitle: 'New lighting measurement',
       editTitle: 'Edit lighting measurement',
+    },
+    form: {
+      project: 'Project',
+      selectProjectPlaceholder: 'Select...',
+      date: 'Date',
+      location: 'Location',
+      luxValue: 'Lux value',
+      thresholdOptional: 'Threshold (optional)',
+      notes: 'Notes',
+    },
+    confirmArchive: {
+      title: 'Archive record',
+      message: 'This will archive (soft-delete) the record. Continue?',
+    },
+    toasts: {
+      created: 'Record created',
+      updated: 'Record updated',
+      archived: 'Record archived',
     },
   },
 

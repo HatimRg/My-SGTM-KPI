@@ -17,6 +17,7 @@ use App\Models\WorkerPpeIssue;
 use App\Models\WorkerTraining;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -44,6 +45,28 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
     private function tr(string $fr, string $en): string
     {
         return $this->lang === 'en' ? $en : $fr;
+    }
+
+    private function projectStatusLabel(?string $status): string
+    {
+        $status = strtolower(trim((string) $status));
+
+        // The API stores project status as: active/completed/on_hold/cancelled
+        // The user requested export labels: active/finished/en pause/cancelled
+        if ($status === Project::STATUS_ACTIVE) {
+            return 'active';
+        }
+        if ($status === Project::STATUS_COMPLETED) {
+            return 'finished';
+        }
+        if ($status === Project::STATUS_ON_HOLD) {
+            return $this->lang === 'en' ? 'on hold' : 'en pause';
+        }
+        if ($status === Project::STATUS_CANCELLED) {
+            return 'cancelled';
+        }
+
+        return $status;
     }
 
     private function weekLabel(int $week): string
@@ -110,6 +133,7 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
 
         $headings = [
             $this->tr('Projet', 'Project'),
+            $this->tr('Status', 'Status'),
             $this->tr('Code projet', 'Project Code'),
             $this->tr('Date début', 'Start Date'),
             $this->tr('Pôle', 'Pole'),
@@ -132,7 +156,8 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
             $this->tr("Nb formations ({$this->year})", "Trainings ({$this->year})"),
             $this->tr("TBM ({$this->year})", "TBM ({$this->year})"),
             $this->tr("TBT ({$this->year})", "TBT ({$this->year})"),
-            $this->tr('Semaines veille réglementaire', 'Regulatory watch weeks'),
+            $this->tr('Semaines réglementation SST', 'SST regulation weeks'),
+            $this->tr('Semaines réglementation Environnement', 'Environment regulation weeks'),
             $this->tr('Effectif (actifs)', 'Workforce (active workers)'),
             $this->tr('Effectif avec induction', 'Workforce with induction'),
             $this->tr("Effectif avec aptitude médicale ({$this->year})", "Workforce with medical aptitude ({$this->year})"),
@@ -184,14 +209,49 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
             ->groupBy('project_id')
             ->pluck('c', 'project_id');
 
+        $hasCategory = Schema::hasColumn('regulatory_watch_submissions', 'category');
+        $regSelect = ['project_id', 'week_number'];
+        if ($hasCategory) {
+            $regSelect[] = 'category';
+        }
+
         $regRows = RegulatoryWatchSubmission::query()
-            ->select(['project_id', 'week_number'])
+            ->select($regSelect)
             ->where('week_year', $this->year)
             ->get();
 
-        $regWeeksByProject = $regRows
-            ->groupBy('project_id')
-            ->map(fn ($rows) => $rows->pluck('week_number')->filter()->all());
+        $regWeeksSstByProject = [];
+        $regWeeksEnvByProject = [];
+
+        foreach ($regRows as $r) {
+            $pid = (int) ($r->project_id ?? 0);
+            if ($pid <= 0) {
+                continue;
+            }
+
+            $wk = $r->week_number ?? null;
+            if ($wk === null || $wk === '') {
+                continue;
+            }
+
+            $category = $hasCategory ? strtolower(trim((string) ($r->category ?? ''))) : '';
+            if ($category === '' || $category === 'sst') {
+                $regWeeksSstByProject[$pid][] = $wk;
+                continue;
+            }
+
+            // accept legacy french value just in case
+            if ($category === 'environnement') {
+                $category = 'environment';
+            }
+
+            if ($category === 'environment') {
+                $regWeeksEnvByProject[$pid][] = $wk;
+            } else {
+                // unknown category -> default to SST
+                $regWeeksSstByProject[$pid][] = $wk;
+            }
+        }
 
         $workerCounts = Worker::query()
             ->select('project_id', DB::raw('COUNT(*) as c'))
@@ -240,6 +300,7 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
 
             $base = [
                 $project->name,
+                $this->projectStatusLabel($project->status),
                 $project->code,
                 $project->start_date?->format('Y-m-d'),
                 $project->pole,
@@ -274,7 +335,8 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
                 (int) ($trainingCounts[$project->id] ?? 0),
                 (int) ($tbmCounts[$project->id] ?? 0),
                 $tbt,
-                $this->formatWeeks($regWeeksByProject->get($project->id, [])),
+                $this->formatWeeks($regWeeksSstByProject[$project->id] ?? []),
+                $this->formatWeeks($regWeeksEnvByProject[$project->id] ?? []),
                 (int) ($workerCounts[$project->id] ?? 0),
                 (int) ($inductionCounts[$project->id] ?? 0),
                 (int) ($medicalCounts[$project->id] ?? 0),

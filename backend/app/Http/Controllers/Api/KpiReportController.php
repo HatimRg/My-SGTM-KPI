@@ -567,25 +567,24 @@ class KpiReportController extends Controller
             return $this->error('Access denied', 403);
         }
 
-        $shouldCascadeSnapshots = $user->isAdminLike() && $kpiReport->status !== 'draft';
         $projectId = (int) $kpiReport->project_id;
         $weekNumber = (int) ($kpiReport->week_number ?? 0);
         $year = (int) ($kpiReport->report_year ?? 0);
 
         try {
-            DB::transaction(function () use ($kpiReport, $shouldCascadeSnapshots, $projectId, $weekNumber, $year) {
-                if ($kpiReport->status === 'draft') {
-                    $kpiReport->forceDelete();
-                } else {
-                    $kpiReport->delete();
-                }
+            DB::transaction(function () use ($kpiReport, $projectId, $weekNumber, $year) {
+                // IMPORTANT: hard delete.
+                // kpi_reports has a unique constraint on (project_id, week_number, report_year).
+                // Soft-deleting keeps the row and will block creating a new KPI for the same week.
+                $kpiReport->forceDelete();
 
-                if ($shouldCascadeSnapshots && $projectId > 0 && $weekNumber > 0 && $year > 0) {
+                // Also hard delete related daily snapshots for the same week.
+                if ($projectId > 0 && $weekNumber > 0 && $year > 0) {
                     DailyKpiSnapshot::query()
                         ->where('project_id', $projectId)
                         ->where('week_number', $weekNumber)
                         ->where('year', $year)
-                        ->delete();
+                        ->forceDelete();
                 }
             });
         } catch (\Throwable $e) {

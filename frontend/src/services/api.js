@@ -843,6 +843,12 @@ export const wasteExportService = {
   delete: (id) => api.delete(`/waste-exports/${id}`),
 }
 
+export const backupService = {
+  getSettings: () => api.get('/admin/backup/settings'),
+  updateSettings: (data) => api.put('/admin/backup/settings', data),
+  downloadLatest: () => api.get('/admin/backup/download', { responseType: 'blob' }),
+}
+
 export const dailyEffectifService = {
   upsert: (data) => api.post('/daily-effectif', data),
   entry: (params) => api.get('/daily-effectif/entry', { params }),

@@ -38,6 +38,7 @@ use App\Http\Controllers\Api\MonthlyKpiMeasurementController;
 use App\Http\Controllers\Api\LightingMeasurementController;
 use App\Http\Controllers\Api\BugReportController;
 use App\Http\Controllers\Api\WasteExportController;
+use App\Http\Controllers\Api\BackupController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -151,6 +152,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Monthly Report (strict admin only)
     Route::middleware('strict_admin')->prefix('admin/reports/monthly')->group(function () {
         Route::get('/summary', [MonthlyReportController::class, 'summary']);
+    });
+
+    // Backup (strict admin only)
+    Route::middleware('strict_admin')->prefix('admin/backup')->group(function () {
+        Route::get('/settings', [BackupController::class, 'settings']);
+        Route::put('/settings', [BackupController::class, 'updateSettings']);
+        Route::get('/download', [BackupController::class, 'downloadLatest']);
     });
 
     // Project management

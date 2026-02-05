@@ -42,7 +42,7 @@ class MonthlyReportController extends Controller
             $monthStart = Carbon::createFromFormat('Y-m', $monthKey)->startOfMonth()->startOfDay();
             $monthEnd = Carbon::createFromFormat('Y-m', $monthKey)->endOfMonth()->endOfDay();
 
-            $projectsQuery = Project::query()->whereNull('deleted_at');
+            $projectsQuery = Project::query()->active();
             if ($projectId) {
                 $projectsQuery->where('id', $projectId);
             }
@@ -71,52 +71,79 @@ class MonthlyReportController extends Controller
                 return $p ? (string) ($p->pole ?? '') : '';
             };
 
-            // SECTION A - Veille réglementaire
-            $veilleQuery = RegulatoryWatchSubmission::query()
-                ->whereIn('project_id', $projectsById->keys());
+            // SECTION A - Veille réglementaire (SST + Environnement)
+            $hasVeilleCategory = Schema::hasColumn('regulatory_watch_submissions', 'category');
 
-            if (Schema::hasColumn('regulatory_watch_submissions', 'category')) {
-                $veilleQuery->where(function ($q) {
-                    $q->where('category', 'sst')->orWhereNull('category');
-                });
+            $veilleSelect = ['project_id', 'week_year', 'week_number', 'overall_score'];
+            if ($hasVeilleCategory) {
+                $veilleSelect[] = 'category';
             }
 
-            $veilleRows = $veilleQuery
+            $veilleRows = RegulatoryWatchSubmission::query()
+                ->whereIn('project_id', $projectsById->keys())
                 ->whereBetween('submitted_at', [$monthStart->copy()->subDays(40), $monthEnd->copy()->addDays(40)])
-                ->get(['project_id', 'week_year', 'week_number', 'overall_score']);
+                ->get($veilleSelect);
 
-            $veilleByProject = [];
+            $veilleByProjectSst = [];
+            $veilleByProjectEnv = [];
             foreach ($veilleRows as $r) {
                 $wkKey = ((int) $r->week_year) . '-' . ((int) $r->week_number);
                 $mapped = $weekMonthMap[$wkKey] ?? null;
                 if ($mapped !== $monthKey) continue;
                 $pid = (int) $r->project_id;
-                $veilleByProject[$pid][] = (float) ($r->overall_score ?? 0);
+
+                $cat = $hasVeilleCategory ? (string) ($r->category ?? '') : 'sst';
+                if ($cat === '') {
+                    $cat = 'sst';
+                }
+
+                $cat = strtolower(trim($cat));
+
+                if ($cat === 'sst') {
+                    $veilleByProjectSst[$pid][] = (float) ($r->overall_score ?? 0);
+                } elseif ($cat === 'environment' || $cat === 'environnement' || $cat === 'environmental') {
+                    $veilleByProjectEnv[$pid][] = (float) ($r->overall_score ?? 0);
+                }
             }
 
-            $veilleProjectScore = [];
+            $veilleProjectScoreSst = [];
+            $veilleProjectScoreEnv = [];
             foreach ($projectsById as $pid => $p) {
-                $vals = $veilleByProject[$pid] ?? [];
-                $veilleProjectScore[$pid] = count($vals) ? round(array_sum($vals) / count($vals), 2) : 0.0;
+                $valsSst = $veilleByProjectSst[$pid] ?? [];
+                $valsEnv = $veilleByProjectEnv[$pid] ?? [];
+                $veilleProjectScoreSst[$pid] = count($valsSst) ? round(array_sum($valsSst) / count($valsSst), 2) : 0.0;
+                $veilleProjectScoreEnv[$pid] = count($valsEnv) ? round(array_sum($valsEnv) / count($valsEnv), 2) : 0.0;
             }
 
-            $veillePoleAvg = [];
+            $veillePoleAvgSst = [];
+            $veillePoleAvgEnv = [];
             $veillePoleProjects = [];
             foreach ($projectsByPole as $pole => $poleProjects) {
                 if ($pole === '') continue;
-                $scores = [];
+
+                $scoresSst = [];
+                $scoresEnv = [];
                 $breakdown = [];
                 foreach ($poleProjects as $p) {
-                    $score = (float) ($veilleProjectScore[$p->id] ?? 0);
-                    $scores[] = $score;
+                    $scoreSst = (float) ($veilleProjectScoreSst[$p->id] ?? 0);
+                    $scoreEnv = (float) ($veilleProjectScoreEnv[$p->id] ?? 0);
+
+                    $scoresSst[] = $scoreSst;
+                    $scoresEnv[] = $scoreEnv;
+
                     $breakdown[] = [
                         'project_id' => (int) $p->id,
                         'project_name' => (string) $p->name,
                         'project_code' => (string) $p->code,
-                        'score' => $score,
+                        // Keep 'score' for backward compatibility (SST)
+                        'score' => $scoreSst,
+                        'score_sst' => $scoreSst,
+                        'score_environment' => $scoreEnv,
                     ];
                 }
-                $veillePoleAvg[$pole] = count($scores) ? round(array_sum($scores) / count($scores), 2) : 0.0;
+
+                $veillePoleAvgSst[$pole] = count($scoresSst) ? round(array_sum($scoresSst) / count($scoresSst), 2) : 0.0;
+                $veillePoleAvgEnv[$pole] = count($scoresEnv) ? round(array_sum($scoresEnv) / count($scoresEnv), 2) : 0.0;
                 $veillePoleProjects[$pole] = $breakdown;
             }
 
@@ -520,8 +547,12 @@ class MonthlyReportController extends Controller
                         'labels' => $labels,
                         'datasets' => [
                             [
-                                'label' => 'Veille %',
-                                'data' => array_map(fn ($pole) => $veillePoleAvg[$pole] ?? 0, $labels),
+                                'label' => 'Veille SST %',
+                                'data' => array_map(fn ($pole) => $veillePoleAvgSst[$pole] ?? 0, $labels),
+                            ],
+                            [
+                                'label' => 'Veille Environnement %',
+                                'data' => array_map(fn ($pole) => $veillePoleAvgEnv[$pole] ?? 0, $labels),
                             ],
                         ],
                         'by_pole_projects' => $veillePoleProjects,

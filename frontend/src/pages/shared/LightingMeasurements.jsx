@@ -126,11 +126,11 @@ export default function LightingMeasurements() {
         await lightingMeasurementService.create(payload)
       }
 
-      toast.success(t('common.saved') ?? 'Saved')
+      toast.success(editing?.id ? t('lightingMeasurements.toasts.updated') : t('lightingMeasurements.toasts.created'))
       closeModal()
       fetchItems()
     } catch (e) {
-      toast.error(t('common.error') ?? 'Error')
+      toast.error(t('common.error'))
     } finally {
       setSaving(false)
     }
@@ -143,11 +143,11 @@ export default function LightingMeasurements() {
     setSaving(true)
     try {
       await lightingMeasurementService.delete(confirmDelete.id)
-      toast.success(t('common.saved') ?? 'Saved')
+      toast.success(t('lightingMeasurements.toasts.archived'))
       setConfirmDelete(null)
       fetchItems()
     } catch (e) {
-      toast.error(t('common.error') ?? 'Error')
+      toast.error(t('common.error'))
     } finally {
       setSaving(false)
     }
@@ -168,23 +168,23 @@ export default function LightingMeasurements() {
             <Sun className="w-6 h-6 text-amber-600" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('lightingMeasurements.pageTitle') ?? 'Lighting Measurements (Lux)'}</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{t('lightingMeasurements.pageSubtitle') ?? 'Location + lux value + optional threshold compliance'}</p>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('lightingMeasurements.pageTitle')}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('lightingMeasurements.pageSubtitle')}</p>
           </div>
         </div>
 
         <button onClick={openCreate} className="btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4" />
-          {t('common.new') ?? 'New'}
+          {t('common.new')}
         </button>
       </div>
 
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           <div>
-            <label className="label">{t('projects.title') ?? 'Project'}</label>
+            <label className="label">{t('common.project')}</label>
             <select className="input" value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)}>
-              <option value="">{t('common.all') ?? 'All'}</option>
+              <option value="">{t('common.all')}</option>
               {sortedProjects.map((p) => (
                 <option key={p.id} value={String(p.id)}>
                   {p.code ? `${p.code} - ${p.name}` : p.name}
@@ -194,24 +194,38 @@ export default function LightingMeasurements() {
           </div>
 
           <div>
-            <label className="label">Year</label>
-            <input className="input" type="number" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} placeholder="2026" />
+            <label className="label">{t('lightingMeasurements.filters.year')}</label>
+            <input
+              className="input"
+              type="number"
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+              placeholder={t('lightingMeasurements.filters.yearPlaceholder')}
+            />
           </div>
 
           <div>
-            <label className="label">Month</label>
-            <input className="input" type="number" min="1" max="12" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} placeholder="1-12" />
+            <label className="label">{t('lightingMeasurements.filters.month')}</label>
+            <input
+              className="input"
+              type="number"
+              min="1"
+              max="12"
+              value={monthFilter}
+              onChange={(e) => setMonthFilter(e.target.value)}
+              placeholder={t('lightingMeasurements.filters.monthPlaceholder')}
+            />
           </div>
         </div>
       </div>
 
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <div className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t('lightingMeasurements.recordsTitle') ?? 'Records'}</div>
+          <div className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t('lightingMeasurements.recordsTitle')}</div>
           {loading && (
             <div className="text-sm text-gray-500 flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span>{t('common.loading') ?? 'Loading...'}</span>
+              <span>{t('common.loading')}</span>
             </div>
           )}
         </div>
@@ -220,13 +234,13 @@ export default function LightingMeasurements() {
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th className="text-left px-4 py-2">Date</th>
-                <th className="text-left px-4 py-2">Project</th>
-                <th className="text-left px-4 py-2">Location</th>
-                <th className="text-left px-4 py-2">Lux</th>
-                <th className="text-left px-4 py-2">Threshold</th>
-                <th className="text-left px-4 py-2">Compliant</th>
-                <th className="text-right px-4 py-2">Actions</th>
+                <th className="text-left px-4 py-2">{t('lightingMeasurements.table.date')}</th>
+                <th className="text-left px-4 py-2">{t('lightingMeasurements.table.project')}</th>
+                <th className="text-left px-4 py-2">{t('lightingMeasurements.table.location')}</th>
+                <th className="text-left px-4 py-2">{t('lightingMeasurements.table.lux')}</th>
+                <th className="text-left px-4 py-2">{t('lightingMeasurements.table.threshold')}</th>
+                <th className="text-left px-4 py-2">{t('lightingMeasurements.table.compliant')}</th>
+                <th className="text-right px-4 py-2">{t('lightingMeasurements.table.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -237,7 +251,7 @@ export default function LightingMeasurements() {
                   <td className="px-4 py-2">{row.location}</td>
                   <td className="px-4 py-2">{row.lux_value}</td>
                   <td className="px-4 py-2">{row.threshold ?? '-'}</td>
-                  <td className="px-4 py-2">{row.is_compliant === null ? '-' : (row.is_compliant ? 'Yes' : 'No')}</td>
+                  <td className="px-4 py-2">{row.is_compliant === null ? '-' : (row.is_compliant ? t('common.yes') : t('common.no'))}</td>
                   <td className="px-4 py-2">
                     <div className="flex justify-end gap-2">
                       <button className="btn-secondary" onClick={() => openEdit(row)}>
@@ -252,7 +266,7 @@ export default function LightingMeasurements() {
               ))}
               {!loading && items.length === 0 && (
                 <tr>
-                  <td colSpan="7" className="px-4 py-10 text-center text-gray-500">{t('lightingMeasurements.noRecords') ?? 'No records'}</td>
+                  <td colSpan="7" className="px-4 py-10 text-center text-gray-500">{t('lightingMeasurements.noRecords')}</td>
                 </tr>
               )}
             </tbody>
@@ -260,12 +274,12 @@ export default function LightingMeasurements() {
         </div>
       </div>
 
-      <Modal isOpen={showModal} onClose={closeModal} title={editing ? (t('lightingMeasurements.modal.editTitle') ?? 'Edit lighting measurement') : (t('lightingMeasurements.modal.newTitle') ?? 'New lighting measurement')}>
+      <Modal isOpen={showModal} onClose={closeModal} title={editing ? t('lightingMeasurements.modal.editTitle') : t('lightingMeasurements.modal.newTitle')}>
         <form onSubmit={submit} className="space-y-3">
           <div>
-            <label className="label">Project</label>
+            <label className="label">{t('lightingMeasurements.form.project')}</label>
             <select className="input" value={formData.project_id} onChange={(e) => setFormData((p) => ({ ...p, project_id: e.target.value }))} required>
-              <option value="">Select...</option>
+              <option value="">{t('lightingMeasurements.form.selectProjectPlaceholder')}</option>
               {sortedProjects.map((p) => (
                 <option key={p.id} value={String(p.id)}>
                   {p.code ? `${p.code} - ${p.name}` : p.name}
@@ -276,35 +290,35 @@ export default function LightingMeasurements() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="label">Date</label>
+              <label className="label">{t('lightingMeasurements.form.date')}</label>
               <input type="date" className="input" value={formData.measured_at} onChange={(e) => setFormData((p) => ({ ...p, measured_at: e.target.value }))} required />
             </div>
             <div>
-              <label className="label">Location</label>
+              <label className="label">{t('lightingMeasurements.form.location')}</label>
               <input className="input" value={formData.location} onChange={(e) => setFormData((p) => ({ ...p, location: e.target.value }))} required />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="label">Lux value</label>
+              <label className="label">{t('lightingMeasurements.form.luxValue')}</label>
               <input type="number" step="0.01" min="0" className="input" value={formData.lux_value} onChange={(e) => setFormData((p) => ({ ...p, lux_value: e.target.value }))} required />
             </div>
             <div>
-              <label className="label">Threshold (optional)</label>
+              <label className="label">{t('lightingMeasurements.form.thresholdOptional')}</label>
               <input type="number" step="0.01" min="0" className="input" value={formData.threshold} onChange={(e) => setFormData((p) => ({ ...p, threshold: e.target.value }))} />
             </div>
           </div>
 
           <div>
-            <label className="label">Notes</label>
+            <label className="label">{t('lightingMeasurements.form.notes')}</label>
             <textarea className="input" rows="3" value={formData.notes} onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))} />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" className="btn-secondary" onClick={closeModal}>{t('common.cancel') ?? 'Cancel'}</button>
+            <button type="button" className="btn-secondary" onClick={closeModal}>{t('common.cancel')}</button>
             <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : (t('common.save') ?? 'Save')}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : t('common.save')}
             </button>
           </div>
         </form>
@@ -312,10 +326,10 @@ export default function LightingMeasurements() {
 
       <ConfirmDialog
         isOpen={!!confirmDelete}
-        title="Archive record"
-        message="This will archive (soft-delete) the record. Continue?"
-        confirmLabel={t('common.confirm') ?? 'Confirm'}
-        cancelLabel={t('common.cancel') ?? 'Cancel'}
+        title={t('lightingMeasurements.confirmArchive.title')}
+        message={t('lightingMeasurements.confirmArchive.message')}
+        confirmLabel={t('common.confirm')}
+        cancelLabel={t('common.cancel')}
         onConfirm={doArchive}
         onCancel={() => setConfirmDelete(null)}
       />

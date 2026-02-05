@@ -32,6 +32,9 @@ const COLORS = {
   nearMiss: '#ef4444'
 }
 
+const tooltipPortal = typeof document !== 'undefined' ? document.body : null
+const tooltipWrapperStyle = { zIndex: 9999, pointerEvents: 'none' }
+
 const MetricCard = memo(function MetricCard({ title, value, icon: Icon, color, trend, unit }) {
   const colors = {
     blue: 'border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400',
@@ -216,6 +219,9 @@ const EnvironmentalTheme = memo(function EnvironmentalTheme({ data, loading }) {
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                     labelStyle={{ color: '#f3f4f6' }}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    portal={tooltipPortal}
+                    wrapperStyle={tooltipWrapperStyle}
                   />
                   <Legend />
                   <Line 
@@ -267,6 +273,9 @@ const EnvironmentalTheme = memo(function EnvironmentalTheme({ data, loading }) {
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                     labelStyle={{ color: '#f3f4f6' }}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    portal={tooltipPortal}
+                    wrapperStyle={tooltipWrapperStyle}
                   />
                   <Legend />
                   <Bar yAxisId="left" dataKey="water" fill={COLORS.water} name={`${t('dashboard.environmental.waterConsumption')} (m³)`} radius={[4, 4, 0, 0]} />
@@ -292,6 +301,9 @@ const EnvironmentalTheme = memo(function EnvironmentalTheme({ data, loading }) {
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                     labelStyle={{ color: '#f3f4f6' }}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    portal={tooltipPortal}
+                    wrapperStyle={tooltipWrapperStyle}
                   />
                   <Legend />
                   <Area type="monotone" dataKey="noise_avg" stroke={COLORS.medical} fill={COLORS.medical} fillOpacity={0.35} name={t('dashboard.environmental.noiseMonitoring')} />
@@ -317,6 +329,9 @@ const EnvironmentalTheme = memo(function EnvironmentalTheme({ data, loading }) {
                   <Tooltip
                     contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                     labelStyle={{ color: '#f3f4f6' }}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    portal={tooltipPortal}
+                    wrapperStyle={tooltipWrapperStyle}
                   />
                   <Legend />
                   <Bar

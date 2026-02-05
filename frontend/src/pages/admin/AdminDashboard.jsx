@@ -677,7 +677,7 @@ export default function AdminDashboard() {
       )}
 
       {activeTheme === 'monthly_report' && (
-        <MonthlyReportTheme user={user} />
+        <MonthlyReportTheme user={user} focusPole={focusPole} />
       )}
 
       {/* Overview Theme (existing content) */}

@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuthStore } from '../../store/authStore'
 import { useLanguage } from '../../i18n'
 import useThemeStore from '../../stores/themeStore'
 import PasswordStrength, { checkPasswordAgainstPolicy, getPasswordPolicy } from '../../components/ui/PasswordStrength'
+import { backupService } from '../../services/api'
 import {
   User,
   Mail,
@@ -49,6 +50,41 @@ export default function Profile() {
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
   const [savingPreferences, setSavingPreferences] = useState(false)
+
+  const isStrictAdmin = (user?.role ?? '') === 'admin'
+  const [backupSettings, setBackupSettings] = useState(null)
+  const [backupFrequencyHours, setBackupFrequencyHours] = useState(12)
+  const [loadingBackupSettings, setLoadingBackupSettings] = useState(false)
+  const [savingBackupSettings, setSavingBackupSettings] = useState(false)
+  const [downloadingBackup, setDownloadingBackup] = useState(false)
+
+  const extractFilename = (contentDisposition) => {
+    if (!contentDisposition) return null
+    const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(contentDisposition)
+    const value = decodeURIComponent(match?.[1] ?? match?.[2] ?? '')
+    return value !== '' ? value : null
+  }
+
+  const loadBackupSettings = async () => {
+    if (!isStrictAdmin) return
+    setLoadingBackupSettings(true)
+    try {
+      const res = await backupService.getSettings()
+      const data = res.data?.data ?? res.data
+      setBackupSettings(data)
+      setBackupFrequencyHours(Number(data?.frequency_hours ?? 12) || 12)
+    } catch (error) {
+      toast.error(error.response?.data?.message ?? t('errors.failedToLoad'))
+      setBackupSettings(null)
+    } finally {
+      setLoadingBackupSettings(false)
+    }
+  }
+
+  useEffect(() => {
+    loadBackupSettings()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStrictAdmin])
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault()
@@ -386,6 +422,101 @@ export default function Profile() {
           </button>
         </div>
       </div>
+
+      {isStrictAdmin && (
+        <div className="card p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('profile.backup.title')}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('profile.backup.subtitle')}</p>
+              {!!backupSettings?.last_run_at && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {t('profile.backup.lastRun')}: {String(backupSettings.last_run_at)}
+                </p>
+              )}
+              {!!backupSettings?.latest_filename && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {t('profile.backup.latestFile')}: {String(backupSettings.latest_filename)}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={loadBackupSettings}
+              disabled={loadingBackupSettings}
+              className="btn-secondary"
+            >
+              {loadingBackupSettings ? t('common.loading') : t('common.refresh')}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label className="label">{t('profile.backup.frequency')}</label>
+              <select
+                className="input"
+                value={backupFrequencyHours}
+                onChange={(e) => setBackupFrequencyHours(Number(e.target.value) || 12)}
+              >
+                <option value={6}>6h</option>
+                <option value={12}>12h</option>
+                <option value={24}>24h</option>
+                <option value={48}>48h</option>
+              </select>
+            </div>
+
+            <div className="flex items-end justify-end gap-3">
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={savingBackupSettings}
+                onClick={async () => {
+                  setSavingBackupSettings(true)
+                  try {
+                    await backupService.updateSettings({ frequency_hours: backupFrequencyHours })
+                    toast.success(t('success.saved'))
+                    await loadBackupSettings()
+                  } catch (error) {
+                    toast.error(error.response?.data?.message ?? t('errors.failedToSave'))
+                  } finally {
+                    setSavingBackupSettings(false)
+                  }
+                }}
+              >
+                {savingBackupSettings ? t('common.saving') : t('common.save')}
+              </button>
+
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={downloadingBackup}
+                onClick={async () => {
+                  setDownloadingBackup(true)
+                  try {
+                    const res = await backupService.downloadLatest()
+                    const blob = new Blob([res.data], { type: 'application/zip' })
+                    const url = window.URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    const filename = extractFilename(res.headers?.['content-disposition']) || 'backup.zip'
+                    a.setAttribute('download', filename)
+                    document.body.appendChild(a)
+                    a.click()
+                    a.remove()
+                    window.URL.revokeObjectURL(url)
+                  } catch (error) {
+                    toast.error(error.response?.data?.message ?? t('errors.downloadFailed'))
+                  } finally {
+                    setDownloadingBackup(false)
+                  }
+                }}
+              >
+                {downloadingBackup ? t('common.loading') : t('profile.backup.downloadLatest')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

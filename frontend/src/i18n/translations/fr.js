@@ -23,6 +23,7 @@ export default {
     status: 'Statut',
     active: 'Actif',
     inactive: 'Inactif',
+    deleted: 'Supprimé',
     yes: 'Oui',
     no: 'Non',
     all: 'Tous',
@@ -1907,6 +1908,15 @@ export default {
     theme: 'Thème',
     savePreferences: 'Enregistrer les préférences',
     preferencesUpdated: 'Préférences mises à jour avec succès',
+
+    backup: {
+      title: 'Sauvegardes',
+      subtitle: 'Configurer les sauvegardes automatiques et télécharger la dernière sauvegarde.',
+      frequency: 'Fréquence de sauvegarde',
+      lastRun: 'Dernière exécution',
+      latestFile: 'Dernier fichier',
+      downloadLatest: 'Télécharger la dernière sauvegarde',
+    },
   },
 
   // Notifications
@@ -2039,6 +2049,7 @@ export default {
     year: 'Année',
     selectWeek: 'Sélectionner la semaine',
     selectYear: 'Sélectionner une année',
+    selectProject: 'Sélectionner un projet',
     lastSubmission: 'Dernière soumission',
     sectionScore: 'Score de section',
     overallScore: 'Score global',
@@ -2195,9 +2206,42 @@ export default {
     pageSubtitle: 'Lieu + valeur lux + conformité au seuil (optionnel)',
     recordsTitle: 'Enregistrements',
     noRecords: 'Aucun enregistrement',
+    filters: {
+      year: 'Année',
+      yearPlaceholder: '2026',
+      month: 'Mois',
+      monthPlaceholder: '1-12',
+    },
+    table: {
+      date: 'Date',
+      project: 'Projet',
+      location: 'Lieu',
+      lux: 'Lux',
+      threshold: 'Seuil',
+      compliant: 'Conforme',
+      actions: 'Actions',
+    },
     modal: {
       newTitle: 'Nouvelle mesure d\'éclairement',
       editTitle: 'Modifier la mesure d\'éclairement',
+    },
+    form: {
+      project: 'Projet',
+      selectProjectPlaceholder: 'Sélectionner...',
+      date: 'Date',
+      location: 'Lieu',
+      luxValue: 'Valeur lux',
+      thresholdOptional: 'Seuil (optionnel)',
+      notes: 'Notes',
+    },
+    confirmArchive: {
+      title: 'Archiver l\'enregistrement',
+      message: 'Ceci va archiver (suppression douce) l\'enregistrement. Continuer ?',
+    },
+    toasts: {
+      created: 'Enregistrement créé',
+      updated: 'Enregistrement mis à jour',
+      archived: 'Enregistrement archivé',
     },
   },
 
