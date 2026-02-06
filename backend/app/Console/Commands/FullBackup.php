@@ -211,7 +211,7 @@ class FullBackup extends Command
             );
 
             $this->info('Uploading backup offsite (rclone) to: ' . $destBase);
-            $result = $this->runCommand($cmd);
+            $result = $this->runProcessCommand($cmd);
 
             if ($result['exit_code'] !== 0) {
                 Log::warning('Offsite backup upload failed (rclone)', [
@@ -234,7 +234,7 @@ class FullBackup extends Command
     /**
      * @return array{exit_code:int, stdout:string, stderr:string}
      */
-    private function runCommand(array $cmd): array
+    private function runProcessCommand(array $cmd): array
     {
         $descriptorspec = [
             1 => ['pipe', 'w'],

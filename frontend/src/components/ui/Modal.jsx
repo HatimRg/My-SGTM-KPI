@@ -9,6 +9,8 @@ export default function Modal({
   children,
   size = 'md', // sm, md, lg, xl, full
   showCloseButton = true,
+  backdropClassName = '',
+  modalClassName = '',
 }) {
   // Handle ESC key to close
   const handleKeyDown = useCallback((e) => {
@@ -42,14 +44,14 @@ export default function Modal({
     <div className="fixed inset-0 z-[9999] overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 transition-opacity"
+        className={`fixed inset-0 bg-black/50 transition-opacity ${backdropClassName}`}
         onClick={onClose}
       />
 
       {/* Modal container */}
       <div className="flex min-h-full items-center justify-center p-4">
         <div
-          className={`relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full ${sizeClasses[size]} max-h-[90vh] flex flex-col animate-fade-in overflow-hidden`}
+          className={`relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full ${sizeClasses[size]} max-h-[90vh] flex flex-col animate-fade-in overflow-hidden ${modalClassName}`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Fixed Header */}

@@ -661,11 +661,13 @@ export const kpiService = {
 export const notificationService = {
   getAll: (params) => api.get('/notifications', { params }),
   getUnreadCount: (params) => cachedGet('/notifications/unread-count', params ?? {}, 15000),
+  urgentUnread: (params) => api.get('/notifications/urgent/unread', { params }),
   markAsRead: (id) => api.post(`/notifications/${id}/mark-read`),
   markAllAsRead: (params) => api.post('/notifications/mark-all-read', params),
   delete: (id) => api.delete(`/notifications/${id}`),
   deleteRead: () => api.post('/notifications/delete-read'),
   send: (data) => api.post('/notifications/send', data),
+  urgentSend: (data) => api.post('/notifications/urgent/send', data),
 }
 
 export const bugReportService = {

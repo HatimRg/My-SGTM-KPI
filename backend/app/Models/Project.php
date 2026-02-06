@@ -20,6 +20,7 @@ class Project extends Model
         'status',
         'pole',
         'client_name',
+        'is_grouping',
         'zones',
         'created_by',
     ];
@@ -28,6 +29,7 @@ class Project extends Model
         'start_date' => 'date',
         'end_date' => 'date',
         'zones' => 'array',
+        'is_grouping' => 'boolean',
     ];
 
     // Status constants

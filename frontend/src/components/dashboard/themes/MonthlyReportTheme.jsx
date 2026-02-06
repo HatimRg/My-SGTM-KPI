@@ -730,7 +730,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
 
       {!loading && payload && filteredPoles.length > 0 && (
         <div className={`grid grid-cols-1 ${normalizedFocusPole ? '' : 'lg:grid-cols-2'} gap-6`}>
-          <div className="card" ref={(el) => { chartRefs.current['A_veille_reglementaire'] = el }}>
+          <div className="card overflow-visible" ref={(el) => { chartRefs.current['A_veille_reglementaire'] = el }}>
             <div className="card-header">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">{sectionTitle('veille')}</h3>
             </div>
@@ -777,7 +777,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
             </div>
           </div>
 
-          <div className="card" ref={(el) => { chartRefs.current['B_deviations_closure'] = el }}>
+          <div className="card overflow-visible" ref={(el) => { chartRefs.current['B_deviations_closure'] = el }}>
             <div className="card-header">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">{sectionTitle('sor')}</h3>
             </div>
@@ -824,7 +824,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
             </div>
           </div>
 
-          <div className="card" ref={(el) => { chartRefs.current['C_closure_duration'] = el }}>
+          <div className="card overflow-visible" ref={(el) => { chartRefs.current['C_closure_duration'] = el }}>
             <div className="card-header">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">{sectionTitle('closure_duration')}</h3>
             </div>
@@ -852,7 +852,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
             </div>
           </div>
 
-          <div className="card" ref={(el) => { chartRefs.current['D_trainings'] = el }}>
+          <div className="card overflow-visible" ref={(el) => { chartRefs.current['D_trainings'] = el }}>
             <div className="card-header">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">{sectionTitle('trainings')}</h3>
             </div>
@@ -900,7 +900,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
             </div>
           </div>
 
-          <div className="card" ref={(el) => { chartRefs.current['E_awareness_sessions'] = el }}>
+          <div className="card overflow-visible" ref={(el) => { chartRefs.current['E_awareness_sessions'] = el }}>
             <div className="card-header">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">{sectionTitle('awareness')}</h3>
             </div>
@@ -948,7 +948,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
             </div>
           </div>
 
-          <div className="card" ref={(el) => { chartRefs.current['G_medical_conformity'] = el }}>
+          <div className="card overflow-visible" ref={(el) => { chartRefs.current['G_medical_conformity'] = el }}>
             <div className="card-header">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">{sectionTitle('medical')}</h3>
             </div>
@@ -1036,7 +1036,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
             </div>
           </div>
 
-          <div className="card" ref={(el) => { chartRefs.current['H_deviations_closure_subcontractors'] = el }}>
+          <div className="card overflow-visible" ref={(el) => { chartRefs.current['H_deviations_closure_subcontractors'] = el }}>
             <div className="card-header">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">{sectionTitle('sor_subcontractors')}</h3>
             </div>
@@ -1083,7 +1083,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
             </div>
           </div>
 
-          <div className="card" ref={(el) => { chartRefs.current['I_closure_duration_subcontractors'] = el }}>
+          <div className="card overflow-visible" ref={(el) => { chartRefs.current['I_closure_duration_subcontractors'] = el }}>
             <div className="card-header">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">{sectionTitle('closure_duration_subcontractors')}</h3>
             </div>

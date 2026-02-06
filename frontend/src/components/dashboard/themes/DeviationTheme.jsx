@@ -40,6 +40,9 @@ const COLORS = {
 
 const POLE_PALETTE = ['#2563eb', '#7c3aed', '#f59e0b', '#10b981', '#ef4444', '#06b6d4', '#a855f7', '#84cc16']
 
+const tooltipPortal = typeof document !== 'undefined' ? document.body : null
+const tooltipWrapperStyle = { zIndex: 9999, pointerEvents: 'none' }
+
 const MetricCard = memo(function MetricCard({ title, value, icon: Icon, color, subtitle }) {
   const colors = {
     red: 'border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900/50 text-red-600 dark:text-red-400',
@@ -352,6 +355,9 @@ const DeviationTheme = memo(function DeviationTheme({ year, projects: _projects,
                     <Tooltip
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
+                      allowEscapeViewBox={{ x: true, y: true }}
+                      portal={tooltipPortal}
+                      wrapperStyle={tooltipWrapperStyle}
                       formatter={(value) => [value, t('dashboard.deviations.analytics.count')]}
                     />
                     <Bar dataKey="total" radius={[0, 6, 6, 0]} barSize={38}>
@@ -428,6 +434,9 @@ const DeviationTheme = memo(function DeviationTheme({ year, projects: _projects,
                     <Tooltip
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
+                      allowEscapeViewBox={{ x: true, y: true }}
+                      portal={tooltipPortal}
+                      wrapperStyle={tooltipWrapperStyle}
                       formatter={(value, name, props) => [formatHours(value), t('dashboard.deviations.analytics.hours')]}
                       labelFormatter={(label, payload) => payload?.[0]?.payload?.theme_full ?? label}
                     />
@@ -502,6 +511,9 @@ const DeviationTheme = memo(function DeviationTheme({ year, projects: _projects,
                     <Tooltip
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
+                      allowEscapeViewBox={{ x: true, y: true }}
+                      portal={tooltipPortal}
+                      wrapperStyle={tooltipWrapperStyle}
                       labelFormatter={(label, payload) => payload?.[0]?.payload?.theme_full ?? label}
                     />
                     <Bar dataKey="count" fill={COLORS.unresolved} radius={[0, 6, 6, 0]}>
@@ -531,6 +543,9 @@ const DeviationTheme = memo(function DeviationTheme({ year, projects: _projects,
                     <Tooltip
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
+                      allowEscapeViewBox={{ x: true, y: true }}
+                      portal={tooltipPortal}
+                      wrapperStyle={tooltipWrapperStyle}
                       labelFormatter={(label, payload) => payload?.[0]?.payload?.theme_full ?? label}
                     />
                     <Legend />
@@ -562,6 +577,9 @@ const DeviationTheme = memo(function DeviationTheme({ year, projects: _projects,
                       cursor={{ strokeDasharray: '3 3' }}
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
+                      allowEscapeViewBox={{ x: true, y: true }}
+                      portal={tooltipPortal}
+                      wrapperStyle={tooltipWrapperStyle}
                       formatter={(value, name, props) => {
                         if (name === 'avg_hours') return [formatHours(value), t('dashboard.deviations.analytics.avgResolution')]
                         if (name === 'count') return [value, t('dashboard.deviations.analytics.count')]

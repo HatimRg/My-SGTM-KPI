@@ -20,6 +20,9 @@ import { useProjectStore } from '../../store/projectStore'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
 import { useAuthStore } from '../../store/authStore'
 
+const tooltipPortal = typeof document !== 'undefined' ? document.body : null
+const tooltipWrapperStyle = { zIndex: 9999, pointerEvents: 'none' }
+
 export default function EffectifAnalytics() {
   const { t } = useLanguage()
 
@@ -273,7 +276,12 @@ export default function EffectifAnalytics() {
                 <CartesianGrid strokeDasharray="3 3" className="dark:opacity-20" />
                 <XAxis dataKey="entry_date" tick={{ fontSize: 12 }} className="dark:text-gray-400" tickFormatter={formatDate} />
                 <YAxis tick={{ fontSize: 12 }} className="dark:text-gray-400" />
-                <Tooltip labelFormatter={(v) => formatDate(v)} />
+                <Tooltip
+                  labelFormatter={(v) => formatDate(v)}
+                  allowEscapeViewBox={{ x: true, y: true }}
+                  portal={tooltipPortal}
+                  wrapperStyle={tooltipWrapperStyle}
+                />
                 <Line type="monotone" dataKey="total_effectif" stroke="#16a34a" name={t('effectif.effectif')} strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -294,7 +302,11 @@ export default function EffectifAnalytics() {
                 <CartesianGrid strokeDasharray="3 3" className="dark:opacity-20" />
                 <XAxis dataKey="project" tick={{ fontSize: 11 }} interval={0} angle={-15} textAnchor="end" height={60} />
                 <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
+                <Tooltip
+                  allowEscapeViewBox={{ x: true, y: true }}
+                  portal={tooltipPortal}
+                  wrapperStyle={tooltipWrapperStyle}
+                />
                 <Legend />
                 <Bar dataKey="total_effectif" fill="#16a34a" name={t('effectif.effectif')} />
               </BarChart>

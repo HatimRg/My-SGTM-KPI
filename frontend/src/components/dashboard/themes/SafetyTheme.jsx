@@ -38,6 +38,9 @@ const COLORS = {
   tg: '#8b5cf6'
 }
 
+const tooltipPortal = typeof document !== 'undefined' ? document.body : null
+const tooltipWrapperStyle = { zIndex: 9999, pointerEvents: 'none' }
+
 const MetricCard = memo(function MetricCard({ title, value, icon: Icon, color, trend }) {
   const colors = {
     red: 'border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900/50 text-red-600 dark:text-red-400',
@@ -323,7 +326,11 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                         tick={{ fontSize: 10 }}
                         width={120}
                       />
-                      <Tooltip />
+                      <Tooltip
+                        allowEscapeViewBox={{ x: true, y: true }}
+                        portal={tooltipPortal}
+                        wrapperStyle={tooltipWrapperStyle}
+                      />
                       <Legend />
                       <Bar dataKey="fatal" stackId="a" fill="#dc2626" name={t('dashboard.safety.eventTypes.fatal') || t('dashboard.safety.fatal') || 'Fatal'} />
                       <Bar dataKey="serious" stackId="a" fill="#f59e0b" name={t('dashboard.safety.eventTypes.serious') || t('dashboard.safety.serious') || 'Serious'} />
@@ -350,7 +357,11 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                       <XAxis dataKey="activity" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
                       <YAxis yAxisId="left" allowDecimals={false} tick={{ fontSize: 11 }} />
                       <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fontSize: 11 }} />
-                      <Tooltip />
+                      <Tooltip
+                        allowEscapeViewBox={{ x: true, y: true }}
+                        portal={tooltipPortal}
+                        wrapperStyle={tooltipWrapperStyle}
+                      />
                       <Legend />
                       <Bar yAxisId="left" dataKey="count" fill="#dc2626" name={t('dashboard.safety.metrics.count') || 'Count'} />
                       <Line yAxisId="right" type="monotone" dataKey="cumulative_pct" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} name={t('dashboard.safety.metrics.cumulativePct') || 'Cumulative %'} />
@@ -385,7 +396,11 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                         linkCurvature={0.6}
                         node={{ stroke: '#e5e7eb', strokeWidth: 1 }}
                       >
-                        <Tooltip />
+                        <Tooltip
+                          allowEscapeViewBox={{ x: true, y: true }}
+                          portal={tooltipPortal}
+                          wrapperStyle={tooltipWrapperStyle}
+                        />
                       </Sankey>
                     </ResponsiveContainer>
                   ) : (
@@ -410,7 +425,12 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                       <XAxis type="number" dataKey="severity" name={t('dashboard.safety.metrics.severity') || 'Severity'} domain={[1, 6]} tick={{ fontSize: 11 }} />
                       <YAxis type="number" dataKey="victims" name={t('dashboard.safety.metrics.victims') || 'Victims'} allowDecimals={false} tick={{ fontSize: 11 }} />
                       <ZAxis type="number" dataKey="events" range={[80, 600]} name={t('dashboard.safety.metrics.events') || 'Events'} />
-                      <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                      <Tooltip
+                        cursor={{ strokeDasharray: '3 3' }}
+                        allowEscapeViewBox={{ x: true, y: true }}
+                        portal={tooltipPortal}
+                        wrapperStyle={tooltipWrapperStyle}
+                      />
                       <Legend />
                       <Scatter name={t('dashboard.safety.metrics.events') || 'Events'} data={bubbleData} fill="#dc2626" />
                     </ScatterChart>
@@ -431,7 +451,11 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                       <XAxis dataKey="type" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
                       <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                      <Tooltip />
+                      <Tooltip
+                        allowEscapeViewBox={{ x: true, y: true }}
+                        portal={tooltipPortal}
+                        wrapperStyle={tooltipWrapperStyle}
+                      />
                       <Legend />
                       <Bar dataKey="overdue" stackId="a" fill="#f59e0b" name={t('dashboard.safety.actionStatus.overdue') || 'Overdue'} />
                       <Bar dataKey="open" stackId="a" fill="#dc2626" name={t('dashboard.safety.actionStatus.open') || 'Open'} />
@@ -503,6 +527,9 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                       <Tooltip 
                         contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                         labelStyle={{ color: '#f3f4f6' }}
+                        allowEscapeViewBox={{ x: true, y: true }}
+                        portal={tooltipPortal}
+                        wrapperStyle={tooltipWrapperStyle}
                       />
                       <Area 
                         type="monotone" 
@@ -541,7 +568,11 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
-                        <Tooltip />
+                        <Tooltip
+                          allowEscapeViewBox={{ x: true, y: true }}
+                          portal={tooltipPortal}
+                          wrapperStyle={tooltipWrapperStyle}
+                        />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
@@ -573,6 +604,9 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                       <Tooltip 
                         contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                         labelStyle={{ color: '#f3f4f6' }}
+                        allowEscapeViewBox={{ x: true, y: true }}
+                        portal={tooltipPortal}
+                        wrapperStyle={tooltipWrapperStyle}
                       />
                       <Legend />
                       <Line 
@@ -612,6 +646,9 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                       <Tooltip 
                         contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                         labelStyle={{ color: '#f3f4f6' }}
+                        allowEscapeViewBox={{ x: true, y: true }}
+                        portal={tooltipPortal}
+                        wrapperStyle={tooltipWrapperStyle}
                       />
                       <Bar 
                         dataKey="accidents" 

@@ -98,16 +98,21 @@ export default function MyProjects({ showKpiButton = true }) {
       {projects.length === 0 ? (
         <div className="card p-12 text-center">
           <FolderKanban className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No projects assigned</h3>
-          <p className="text-gray-500 dark:text-gray-400">
-            Contact your administrator to get assigned to projects.
-          </p>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">{t('projects.noProjects')}</h3>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
           {projects.map((project) => (
-            <div key={project.id} className="card hover:shadow-md transition-shadow">
-              <div className="p-6">
+            <div
+              key={project.id}
+              className={
+                project.is_grouping
+                  ? 'rounded-xl bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500 p-[2px]'
+                  : ''
+              }
+            >
+              <div className="card hover:shadow-md transition-shadow">
+                <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-hse-primary/10 rounded-lg flex items-center justify-center">
@@ -207,6 +212,7 @@ export default function MyProjects({ showKpiButton = true }) {
                       {t('kpi.submitKpi')}
                     </Link>
                   )}
+                </div>
                 </div>
               </div>
             </div>

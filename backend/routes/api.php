@@ -251,9 +251,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('notifications')->group(function () {
         Route::get('/', [NotificationController::class, 'index']);
         Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::get('/urgent/unread', [NotificationController::class, 'urgentUnread']);
         Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead']);
         Route::post('/delete-read', [NotificationController::class, 'deleteRead']);
         Route::post('/send', [NotificationController::class, 'send'])->middleware('admin');
+        Route::post('/urgent/send', [NotificationController::class, 'urgentSend'])->middleware('admin');
         Route::post('/{notification}/mark-read', [NotificationController::class, 'markAsRead']);
         Route::delete('/{notification}', [NotificationController::class, 'destroy']);
     });

@@ -21,9 +21,27 @@ class NotificationService
             'project_id' => Schema::hasColumn('notifications', 'project_id'),
             'icon' => Schema::hasColumn('notifications', 'icon'),
             'action_url' => Schema::hasColumn('notifications', 'action_url'),
+            'sent_by' => Schema::hasColumn('notifications', 'sent_by'),
+            'urgency' => Schema::hasColumn('notifications', 'urgency'),
+            'dedupe_key' => Schema::hasColumn('notifications', 'dedupe_key'),
         ];
 
         return $supports;
+    }
+
+    private static function addUrgentFieldsToPayload(array $payload, array $options, array $supports): array
+    {
+        if ($supports['sent_by']) {
+            $payload['sent_by'] = $options['sent_by'] ?? null;
+        }
+        if ($supports['urgency']) {
+            $payload['urgency'] = $options['urgency'] ?? null;
+        }
+        if ($supports['dedupe_key']) {
+            $payload['dedupe_key'] = $options['dedupe_key'] ?? null;
+        }
+
+        return $payload;
     }
 
     /**
@@ -50,6 +68,8 @@ class NotificationService
         if ($supports['action_url']) {
             $payload['action_url'] = $options['action_url'] ?? null;
         }
+
+        $payload = self::addUrgentFieldsToPayload($payload, $options, $supports);
 
         return Notification::create($payload);
     }
@@ -79,7 +99,94 @@ class NotificationService
                 $payload['action_url'] = $options['action_url'] ?? null;
             }
 
+            $payload = self::addUrgentFieldsToPayload($payload, $options, $supports);
+
             Notification::create($payload);
+        }
+    }
+
+    /**
+     * Send an urgent (blocking) notification with dedupe.
+     *
+     * - Uses Notification::TYPE_URGENT
+     * - Persists audit fields: sent_by, urgency
+     * - Uses per-recipient dedupe via notifications(user_id, dedupe_key) unique constraint.
+     */
+    public static function sendUrgentToUsers(array $userIds, string $message, string $urgency, int $sentByUserId, array $options = []): void
+    {
+        $urgency = strtolower(trim((string) $urgency));
+        if (!in_array($urgency, ['low', 'medium', 'high'], true)) {
+            $urgency = 'medium';
+        }
+
+        $title = $options['title'] ?? 'Urgent notification';
+
+        $dedupeKey = $options['dedupe_key'] ?? hash('sha256', implode('|', [
+            (string) $sentByUserId,
+            $urgency,
+            trim((string) $title),
+            trim((string) $message),
+            now()->format('Y-m-d H:i'),
+        ]));
+
+        $supports = self::notificationTableSupports();
+
+        $baseOptions = $options;
+        $baseOptions['sent_by'] = $sentByUserId;
+        $baseOptions['urgency'] = $urgency;
+        $baseOptions['dedupe_key'] = $dedupeKey;
+        $baseOptions['data'] = array_merge($options['data'] ?? [], [
+            'urgent' => true,
+            'urgency' => $urgency,
+        ]);
+
+        foreach ($userIds as $userId) {
+            $payload = [
+                'user_id' => $userId,
+                'type' => Notification::TYPE_URGENT,
+                'title' => $title,
+                'message' => $message,
+                'data' => $baseOptions['data'],
+            ];
+
+            if ($supports['project_id']) {
+                $payload['project_id'] = $baseOptions['project_id'] ?? null;
+            }
+            if ($supports['icon']) {
+                $payload['icon'] = $baseOptions['icon'] ?? null;
+            }
+            if ($supports['action_url']) {
+                $payload['action_url'] = $baseOptions['action_url'] ?? null;
+            }
+
+            $payload = self::addUrgentFieldsToPayload($payload, $baseOptions, $supports);
+
+            // Dedupe: rely on unique(user_id, dedupe_key). If it already exists, skip.
+            try {
+                Notification::create($payload);
+            } catch (\Illuminate\Database\QueryException $e) {
+                // Intentionally swallow duplicate inserts (race / retry)
+                $sqlState = $e->errorInfo[0] ?? null;
+                $driverCode = (string) ($e->errorInfo[1] ?? '');
+
+                $isDuplicate = false;
+                // MySQL: SQLSTATE 23000, error 1062
+                if ($sqlState === '23000' && $driverCode === '1062') {
+                    $isDuplicate = true;
+                }
+                // Postgres: SQLSTATE 23505
+                if ($sqlState === '23505') {
+                    $isDuplicate = true;
+                }
+                // SQLite: SQLSTATE 23000 (driver codes vary; treat as duplicate only if message indicates it)
+                if ($sqlState === '23000' && str_contains(strtolower($e->getMessage()), 'unique')) {
+                    $isDuplicate = true;
+                }
+
+                if (!$isDuplicate) {
+                    throw $e;
+                }
+            }
         }
     }
 

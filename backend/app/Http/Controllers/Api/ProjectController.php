@@ -268,6 +268,7 @@ class ProjectController extends Controller
             'status' => 'nullable|in:active,completed,on_hold,cancelled',
             'pole' => 'nullable|string|max:255',
             'client_name' => 'nullable|string|max:255',
+            'is_grouping' => 'nullable|boolean',
             'user_ids' => 'nullable|array',
             'user_ids.*' => 'exists:users,id',
         ]);
@@ -282,6 +283,7 @@ class ProjectController extends Controller
             'status' => $request->get('status', 'active'),
             'pole' => $request->pole,
             'client_name' => $request->client_name,
+            'is_grouping' => (bool) $request->boolean('is_grouping', false),
             'created_by' => auth()->id(),
         ]);
 
@@ -346,6 +348,7 @@ class ProjectController extends Controller
             'status' => 'sometimes|in:active,completed,on_hold,cancelled',
             'pole' => 'nullable|string|max:255',
             'client_name' => 'nullable|string|max:255',
+            'is_grouping' => 'nullable|boolean',
             'user_ids' => 'nullable|array',
             'user_ids.*' => 'exists:users,id',
         ]);
@@ -354,8 +357,11 @@ class ProjectController extends Controller
 
         $payload = $request->only([
             'name', 'code', 'description', 'location',
-            'start_date', 'end_date', 'status', 'pole', 'client_name'
+            'start_date', 'end_date', 'status', 'pole', 'client_name', 'is_grouping'
         ]);
+        if (array_key_exists('is_grouping', $payload)) {
+            $payload['is_grouping'] = (bool) $request->boolean('is_grouping', false);
+        }
         if (array_key_exists('code', $payload) && $payload['code'] !== null) {
             $payload['code'] = strtoupper(trim((string) $payload['code']));
         }

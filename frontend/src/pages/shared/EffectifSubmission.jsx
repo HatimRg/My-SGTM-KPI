@@ -17,6 +17,9 @@ import { getProjectLabel, sortProjects } from '../../utils/projectList'
 import { dailyEffectifService } from '../../services/api'
 import { useAuthStore } from '../../store/authStore'
 
+const tooltipPortal = typeof document !== 'undefined' ? document.body : null
+const tooltipWrapperStyle = { zIndex: 9999, pointerEvents: 'none' }
+
 export default function EffectifSubmission() {
   const { t } = useLanguage()
 
@@ -267,7 +270,12 @@ export default function EffectifSubmission() {
                 <CartesianGrid strokeDasharray="3 3" className="dark:opacity-20" />
                 <XAxis dataKey="entry_date" tick={{ fontSize: 12 }} className="dark:text-gray-400" tickFormatter={formatDate} />
                 <YAxis tick={{ fontSize: 12 }} className="dark:text-gray-400" />
-                <Tooltip labelFormatter={(v) => formatDate(v)} />
+                <Tooltip
+                  labelFormatter={(v) => formatDate(v)}
+                  allowEscapeViewBox={{ x: true, y: true }}
+                  portal={tooltipPortal}
+                  wrapperStyle={tooltipWrapperStyle}
+                />
                 <Line type="monotone" dataKey="effectif" stroke="#16a34a" name={t('effectif.effectif')} strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>

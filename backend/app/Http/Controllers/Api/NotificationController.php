@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Models\Project;
+use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class NotificationController extends Controller
 {
@@ -207,5 +209,114 @@ class NotificationController extends Controller
         }
 
         return $this->success(null, 'Notification sent successfully');
+    }
+
+    /**
+     * Get unread urgent notifications for polling.
+     */
+    public function urgentUnread(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
+        $afterId = $request->get('after_id');
+        $limit = (int) $request->get('limit', 20);
+        if ($limit <= 0 || $limit > 100) {
+            $limit = 20;
+        }
+
+        $query = Notification::query()
+            ->where('user_id', $user->id)
+            ->where('type', Notification::TYPE_URGENT)
+            ->whereNull('read_at');
+
+        if ($afterId !== null && $afterId !== '') {
+            $query->where('id', '>', (int) $afterId);
+        }
+
+        $notifications = $query
+            ->orderBy('id', 'asc')
+            ->limit($limit)
+            ->get();
+
+        $lastId = $notifications->max('id');
+
+        return $this->success([
+            'items' => $notifications,
+            'last_id' => $lastId,
+        ]);
+    }
+
+    /**
+     * Send an urgent notification (admin-like only).
+     */
+    public function urgentSend(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
+        if (!$user->isAdminLike()) {
+            return $this->error('Unauthorized', 403);
+        }
+
+        if (!$user->hasGlobalProjectScope()) {
+            return $this->error('Access denied', 403);
+        }
+
+        $allowedRoles = array_keys((array) config('roles.roles', []));
+
+        $validated = $request->validate([
+            'target' => 'required|in:user_ids,role,all',
+            'user_ids' => 'required_if:target,user_ids|array',
+            'user_ids.*' => 'integer|exists:users,id',
+            'role' => ['required_if:target,role', 'string', 'max:50', Rule::in($allowedRoles)],
+            'message' => 'required|string|max:2000',
+            'urgency' => 'required|in:low,medium,high',
+            'dedupe_key' => 'nullable|string|max:64',
+        ]);
+
+        $targetUserIds = [];
+        if ($validated['target'] === 'user_ids') {
+            $targetUserIds = collect($validated['user_ids'] ?? [])->map(fn ($id) => (int) $id)->unique()->values()->all();
+        } elseif ($validated['target'] === 'role') {
+            $targetUserIds = User::query()
+                ->where('role', $validated['role'])
+                ->where('is_active', true)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+        } else {
+            $targetUserIds = User::query()
+                ->where('is_active', true)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+        }
+
+        $targetUserIds = array_values(array_filter($targetUserIds, fn ($id) => $id !== (int) $user->id));
+        if (count($targetUserIds) === 0) {
+            return $this->error('No recipients found', 422);
+        }
+
+        NotificationService::sendUrgentToUsers(
+            $targetUserIds,
+            $validated['message'],
+            $validated['urgency'],
+            (int) $user->id,
+            [
+                'dedupe_key' => $validated['dedupe_key'] ?? null,
+                'title' => 'Urgent notification',
+                'icon' => 'alert-triangle',
+                'data' => [
+                    'forced_visibility_seconds' => 5,
+                ],
+            ]
+        );
+
+        return $this->success(null, 'Urgent notification sent successfully');
     }
 }

@@ -27,6 +27,9 @@ const COLORS = {
   minor: '#3b82f6'
 }
 
+const tooltipPortal = typeof document !== 'undefined' ? document.body : null
+const tooltipWrapperStyle = { zIndex: 9999, pointerEvents: 'none' }
+
 const MetricCard = memo(function MetricCard({ title, value, icon: Icon, color, trend }) {
   const colors = {
     green: 'border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/50 text-green-600 dark:text-green-400',
@@ -174,6 +177,9 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                     labelStyle={{ color: '#f3f4f6' }}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    portal={tooltipPortal}
+                    wrapperStyle={tooltipWrapperStyle}
                   />
                   <Area 
                     type="monotone" 
@@ -203,6 +209,9 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                     labelStyle={{ color: '#f3f4f6' }}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    portal={tooltipPortal}
+                    wrapperStyle={tooltipWrapperStyle}
                   />
                   <Bar dataKey="count" fill={COLORS.compliance} name={t('dashboard.compliance.totalInspections')} radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -227,6 +236,9 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
                     <Tooltip
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
+                      allowEscapeViewBox={{ x: true, y: true }}
+                      portal={tooltipPortal}
+                      wrapperStyle={tooltipWrapperStyle}
                       formatter={(value) => [`${value}%`, t('dashboard.compliance.regulatoryWatchScore')]}
                     />
                     <Line
@@ -260,6 +272,9 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
                     <Tooltip
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
+                      allowEscapeViewBox={{ x: true, y: true }}
+                      portal={tooltipPortal}
+                      wrapperStyle={tooltipWrapperStyle}
                       formatter={(value) => [`${value}%`, t('dashboard.compliance.aptitudePercent')]}
                     />
                     <Line

@@ -63,6 +63,9 @@ import { getProjectLabel, sortProjects } from '../../utils/projectList'
 
 const COLORS = ['#dc2626', '#f59e0b', '#16a34a', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6']
 
+const tooltipPortal = typeof document !== 'undefined' ? document.body : null
+const tooltipWrapperStyle = { zIndex: 9999, pointerEvents: 'none' }
+
 export default function AdminDashboard() {
   const t = useTranslation()
   const { user } = useAuthStore()
@@ -769,6 +772,9 @@ export default function AdminDashboard() {
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip 
                     labelFormatter={(label) => `${t('dashboard.weekPrefix')} ${label.replace('S', '')}`}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    portal={tooltipPortal}
+                    wrapperStyle={tooltipWrapperStyle}
                   />
                   <Legend />
                   <Line
@@ -856,6 +862,9 @@ export default function AdminDashboard() {
                   <Tooltip 
                     labelFormatter={(label) => `${t('dashboard.weekPrefix')} ${label.replace('S', '')}`}
                     formatter={(value, name) => [Number(value).toFixed(4), name]}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    portal={tooltipPortal}
+                    wrapperStyle={tooltipWrapperStyle}
                   />
                   <Legend />
                   <Bar yAxisId="left" dataKey="tf" fill="#f59e0b" name={t('dashboard.rates.frequencyRate')} radius={[4, 4, 0, 0]} />

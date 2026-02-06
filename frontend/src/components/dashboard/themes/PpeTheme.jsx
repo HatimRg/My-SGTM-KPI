@@ -27,6 +27,9 @@ const COLORS = [
   '#a855f7',
 ]
 
+const tooltipPortal = typeof document !== 'undefined' ? document.body : null
+const tooltipWrapperStyle = { zIndex: 9999, pointerEvents: 'none' }
+
 const TooltipContent = memo(function TooltipContent({ active, payload, label, t, poleLabelByKey }) {
   if (!active || !payload || payload.length === 0) return null
 
@@ -371,6 +374,9 @@ const PpeTheme = memo(function PpeTheme({ year, projectId, pole }) {
                 />
                 <Tooltip
                   shared={false}
+                  allowEscapeViewBox={{ x: true, y: true }}
+                  portal={tooltipPortal}
+                  wrapperStyle={tooltipWrapperStyle}
                   content={(props) => (
                     <TooltipContent {...props} t={t} poleLabelByKey={poleLabelByKey} />
                   )}

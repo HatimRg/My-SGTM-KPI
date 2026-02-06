@@ -62,6 +62,7 @@ export default function ProjectManagement() {
     status: 'active',
     pole: '',
     client_name: '',
+    is_grouping: false,
     user_ids: []
   })
   const [saving, setSaving] = useState(false)
@@ -235,6 +236,7 @@ export default function ProjectManagement() {
         status: project.status,
         pole: project.pole ?? '',
         client_name: project.client_name ?? '',
+        is_grouping: !!project.is_grouping,
         user_ids: project.users?.map(u => u.id) ?? []
       })
     } else {
@@ -249,6 +251,7 @@ export default function ProjectManagement() {
         status: 'active',
         pole: '',
         client_name: '',
+        is_grouping: false,
         user_ids: []
       })
     }
@@ -277,6 +280,7 @@ export default function ProjectManagement() {
       client_name: (data.client_name ?? '').trim() || null,
       location: (data.location ?? '').trim() || null,
       description: (data.description ?? '').trim() || null,
+      is_grouping: !!data.is_grouping,
       user_ids: normalizedUserIds,
     }
 
@@ -535,29 +539,37 @@ export default function ProjectManagement() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((project) => (
-            <div key={project.id} className="card hover:shadow-md transition-shadow">
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-hse-primary/10 rounded-lg flex items-center justify-center">
-                      <FolderKanban className="w-6 h-6 text-hse-primary" />
+            <div
+              key={project.id}
+              className={
+                project.is_grouping
+                  ? 'rounded-xl bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500 p-[2px]'
+                  : ''
+              }
+            >
+              <div className="card hover:shadow-md transition-shadow">
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-hse-primary/10 rounded-lg flex items-center justify-center">
+                        <FolderKanban className="w-6 h-6 text-hse-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100">{project.name}</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{project.code}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">{project.name}</h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{project.code}</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className={`badge ${statusColors[project.status]}`}>
-                      {statusLabel(project.status)}
-                    </span>
-                    {project.pole && (
-                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
-                        {project.pole}
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`badge ${statusColors[project.status]}`}>
+                        {statusLabel(project.status)}
                       </span>
-                    )}
+                      {project.pole && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                          {project.pole}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
 
                 {project.description && (
                   <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
@@ -629,19 +641,20 @@ export default function ProjectManagement() {
                     <button
                       onClick={() => openModal(project)}
                       className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                      title="Edit"
+                      title={t('common.edit')}
                     >
                       <Edit className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                     </button>
                     <button
                       onClick={() => handleDelete(project)}
                       className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                      title="Delete"
+                      title={t('common.delete')}
                     >
                       <Trash2 className="w-4 h-4 text-red-600" />
                     </button>
                   </div>
                 </div>
+              </div>
               </div>
             </div>
           ))}
@@ -652,7 +665,7 @@ export default function ProjectManagement() {
       {pagination.last_page > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">
-            Page {pagination.current_page} of {pagination.last_page}
+            {t('common.page')} {pagination.current_page} {t('common.of')} {pagination.last_page}
           </p>
           <div className="flex gap-2">
             <button
@@ -660,14 +673,14 @@ export default function ProjectManagement() {
               disabled={pagination.current_page === 1}
               className="btn-secondary text-sm"
             >
-              Previous
+              {t('common.previous')}
             </button>
             <button
               onClick={() => fetchProjects(pagination.current_page + 1)}
               disabled={pagination.current_page === pagination.last_page}
               className="btn-secondary text-sm"
             >
-              Next
+              {t('common.next')}
             </button>
           </div>
         </div>
@@ -677,13 +690,13 @@ export default function ProjectManagement() {
       <Modal
         isOpen={modalOpen}
         onClose={closeModal}
-        title={editingProject ? 'Modifier le projet' : 'Nouveau projet'}
+        title={editingProject ? t('projects.editProject') : t('projects.newProject')}
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="label">Nom du projet *</label>
+              <label className="label">{t('projects.projectName')} *</label>
               <input
                 type="text"
                 value={formData.name}
@@ -693,7 +706,7 @@ export default function ProjectManagement() {
               />
             </div>
             <div>
-              <label className="label">Code projet *</label>
+              <label className="label">{t('projects.projectCode')} *</label>
               <input
                 type="text"
                 value={formData.code}
@@ -706,7 +719,7 @@ export default function ProjectManagement() {
           </div>
 
           <div>
-            <label className="label">Description</label>
+            <label className="label">{t('projects.description')}</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -717,7 +730,7 @@ export default function ProjectManagement() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="label">Localisation</label>
+              <label className="label">{t('projects.location')}</label>
               <input
                 type="text"
                 value={formData.location}
@@ -726,7 +739,7 @@ export default function ProjectManagement() {
               />
             </div>
             <div>
-              <label className="label">Nom du client</label>
+              <label className="label">{t('projects.clientName')}</label>
               <input
                 type="text"
                 value={formData.client_name}
@@ -736,48 +749,67 @@ export default function ProjectManagement() {
             </div>
           </div>
 
+          <div className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900/30">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {t('projects.groupingLabel')}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                {t('projects.groupingHelp')}
+              </div>
+            </div>
+            <label className="inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!formData.is_grouping}
+                onChange={(e) => setFormData({ ...formData, is_grouping: e.target.checked })}
+                className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-orange-600 focus:ring-orange-500"
+              />
+            </label>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="label">Date de début</label>
+              <label className="label">{t('projects.startDate')}</label>
               <DatePicker
                 value={formData.start_date}
                 onChange={(val) => setFormData({ ...formData, start_date: val })}
               />
             </div>
             <div>
-              <label className="label">Date de fin</label>
+              <label className="label">{t('projects.endDate')}</label>
               <DatePicker
                 value={formData.end_date}
                 onChange={(val) => setFormData({ ...formData, end_date: val })}
               />
             </div>
             <div>
-              <label className="label">Statut</label>
+              <label className="label">{t('projects.status')}</label>
               <Select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
               >
-                <option value="active">Actif</option>
-                <option value="completed">Terminé</option>
-                <option value="on_hold">En pause</option>
-                <option value="cancelled">Annulé</option>
+                <option value="active">{t('projects.active')}</option>
+                <option value="completed">{t('projects.completed')}</option>
+                <option value="on_hold">{t('projects.on_hold')}</option>
+                <option value="cancelled">{t('projects.cancelled')}</option>
               </Select>
             </div>
           </div>
 
           <div>
-            <label className="label">Pole</label>
+            <label className="label">{t('users.form.pole')}</label>
             <AutocompleteInput
               value={formData.pole}
               onChange={(value) => setFormData({ ...formData, pole: value })}
               suggestions={poleSuggestions}
-              placeholder="Pole..."
+              placeholder={t('users.form.selectPole')}
               className="w-full"
             />
           </div>
 
           <div>
-            <label className="label">Assigner des responsables</label>
+            <label className="label">{t('projects.assignUsers')}</label>
             <div className="max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg p-2 space-y-1 bg-white dark:bg-gray-700">
               {users.map((user) => (
                 <label
@@ -799,16 +831,16 @@ export default function ProjectManagement() {
 
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4">
             <button type="button" onClick={closeModal} className="btn-secondary w-full sm:w-auto">
-              Annuler
+              {t('common.cancel')}
             </button>
             <button type="submit" disabled={saving} className="btn-primary w-full sm:w-auto">
               {saving ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Enregistrement...
+                  {t('common.loading')}
                 </span>
               ) : (
-                editingProject ? 'Mettre à jour' : 'Créer le projet'
+                editingProject ? t('common.update') : t('common.create')
               )}
             </button>
           </div>
@@ -817,10 +849,10 @@ export default function ProjectManagement() {
 
       <ConfirmDialog
         isOpen={!!confirmProject}
-        title="Confirm"
-        message={confirmProject ? `Are you sure you want to delete ${confirmProject.name}?` : ''}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        title={t('common.confirm')}
+        message={confirmProject ? t('projects.confirmDelete') : ''}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
         variant="danger"
         onConfirm={confirmDeleteProject}
         onCancel={() => setConfirmProject(null)}

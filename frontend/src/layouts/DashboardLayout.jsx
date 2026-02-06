@@ -7,6 +7,8 @@ import { useLanguage } from '../i18n'
 import { bugReportService, notificationService } from '../services/api'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { Modal } from '../components/ui'
+import UrgentNotificationComposer from '../components/notifications/UrgentNotificationComposer'
+import UrgentNotificationOverlay from '../components/notifications/UrgentNotificationOverlay'
 import bugReportRecorder from '../utils/bugReportRecorder'
 import toast from 'react-hot-toast'
 import {
@@ -54,7 +56,6 @@ import {
   Gavel,
   Handshake,
   Bug,
-  Eye,
   FileText,
   Square,
   Play,
@@ -68,6 +69,7 @@ export default function DashboardLayout() {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false)
   const [devToolsOpen, setDevToolsOpen] = useState(false)
+  const [urgentComposerOpen, setUrgentComposerOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifications, setNotifications] = useState([])
 
@@ -98,6 +100,8 @@ export default function DashboardLayout() {
   const adminLikeRoles = ['admin', 'consultation', 'pole_director', 'works_director', 'hse_director', 'hr_director']
   const isUserAdminLike = isUserAdmin || (user?.role === 'dev' && !simulatedRole) || adminLikeRoles.includes(effectiveRole)
   const isAdminArea = location.pathname.startsWith('/admin')
+
+  const canSendUrgent = isUserAdminLike
 
   const roleLabel = (role) => {
     const r = String(role || '').trim()
@@ -255,7 +259,6 @@ export default function DashboardLayout() {
     { to: '/admin', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/admin/users', icon: Users, label: t('users.title') },
     { to: '/admin/projects', icon: FolderKanban, label: t('projects.title') },
-    { to: '/admin/bug-reports', icon: Bug, label: t('nav.bugReports') },
     { to: '/admin/kpi', icon: Gauge, label: t('kpi.title') },
     { to: '/admin/kpi-history', icon: History, label: t('kpi.history') },
     { to: '/admin/hse-events', icon: Siren, label: t('nav.hseEvents') },
@@ -276,7 +279,6 @@ export default function DashboardLayout() {
 
   const directorNavItems = [
     { to: '/admin', icon: LayoutDashboard, label: t('nav.dashboard') },
-    { to: '/admin/bug-reports', icon: Bug, label: t('nav.bugReports') },
     { to: '/admin/kpi', icon: Gauge, label: t('kpi.title') },
     { to: '/admin/kpi-history', icon: History, label: t('kpi.history') },
     { to: '/admin/hse-events', icon: Siren, label: t('nav.hseEvents') },
@@ -296,7 +298,6 @@ export default function DashboardLayout() {
 
   const hrDirectorNavItems = [
     { to: '/admin', icon: LayoutDashboard, label: t('nav.dashboard') },
-    { to: '/admin/bug-reports', icon: Bug, label: t('nav.bugReports') },
     { to: '/admin/effectif', icon: UserRound, label: t('effectif.title') },
     { to: '/admin/workers', icon: HardHat, label: t('workers.title') },
   ]
@@ -833,19 +834,13 @@ export default function DashboardLayout() {
 
               {/* Bug report */}
               <div className="flex items-center gap-2">
-                {isUserAdminLike && (
-                  <button
-                    onClick={() => navigate('/admin/bug-reports')}
-                    className="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
-                    title={t('nav.bugReports')}
-                  >
-                    <Eye className="w-4 h-4" />
-                    {t('common.view')}
-                  </button>
-                )}
-
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    if (isUserAdmin && (e.ctrlKey || e.metaKey)) {
+                      navigate('/admin/bug-reports')
+                      return
+                    }
+
                     setBugModalOpen(true)
                     setNotificationDropdownOpen(false)
                     setProfileDropdownOpen(false)
@@ -858,6 +853,23 @@ export default function DashboardLayout() {
                   <span className="hidden sm:inline">{t('bugReport.open')}</span>
                 </button>
               </div>
+
+              {/* Urgent notification (admin-like) */}
+              {canSendUrgent && (
+                <button
+                  onClick={() => {
+                    setUrgentComposerOpen(true)
+                    setNotificationDropdownOpen(false)
+                    setProfileDropdownOpen(false)
+                    setDevToolsOpen(false)
+                  }}
+                  className="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-sm font-semibold text-red-700 dark:text-red-200"
+                  title={t('notifications.urgent.sendButton')}
+                >
+                  <Siren className="w-4 h-4" />
+                  {t('notifications.urgent.sendButton')}
+                </button>
+              )}
 
               {/* Language Switcher */}
               <LanguageSwitcher variant="compact" />
@@ -1280,6 +1292,13 @@ export default function DashboardLayout() {
           )
         })()}
       </Modal>
+
+      <UrgentNotificationComposer
+        isOpen={urgentComposerOpen}
+        onClose={() => setUrgentComposerOpen(false)}
+      />
+
+      <UrgentNotificationOverlay enabled={!!user} />
 
       {/* Click outside to close dropdowns */}
       {(profileDropdownOpen || notificationDropdownOpen || devToolsOpen) && (

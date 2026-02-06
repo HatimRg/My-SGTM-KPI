@@ -11,10 +11,13 @@ class Notification extends Model
 
     protected $fillable = [
         'user_id',
+        'sent_by',
         'project_id',
         'title',
         'message',
         'type',
+        'urgency',
+        'dedupe_key',
         'icon',
         'data',
         'action_url',
@@ -33,6 +36,7 @@ class Notification extends Model
     const TYPE_ERROR = 'error';
     const TYPE_SYSTEM = 'system';
     const TYPE_REMINDER = 'reminder';
+    const TYPE_URGENT = 'urgent';
     const TYPE_KPI_SUBMITTED = 'kpi_submitted';
     const TYPE_KPI_APPROVED = 'kpi_approved';
     const TYPE_KPI_REJECTED = 'kpi_rejected';
@@ -53,6 +57,11 @@ class Notification extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function sender()
+    {
+        return $this->belongsTo(User::class, 'sent_by');
     }
 
     public function project()

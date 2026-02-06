@@ -30,6 +30,9 @@ import {
 } from 'recharts'
 import toast from 'react-hot-toast'
 
+const tooltipPortal = typeof document !== 'undefined' ? document.body : null
+const tooltipWrapperStyle = { zIndex: 9999, pointerEvents: 'none' }
+
 export default function ProjectDetails() {
   const { id } = useParams()
   const location = useLocation()
@@ -288,7 +291,11 @@ export default function ProjectDetails() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="week" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip />
+                    <Tooltip
+                      allowEscapeViewBox={{ x: true, y: true }}
+                      portal={tooltipPortal}
+                      wrapperStyle={tooltipWrapperStyle}
+                    />
                     <Legend />
                     <Line type="monotone" dataKey="accidents" stroke="#dc2626" name={t('projects.metrics.accidents')} />
                     <Line type="monotone" dataKey="trainings_conducted" stroke="#3b82f6" name={t('projects.metrics.trainings')} />
@@ -317,7 +324,11 @@ export default function ProjectDetails() {
                     <CartesianGrid strokeDasharray="3 3" className="dark:opacity-20" />
                     <XAxis dataKey="week" tick={{ fontSize: 12 }} className="dark:text-gray-400" />
                     <YAxis tick={{ fontSize: 12 }} className="dark:text-gray-400" />
-                    <Tooltip />
+                    <Tooltip
+                      allowEscapeViewBox={{ x: true, y: true }}
+                      portal={tooltipPortal}
+                      wrapperStyle={tooltipWrapperStyle}
+                    />
                     <Legend />
                     <Line type="monotone" dataKey="tf" stroke="#f59e0b" name={t('projects.metrics.tfRate')} />
                     <Line type="monotone" dataKey="tg" stroke="#8b5cf6" name={t('projects.metrics.tgRate')} />
