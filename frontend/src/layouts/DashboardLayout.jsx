@@ -82,6 +82,8 @@ export default function DashboardLayout() {
   const [bugExtraNotes, setBugExtraNotes] = useState('')
   const [bugRecorderTick, setBugRecorderTick] = useState(0)
 
+  const unreadFetchingRef = useRef(false)
+
   const { user, logout, isAdmin } = useAuthStore()
   const { simulatedRole, setSimulatedRole, clearSimulatedRole, projectScope, setProjectScope } = useDevStore()
   const { isDark, toggleTheme } = useThemeStore()
@@ -112,26 +114,54 @@ export default function DashboardLayout() {
   }
 
   // Fetch notifications (only when user is authenticated)
+  // Optimized: single-flight guard + visibility-based pause + longer interval
   useEffect(() => {
     if (!user) return // Don't fetch if user is not logged in
 
+    let timerId = null
+    let cancelled = false
+
     const fetchUnreadCount = async () => {
+      if (unreadFetchingRef.current) return
+      if (document.hidden) return // Skip if tab is hidden
+      unreadFetchingRef.current = true
       try {
         const countRes = await notificationService.getUnreadCount()
-        setUnreadCount(countRes.data?.data?.count ?? 0)
+        if (!cancelled) {
+          setUnreadCount(countRes.data?.data?.count ?? 0)
+        }
       } catch (error) {
         // Silently handle auth errors (403/401) - user might be logging out
         if (error.response?.status !== 403 && error.response?.status !== 401) {
           console.error('Error fetching notifications:', error)
         }
+      } finally {
+        unreadFetchingRef.current = false
       }
     }
 
-    fetchUnreadCount()
+    const scheduleNext = () => {
+      if (cancelled) return
+      timerId = setTimeout(() => {
+        fetchUnreadCount().then(scheduleNext)
+      }, 45000) // Poll every 45 seconds (was 30s)
+    }
 
-    // Poll unread count every 30 seconds
-    const interval = setInterval(fetchUnreadCount, 30000)
-    return () => clearInterval(interval)
+    fetchUnreadCount().then(scheduleNext)
+
+    // Pause/resume on visibility change
+    const onVisibilityChange = () => {
+      if (!document.hidden && !unreadFetchingRef.current) {
+        fetchUnreadCount()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      cancelled = true
+      if (timerId) clearTimeout(timerId)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
   }, [user])
 
   useEffect(() => {
