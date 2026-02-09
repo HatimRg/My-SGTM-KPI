@@ -30,14 +30,17 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
 {
     protected int $year;
     protected string $lang;
+    protected ?string $pole;
     protected int $maxHseManagers;
     protected bool $hasExtraHseManagers;
 
-    public function __construct(int $year, string $lang = 'fr')
+    public function __construct(int $year, string $lang = 'fr', ?string $pole = null)
     {
         $this->year = $year;
         $lang = strtolower(trim($lang));
         $this->lang = in_array($lang, ['en', 'fr'], true) ? $lang : 'fr';
+        $pole = is_string($pole) ? trim($pole) : null;
+        $this->pole = ($pole !== null && $pole !== '') ? $pole : null;
         $this->maxHseManagers = 0;
         $this->hasExtraHseManagers = false;
     }
@@ -111,7 +114,12 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
 
     private function buildHseManagerColumns(): void
     {
-        $projects = Project::query()->with('hseManagers')->get();
+        $projectsQuery = Project::query()->with('hseManagers');
+        if ($this->pole !== null) {
+            $projectsQuery->where('pole', $this->pole);
+        }
+
+        $projects = $projectsQuery->get();
         $max = 0;
         foreach ($projects as $project) {
             $count = $project->hseManagers?->count() ?? 0;
@@ -172,10 +180,14 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
             $this->buildHseManagerColumns();
         }
 
-        $projects = Project::query()
+        $projectsQuery = Project::query()
             ->with(['hseManagers'])
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name');
+        if ($this->pole !== null) {
+            $projectsQuery->where('pole', $this->pole);
+        }
+
+        $projects = $projectsQuery->get();
 
         $kpiRows = KpiReport::query()
             ->select(['project_id', 'week_number', 'toolbox_talks', 'status', 'start_date', 'report_date', 'report_year'])

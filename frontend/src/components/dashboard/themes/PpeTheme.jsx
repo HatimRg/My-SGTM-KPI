@@ -37,7 +37,8 @@ const TooltipContent = memo(function TooltipContent({ active, payload, label, t,
   const dataKey = String(first?.dataKey ?? '')
   const poleKey = dataKey.includes('__p_') ? dataKey.split('__p_')[0] : ''
   const poleLabel = poleLabelByKey?.[poleKey] ?? ''
-  const title = poleLabel ? `${label} • ${poleLabel}` : label
+  const baseTitle = (typeof first?.name === 'string' && first.name.trim() !== '') ? first.name : label
+  const title = poleLabel ? `${baseTitle} • ${poleLabel}` : baseTitle
 
   const visible = payload.filter((p) => Number(p?.value ?? 0) > 0)
 

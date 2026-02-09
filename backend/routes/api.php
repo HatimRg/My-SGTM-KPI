@@ -174,6 +174,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/management-export', [ProjectController::class, 'managementExport']);
         });
 
+        // Regional HSE Manager utility routes
+        Route::get('/management-export-regional', [ProjectController::class, 'regionalManagementExport']);
+
         Route::get('/{project}', [ProjectController::class, 'show']);
         Route::get('/{project}/kpi-trends', [ProjectController::class, 'kpiTrends']);
         

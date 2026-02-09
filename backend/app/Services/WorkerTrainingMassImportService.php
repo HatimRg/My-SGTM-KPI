@@ -332,7 +332,12 @@ class WorkerTrainingMassImportService
                     continue;
                 }
 
-                $worker = Worker::query()->where('cin', $cin)->first();
+                $workerQuery = Worker::query()->where('cin', $cin);
+                $cinNoDashes = str_replace('-', '', $cin);
+                if ($cinNoDashes !== $cin) {
+                    $workerQuery->orWhereRaw("REPLACE(cin, '-', '') = ?", [$cinNoDashes]);
+                }
+                $worker = $workerQuery->first();
                 if (!$worker) {
                     $failedRows[] = $this->failRow($cin, $trainingType, $trainingDate, $expiryDate, 'Worker not found');
                     $rowFailed = true;
@@ -505,7 +510,7 @@ class WorkerTrainingMassImportService
             }
 
             $value = preg_replace('/\s+/u', '', $value);
-            $value = preg_replace('/[^A-Za-z0-9]/', '', $value);
+            $value = preg_replace('/[^A-Za-z0-9-]/', '', $value);
             $value = trim($value);
             return $value === '' ? null : strtoupper($value);
         }
@@ -520,7 +525,7 @@ class WorkerTrainingMassImportService
 
         $v = trim(str_replace("\u{00A0}", ' ', (string) $value));
         $v = preg_replace('/\s+/u', '', $v);
-        $v = preg_replace('/[^A-Za-z0-9]/', '', $v);
+        $v = preg_replace('/[^A-Za-z0-9-]/', '', $v);
         $v = trim($v);
         return $v === '' ? null : strtoupper($v);
     }

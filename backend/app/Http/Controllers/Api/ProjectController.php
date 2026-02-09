@@ -16,6 +16,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Excel as ExcelFormat;
 use App\Exports\ProjectsTemplateExport;
 use App\Exports\ProjectManagementExport;
+use App\Exports\ProjectManagementRegionalExport;
 use App\Exports\ProjectsFailedRowsExport;
 use App\Exports\Sheets\NeverAccessedUsersSheet;
 use App\Exports\Sheets\ProjectManagementProjectsSheet;
@@ -117,6 +118,86 @@ class ProjectController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
             return $this->error('Failed to generate template: ' . $e->getMessage(), 422);
+        }
+    }
+
+    /**
+     * Regional HSE Manager Project Management Excel export.
+     * Same format as the admin export but:
+     *  - Only projects from the user's pole
+     *  - Only the projects sheet (no "never accessed users" sheet)
+     */
+    public function regionalManagementExport(Request $request)
+    {
+        $request->validate([
+            'year' => 'nullable|integer|min:2020|max:2100',
+            'lang' => 'nullable|string|in:en,fr',
+        ]);
+
+        try {
+            if (!class_exists(\ZipArchive::class) || !extension_loaded('zip')) {
+                return $this->error('XLSX export requires PHP zip extension (ZipArchive). Please enable/install php-zip on the server.', 422);
+            }
+
+            $user = $request->user();
+            if (!$user || !$user->isRegionalHseManager()) {
+                return $this->error('Access denied', 403);
+            }
+
+            $pole = is_string($user->pole) ? trim($user->pole) : '';
+            if ($pole === '') {
+                return $this->error('Pole is required for regional export', 422);
+            }
+
+            $lang = (string) ($request->get('lang') ?: ($user->preferred_language ?? 'fr'));
+            $year = (int) ($request->get('year') ?: date('Y'));
+
+            $templatePath = storage_path('app/templates/SGTM-Project-Management-Export-Template.xlsm');
+            if (is_file($templatePath)) {
+                $projectsSheet = new ProjectManagementProjectsSheet($year, $lang, $pole);
+
+                $reader = IOFactory::createReader('Xlsm');
+                $reader->setReadDataOnly(false);
+                $spreadsheet = $reader->load($templatePath);
+                if (method_exists($spreadsheet, 'setHasMacros')) {
+                    $spreadsheet->setHasMacros(true);
+                }
+
+                $ws1 = $spreadsheet->getSheetCount() >= 1 ? $spreadsheet->getSheet(0) : $spreadsheet->createSheet(0);
+                $ws1->setTitle($projectsSheet->title());
+                $ws1->fromArray($projectsSheet->headings(), null, 'A1', true);
+                $ws1->fromArray($projectsSheet->array(), null, 'A2', true);
+
+                $ws1Styles = $projectsSheet->styles($ws1);
+                if (is_array($ws1Styles) && isset($ws1Styles[1]) && is_array($ws1Styles[1])) {
+                    $ws1->getStyle('A1:' . $ws1->getHighestColumn() . '1')->applyFromArray($ws1Styles[1]);
+                }
+
+                // Ensure there is only one sheet for the regional export
+                while ($spreadsheet->getSheetCount() > 1) {
+                    $spreadsheet->removeSheetByIndex(1);
+                }
+
+                $filename = 'SGTM-Project-Management-Export_' . $pole . '_' . $year . '_' . date('Y-m-d_His') . '.xlsm';
+
+                return response()->streamDownload(function () use ($spreadsheet) {
+                    $writer = new Xlsm($spreadsheet);
+                    $writer->save('php://output');
+                    $spreadsheet->disconnectWorksheets();
+                    unset($spreadsheet);
+                }, $filename, [
+                    'Content-Type' => 'application/vnd.ms-excel.sheet.macroEnabled.12',
+                ]);
+            }
+
+            $filename = 'SGTM-Project-Management-Export_' . $pole . '_' . $year . '_' . date('Y-m-d_His') . '.xlsx';
+            return Excel::download(new ProjectManagementRegionalExport($year, $lang, $pole), $filename);
+        } catch (\Throwable $e) {
+            Log::error('Regional project management export failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return $this->error('Failed to export: ' . $e->getMessage(), 422);
         }
     }
 
