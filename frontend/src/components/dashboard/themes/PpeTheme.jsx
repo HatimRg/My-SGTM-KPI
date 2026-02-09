@@ -7,10 +7,10 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
   ResponsiveContainer,
 } from 'recharts'
 import toast from 'react-hot-toast'
+import { SmartTooltip } from '../../ui'
 
 const COLORS = [
   '#3b82f6',
@@ -26,9 +26,6 @@ const COLORS = [
   '#0ea5e9',
   '#a855f7',
 ]
-
-const tooltipPortal = typeof document !== 'undefined' ? document.body : null
-const tooltipWrapperStyle = { zIndex: 9999, pointerEvents: 'none' }
 
 const TooltipContent = memo(function TooltipContent({ active, payload, label, t, poleLabelByKey }) {
   if (!active || !payload || payload.length === 0) return null
@@ -373,14 +370,9 @@ const PpeTheme = memo(function PpeTheme({ year, projectId, pole }) {
                   width={60}
                   label={{ value: t('ppe.analytics.yAxis'), angle: -90, position: 'insideLeft' }}
                 />
-                <Tooltip
+                <SmartTooltip
                   shared={false}
-                  allowEscapeViewBox={{ x: true, y: true }}
-                  portal={tooltipPortal}
-                  wrapperStyle={tooltipWrapperStyle}
-                  content={(props) => (
-                    <TooltipContent {...props} t={t} poleLabelByKey={poleLabelByKey} />
-                  )}
+                  content={(props) => <TooltipContent {...props} t={t} poleLabelByKey={poleLabelByKey} />}
                 />
 
                 {projectSeries.map((s) => (

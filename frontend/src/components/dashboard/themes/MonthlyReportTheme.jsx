@@ -10,13 +10,13 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
   ResponsiveContainer,
   ComposedChart,
   Customized,
 } from 'recharts'
 import JSZip from 'jszip'
 import { Download, Loader2 } from 'lucide-react'
+import { SmartTooltip } from '../../ui'
 
 const SGTM_COLORS = {
   orange: '#F2A93B',
@@ -461,15 +461,11 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     })
   }, [filteredPoles, labels, sections?.medical])
 
-  const tooltipPortal = typeof document !== 'undefined' ? document.body : null
-
   const tooltipDark = {
     contentStyle: { backgroundColor: CHART_THEME.tooltipBg, border: `1px solid ${CHART_THEME.grid}`, borderRadius: 10 },
     labelStyle: { color: CHART_THEME.label, fontWeight: 700 },
     itemStyle: { color: CHART_THEME.label },
     allowEscapeViewBox: { x: true, y: true },
-    portal: tooltipPortal,
-    wrapperStyle: { zIndex: 9999, pointerEvents: 'none' },
   }
 
   const axisCommon = {
@@ -741,7 +737,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis domain={[0, 100]} {...axisCommon} />
-                    <Tooltip
+                    <SmartTooltip
                       {...tooltipDark}
                       content={({ active, payload: p, label }) => {
                         if (!active || !p || p.length === 0) return null
@@ -789,7 +785,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis yAxisId="left" allowDecimals={false} {...axisCommon} />
                     <YAxis yAxisId="right" orientation="right" domain={[0, 100]} {...axisCommon} />
-                    <Tooltip
+                    <SmartTooltip
                       {...tooltipDark}
                       content={({ active, payload: p, label }) => {
                         if (!active || !p || p.length === 0) return null
@@ -835,7 +831,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis {...axisCommon} />
-                    <Tooltip
+                    <SmartTooltip
                       {...tooltipDark}
                       formatter={(value) => [`${safeNumber(value).toFixed(2)} ${t('common.hourShort')}`, t('dashboard.monthlyReport.avgHours')]}
                     />
@@ -864,7 +860,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis yAxisId="left" allowDecimals={false} {...axisCommon} />
                     <YAxis yAxisId="right" orientation="right" {...axisCommon} />
-                    <Tooltip
+                    <SmartTooltip
                       {...tooltipDark}
                       content={({ active, payload: p, label }) => {
                         if (!active || !p || p.length === 0) return null
@@ -912,7 +908,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis yAxisId="left" allowDecimals={false} {...axisCommon} />
                     <YAxis yAxisId="right" orientation="right" {...axisCommon} />
-                    <Tooltip
+                    <SmartTooltip
                       {...tooltipDark}
                       content={({ active, payload: p, label }) => {
                         if (!active || !p || p.length === 0) return null
@@ -959,7 +955,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis domain={[0, 100]} {...axisCommon} />
-                    <Tooltip
+                    <SmartTooltip
                       {...tooltipDark}
                       formatter={(value) => [`${safeNumber(value).toFixed(2)}%`, t('dashboard.monthlyReport.medicalConformity')]}
                     />
@@ -1048,7 +1044,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis yAxisId="left" allowDecimals={false} {...axisCommon} />
                     <YAxis yAxisId="right" orientation="right" domain={[0, 100]} {...axisCommon} />
-                    <Tooltip
+                    <SmartTooltip
                       {...tooltipDark}
                       content={({ active, payload: p, label }) => {
                         if (!active || !p || p.length === 0) return null
@@ -1094,7 +1090,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis {...axisCommon} />
-                    <Tooltip
+                    <SmartTooltip
                       {...tooltipDark}
                       formatter={(value) => [`${safeNumber(value).toFixed(2)} ${t('common.hourShort')}`, t('dashboard.monthlyReport.avgHours')]}
                     />

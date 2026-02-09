@@ -14,6 +14,8 @@ export default function UrgentNotificationOverlay({ enabled }) {
 
   const seenIdsRef = useRef(new Set())
   const pollingRef = useRef(null)
+  const inFlightRef = useRef(false)
+  const failureCountRef = useRef(0)
 
   const forcedSeconds = useMemo(() => {
     const raw = active?.data?.forced_visibility_seconds
@@ -80,12 +82,41 @@ export default function UrgentNotificationOverlay({ enabled }) {
       return
     }
 
-    const fetchUrgent = async () => {
+    let cancelled = false
+
+    const stopTimer = () => {
+      if (pollingRef.current) {
+        clearTimeout(pollingRef.current)
+        pollingRef.current = null
+      }
+    }
+
+    const computeDelay = () => {
+      const base = 4000
+      const failures = Math.min(6, Math.max(0, failureCountRef.current))
+      const backoff = base * Math.pow(2, failures)
+      const jitter = Math.floor(Math.random() * 400)
+      return Math.min(60000, backoff + jitter)
+    }
+
+    const scheduleNext = (ms) => {
+      stopTimer()
+      pollingRef.current = setTimeout(() => {
+        loop()
+      }, ms)
+    }
+
+    const fetchUrgentOnce = async () => {
+      if (inFlightRef.current) return
+      inFlightRef.current = true
+
       try {
         const res = await notificationService.urgentUnread({ after_id: afterId ?? undefined, limit: 20 })
         const payload = res.data?.data
         const items = payload?.items ?? []
         const lastId = payload?.last_id
+
+        failureCountRef.current = 0
 
         if (typeof lastId === 'number' || (typeof lastId === 'string' && String(lastId) !== '')) {
           setAfterId((prev) => {
@@ -97,32 +128,37 @@ export default function UrgentNotificationOverlay({ enabled }) {
           })
         }
 
-        if (!Array.isArray(items) || items.length === 0) return
+        if (Array.isArray(items) && items.length > 0) {
+          const unseen = items.filter((n) => {
+            if (!n?.id) return false
+            if (seenIdsRef.current.has(n.id)) return false
+            seenIdsRef.current.add(n.id)
+            return true
+          })
 
-        const unseen = items.filter((n) => {
-          if (!n?.id) return false
-          if (seenIdsRef.current.has(n.id)) return false
-          seenIdsRef.current.add(n.id)
-          return true
-        })
-
-        if (unseen.length === 0) return
-
-        setQueue((prev) => {
-          const next = [...prev, ...unseen]
-          return next
-        })
+          if (unseen.length > 0) {
+            setQueue((prev) => [...prev, ...unseen])
+          }
+        }
       } catch {
-        // ignore
+        failureCountRef.current += 1
+      } finally {
+        inFlightRef.current = false
       }
     }
 
-    fetchUrgent()
+    const loop = async () => {
+      if (cancelled) return
+      await fetchUrgentOnce()
+      if (cancelled) return
+      scheduleNext(computeDelay())
+    }
 
-    pollingRef.current = setInterval(fetchUrgent, 4000)
+    loop()
+
     return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current)
-      pollingRef.current = null
+      cancelled = true
+      stopTimer()
     }
   }, [enabled, afterId])
 

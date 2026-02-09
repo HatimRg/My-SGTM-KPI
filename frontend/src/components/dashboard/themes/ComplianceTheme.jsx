@@ -16,9 +16,9 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
   ResponsiveContainer
 } from 'recharts'
+import { SmartTooltip } from '../../ui'
 
 const COLORS = {
   compliance: '#16a34a',
@@ -26,9 +26,6 @@ const COLORS = {
   major: '#f59e0b',
   minor: '#3b82f6'
 }
-
-const tooltipPortal = typeof document !== 'undefined' ? document.body : null
-const tooltipWrapperStyle = { zIndex: 9999, pointerEvents: 'none' }
 
 const MetricCard = memo(function MetricCard({ title, value, icon: Icon, color, trend }) {
   const colors = {
@@ -174,13 +171,7 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                   <XAxis dataKey="week" tick={{ fontSize: 11 }} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                    labelStyle={{ color: '#f3f4f6' }}
-                    allowEscapeViewBox={{ x: true, y: true }}
-                    portal={tooltipPortal}
-                    wrapperStyle={tooltipWrapperStyle}
-                  />
+                  <SmartTooltip />
                   <Area 
                     type="monotone" 
                     dataKey="inspections" 
@@ -206,13 +197,7 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                    labelStyle={{ color: '#f3f4f6' }}
-                    allowEscapeViewBox={{ x: true, y: true }}
-                    portal={tooltipPortal}
-                    wrapperStyle={tooltipWrapperStyle}
-                  />
+                  <SmartTooltip />
                   <Bar dataKey="count" fill={COLORS.compliance} name={t('dashboard.compliance.totalInspections')} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -233,12 +218,10 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                     <XAxis dataKey="week" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} />
-                    <Tooltip
+                    <SmartTooltip
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
                       allowEscapeViewBox={{ x: true, y: true }}
-                      portal={tooltipPortal}
-                      wrapperStyle={tooltipWrapperStyle}
                       formatter={(value) => [`${value}%`, t('dashboard.compliance.regulatoryWatchScore')]}
                     />
                     <Line
@@ -269,12 +252,10 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                     <XAxis dataKey="week" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} />
-                    <Tooltip
+                    <SmartTooltip
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
                       allowEscapeViewBox={{ x: true, y: true }}
-                      portal={tooltipPortal}
-                      wrapperStyle={tooltipWrapperStyle}
                       formatter={(value) => [`${value}%`, t('dashboard.compliance.aptitudePercent')]}
                     />
                     <Line

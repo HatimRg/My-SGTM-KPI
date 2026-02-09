@@ -20,10 +20,10 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
   ResponsiveContainer,
   Legend
 } from 'recharts'
+import { SmartTooltip } from '../../ui'
 
 const COLORS = {
   hse: '#3b82f6',
@@ -31,9 +31,6 @@ const COLORS = {
   softSkills: '#ec4899',
   compliance: '#14b8a6'
 }
-
-const tooltipPortal = typeof document !== 'undefined' ? document.body : null
-const tooltipWrapperStyle = { zIndex: 9999, pointerEvents: 'none' }
 
 const MetricCard = memo(function MetricCard({ title, value, icon: Icon, color, trend }) {
   const colors = {
@@ -213,17 +210,7 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                         tick={{ fontSize: 10 }}
                         width={120}
                       />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                        labelStyle={{ color: '#f3f4f6' }}
-                        allowEscapeViewBox={{ x: true, y: true }}
-                        portal={tooltipPortal}
-                        wrapperStyle={tooltipWrapperStyle}
-                        formatter={(value, name, props) => [
-                          `${value} ${t('dashboard.training.metrics.sessions') || 'sessions'} (${props.payload.participants} ${t('dashboard.training.metrics.participants') || 'participants'})`,
-                          t('dashboard.training.metrics.sessions') || 'Sessions'
-                        ]}
-                      />
+                      <SmartTooltip />
                       <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                         {awarenessByTheme.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
@@ -303,18 +290,13 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                   <XAxis dataKey="week" tick={{ fontSize: 11 }} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                    labelStyle={{ color: '#f3f4f6' }}
-                    allowEscapeViewBox={{ x: true, y: true }}
-                    portal={tooltipPortal}
-                    wrapperStyle={tooltipWrapperStyle}
-                  />
+                  <SmartTooltip />
                   <Area 
                     type="monotone" 
                     dataKey="trainings" 
                     stroke="#3b82f6" 
-                    fill="url(#trainingGradient)" 
+                    fill="#3b82f6" 
+                    fillOpacity={0.2} 
                     name={t('dashboard.training.metrics.sessions') || 'Sessions'}
                   />
                 </AreaChart>
@@ -341,17 +323,7 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                       tick={{ fontSize: 10 }} 
                       width={120}
                     />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                      labelStyle={{ color: '#f3f4f6' }}
-                      allowEscapeViewBox={{ x: true, y: true }}
-                      portal={tooltipPortal}
-                      wrapperStyle={tooltipWrapperStyle}
-                      formatter={(value, name, props) => [
-                        `${value} ${t('dashboard.training.metrics.sessions') || 'sessions'} (${props.payload.participants} ${t('dashboard.training.metrics.participants') || 'participants'})`,
-                        t('dashboard.training.metrics.sessions') || 'Sessions'
-                      ]}
-                    />
+                    <SmartTooltip />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                       {trainingByTheme.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
@@ -384,20 +356,8 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                     <XAxis dataKey="duration" tick={{ fontSize: 11 }} />
                     <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                      labelStyle={{ color: '#f3f4f6' }}
-                      allowEscapeViewBox={{ x: true, y: true }}
-                      portal={tooltipPortal}
-                      wrapperStyle={tooltipWrapperStyle}
-                      formatter={(value, name) => [
-                        value,
-                        name === 'count'
-                          ? (t('dashboard.training.metrics.sessions') || 'Sessions')
-                          : (t('dashboard.training.metrics.participants') || 'Participants')
-                      ]}
-                    />
-                    <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} name={t('dashboard.training.metrics.sessions') || 'Sessions'} />
+                    <SmartTooltip />
+                    <Bar dataKey="count" fill={COLORS.compliance} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -422,29 +382,15 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                     <Pie
                       data={trainingByType}
                       cx="50%"
-                      cy="45%"
-                      innerRadius={40}
-                      outerRadius={70}
-                      paddingAngle={5}
+                      cy="50%"
+                      outerRadius={90}
                       dataKey="value"
-                      label={({ value }) => value}
-                      labelLine={false}
                     >
                       {trainingByType.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip
-                      formatter={(value, name) => [value, name]}
-                      allowEscapeViewBox={{ x: true, y: true }}
-                      portal={tooltipPortal}
-                      wrapperStyle={tooltipWrapperStyle}
-                    />
-                    <Legend 
-                      verticalAlign="bottom" 
-                      height={36}
-                      formatter={(value) => <span className="text-sm">{value}</span>}
-                    />
+                    <SmartTooltip formatter={(value, name) => [value, name]} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
