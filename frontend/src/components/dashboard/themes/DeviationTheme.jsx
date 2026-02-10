@@ -25,7 +25,7 @@ import {
   Scatter,
   ZAxis,
 } from 'recharts'
-import { SmartTooltip } from '../../ui'
+import { Tooltip } from 'recharts'
 
 const COLORS = {
   open: '#dc2626',
@@ -349,10 +349,11 @@ const DeviationTheme = memo(function DeviationTheme({ year, projects: _projects,
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                     <XAxis type="number" tick={{ fontSize: 11 }} />
                     <YAxis type="category" dataKey="pole" width={92} tick={{ fontSize: 11 }} />
-                    <SmartTooltip
+                    <Tooltip
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
                       allowEscapeViewBox={{ x: true, y: true }}
+                      wrapperStyle={{ zIndex: 9999 }}
                       formatter={(value) => [value, t('dashboard.deviations.analytics.count')]}
                     />
                     <Bar dataKey="total" radius={[0, 6, 6, 0]} barSize={38}>
@@ -426,10 +427,11 @@ const DeviationTheme = memo(function DeviationTheme({ year, projects: _projects,
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                     <XAxis type="number" tick={{ fontSize: 11 }} />
                     <YAxis type="category" dataKey="theme" width={160} tick={{ fontSize: 11 }} />
-                    <SmartTooltip
+                    <Tooltip
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
                       allowEscapeViewBox={{ x: true, y: true }}
+                      wrapperStyle={{ zIndex: 9999 }}
                       formatter={(value, name, props) => [formatHours(value), t('dashboard.deviations.analytics.hours')]}
                       labelFormatter={(label, payload) => payload?.[0]?.payload?.theme_full ?? label}
                     />
@@ -501,10 +503,11 @@ const DeviationTheme = memo(function DeviationTheme({ year, projects: _projects,
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                     <XAxis type="number" tick={{ fontSize: 11 }} />
                     <YAxis type="category" dataKey="theme" width={170} tick={{ fontSize: 11 }} />
-                    <SmartTooltip
+                    <Tooltip
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
                       allowEscapeViewBox={{ x: true, y: true }}
+                      wrapperStyle={{ zIndex: 9999 }}
                       labelFormatter={(label, payload) => payload?.[0]?.payload?.theme_full ?? label}
                     />
                     <Bar dataKey="count" fill={COLORS.unresolved} radius={[0, 6, 6, 0]}>
@@ -531,10 +534,11 @@ const DeviationTheme = memo(function DeviationTheme({ year, projects: _projects,
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                     <XAxis type="number" tick={{ fontSize: 11 }} />
                     <YAxis type="category" dataKey="theme" width={170} tick={{ fontSize: 11 }} />
-                    <SmartTooltip
+                    <Tooltip
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
                       allowEscapeViewBox={{ x: true, y: true }}
+                      wrapperStyle={{ zIndex: 9999 }}
                       labelFormatter={(label, payload) => payload?.[0]?.payload?.theme_full ?? label}
                     />
                     <Legend />
@@ -562,10 +566,11 @@ const DeviationTheme = memo(function DeviationTheme({ year, projects: _projects,
                     <XAxis type="number" dataKey="avg_hours" name={t('dashboard.deviations.analytics.avgResolution')} tick={{ fontSize: 11 }} />
                     <YAxis type="category" dataKey="theme" name={t('dashboard.deviations.analytics.theme')} width={220} tick={{ fontSize: 11 }} />
                     <ZAxis type="number" dataKey="count" range={[80, 600]} />
-                    <SmartTooltip
+                    <Tooltip
                       cursor={{ strokeDasharray: '3 3' }}
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
+                      wrapperStyle={{ zIndex: 9999 }}
                       allowEscapeViewBox={{ x: true, y: true }}
                       formatter={(value, name, props) => {
                         if (name === 'avg_hours') return [formatHours(value), t('dashboard.deviations.analytics.avgResolution')]

@@ -29,7 +29,7 @@ import {
   Scatter
 } from 'recharts'
 
-import { SmartTooltip } from '../../ui'
+import { Tooltip } from 'recharts'
 
 const COLORS = {
   fatal: '#dc2626',
@@ -324,7 +324,7 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                         tick={{ fontSize: 10 }}
                         width={120}
                       />
-                      <SmartTooltip allowEscapeViewBox={{ x: true, y: true }} />
+                      <Tooltip allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                       <Legend />
                       <Bar dataKey="fatal" stackId="a" fill="#dc2626" name={t('dashboard.safety.eventTypes.fatal') || t('dashboard.safety.fatal') || 'Fatal'} />
                       <Bar dataKey="serious" stackId="a" fill="#f59e0b" name={t('dashboard.safety.eventTypes.serious') || t('dashboard.safety.serious') || 'Serious'} />
@@ -351,7 +351,7 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                       <XAxis dataKey="activity" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
                       <YAxis yAxisId="left" allowDecimals={false} tick={{ fontSize: 11 }} />
                       <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fontSize: 11 }} />
-                      <SmartTooltip allowEscapeViewBox={{ x: true, y: true }} />
+                      <Tooltip allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                       <Legend />
                       <Bar yAxisId="left" dataKey="count" fill="#dc2626" name={t('dashboard.safety.metrics.count') || 'Count'} />
                       <Line yAxisId="right" type="monotone" dataKey="cumulative_pct" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} name={t('dashboard.safety.metrics.cumulativePct') || 'Cumulative %'} />
@@ -386,7 +386,7 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                         linkCurvature={0.6}
                         node={{ stroke: '#e5e7eb', strokeWidth: 1 }}
                       >
-                        <SmartTooltip allowEscapeViewBox={{ x: true, y: true }} />
+                        <Tooltip allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                       </Sankey>
                     </ResponsiveContainer>
                   ) : (
@@ -409,7 +409,7 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                       <XAxis type="number" dataKey="severity" name={t('dashboard.safety.metrics.severity') || 'Severity'} domain={[1, 6]} tick={{ fontSize: 11 }} />
                       <YAxis type="number" dataKey="victims" name={t('dashboard.safety.metrics.victims') || 'Victims'} allowDecimals={false} tick={{ fontSize: 11 }} />
                       <ZAxis type="number" dataKey="events" range={[80, 600]} name={t('dashboard.safety.metrics.events') || 'Events'} />
-                      <SmartTooltip cursor={{ strokeDasharray: '3 3' }} allowEscapeViewBox={{ x: true, y: true }} />
+                      <Tooltip cursor={{ strokeDasharray: '3 3' }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                       <Legend />
                       <Scatter name={t('dashboard.safety.metrics.events') || 'Events'} data={bubbleData} fill="#3b82f6">
                         {bubbleData.map((entry, index) => (
@@ -437,7 +437,7 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                       <XAxis dataKey="type" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
                       <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                      <SmartTooltip allowEscapeViewBox={{ x: true, y: true }} />
+                      <Tooltip allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                       <Legend />
                       <Bar dataKey="fatal" stackId="a" fill="#dc2626" name={t('dashboard.safety.eventTypes.fatal') || t('dashboard.safety.fatal') || 'Fatal'} />
                       <Bar dataKey="serious" stackId="a" fill="#f59e0b" name={t('dashboard.safety.eventTypes.serious') || t('dashboard.safety.serious') || 'Serious'} />
@@ -506,10 +506,11 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                       <XAxis dataKey="week" tick={{ fontSize: 11 }} />
                       <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                      <SmartTooltip 
+                      <Tooltip 
                         contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                         labelStyle={{ color: '#f3f4f6' }}
                         allowEscapeViewBox={{ x: true, y: true }}
+                        wrapperStyle={{ zIndex: 9999 }}
                       />
                       <Area 
                         type="monotone" 
@@ -548,7 +549,7 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
-                        <SmartTooltip allowEscapeViewBox={{ x: true, y: true }} />
+                        <Tooltip allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
@@ -577,10 +578,11 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                       <XAxis dataKey="week" tick={{ fontSize: 11 }} />
                       <YAxis tick={{ fontSize: 11 }} />
-                      <SmartTooltip 
+                      <Tooltip 
                         contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                         labelStyle={{ color: '#f3f4f6' }}
                         allowEscapeViewBox={{ x: true, y: true }}
+                        wrapperStyle={{ zIndex: 9999 }}
                       />
                       <Legend />
                       <Line 
@@ -617,10 +619,11 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                       <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
-                      <SmartTooltip 
+                      <Tooltip 
                         contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                         labelStyle={{ color: '#f3f4f6' }}
                         allowEscapeViewBox={{ x: true, y: true }}
+                        wrapperStyle={{ zIndex: 9999 }}
                       />
                       <Bar 
                         dataKey="accidents" 

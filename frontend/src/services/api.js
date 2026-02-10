@@ -8,7 +8,9 @@ const MASS_IMPORT_TIMEOUT = 10 * 60 * 1000
 
 // Simple in-memory cache for GET requests
 const requestCache = new Map()
-const CACHE_TTL = 30000 // 30 seconds
+const CACHE_TTL = 60000 // 60 seconds (increased for better performance under load)
+const DASHBOARD_CACHE_TTL = 120000 // 2 minutes for dashboard data
+const LIST_CACHE_TTL = 90000 // 90 seconds for list endpoints
 const pendingRequests = new Map()
 
 const getUiLang = () => {
@@ -470,37 +472,37 @@ export const authService = {
 }
 
 export const dashboardService = {
-  // Dashboard data is cached since it's expensive to compute and doesn't change often
-  getAdminDashboard: (params) => cachedGet('/dashboard/admin', params),
+  // Dashboard data is cached with longer TTL since it's expensive to compute and doesn't change often
+  getAdminDashboard: (params) => cachedGet('/dashboard/admin', params, DASHBOARD_CACHE_TTL),
   getUserDashboard: (params) => {
     const normalized = typeof params === 'number' ? { year: params } : (params || {})
-    return cachedGet('/dashboard/user', normalized)
+    return cachedGet('/dashboard/user', normalized, DASHBOARD_CACHE_TTL)
   },
-  getSafetyPerformance: (params) => cachedGet('/dashboard/safety-performance', params),
-  getEnvironmentalMonthly: (params) => cachedGet('/dashboard/environmental-monthly', params),
-  getMonthlyReportSummary: (params) => cachedGet('/admin/reports/monthly/summary', params, 60000),
-  // Charts are also cached
-  getAccidentCharts: (params) => cachedGet('/dashboard/charts/accidents', params),
-  getTrainingCharts: (params) => cachedGet('/dashboard/charts/trainings', params),
-  getInspectionCharts: (params) => cachedGet('/dashboard/charts/inspections', params),
-  getSorCharts: (params) => cachedGet('/dashboard/charts/sor', params),
-  getRateCharts: (params) => cachedGet('/dashboard/charts/rates', params),
+  getSafetyPerformance: (params) => cachedGet('/dashboard/safety-performance', params, DASHBOARD_CACHE_TTL),
+  getEnvironmentalMonthly: (params) => cachedGet('/dashboard/environmental-monthly', params, DASHBOARD_CACHE_TTL),
+  getMonthlyReportSummary: (params) => cachedGet('/admin/reports/monthly/summary', params, DASHBOARD_CACHE_TTL),
+  // Charts are also cached with longer TTL
+  getAccidentCharts: (params) => cachedGet('/dashboard/charts/accidents', params, DASHBOARD_CACHE_TTL),
+  getTrainingCharts: (params) => cachedGet('/dashboard/charts/trainings', params, DASHBOARD_CACHE_TTL),
+  getInspectionCharts: (params) => cachedGet('/dashboard/charts/inspections', params, DASHBOARD_CACHE_TTL),
+  getSorCharts: (params) => cachedGet('/dashboard/charts/sor', params, DASHBOARD_CACHE_TTL),
+  getRateCharts: (params) => cachedGet('/dashboard/charts/rates', params, DASHBOARD_CACHE_TTL),
 
-  // SOR analytics (descriptive, per-graph endpoints)
-  getSorAnalyticsKpis: (params) => cachedGet('/dashboard/sor-analytics/kpis', params),
-  getSorProjectPoleStacked: (params) => cachedGet('/dashboard/sor-analytics/project-pole-stacked', params),
-  getSorProjectTreemap: (params) => cachedGet('/dashboard/sor-analytics/project-treemap', params),
-  getSorProjectPoleHeatmap: (params) => cachedGet('/dashboard/sor-analytics/project-pole-heatmap', params),
-  getSorThemeAvgResolution: (params) => cachedGet('/dashboard/sor-analytics/theme-avg-resolution', params),
-  getSorThemeResolutionBox: (params) => cachedGet('/dashboard/sor-analytics/theme-resolution-box', params),
-  getSorThemeUnresolvedCount: (params) => cachedGet('/dashboard/sor-analytics/theme-unresolved-count', params),
-  getSorThemeResolvedUnresolved: (params) => cachedGet('/dashboard/sor-analytics/theme-resolved-unresolved', params),
-  getSorThemeBubble: (params) => cachedGet('/dashboard/sor-analytics/theme-bubble', params),
-  getSorUserThemeAvgResolution: (params) => cachedGet('/dashboard/sor-analytics/user-theme-avg-resolution', params),
-  getSorPoleThemeUnresolvedRate: (params) => cachedGet('/dashboard/sor-analytics/pole-theme-unresolved-rate', params),
+  // SOR analytics (descriptive, per-graph endpoints) - cached with dashboard TTL
+  getSorAnalyticsKpis: (params) => cachedGet('/dashboard/sor-analytics/kpis', params, DASHBOARD_CACHE_TTL),
+  getSorProjectPoleStacked: (params) => cachedGet('/dashboard/sor-analytics/project-pole-stacked', params, DASHBOARD_CACHE_TTL),
+  getSorProjectTreemap: (params) => cachedGet('/dashboard/sor-analytics/project-treemap', params, DASHBOARD_CACHE_TTL),
+  getSorProjectPoleHeatmap: (params) => cachedGet('/dashboard/sor-analytics/project-pole-heatmap', params, DASHBOARD_CACHE_TTL),
+  getSorThemeAvgResolution: (params) => cachedGet('/dashboard/sor-analytics/theme-avg-resolution', params, DASHBOARD_CACHE_TTL),
+  getSorThemeResolutionBox: (params) => cachedGet('/dashboard/sor-analytics/theme-resolution-box', params, DASHBOARD_CACHE_TTL),
+  getSorThemeUnresolvedCount: (params) => cachedGet('/dashboard/sor-analytics/theme-unresolved-count', params, DASHBOARD_CACHE_TTL),
+  getSorThemeResolvedUnresolved: (params) => cachedGet('/dashboard/sor-analytics/theme-resolved-unresolved', params, DASHBOARD_CACHE_TTL),
+  getSorThemeBubble: (params) => cachedGet('/dashboard/sor-analytics/theme-bubble', params, DASHBOARD_CACHE_TTL),
+  getSorUserThemeAvgResolution: (params) => cachedGet('/dashboard/sor-analytics/user-theme-avg-resolution', params, DASHBOARD_CACHE_TTL),
+  getSorPoleThemeUnresolvedRate: (params) => cachedGet('/dashboard/sor-analytics/pole-theme-unresolved-rate', params, DASHBOARD_CACHE_TTL),
 
   // PPE analytics
-  getPpeConsumptionAnalytics: (params) => cachedGet('/dashboard/ppe-analytics/consumption', params),
+  getPpeConsumptionAnalytics: (params) => cachedGet('/dashboard/ppe-analytics/consumption', params, DASHBOARD_CACHE_TTL),
 }
 
 export const userService = {

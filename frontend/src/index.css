@@ -65,6 +65,10 @@
   .card {
     @apply bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden dark:bg-gray-800 dark:border-gray-700;
   }
+
+  .card.overflow-visible {
+    overflow: visible !important;
+  }
   
   .card-header {
     @apply px-6 py-4 border-b border-gray-100 dark:border-gray-700;
@@ -72,6 +76,12 @@
   
   .card-body {
     @apply p-6;
+  }
+
+  /* Recharts tooltip z-index fix - ensure tooltips appear above all other elements */
+  .recharts-tooltip-wrapper {
+    z-index: 9999 !important;
+    pointer-events: none;
   }
   
   .stat-card {

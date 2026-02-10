@@ -143,21 +143,26 @@ class User extends Authenticatable
             return null;
         }
 
-        if ($scope === 'pole') {
-            $pole = $this->pole;
-            if ($pole === null || $pole === '') {
-                return [];
+        // Cache visible project IDs for 60 seconds to reduce DB load under high concurrency
+        $cacheKey = 'user_visible_projects:' . $this->id . ':' . $scope;
+        
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($scope) {
+            if ($scope === 'pole') {
+                $pole = $this->pole;
+                if ($pole === null || $pole === '') {
+                    return collect([]);
+                }
+
+                return \App\Models\Project::query()
+                    ->where('pole', $pole)
+                    ->pluck('id');
             }
 
-            return \App\Models\Project::query()
-                ->where('pole', $pole)
-                ->pluck('id');
-        }
-
-        // assigned
-        $assigned = $this->projects()->pluck('projects.id');
-        $team = $this->teamProjects()->pluck('projects.id');
-        return $assigned->merge($team)->unique()->values();
+            // assigned
+            $assigned = $this->projects()->pluck('projects.id');
+            $team = $this->teamProjects()->pluck('projects.id');
+            return $assigned->merge($team)->unique()->values();
+        });
     }
 
     public function canAccessProject(Project $project): bool

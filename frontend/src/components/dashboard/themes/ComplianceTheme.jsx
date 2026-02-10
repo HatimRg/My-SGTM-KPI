@@ -18,7 +18,7 @@ import {
   CartesianGrid,
   ResponsiveContainer
 } from 'recharts'
-import { SmartTooltip } from '../../ui'
+import { Tooltip } from 'recharts'
 
 const COLORS = {
   compliance: '#16a34a',
@@ -171,7 +171,7 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                   <XAxis dataKey="week" tick={{ fontSize: 11 }} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <SmartTooltip />
+                  <Tooltip allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                   <Area 
                     type="monotone" 
                     dataKey="inspections" 
@@ -197,7 +197,7 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <SmartTooltip />
+                  <Tooltip allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                   <Bar dataKey="count" fill={COLORS.compliance} name={t('dashboard.compliance.totalInspections')} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -218,10 +218,11 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                     <XAxis dataKey="week" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} />
-                    <SmartTooltip
+                    <Tooltip
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
                       allowEscapeViewBox={{ x: true, y: true }}
+                      wrapperStyle={{ zIndex: 9999 }}
                       formatter={(value) => [`${value}%`, t('dashboard.compliance.regulatoryWatchScore')]}
                     />
                     <Line
@@ -252,10 +253,11 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                     <XAxis dataKey="week" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} />
-                    <SmartTooltip
+                    <Tooltip
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
                       labelStyle={{ color: '#f3f4f6' }}
                       allowEscapeViewBox={{ x: true, y: true }}
+                      wrapperStyle={{ zIndex: 9999 }}
                       formatter={(value) => [`${value}%`, t('dashboard.compliance.aptitudePercent')]}
                     />
                     <Line

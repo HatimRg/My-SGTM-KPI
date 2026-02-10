@@ -92,11 +92,11 @@ export default function UrgentNotificationOverlay({ enabled }) {
     }
 
     const computeDelay = () => {
-      const base = 4000
+      const base = 10000 // Increased from 4s to 10s for better performance under high load
       const failures = Math.min(6, Math.max(0, failureCountRef.current))
       const backoff = base * Math.pow(2, failures)
-      const jitter = Math.floor(Math.random() * 400)
-      return Math.min(60000, backoff + jitter)
+      const jitter = Math.floor(Math.random() * 1000)
+      return Math.min(120000, backoff + jitter) // Max 2 minutes
     }
 
     const scheduleNext = (ms) => {
@@ -108,6 +108,7 @@ export default function UrgentNotificationOverlay({ enabled }) {
 
     const fetchUrgentOnce = async () => {
       if (inFlightRef.current) return
+      if (document.hidden) return // Skip if tab is hidden
       inFlightRef.current = true
 
       try {
@@ -156,9 +157,18 @@ export default function UrgentNotificationOverlay({ enabled }) {
 
     loop()
 
+    // Resume polling when tab becomes visible
+    const onVisibilityChange = () => {
+      if (!document.hidden && !inFlightRef.current && !cancelled) {
+        fetchUrgentOnce()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
     return () => {
       cancelled = true
       stopTimer()
+      document.removeEventListener('visibilitychange', onVisibilityChange)
     }
   }, [enabled, afterId])
 

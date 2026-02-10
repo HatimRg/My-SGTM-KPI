@@ -23,7 +23,7 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts'
-import { SmartTooltip } from '../../ui'
+import { Tooltip } from 'recharts'
 
 const COLORS = {
   hse: '#3b82f6',
@@ -210,7 +210,7 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                         tick={{ fontSize: 10 }}
                         width={120}
                       />
-                      <SmartTooltip />
+                      <Tooltip allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                       <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                         {awarenessByTheme.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
@@ -290,7 +290,7 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                   <XAxis dataKey="week" tick={{ fontSize: 11 }} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <SmartTooltip />
+                  <Tooltip allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                   <Area 
                     type="monotone" 
                     dataKey="trainings" 
@@ -323,7 +323,7 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                       tick={{ fontSize: 10 }} 
                       width={120}
                     />
-                    <SmartTooltip />
+                    <Tooltip allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                       {trainingByTheme.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
@@ -356,7 +356,7 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                     <XAxis dataKey="duration" tick={{ fontSize: 11 }} />
                     <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <SmartTooltip />
+                    <Tooltip allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                     <Bar dataKey="count" fill={COLORS.compliance} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -390,7 +390,7 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <SmartTooltip formatter={(value, name) => [value, name]} />
+                    <Tooltip formatter={(value, name) => [value, name]} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (

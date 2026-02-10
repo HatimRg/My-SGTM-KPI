@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import toast from 'react-hot-toast'
-import { SmartTooltip } from '../../ui'
+import { Tooltip } from 'recharts'
 
 const COLORS = [
   '#3b82f6',
@@ -370,9 +370,11 @@ const PpeTheme = memo(function PpeTheme({ year, projectId, pole }) {
                   width={60}
                   label={{ value: t('ppe.analytics.yAxis'), angle: -90, position: 'insideLeft' }}
                 />
-                <SmartTooltip
+                <Tooltip
                   shared={false}
                   content={(props) => <TooltipContent {...props} t={t} poleLabelByKey={poleLabelByKey} />}
+                  allowEscapeViewBox={{ x: true, y: true }}
+                  wrapperStyle={{ zIndex: 9999 }}
                 />
 
                 {projectSeries.map((s) => (

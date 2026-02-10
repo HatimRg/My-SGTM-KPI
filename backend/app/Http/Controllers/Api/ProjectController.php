@@ -32,7 +32,7 @@ class ProjectController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $query = Project::query()->with(['users', 'creator']);
+        $query = Project::query()->with(['users:id,name,email', 'creator:id,name']);
 
         $scope = $request->get('scope');
         if ($scope === 'assigned') {
@@ -82,22 +82,28 @@ class ProjectController extends Controller
     public function poles(Request $request)
     {
         $user = $request->user();
-        $query = Project::query();
         $scope = $request->get('scope');
 
-        if ($scope === 'assigned') {
-            $query->assignedTo($user);
-        } elseif (!$user->hasGlobalProjectScope()) {
-            $query->visibleTo($user);
-        }
+        // Cache poles list for 2 minutes per user scope combination
+        $cacheKey = 'poles:' . $user->id . ':' . ($scope ?? 'default');
+        
+        $values = \Illuminate\Support\Facades\Cache::remember($cacheKey, 120, function () use ($user, $scope) {
+            $query = Project::query();
 
-        $values = $query
-            ->whereNotNull('pole')
-            ->where('pole', '!=', '')
-            ->distinct()
-            ->orderBy('pole')
-            ->pluck('pole')
-            ->values();
+            if ($scope === 'assigned') {
+                $query->assignedTo($user);
+            } elseif (!$user->hasGlobalProjectScope()) {
+                $query->visibleTo($user);
+            }
+
+            return $query
+                ->whereNotNull('pole')
+                ->where('pole', '!=', '')
+                ->distinct()
+                ->orderBy('pole')
+                ->pluck('pole')
+                ->values();
+        });
 
         return $this->success(['poles' => $values]);
     }

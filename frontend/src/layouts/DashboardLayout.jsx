@@ -144,7 +144,7 @@ export default function DashboardLayout() {
       if (cancelled) return
       timerId = setTimeout(() => {
         fetchUnreadCount().then(scheduleNext)
-      }, 45000) // Poll every 45 seconds (was 30s)
+      }, 60000) // Poll every 60 seconds for better performance under high load
     }
 
     fetchUnreadCount().then(scheduleNext)

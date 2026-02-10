@@ -21,7 +21,7 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts'
-import { SmartTooltip } from '../../ui'
+import { Tooltip } from 'recharts'
 
 const COLORS = {
   water: '#0ea5e9',
@@ -213,7 +213,7 @@ const EnvironmentalTheme = memo(function EnvironmentalTheme({ data, loading }) {
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis yAxisId="left" tick={{ fontSize: 11 }} domain={[0, 100]} />
                   <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
-                  <SmartTooltip />
+                  <Tooltip allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                   <Line yAxisId="left" type="monotone" dataKey="lux_compliance_rate" stroke={COLORS.hse} strokeWidth={2} dot={{ r: 4 }} />
                   <Line yAxisId="right" type="monotone" dataKey="lux_avg" stroke={COLORS.medical} strokeWidth={2} dot={{ r: 4 }} />
                   <Legend />
@@ -236,7 +236,7 @@ const EnvironmentalTheme = memo(function EnvironmentalTheme({ data, loading }) {
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
                   <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
-                  <SmartTooltip />
+                  <Tooltip allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                   <Bar yAxisId="left" dataKey="water" fill={COLORS.water} name={`${t('dashboard.environmental.waterConsumption')} (m³)`} radius={[4, 4, 0, 0]} />
                   <Line yAxisId="right" type="monotone" dataKey="electricity" stroke={COLORS.electricity} strokeWidth={2} name={`${t('dashboard.environmental.electricityUsage')} (kWh)`} />
                 </ComposedChart>
@@ -257,7 +257,7 @@ const EnvironmentalTheme = memo(function EnvironmentalTheme({ data, loading }) {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <SmartTooltip />
+                  <Tooltip allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                   <Area type="monotone" dataKey="noise_avg" stroke={COLORS.medical} fill={COLORS.medical} fillOpacity={0.35} name={t('dashboard.environmental.noiseMonitoring')} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -278,7 +278,7 @@ const EnvironmentalTheme = memo(function EnvironmentalTheme({ data, loading }) {
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis yAxisId="left" tick={{ fontSize: 11 }} allowDecimals={false} />
                   <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} domain={[0, 100]} />
-                  <SmartTooltip />
+                  <Tooltip allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                   <Bar yAxisId="left" dataKey="lux_count" fill={COLORS.medical} name={t('dashboard.environmental.luxMeasurements')} radius={[4, 4, 0, 0]} />
                   <Line yAxisId="right" type="monotone" dataKey="lux_compliance_rate" stroke={COLORS.hse} strokeWidth={2} dot={{ r: 4 }} name={t('dashboard.environmental.luxComplianceRate')} />
                 </ComposedChart>

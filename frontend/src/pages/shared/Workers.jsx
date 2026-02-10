@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import useProgressPolling from '../../hooks/useProgressPolling'
 import api, {
   workerService,
   projectService,
@@ -969,153 +970,34 @@ export default function Workers() {
     )
   }
 
-  useEffect(() => {
-    if (!massTrainingsImporting) return
-    if (!massTrainingsProgressId) return
-    if (massTrainingsProgress?.status === 'completed' || massTrainingsProgress?.status === 'failed') return
+  // Optimized: use reusable hook with single-flight guard and visibility-based pause
+  useProgressPolling({
+    enabled: massTrainingsImporting,
+    progressId: massTrainingsProgressId,
+    status: massTrainingsProgress?.status,
+    onProgress: useCallback((data) => setMassTrainingsProgress(data), []),
+  })
 
-    let stopped = false
-    let intervalId = null
-    let startTimeoutId = null
-    let notFoundCount = 0
-    const poll = async () => {
-      try {
-        const res = await api.get(`/mass-import/progress/${massTrainingsProgressId}`, { silent: true })
-        const data = res.data?.data ?? res.data
-        if (stopped) return
-        notFoundCount = 0
-        setMassTrainingsProgress(data)
-      } catch (err) {
-        if (err?.response?.status === 404) {
-          notFoundCount += 1
-          if (notFoundCount >= 5) {
-            stopped = true
-            if (startTimeoutId) window.clearTimeout(startTimeoutId)
-            if (intervalId) window.clearInterval(intervalId)
-          }
-        }
-      }
-    }
+  useProgressPolling({
+    enabled: massQualificationsImporting,
+    progressId: massQualificationsProgressId,
+    status: massQualificationsProgress?.status,
+    onProgress: useCallback((data) => setMassQualificationsProgress(data), []),
+  })
 
-    startTimeoutId = window.setTimeout(poll, 1000)
-    intervalId = window.setInterval(poll, 2000)
-    return () => {
-      stopped = true
-      if (startTimeoutId) window.clearTimeout(startTimeoutId)
-      if (intervalId) window.clearInterval(intervalId)
-    }
-  }, [massTrainingsImporting, massTrainingsProgressId, massTrainingsProgress?.status])
+  useProgressPolling({
+    enabled: massMedicalImporting,
+    progressId: massMedicalProgressId,
+    status: massMedicalProgress?.status,
+    onProgress: useCallback((data) => setMassMedicalProgress(data), []),
+  })
 
-  useEffect(() => {
-    if (!massQualificationsImporting) return
-    if (!massQualificationsProgressId) return
-    if (massQualificationsProgress?.status === 'completed' || massQualificationsProgress?.status === 'failed') return
-
-    let stopped = false
-    let intervalId = null
-    let startTimeoutId = null
-    let notFoundCount = 0
-    const poll = async () => {
-      try {
-        const res = await api.get(`/mass-import/progress/${massQualificationsProgressId}`, { silent: true })
-        const data = res.data?.data ?? res.data
-        if (stopped) return
-        notFoundCount = 0
-        setMassQualificationsProgress(data)
-      } catch (err) {
-        if (err?.response?.status === 404) {
-          notFoundCount += 1
-          if (notFoundCount >= 5) {
-            stopped = true
-            if (startTimeoutId) window.clearTimeout(startTimeoutId)
-            if (intervalId) window.clearInterval(intervalId)
-          }
-        }
-      }
-    }
-
-    startTimeoutId = window.setTimeout(poll, 1000)
-    intervalId = window.setInterval(poll, 2000)
-    return () => {
-      stopped = true
-      if (startTimeoutId) window.clearTimeout(startTimeoutId)
-      if (intervalId) window.clearInterval(intervalId)
-    }
-  }, [massQualificationsImporting, massQualificationsProgressId, massQualificationsProgress?.status])
-
-  useEffect(() => {
-    if (!massMedicalImporting) return
-    if (!massMedicalProgressId) return
-    if (massMedicalProgress?.status === 'completed' || massMedicalProgress?.status === 'failed') return
-
-    let stopped = false
-    let intervalId = null
-    let startTimeoutId = null
-    let notFoundCount = 0
-    const poll = async () => {
-      try {
-        const res = await api.get(`/mass-import/progress/${massMedicalProgressId}`, { silent: true })
-        const data = res.data?.data ?? res.data
-        if (stopped) return
-        notFoundCount = 0
-        setMassMedicalProgress(data)
-      } catch (err) {
-        if (err?.response?.status === 404) {
-          notFoundCount += 1
-          if (notFoundCount >= 5) {
-            stopped = true
-            if (startTimeoutId) window.clearTimeout(startTimeoutId)
-            if (intervalId) window.clearInterval(intervalId)
-          }
-        }
-      }
-    }
-
-    startTimeoutId = window.setTimeout(poll, 1000)
-    intervalId = window.setInterval(poll, 2000)
-    return () => {
-      stopped = true
-      if (startTimeoutId) window.clearTimeout(startTimeoutId)
-      if (intervalId) window.clearInterval(intervalId)
-    }
-  }, [massMedicalImporting, massMedicalProgressId, massMedicalProgress?.status])
-
-  useEffect(() => {
-    if (!massSanctionsImporting) return
-    if (!massSanctionsProgressId) return
-    if (massSanctionsProgress?.status === 'completed' || massSanctionsProgress?.status === 'failed') return
-
-    let stopped = false
-    let intervalId = null
-    let startTimeoutId = null
-    let notFoundCount = 0
-    const poll = async () => {
-      try {
-        const res = await api.get(`/mass-import/progress/${massSanctionsProgressId}`, { silent: true })
-        const data = res.data?.data ?? res.data
-        if (stopped) return
-        notFoundCount = 0
-        setMassSanctionsProgress(data)
-      } catch (err) {
-        if (err?.response?.status === 404) {
-          notFoundCount += 1
-          if (notFoundCount >= 5) {
-            stopped = true
-            if (startTimeoutId) window.clearTimeout(startTimeoutId)
-            if (intervalId) window.clearInterval(intervalId)
-          }
-        }
-      }
-    }
-
-    startTimeoutId = window.setTimeout(poll, 1000)
-    intervalId = window.setInterval(poll, 2000)
-    return () => {
-      stopped = true
-      if (startTimeoutId) window.clearTimeout(startTimeoutId)
-      if (intervalId) window.clearInterval(intervalId)
-    }
-  }, [massSanctionsImporting, massSanctionsProgressId, massSanctionsProgress?.status])
+  useProgressPolling({
+    enabled: massSanctionsImporting,
+    progressId: massSanctionsProgressId,
+    status: massSanctionsProgress?.status,
+    onProgress: useCallback((data) => setMassSanctionsProgress(data), []),
+  })
 
   const handleMassTrainingsImport = async () => {
     if (!massTrainingsExcel) return
