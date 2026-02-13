@@ -43,6 +43,7 @@ const WorkPermits = lazy(() => import('./pages/shared/WorkPermits'))
 const Inspections = lazy(() => import('./pages/shared/Inspections'))
 const Workers = lazy(() => import('./pages/shared/Workers'))
 const PpeManagement = lazy(() => import('./pages/shared/PpeManagement'))
+const PpePendingValidationReport = lazy(() => import('./pages/shared/PpePendingValidationReport'))
 const Notifications = lazy(() => import('./pages/shared/Notifications'))
 const SubcontractorOpenings = lazy(() => import('./pages/shared/SubcontractorOpenings'))
 const SubcontractorOpeningDetails = lazy(() => import('./pages/shared/SubcontractorOpeningDetails'))
@@ -384,6 +385,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['admin', 'dev', 'pole_director', 'works_director', 'hse_director']} enforceAllowedRoles>
               <PpeManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/ppe/pending-validation-report"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'dev']} enforceAllowedRoles>
+              <PpePendingValidationReport />
             </ProtectedRoute>
           }
         />

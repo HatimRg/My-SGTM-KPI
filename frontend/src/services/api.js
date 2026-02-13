@@ -920,6 +920,10 @@ export const ppeService = {
   issueToWorker: (data) => api.post('/ppe/issue', data),
   getIssues: (params) => api.get('/ppe/issues', { params }),
   getWorkerIssues: (workerId) => api.get(`/ppe/workers/${workerId}/issues`),
+
+  getPendingValidationReport: (params) => api.get('/ppe/pending-validation/report', { params }),
+  getPendingValidationDetails: (params) => api.get('/ppe/pending-validation/details', { params }),
+  downloadPendingValidationReport: (params) => api.get('/ppe/pending-validation/download', { params, responseType: 'blob' }),
 }
 
 export const subcontractorOpeningsService = {

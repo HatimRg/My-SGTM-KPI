@@ -462,6 +462,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/workers/{worker}/issues', [PpeController::class, 'workerIssues']);
 
         Route::post('/restock', [PpeController::class, 'restock']);
+
+        Route::prefix('pending-validation')->group(function () {
+            Route::get('/report', [PpeController::class, 'pendingValidationReport']);
+            Route::get('/details', [PpeController::class, 'pendingValidationDetails']);
+            Route::get('/download', [PpeController::class, 'pendingValidationDownload']);
+        });
     });
 
     // Veille réglementaire (Regulatory watch checklists)

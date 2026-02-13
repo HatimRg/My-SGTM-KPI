@@ -5,7 +5,7 @@ import { useAuthStore } from '../../store/authStore'
 import Modal from '../../components/ui/Modal'
 import Select from '../../components/ui/Select'
 import DatePicker from '../../components/ui/DatePicker'
-import { Shield, PlusCircle, Pencil, Trash2, Search, Loader2, PackagePlus, Upload, FileSpreadsheet, ChevronDown } from 'lucide-react'
+import { Shield, PlusCircle, Pencil, Trash2, Search, Loader2, PackagePlus, Upload, FileSpreadsheet, ChevronDown, ClipboardCheck, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function PpeManagement() {
@@ -93,6 +93,68 @@ export default function PpeManagement() {
   const [bulkFile, setBulkFile] = useState(null)
   const [bulkUploading, setBulkUploading] = useState(false)
   const bulkInputRef = useRef(null)
+
+  const isStrictAdmin = user?.role === 'admin' || user?.role === 'dev'
+
+  const [pendingValidationOpen, setPendingValidationOpen] = useState(false)
+  const [pendingValidationPoles, setPendingValidationPoles] = useState([])
+  const [pendingValidationPole, setPendingValidationPole] = useState('')
+  const [pendingValidationProjectId, setPendingValidationProjectId] = useState('')
+  const [pendingValidationItemId, setPendingValidationItemId] = useState('')
+  const [pendingValidationItems, setPendingValidationItems] = useState([])
+
+  const filteredProjectsForPendingValidation = useMemo(() => {
+    if (!pendingValidationPole) return projects
+    // Some project list payloads may omit pole; in that case just return all.
+    const hasPoleField = projects.some((p) => p && Object.prototype.hasOwnProperty.call(p, 'pole'))
+    if (!hasPoleField) return projects
+    return projects.filter((p) => String(p.pole ?? '') === String(pendingValidationPole))
+  }, [pendingValidationPole, projects])
+
+  const openPendingValidation = async () => {
+    try {
+      setPendingValidationOpen(true)
+      setPendingValidationPole('')
+      setPendingValidationProjectId('')
+      setPendingValidationItemId('')
+      setPendingValidationItems([])
+      const res = await projectService.getPoles()
+      const list = res?.data?.data?.poles ?? res?.data?.poles ?? []
+      setPendingValidationPoles(Array.isArray(list) ? list : [])
+    } catch {
+      setPendingValidationPoles([])
+    }
+  }
+
+  const addPendingValidationItem = () => {
+    if (!pendingValidationItemId) return
+    const match = items.find((it) => String(it.id) === String(pendingValidationItemId))
+    if (!match) return
+    setPendingValidationItems((prev) => {
+      if (prev.some((x) => String(x.id) === String(match.id))) return prev
+      return [...prev, { id: match.id, name: match.name }]
+    })
+    setPendingValidationItemId('')
+  }
+
+  const removePendingValidationItem = (id) => {
+    setPendingValidationItems((prev) => prev.filter((x) => String(x.id) !== String(id)))
+  }
+
+  const viewPendingValidationReport = () => {
+    if (!pendingValidationProjectId) {
+      toast.error(t('ppe.pendingValidation.projectRequired'))
+      return
+    }
+    if (pendingValidationItems.length === 0) {
+      toast.error(t('ppe.pendingValidation.itemsRequired'))
+      return
+    }
+
+    const itemIds = pendingValidationItems.map((x) => x.id).join(',')
+    const url = `/admin/ppe/pending-validation-report?project_id=${encodeURIComponent(String(pendingValidationProjectId))}&item_ids=${encodeURIComponent(itemIds)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
 
   useEffect(() => {
     const id = setTimeout(() => setDebouncedSearch(search.trim()), 300)
@@ -410,6 +472,17 @@ export default function PpeManagement() {
                 </div>
               )}
             </div>
+
+            {isStrictAdmin && (
+              <button
+                type="button"
+                className="btn-outline btn-sm flex items-center gap-2"
+                onClick={openPendingValidation}
+              >
+                <ClipboardCheck className="w-4 h-4" />
+                {t('ppe.pendingValidation.button')}
+              </button>
+            )}
             <button type="button" className="btn-primary btn-sm flex items-center gap-2" onClick={openCreate} disabled={!canManage}>
               <PlusCircle className="w-4 h-4" />
               {t('ppe.items.add')}
@@ -572,6 +645,100 @@ export default function PpeManagement() {
               </button>
               <button type="button" className="btn-primary" onClick={handleBulkImport} disabled={bulkUploading}>
                 {bulkUploading ? t('common.importing') : t('common.import')}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {pendingValidationOpen && (
+        <Modal
+          isOpen={pendingValidationOpen}
+          onClose={() => setPendingValidationOpen(false)}
+          title={t('ppe.pendingValidation.title')}
+          size="xl"
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="label text-xs">{t('ppe.pendingValidation.pole')}</label>
+                <Select
+                  value={pendingValidationPole}
+                  onChange={(e) => {
+                    const next = e.target.value
+                    setPendingValidationPole(next)
+                    setPendingValidationProjectId('')
+                  }}
+                >
+                  <option value="">{t('common.select')}</option>
+                  {pendingValidationPoles.map((p) => (
+                    <option key={String(p)} value={String(p)}>
+                      {String(p)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div>
+                <label className="label text-xs">{t('ppe.pendingValidation.project')}</label>
+                <Select value={pendingValidationProjectId} onChange={(e) => setPendingValidationProjectId(e.target.value)}>
+                  <option value="">{t('common.select')}</option>
+                  {filteredProjectsForPendingValidation.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.code ? `${p.code} - ${p.name}` : p.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <label className="label text-xs">{t('ppe.pendingValidation.articles')}</label>
+              <div className="flex flex-col md:flex-row gap-2">
+                <Select value={pendingValidationItemId} onChange={(e) => setPendingValidationItemId(e.target.value)}>
+                  <option value="">{t('common.select')}</option>
+                  {itemsSorted.map((it) => (
+                    <option key={it.id} value={it.id}>
+                      {it.name}
+                    </option>
+                  ))}
+                </Select>
+                <button type="button" className="btn-secondary" onClick={addPendingValidationItem}>
+                  {t('common.add')}
+                </button>
+              </div>
+            </div>
+
+            {pendingValidationItems.length > 0 && (
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3">
+                <div className="text-xs font-semibold text-gray-700 dark:text-gray-200 mb-2">{t('ppe.pendingValidation.selected')}</div>
+                <div className="flex flex-wrap gap-2">
+                  {pendingValidationItems.map((x) => (
+                    <div
+                      key={String(x.id)}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
+                    >
+                      <span className="text-gray-800 dark:text-gray-100">{x.name}</span>
+                      <button
+                        type="button"
+                        className="p-1 rounded-full hover:bg-gray-200/60 dark:hover:bg-gray-700"
+                        onClick={() => removePendingValidationItem(x.id)}
+                        aria-label={t('common.remove')}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button type="button" className="btn-secondary" onClick={() => setPendingValidationOpen(false)}>
+                {t('common.cancel')}
+              </button>
+              <button type="button" className="btn-primary" onClick={viewPendingValidationReport}>
+                {t('ppe.pendingValidation.viewReport')}
               </button>
             </div>
           </div>

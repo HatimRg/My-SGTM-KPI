@@ -12,6 +12,7 @@ use App\Models\Worker;
 use App\Models\WorkerPpeIssue;
 use App\Services\NotificationService;
 use App\Services\PpeIssuesMassImportService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -28,6 +29,33 @@ class PpeController extends Controller
             abort(403, 'You do not have access to PPE management');
         }
         return $user;
+    }
+
+    private function ensureStrictAdmin(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || ($user->role !== User::ROLE_ADMIN && $user->role !== User::ROLE_DEV)) {
+            abort(403, 'Access denied');
+        }
+        return $user;
+    }
+
+    private function normalizeItemIds($value): array
+    {
+        if ($value === null || $value === '') {
+            return [];
+        }
+
+        if (is_string($value)) {
+            $parts = array_filter(array_map('trim', explode(',', $value)), fn ($x) => $x !== '');
+            return array_values(array_unique(array_map('intval', $parts)));
+        }
+
+        if (is_array($value)) {
+            return array_values(array_unique(array_map('intval', $value)));
+        }
+
+        return [];
     }
 
     private function normalizeProjectIds($ids): ?array
@@ -472,5 +500,188 @@ class PpeController extends Controller
         }
 
         return $this->success($query->orderBy('received_at', 'desc')->orderBy('id', 'desc')->get());
+    }
+
+    public function pendingValidationReport(Request $request)
+    {
+        $this->ensureStrictAdmin($request);
+
+        $validated = $request->validate([
+            'project_id' => 'required|integer|exists:projects,id',
+            'item_ids' => 'required',
+        ]);
+
+        $project = Project::findOrFail((int) $validated['project_id']);
+        $itemIds = $this->normalizeItemIds($validated['item_ids']);
+        if (count($itemIds) === 0) {
+            return $this->error('No PPE items selected', 422);
+        }
+
+        $end = Carbon::today();
+        $startWeek = $end->copy()->subDays(6);
+        $startMonth = $end->copy()->subMonth()->addDay();
+
+        $stocks = PpeProjectStock::query()
+            ->where('project_id', $project->id)
+            ->whereIn('ppe_item_id', $itemIds)
+            ->pluck('stock_quantity', 'ppe_item_id');
+
+        $weekAgg = WorkerPpeIssue::query()
+            ->where('project_id', $project->id)
+            ->whereIn('ppe_item_id', $itemIds)
+            ->whereBetween('received_at', [$startWeek->toDateString(), $end->toDateString()])
+            ->groupBy('ppe_item_id')
+            ->select(['ppe_item_id', DB::raw('SUM(quantity) as qty')])
+            ->pluck('qty', 'ppe_item_id');
+
+        $monthAgg = WorkerPpeIssue::query()
+            ->where('project_id', $project->id)
+            ->whereIn('ppe_item_id', $itemIds)
+            ->whereBetween('received_at', [$startMonth->toDateString(), $end->toDateString()])
+            ->groupBy('ppe_item_id')
+            ->select(['ppe_item_id', DB::raw('SUM(quantity) as qty')])
+            ->pluck('qty', 'ppe_item_id');
+
+        $items = PpeItem::query()->whereIn('id', $itemIds)->orderBy('name')->get(['id', 'name']);
+
+        $hseManager = $project->hseManagers()->orderBy('project_user.assigned_at', 'desc')->first();
+        $currentWorkers = Worker::query()->where('project_id', $project->id)->where('is_active', true)->count();
+
+        $rows = [];
+        foreach ($items as $it) {
+            $id = (int) $it->id;
+            $rows[] = [
+                'item_id' => $id,
+                'item_name' => $it->name,
+                'article' => $it->name,
+                'current_stock' => (int) ($stocks[$id] ?? 0),
+                'distributed_last_week' => (int) ($weekAgg[$id] ?? 0),
+                'distributed_last_month' => (int) ($monthAgg[$id] ?? 0),
+            ];
+        }
+
+        return $this->success([
+            'project' => [
+                'id' => $project->id,
+                'name' => $project->name,
+                'pole' => $project->pole,
+                'hse_manager_name' => $hseManager?->name,
+                'hse_manager_email' => $hseManager?->email,
+                'current_total_workers' => $currentWorkers,
+            ],
+            'report_date' => $end->toDateString(),
+            'rows' => $rows,
+        ]);
+    }
+
+    public function pendingValidationDetails(Request $request)
+    {
+        $this->ensureStrictAdmin($request);
+
+        $validated = $request->validate([
+            'project_id' => 'required|integer|exists:projects,id',
+            'item_id' => 'required|integer|exists:ppe_items,id',
+        ]);
+
+        $projectId = (int) $validated['project_id'];
+        $itemId = (int) $validated['item_id'];
+
+        $end = Carbon::today();
+        $start = $end->copy()->subMonth()->addDay();
+
+        $rows = WorkerPpeIssue::query()
+            ->join('workers', 'workers.id', '=', 'worker_ppe_issues.worker_id')
+            ->where('worker_ppe_issues.project_id', $projectId)
+            ->where('worker_ppe_issues.ppe_item_id', $itemId)
+            ->whereBetween('worker_ppe_issues.received_at', [$start->toDateString(), $end->toDateString()])
+            ->orderBy('worker_ppe_issues.received_at', 'desc')
+            ->orderBy('worker_ppe_issues.id', 'desc')
+            ->select([
+                'workers.cin as cin',
+                DB::raw("CONCAT(COALESCE(workers.prenom,''), ' ', COALESCE(workers.nom,'')) as name"),
+                'worker_ppe_issues.quantity as quantity',
+                'worker_ppe_issues.received_at as date',
+            ])
+            ->get();
+
+        return $this->success([
+            'range' => [
+                'start' => $start->toDateString(),
+                'end' => $end->toDateString(),
+            ],
+            'rows' => $rows,
+        ]);
+    }
+
+    public function pendingValidationDownload(Request $request)
+    {
+        $this->ensureStrictAdmin($request);
+
+        $validated = $request->validate([
+            'project_id' => 'required|integer|exists:projects,id',
+            'item_ids' => 'required',
+        ]);
+
+        // Reuse report computation
+        $project = Project::findOrFail((int) $validated['project_id']);
+        $itemIds = $this->normalizeItemIds($validated['item_ids']);
+        if (count($itemIds) === 0) {
+            return $this->error('No PPE items selected', 422);
+        }
+
+        $end = Carbon::today();
+        $startWeek = $end->copy()->subDays(6);
+        $startMonth = $end->copy()->subMonth()->addDay();
+
+        $stocks = PpeProjectStock::query()
+            ->where('project_id', $project->id)
+            ->whereIn('ppe_item_id', $itemIds)
+            ->pluck('stock_quantity', 'ppe_item_id');
+
+        $weekAgg = WorkerPpeIssue::query()
+            ->where('project_id', $project->id)
+            ->whereIn('ppe_item_id', $itemIds)
+            ->whereBetween('received_at', [$startWeek->toDateString(), $end->toDateString()])
+            ->groupBy('ppe_item_id')
+            ->select(['ppe_item_id', DB::raw('SUM(quantity) as qty')])
+            ->pluck('qty', 'ppe_item_id');
+
+        $monthAgg = WorkerPpeIssue::query()
+            ->where('project_id', $project->id)
+            ->whereIn('ppe_item_id', $itemIds)
+            ->whereBetween('received_at', [$startMonth->toDateString(), $end->toDateString()])
+            ->groupBy('ppe_item_id')
+            ->select(['ppe_item_id', DB::raw('SUM(quantity) as qty')])
+            ->pluck('qty', 'ppe_item_id');
+
+        $items = PpeItem::query()->whereIn('id', $itemIds)->orderBy('name')->get(['id', 'name']);
+
+        $rows = [];
+        foreach ($items as $it) {
+            $id = (int) $it->id;
+            $rows[] = [
+                'item_id' => $id,
+                'item_name' => $it->name,
+                'article' => $it->name,
+                'current_stock' => (int) ($stocks[$id] ?? 0),
+                'distributed_last_week' => (int) ($weekAgg[$id] ?? 0),
+                'distributed_last_month' => (int) ($monthAgg[$id] ?? 0),
+            ];
+        }
+
+        $hseManager = $project->hseManagers()->orderBy('project_user.assigned_at', 'desc')->first();
+        $currentWorkers = Worker::query()->where('project_id', $project->id)->where('is_active', true)->count();
+
+        $meta = [
+            'project_name' => $project->name,
+            'project_pole' => $project->pole,
+            'hse_manager_name' => $hseManager?->name,
+            'hse_manager_email' => $hseManager?->email,
+            'current_total_workers' => $currentWorkers,
+            'report_date' => $end->toDateString(),
+        ];
+
+        $filename = 'ppe_pending_validation_' . ($project->code ?: $project->id) . '_' . date('Y-m-d_His') . '.xlsx';
+        return Excel::download(new \App\Exports\PpePendingValidationReportExport($meta, $rows), $filename);
     }
 }
