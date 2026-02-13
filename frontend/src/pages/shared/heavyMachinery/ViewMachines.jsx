@@ -4,6 +4,8 @@ import api, { heavyMachineryService, projectService } from '../../../services/ap
 import { useLanguage } from '../../../i18n'
 import { useAuthStore } from '../../../store/authStore'
 import Select from '../../../components/ui/Select'
+import FilterBar from '../../../components/ui/filters/FilterBar'
+import FilterSelect from '../../../components/ui/filters/FilterSelect'
 import Modal from '../../../components/ui/Modal'
 import DatePicker from '../../../components/ui/DatePicker'
 import { getProjectLabel, sortProjects } from '../../../utils/projectList'
@@ -114,11 +116,34 @@ export default function ViewMachines() {
   const [loadingMachines, setLoadingMachines] = useState(false)
   const [search, setSearch] = useState('')
 
+  // Advanced filters are managed from the Filters dropdown button (search is kept outside).
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const filtersButtonRef = useRef(null)
+  const filtersMenuRef = useRef(null)
+  const [selectedPole, setSelectedPole] = useState('')
+  const [selectedProjectId, setSelectedProjectId] = useState('')
+  const [selectedMachineType, setSelectedMachineType] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState('')
+
   const [projects, setProjects] = useState([])
   const projectListPreference = user?.project_list_preference ?? 'code'
   const sortedProjects = useMemo(() => {
     return sortProjects(projects, projectListPreference)
   }, [projects, projectListPreference])
+
+  const poles = useMemo(() => {
+    const set = new Set()
+    for (const p of sortedProjects) {
+      const pole = String(p?.pole ?? '').trim()
+      if (pole) set.add(pole)
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [sortedProjects])
+
+  const visibleProjects = useMemo(() => {
+    if (!selectedPole) return sortedProjects
+    return sortedProjects.filter((p) => String(p?.pole ?? '') === String(selectedPole))
+  }, [sortedProjects, selectedPole])
 
   const [createOpen, setCreateOpen] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -403,6 +428,41 @@ export default function ViewMachines() {
     fetchMachineTypes()
   }, [fetchProjects, fetchMachines, fetchDocumentKeys, fetchMachineTypes])
 
+  // Close the filter dropdown on outside click / ESC.
+  useEffect(() => {
+    if (!filtersOpen) return
+
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setFiltersOpen(false)
+    }
+
+    const onMouseDown = (e) => {
+      const btn = filtersButtonRef.current
+      const menu = filtersMenuRef.current
+      const target = e.target
+
+      if (btn && btn.contains(target)) return
+      if (menu && menu.contains(target)) return
+      setFiltersOpen(false)
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('mousedown', onMouseDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('mousedown', onMouseDown)
+    }
+  }, [filtersOpen])
+
+  useEffect(() => {
+    // Reset project if it is no longer compatible with pole filter
+    if (!selectedPole) return
+    if (!selectedProjectId) return
+    const stillVisible = visibleProjects.some((p) => String(p.id) === String(selectedProjectId))
+    if (!stillVisible) setSelectedProjectId('')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPole])
+
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl)
@@ -410,9 +470,26 @@ export default function ViewMachines() {
   }, [previewUrl])
 
   const filteredMachines = useMemo(() => {
-    const list = Array.isArray(machines) ? machines : []
+    let list = Array.isArray(machines) ? machines : []
+
+    if (selectedPole) {
+      list = list.filter((m) => String(m?.project?.pole ?? '') === String(selectedPole))
+    }
+    if (selectedProjectId) {
+      list = list.filter((m) => String(m?.project_id ?? m?.project?.id ?? '') === String(selectedProjectId))
+    }
+    if (selectedMachineType) {
+      list = list.filter((m) => String(m?.machine_type_key ?? m?.machine_type ?? '') === String(selectedMachineType))
+    }
+    if (selectedStatus === 'active') {
+      list = list.filter((m) => !!m?.is_active)
+    } else if (selectedStatus === 'inactive') {
+      list = list.filter((m) => !m?.is_active)
+    }
+
     const q = search.trim().toLowerCase()
     if (!q) return list
+
     return list.filter((m) => {
       const hay = [
         m.serial_number,
@@ -429,7 +506,7 @@ export default function ViewMachines() {
         .toLowerCase()
       return hay.includes(q)
     })
-  }, [machines, search])
+  }, [machines, search, selectedMachineType, selectedPole, selectedProjectId, selectedStatus])
 
   const openCreate = () => {
     setCreateData({
@@ -906,6 +983,91 @@ export default function ViewMachines() {
           </div>
 
           <div className="flex gap-2">
+            <div className="relative" ref={filtersMenuRef}>
+              <button
+                type="button"
+                ref={filtersButtonRef}
+                onClick={() => setFiltersOpen((v) => !v)}
+                className="btn-secondary flex items-center gap-2"
+              >
+                {t('common.filters') ?? 'Filters'}
+                <ChevronDown className={`w-4 h-4 transition ${filtersOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {filtersOpen && (
+                <div className="absolute right-0 mt-2 w-[340px] max-w-[90vw] rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg z-50 overflow-hidden">
+                  <div className="p-3">
+                    <FilterBar className="p-3">
+                      <div className="grid grid-cols-1 gap-3">
+                        <FilterSelect
+                          label={t('common.pole') ?? 'Pole'}
+                          value={selectedPole}
+                          onChange={setSelectedPole}
+                        >
+                          <option value="">{t('common.all') ?? 'All'}</option>
+                          {poles.map((p) => (
+                            <option key={p} value={p}>{p}</option>
+                          ))}
+                        </FilterSelect>
+
+                        <FilterSelect
+                          label={t('common.project') ?? t('projects.title') ?? 'Project'}
+                          value={selectedProjectId}
+                          onChange={setSelectedProjectId}
+                        >
+                          <option value="">{t('common.all') ?? 'All'}</option>
+                          {visibleProjects.map((p) => (
+                            <option key={p.id} value={String(p.id)}>
+                              {getProjectLabel(p)}
+                            </option>
+                          ))}
+                        </FilterSelect>
+
+                        <FilterSelect
+                          label={t('heavyMachinery.viewMachines.form.machineType') ?? 'Machine type'}
+                          value={selectedMachineType}
+                          onChange={setSelectedMachineType}
+                        >
+                          <option value="">{t('common.all') ?? 'All'}</option>
+                          {machineTypes.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </FilterSelect>
+
+                        <FilterSelect
+                          label={t('common.status') ?? 'Status'}
+                          value={selectedStatus}
+                          onChange={setSelectedStatus}
+                        >
+                          <option value="">{t('common.all') ?? 'All'}</option>
+                          <option value="active">{t('common.active') ?? 'Active'}</option>
+                          <option value="inactive">{t('common.inactive') ?? 'Inactive'}</option>
+                        </FilterSelect>
+                      </div>
+                    </FilterBar>
+                  </div>
+
+                  <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      onClick={() => {
+                        setSelectedPole('')
+                        setSelectedProjectId('')
+                        setSelectedMachineType('')
+                        setSelectedStatus('')
+                      }}
+                    >
+                      {t('common.reset') ?? 'Reset'}
+                    </button>
+                    <button type="button" className="btn-primary" onClick={() => setFiltersOpen(false)}>
+                      {t('common.apply') ?? 'Apply'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button
               type="button"
               onClick={fetchMachines}

@@ -601,6 +601,10 @@ class WorkerQualificationMassImportService
 
         $key = $this->normalizeQualificationTypeKey($v);
 
+        if (in_array($key, ['autre', 'autres'], true)) {
+            $key = 'other';
+        }
+
         if ($key === 'other') {
             return 'other';
         }

@@ -10,6 +10,9 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { sortProjects } from '../../utils/projectList'
 import { AlertTriangle, Plus, Edit2, Trash2, Loader2, X } from 'lucide-react'
 import AccidentIncidentModal from '../../components/hse/AccidentIncidentModal'
+import FilterBar from '../../components/ui/filters/FilterBar'
+import SegmentedToggle from '../../components/ui/filters/SegmentedToggle'
+import FilterSelect from '../../components/ui/filters/FilterSelect'
 import toast from 'react-hot-toast'
 
 const EVENT_TYPES = [
@@ -368,93 +371,73 @@ export default function HseEvents() {
         </button>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-2">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className={
-              activeTab === 'accidents'
-                ? 'btn-primary'
-                : 'btn-secondary'
-            }
-            onClick={() => setActiveTab('accidents')}
-          >
-            {t('hseEvents.tabs.accidents') ?? 'Accident / Incident'}
-          </button>
-          <button
-            type="button"
-            className={
-              activeTab === 'medical'
-                ? 'btn-primary'
-                : 'btn-secondary'
-            }
-            onClick={() => setActiveTab('medical')}
-          >
-            {t('hseEvents.tabs.medical') ?? 'Medical Visits'}
-          </button>
-        </div>
+      <div className="flex items-center justify-between">
+        <SegmentedToggle
+          value={activeTab}
+          onChange={setActiveTab}
+          options={[
+            { value: 'accidents', label: t('hseEvents.tabs.accidents') ?? 'Accident / Incident' },
+            { value: 'medical', label: t('hseEvents.tabs.medical') ?? 'Medical Visits' },
+          ]}
+        />
       </div>
 
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
-        <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
-          <div>
-            <label className="label">{t('filters.pole') ?? t('common.pole') ?? 'Pole'}</label>
-            <select
-              className="input"
-              value={selectedPole}
-              onChange={(e) => setSelectedPole(e.target.value)}
-            >
-              <option value="">{t('common.allPoles') ?? 'All poles'}</option>
-              {poles.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </div>
+      <FilterBar>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3">
+          <FilterSelect
+            label={t('filters.pole') ?? t('common.pole') ?? 'Pole'}
+            value={selectedPole}
+            onChange={setSelectedPole}
+          >
+            <option value="">{t('common.allPoles') ?? 'All poles'}</option>
+            {poles.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </FilterSelect>
 
-          <div>
-            <label className="label">{t('projects.title') ?? 'Project'}</label>
-            <select
-              className="input"
-              value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
-            >
-              <option value="">{t('common.all') ?? 'All'}</option>
-              {sortedProjects
-                .filter((p) => !selectedPole || String(p.pole ?? '') === String(selectedPole))
-                .map((p) => (
-                <option key={p.id} value={String(p.id)}>
-                  {p.code ? `${p.code} - ${p.name}` : p.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <FilterSelect
+            label={t('projects.title') ?? 'Project'}
+            value={selectedProjectId}
+            onChange={setSelectedProjectId}
+          >
+            <option value="">{t('common.all') ?? 'All'}</option>
+            {sortedProjects
+              .filter((p) => !selectedPole || String(p.pole ?? '') === String(selectedPole))
+              .map((p) => (
+              <option key={p.id} value={String(p.id)}>
+                {p.code ? `${p.code} - ${p.name}` : p.name}
+              </option>
+            ))}
+          </FilterSelect>
 
-          <div>
-            <label className="label">{t('hseEvents.filters.type') ?? 'Type'}</label>
-            <select className="input" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-              <option value="">{t('common.all') ?? 'All'}</option>
-              {typeFilterOptions.map((tpe) => (
-                <option key={tpe.value} value={tpe.value}>{typeLabel(tpe.value)}</option>
-              ))}
-            </select>
-          </div>
+          <FilterSelect
+            label={t('hseEvents.filters.type') ?? 'Type'}
+            value={typeFilter}
+            onChange={setTypeFilter}
+          >
+            <option value="">{t('common.all') ?? 'All'}</option>
+            {typeFilterOptions.map((tpe) => (
+              <option key={tpe.value} value={tpe.value}>{typeLabel(tpe.value)}</option>
+            ))}
+          </FilterSelect>
 
-          <div>
-            <label className="label">{t('hseEvents.filters.severity') ?? 'Severity'}</label>
-            <select className="input" value={severityFilter} onChange={(e) => setSeverityFilter(e.target.value)}>
-              {SEVERITIES.map((sev) => (
-                <option key={sev.value || 'all'} value={sev.value}>{severityLabel(sev.value)}</option>
-              ))}
-            </select>
-          </div>
+          <FilterSelect
+            label={t('hseEvents.filters.severity') ?? 'Severity'}
+            value={severityFilter}
+            onChange={setSeverityFilter}
+          >
+            {SEVERITIES.map((sev) => (
+              <option key={sev.value || 'all'} value={sev.value}>{severityLabel(sev.value)}</option>
+            ))}
+          </FilterSelect>
 
-          <div>
-            <label className="label">{t('hseEvents.filters.year') ?? 'Year'}</label>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('hseEvents.filters.year') ?? 'Year'}</label>
             <YearPicker value={yearFilter} onChange={(y) => setYearFilter(String(y ?? ''))} className="w-full" />
           </div>
 
-          <div>
-            <label className="label">{t('hseEvents.filters.month') ?? 'Month'}</label>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('hseEvents.filters.month') ?? 'Month'}</label>
             <div className="flex gap-2">
               <div className="flex-1">
                 <MonthPicker
@@ -483,17 +466,17 @@ export default function HseEvents() {
             </div>
           </div>
 
-          <div>
-            <label className="label">{t('hseEvents.filters.from') ?? 'From'}</label>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('hseEvents.filters.from') ?? 'From'}</label>
             <DatePicker value={fromDate} onChange={setFromDate} className="w-full" />
           </div>
 
-          <div>
-            <label className="label">{t('hseEvents.filters.to') ?? 'To'}</label>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('hseEvents.filters.to') ?? 'To'}</label>
             <DatePicker value={toDate} onChange={setToDate} className="w-full" />
           </div>
         </div>
-      </div>
+      </FilterBar>
 
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">

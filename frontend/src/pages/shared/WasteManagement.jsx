@@ -7,6 +7,10 @@ import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { sortProjects } from '../../utils/projectList'
 import { Trash2, Plus, Edit2, Loader2 } from 'lucide-react'
+import FilterBar from '../../components/ui/filters/FilterBar'
+import FilterSelect from '../../components/ui/filters/FilterSelect'
+import FilterTextInput from '../../components/ui/filters/FilterTextInput'
+import SegmentedToggle from '../../components/ui/filters/SegmentedToggle'
 import toast from 'react-hot-toast'
 
 const WASTE_TYPES = [
@@ -336,41 +340,43 @@ export default function WasteManagement() {
         </button>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+      <FilterBar>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
           <div className="md:col-span-2">
-            <label className="label">{t('projects.title')}</label>
-            <select className="input" value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)}>
+            <FilterSelect
+              label={t('projects.title')}
+              value={selectedProjectId}
+              onChange={setSelectedProjectId}
+            >
               <option value="">{t('common.all')}</option>
               {sortedProjects.map((p) => (
                 <option key={p.id} value={String(p.id)}>
                   {p.code ? `${p.code} - ${p.name}` : p.name}
                 </option>
               ))}
-            </select>
+            </FilterSelect>
           </div>
 
-          <div>
-            <label className="label">{t('wasteManagement.filters.dateFrom')}</label>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('wasteManagement.filters.dateFrom')}</label>
             <DatePicker value={dateFrom} onChange={setDateFrom} className="w-full" />
           </div>
 
-          <div>
-            <label className="label">{t('wasteManagement.filters.dateTo')}</label>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('wasteManagement.filters.dateTo')}</label>
             <DatePicker value={dateTo} onChange={setDateTo} className="w-full" />
           </div>
 
           <div className="md:col-span-2">
-            <label className="label">{t('wasteManagement.filters.plateSearch')}</label>
-            <input
-              className="input"
+            <FilterTextInput
+              label={t('wasteManagement.filters.plateSearch')}
               value={plateSearch}
-              onChange={(e) => setPlateSearch(e.target.value)}
+              onChange={setPlateSearch}
               placeholder={t('wasteManagement.filters.plateSearchPlaceholder')}
             />
           </div>
 
-          <div className="md:col-span-2 flex items-center gap-2">
+          <div className="md:col-span-2 flex items-center gap-2 pt-1">
             <input
               id="waste-include-archived"
               type="checkbox"
@@ -382,25 +388,15 @@ export default function WasteManagement() {
             </label>
           </div>
         </div>
-      </div>
+      </FilterBar>
 
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-2">
-            {tabs.map((tab) => {
-              const active = tabWasteType === tab.value
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setTabWasteType(tab.value)}
-                  className={active ? 'btn-primary' : 'btn-outline'}
-                >
-                  {tab.label}
-                </button>
-              )
-            })}
-          </div>
+          <SegmentedToggle
+            value={tabWasteType}
+            onChange={setTabWasteType}
+            options={tabs.map((tab) => ({ value: tab.value, label: tab.label }))}
+          />
 
           {loading && (
             <div className="text-sm text-gray-500 flex items-center gap-2">

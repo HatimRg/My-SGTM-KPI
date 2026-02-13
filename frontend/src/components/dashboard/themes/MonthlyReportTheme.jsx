@@ -1397,47 +1397,51 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     <div className="space-y-6 animate-fade-in">
       <div className="card">
         <div className="card-body">
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
             <div className="min-w-0">
               <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.monthlyReport.title')}</div>
               <div className="text-xs text-gray-500 dark:text-gray-400">{t('dashboard.monthlyReport.subtitle')}</div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[auto_1fr_auto] gap-4 items-end">
-              <div className="inline-flex p-1 rounded-2xl bg-gray-100/80 dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700 shadow-sm w-fit">
-                <button
-                  onClick={() => setUseWeekRange(false)}
-                  className={`px-3 py-2 rounded-xl text-sm font-semibold transition ${!useWeekRange ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'}`}
-                >
-                  {t('dashboard.monthlyReport.useMonth')}
-                </button>
-                <button
-                  onClick={() => setUseWeekRange(true)}
-                  className={`px-3 py-2 rounded-xl text-sm font-semibold transition ${useWeekRange ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'}`}
-                >
-                  {t('dashboard.monthlyReport.useWeekRange')}
-                </button>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col lg:flex-row lg:items-end gap-3">
+                <div className="inline-flex p-1 rounded-2xl bg-gray-100/80 dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700 shadow-sm w-fit">
+                  <button
+                    onClick={() => setUseWeekRange(false)}
+                    className={`px-3 py-2 rounded-xl text-sm font-semibold transition ${!useWeekRange ? 'bg-sgtm-orange text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-900/40 hover:text-sgtm-orange-dark dark:hover:text-sgtm-orange-light'}`}
+                  >
+                    {t('dashboard.monthlyReport.useMonth')}
+                  </button>
+                  <button
+                    onClick={() => setUseWeekRange(true)}
+                    className={`px-3 py-2 rounded-xl text-sm font-semibold transition ${useWeekRange ? 'bg-sgtm-orange text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-900/40 hover:text-sgtm-orange-dark dark:hover:text-sgtm-orange-light'}`}
+                  >
+                    {t('dashboard.monthlyReport.useWeekRange')}
+                  </button>
+                </div>
+
+                <div className="flex-1">
+                  {!useWeekRange ? (
+                    <div className="flex flex-col gap-1">
+                      <div className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('dashboard.monthlyReport.month')}</div>
+                      <MonthPicker value={month} onChange={setMonth} className="w-full" />
+                    </div>
+                  ) : (
+                    <WeekRangePicker
+                      weekStart={weekStart}
+                      weekEnd={weekEnd}
+                      onChangeStart={setWeekStart}
+                      onChangeEnd={setWeekEnd}
+                      labelStart={t('dashboard.monthlyReport.weekStart')}
+                      labelEnd={t('dashboard.monthlyReport.weekEnd')}
+                    />
+                  )}
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {!useWeekRange ? (
-                  <div className="flex flex-col gap-1">
-                    <div className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('dashboard.monthlyReport.month')}</div>
-                    <MonthPicker value={month} onChange={setMonth} className="w-full" />
-                  </div>
-                ) : (
-                  <WeekRangePicker
-                    weekStart={weekStart}
-                    weekEnd={weekEnd}
-                    onChangeStart={setWeekStart}
-                    onChangeEnd={setWeekEnd}
-                    labelStart={t('dashboard.monthlyReport.weekStart')}
-                    labelEnd={t('dashboard.monthlyReport.weekEnd')}
-                  />
-                )}
-
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
                 {normalizedFocusPole === '' ? (
-                  <div className="flex flex-col gap-1 min-w-[200px]">
+                  <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('dashboard.monthlyReport.pole') || t('common.pole') || 'Pole'}</label>
                     <select
                       value={selectedPole}
@@ -1454,7 +1458,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
                   </div>
                 ) : null}
 
-                <div className="flex flex-col gap-1 min-w-[200px]">
+                <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('dashboard.monthlyReport.filterProject')}</label>
                   <select
                     value={projectId}
@@ -1469,16 +1473,18 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
                     ))}
                   </select>
                 </div>
-              </div>
 
-              <button
-                onClick={handleExportZip}
-                disabled={exporting || loading}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-200/80 dark:border-gray-700 bg-white/80 dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-900 text-sm font-semibold whitespace-nowrap shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                {t('dashboard.monthlyReport.exportZip')}
-              </button>
+                <div className="md:justify-self-end">
+                  <button
+                    onClick={handleExportZip}
+                    disabled={exporting || loading}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-200/80 dark:border-gray-700 bg-white/80 dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-900 text-sm font-semibold whitespace-nowrap shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full md:w-auto"
+                  >
+                    {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    {t('dashboard.monthlyReport.exportZip')}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

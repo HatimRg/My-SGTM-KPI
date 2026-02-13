@@ -570,77 +570,79 @@ export default function AdminDashboard() {
       <ThemeSelector activeTheme={activeTheme} onThemeChange={setActiveTheme} user={user} />
 
       {/* Theme Focus Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
-        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/40 px-3 py-2 w-full sm:w-auto">
-          <select
-            value={focusPole}
-            onChange={(e) => setFocusPole(e.target.value)}
-            className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm w-full sm:w-auto"
-          >
-            <option value="">{t('common.allPoles')}</option>
-            {poles.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-          <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700" />
-          <select
-            value={focusProjectId}
-            onChange={(e) => setFocusProjectId(e.target.value)}
-            className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm w-full sm:w-auto"
-          >
-            <option value="all">{t('common.allProjects')}</option>
-            {visibleProjectsSorted.map((p) => (
-              <option key={p.id} value={p.id}>
-                {getProjectLabel(p)}
-              </option>
-            ))}
-          </select>
-          {activeTheme !== 'ppe' && activeTheme !== 'environmental' && (
-            <>
-              <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700" />
-              <select
-                value={focusWeek}
-                onChange={(e) => setFocusWeek(e.target.value)}
-                className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm w-full sm:w-auto"
-              >
-                <option value="all">{t('common.all')}</option>
-                {focusWeeks.map((w) => (
-                  <option key={w.week} value={w.week}>
-                    {w.label}
-                  </option>
-                ))}
-              </select>
-            </>
-          )}
+      {activeTheme !== 'monthly_report' && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/40 px-3 py-2 w-full sm:w-auto">
+            <select
+              value={focusPole}
+              onChange={(e) => setFocusPole(e.target.value)}
+              className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm w-full sm:w-auto"
+            >
+              <option value="">{t('common.allPoles')}</option>
+              {poles.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+            <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700" />
+            <select
+              value={focusProjectId}
+              onChange={(e) => setFocusProjectId(e.target.value)}
+              className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm w-full sm:w-auto"
+            >
+              <option value="all">{t('common.allProjects')}</option>
+              {visibleProjectsSorted.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {getProjectLabel(p)}
+                </option>
+              ))}
+            </select>
+            {activeTheme !== 'ppe' && activeTheme !== 'environmental' && (
+              <>
+                <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700" />
+                <select
+                  value={focusWeek}
+                  onChange={(e) => setFocusWeek(e.target.value)}
+                  className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm w-full sm:w-auto"
+                >
+                  <option value="all">{t('common.all')}</option>
+                  {focusWeeks.map((w) => (
+                    <option key={w.week} value={w.week}>
+                      {w.label}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
 
-          {activeTheme === 'environmental' && (
-            <>
-              <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700" />
-              <select
-                value={focusMonth}
-                onChange={(e) => setFocusMonth(e.target.value)}
-                className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm w-full sm:w-auto"
-              >
-                <option value="all">{t('common.all')}</option>
-                <option value="1">{t('months.january')}</option>
-                <option value="2">{t('months.february')}</option>
-                <option value="3">{t('months.march')}</option>
-                <option value="4">{t('months.april')}</option>
-                <option value="5">{t('months.may')}</option>
-                <option value="6">{t('months.june')}</option>
-                <option value="7">{t('months.july')}</option>
-                <option value="8">{t('months.august')}</option>
-                <option value="9">{t('months.september')}</option>
-                <option value="10">{t('months.october')}</option>
-                <option value="11">{t('months.november')}</option>
-                <option value="12">{t('months.december')}</option>
-              </select>
-            </>
-          )}
+            {activeTheme === 'environmental' && (
+              <>
+                <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700" />
+                <select
+                  value={focusMonth}
+                  onChange={(e) => setFocusMonth(e.target.value)}
+                  className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm w-full sm:w-auto"
+                >
+                  <option value="all">{t('common.all')}</option>
+                  <option value="1">{t('months.january')}</option>
+                  <option value="2">{t('months.february')}</option>
+                  <option value="3">{t('months.march')}</option>
+                  <option value="4">{t('months.april')}</option>
+                  <option value="5">{t('months.may')}</option>
+                  <option value="6">{t('months.june')}</option>
+                  <option value="7">{t('months.july')}</option>
+                  <option value="8">{t('months.august')}</option>
+                  <option value="9">{t('months.september')}</option>
+                  <option value="10">{t('months.october')}</option>
+                  <option value="11">{t('months.november')}</option>
+                  <option value="12">{t('months.december')}</option>
+                </select>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Theme Content */}
       {activeTheme === 'safety' && (
@@ -675,6 +677,7 @@ export default function AdminDashboard() {
       {activeTheme === 'deviations' && (
         <DeviationTheme year={year} projects={projects} projectId={focusProjectId} week={focusWeek} pole={focusPole} />
       )}
+
       {activeTheme === 'environmental' && (
         <EnvironmentalTheme 
           data={environmentalMonthly}

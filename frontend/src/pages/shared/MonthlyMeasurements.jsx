@@ -8,6 +8,8 @@ import YearPicker from '../../components/ui/YearPicker'
 import MonthPicker from '../../components/ui/MonthPicker'
 import { sortProjects } from '../../utils/projectList'
 import { FileText, Plus, Edit2, Trash2, Loader2, Volume2, Droplets, Zap } from 'lucide-react'
+import FilterBar from '../../components/ui/filters/FilterBar'
+import FilterSelect from '../../components/ui/filters/FilterSelect'
 import toast from 'react-hot-toast'
 
 const INDICATORS = [
@@ -265,27 +267,28 @@ export default function MonthlyMeasurements() {
         })}
       </div>
 
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div>
-            <label className="label">{t('projects.title') ?? 'Project'}</label>
-            <select className="input" value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)}>
-              <option value="">{t('common.all') ?? 'All'}</option>
-              {sortedProjects.map((p) => (
-                <option key={p.id} value={String(p.id)}>
-                  {p.code ? `${p.code} - ${p.name}` : p.name}
-                </option>
-              ))}
-            </select>
-          </div>
+      <FilterBar>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <FilterSelect
+            label={t('projects.title') ?? 'Project'}
+            value={selectedProjectId}
+            onChange={setSelectedProjectId}
+          >
+            <option value="">{t('common.all') ?? 'All'}</option>
+            {sortedProjects.map((p) => (
+              <option key={p.id} value={String(p.id)}>
+                {p.code ? `${p.code} - ${p.name}` : p.name}
+              </option>
+            ))}
+          </FilterSelect>
 
-          <div>
-            <label className="label">{t('monthlyMeasurements.filters.year') ?? 'Year'}</label>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('monthlyMeasurements.filters.year') ?? 'Year'}</label>
             <YearPicker value={yearFilter} onChange={(y) => setYearFilter(String(y ?? ''))} className="w-full" />
           </div>
 
-          <div>
-            <label className="label">{t('monthlyMeasurements.filters.month') ?? 'Month'}</label>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('monthlyMeasurements.filters.month') ?? 'Month'}</label>
             <MonthPicker
               value={toMonthKey(yearFilter, monthFilter)}
               defaultYear={yearFilter}
@@ -299,7 +302,7 @@ export default function MonthlyMeasurements() {
             />
           </div>
         </div>
-      </div>
+      </FilterBar>
 
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">

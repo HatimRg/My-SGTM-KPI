@@ -812,6 +812,13 @@ export default {
       complianceByProject: 'Conformité par Projet',
       inspectionTrends: 'Tendance des Inspections',
       inspectionsByNature: 'Inspections par Nature',
+      inspectionNature: {
+        environment: 'Environnement',
+        equipment: 'Équipement',
+        other: 'Autre',
+        sst: 'SST',
+        third_party: 'Tierce partie',
+      },
       regulatoryWatchTrend: 'Tendance Veille Réglementaire (HSE)',
       medicalAptitudeTrend: 'Tendance Aptitude Médicale',
       regulatoryWatchScore: 'Score veille réglementaire',

@@ -9,6 +9,8 @@ import YearPicker from '../../components/ui/YearPicker'
 import MonthPicker from '../../components/ui/MonthPicker'
 import { sortProjects } from '../../utils/projectList'
 import { Sun, Plus, Edit2, Trash2, Loader2, X } from 'lucide-react'
+import FilterBar from '../../components/ui/filters/FilterBar'
+import FilterSelect from '../../components/ui/filters/FilterSelect'
 import toast from 'react-hot-toast'
 
 export default function LightingMeasurements() {
@@ -198,22 +200,23 @@ export default function LightingMeasurements() {
         </button>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-          <div>
-            <label className="label">{t('common.project')}</label>
-            <select className="input" value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)}>
-              <option value="">{t('common.all')}</option>
-              {sortedProjects.map((p) => (
-                <option key={p.id} value={String(p.id)}>
-                  {p.code ? `${p.code} - ${p.name}` : p.name}
-                </option>
-              ))}
-            </select>
-          </div>
+      <FilterBar>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+          <FilterSelect
+            label={t('common.project')}
+            value={selectedProjectId}
+            onChange={setSelectedProjectId}
+          >
+            <option value="">{t('common.all')}</option>
+            {sortedProjects.map((p) => (
+              <option key={p.id} value={String(p.id)}>
+                {p.code ? `${p.code} - ${p.name}` : p.name}
+              </option>
+            ))}
+          </FilterSelect>
 
-          <div>
-            <label className="label">{t('lightingMeasurements.filters.year')}</label>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('lightingMeasurements.filters.year')}</label>
             <div className="flex gap-2">
               <div className="flex-1">
                 <YearPicker
@@ -236,8 +239,8 @@ export default function LightingMeasurements() {
             </div>
           </div>
 
-          <div>
-            <label className="label">{t('lightingMeasurements.filters.month')}</label>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('lightingMeasurements.filters.month')}</label>
             <div className="flex gap-2">
               <div className="flex-1">
                 <MonthPicker
@@ -266,7 +269,7 @@ export default function LightingMeasurements() {
             </div>
           </div>
         </div>
-      </div>
+      </FilterBar>
 
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
