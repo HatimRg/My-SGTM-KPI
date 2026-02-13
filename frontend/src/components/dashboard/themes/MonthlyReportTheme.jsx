@@ -1,5 +1,7 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from '../../../i18n'
+import { MonthPicker, WeekPicker } from '../../../components/ui'
 import { dashboardService } from '../../../services/api'
 import toast from 'react-hot-toast'
 import {
@@ -13,6 +15,7 @@ import {
   ResponsiveContainer,
   ComposedChart,
   Customized,
+  LabelList,
 } from 'recharts'
 import JSZip from 'jszip'
 import { Download, Loader2 } from 'lucide-react'
@@ -40,6 +43,8 @@ const safeNumber = (v) => {
   return Number.isFinite(n) ? n : 0
 }
 
+const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
 const payloadValue = (payload, key) => {
   const arr = Array.isArray(payload) ? payload : []
   const found = arr.find((x) => x?.dataKey === key)
@@ -50,13 +55,37 @@ const fmtInt = (v) => String(Math.round(safeNumber(v)))
 const fmt2 = (v) => safeNumber(v).toFixed(2)
 const fmtPct2 = (v) => `${safeNumber(v).toFixed(2)}%`
 
-const getISOWeek = (date) => {
+const getISOWeekInfo = (date) => {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
   const dayNum = d.getUTCDay() || 7
   d.setUTCDate(d.getUTCDate() + 4 - dayNum)
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7)
+  const weekYear = d.getUTCFullYear()
+  const yearStart = new Date(Date.UTC(weekYear, 0, 1))
+  const week = Math.ceil((((d - yearStart) / 86400000) + 1) / 7)
+  return { weekYear, week }
 }
+
+const pad2 = (n) => String(Math.max(0, Math.trunc(n))).padStart(2, '0')
+
+const toIsoWeekKey = (date) => {
+  const { weekYear, week } = getISOWeekInfo(date)
+  return `${weekYear}-W${pad2(week)}`
+}
+
+const WeekRangePicker = memo(function WeekRangePicker({ weekStart, weekEnd, onChangeStart, onChangeEnd, labelStart, labelEnd }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="flex flex-col gap-1">
+        <div className="text-xs font-medium text-gray-600 dark:text-gray-300">{labelStart}</div>
+        <WeekPicker value={weekStart} onChange={onChangeStart} className="w-full" />
+      </div>
+      <div className="flex flex-col gap-1">
+        <div className="text-xs font-medium text-gray-600 dark:text-gray-300">{labelEnd}</div>
+        <WeekPicker value={weekEnd} onChange={onChangeEnd} className="w-full" />
+      </div>
+    </div>
+  )
+})
 
 const makeBottomLegend = (items, { textColor = CHART_THEME.label } = {}) => {
   const normalized = Array.isArray(items) ? items : []
@@ -105,6 +134,432 @@ const makeBottomLegend = (items, { textColor = CHART_THEME.label } = {}) => {
       </g>
     )
   }
+}
+
+const renderTopLabelWithBg = ({
+  formatter = (v) => v,
+  fontSize = 10,
+  fontWeight = 600,
+  textColor = CHART_THEME.label,
+  bgColor = '#FFFFFF',
+  bgOpacity = 0.92,
+  paddingX = 4,
+  paddingY = 2,
+  offsetY = 8,
+} = {}) => {
+  const estimateTextWidth = (text, fs) => {
+    const s = String(text ?? '')
+    return s.length * fs * 0.62
+  }
+
+  return (props) => {
+    const { x, y, width, value } = props
+    if (value === undefined || value === null) return null
+    const text = String(formatter(value))
+    if (text.trim() === '' || text === '0' || text === '0.00') {
+      // keep zeros visible for TF/TG; don't early-return
+    }
+
+    const cx = safeNumber(x) + safeNumber(width) / 2
+    const labelY = safeNumber(y) - offsetY
+    const w = estimateTextWidth(text, fontSize) + paddingX * 2
+    const h = fontSize + paddingY * 2
+
+    return (
+      <g>
+        <rect x={cx - w / 2} y={labelY - fontSize - paddingY} width={w} height={h} rx={4} fill={bgColor} opacity={bgOpacity} />
+        <text
+          x={cx}
+          y={labelY}
+          fill={textColor}
+          fontSize={fontSize}
+          fontWeight={fontWeight}
+          textAnchor="middle"
+          dominantBaseline="auto"
+        >
+          {text}
+        </text>
+      </g>
+    )
+  }
+}
+
+const renderSmartBarLabel = (trendDataKey, valueThreshold = 20, topMargin = 150) => {
+  return (props) => {
+    const { x, y, width, height, value, payload } = props
+    if (value === undefined || value === null || value === 0) return null
+
+    const barValue = safeNumber(value)
+    const trendValue = safeNumber(payload?.[trendDataKey])
+
+    const hasTrendValue = trendValue > 0
+    const barIsNearTop = y < topMargin
+    const isCloseInValue = hasTrendValue && Math.abs(barValue - trendValue) < valueThreshold
+    const isOverlapping = barIsNearTop || isCloseInValue
+
+    const labelX = x + width / 2
+    const labelY = isOverlapping ? y + Math.min(height / 2, 20) : y - 8
+    const textAnchor = 'middle'
+    const dominantBaseline = isOverlapping ? 'middle' : 'auto'
+
+    const text = String(barValue)
+    const showBg = !isOverlapping
+    const paddingX = 4
+    const paddingY = 2
+    const bgW = text.length * 10 * 0.62 + paddingX * 2
+    const bgH = 10 + paddingY * 2
+
+    return (
+      <g>
+        {showBg ? (
+          <rect
+            x={labelX - bgW / 2}
+            y={labelY - 10 - paddingY}
+            width={bgW}
+            height={bgH}
+            rx={4}
+            fill="#FFFFFF"
+            opacity={0.92}
+          />
+        ) : null}
+        <text
+          x={labelX}
+          y={labelY}
+          fill={showBg ? '#111827' : CHART_THEME.label}
+          fontSize={10}
+          fontWeight={600}
+          textAnchor={textAnchor}
+          dominantBaseline={dominantBaseline}
+        >
+          {text}
+        </text>
+      </g>
+    )
+  }
+}
+
+const renderSmartBarLabelPct = (trendDataKey, valueThreshold = 20, topMargin = 150) => {
+  return (props) => {
+    const { x, y, width, height, value, payload } = props
+    if (value === undefined || value === null || value === 0) return null
+
+    const barValue = safeNumber(value)
+    const trendValue = safeNumber(payload?.[trendDataKey])
+
+    const hasTrendValue = trendValue > 0
+    const barIsNearTop = y < topMargin
+    const isCloseInValue = hasTrendValue && Math.abs(barValue - trendValue) < valueThreshold
+    const isOverlapping = barIsNearTop || isCloseInValue
+
+    const labelX = x + width / 2
+    const labelY = isOverlapping ? y + Math.min(height / 2, 20) : y - 8
+    const textAnchor = 'middle'
+    const dominantBaseline = isOverlapping ? 'middle' : 'auto'
+
+    const text = String(safeNumber(barValue).toFixed(1))
+    const showBg = !isOverlapping
+    const paddingX = 4
+    const paddingY = 2
+    const bgW = text.length * 10 * 0.62 + paddingX * 2
+    const bgH = 10 + paddingY * 2
+
+    return (
+      <g>
+        {showBg ? (
+          <rect
+            x={labelX - bgW / 2}
+            y={labelY - 10 - paddingY}
+            width={bgW}
+            height={bgH}
+            rx={4}
+            fill="#FFFFFF"
+            opacity={0.92}
+          />
+        ) : null}
+        <text
+          x={labelX}
+          y={labelY}
+          fill={showBg ? '#111827' : CHART_THEME.label}
+          fontSize={10}
+          fontWeight={600}
+          textAnchor={textAnchor}
+          dominantBaseline={dominantBaseline}
+        >
+          {text}
+        </text>
+      </g>
+    )
+  }
+}
+
+const makeCollisionBarLabels = ({
+  barKey,
+  lineKey,
+  barAxisId = 'left',
+  lineAxisId = 'right',
+  formatter = (v) => v,
+  lineLabelFormatter = (v) => v,
+  fontSize = 10,
+  fontWeight = 600,
+  fill = CHART_THEME.label,
+  collisionYPx = 14,
+  lineLabelFontSize = 9,
+  lineLabelOffset = 12,
+  dotRadius = 3,
+  dotBuffer = 4,
+  lineStrokeBuffer = 4,
+} = {}) => {
+  const estimateTextWidth = (text, fs) => {
+    const s = String(text ?? '')
+    return s.length * fs * 0.62
+  }
+
+  const rectsIntersect = (a, b) => {
+    if (!a || !b) return false
+    return !(a.x2 < b.x1 || a.x1 > b.x2 || a.y2 < b.y1 || a.y1 > b.y2)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const distPointToSegment = (px, py, x1, y1, x2, y2) => {
+    const dx = x2 - x1
+    const dy = y2 - y1
+    if (dx === 0 && dy === 0) return Math.hypot(px - x1, py - y1)
+    const t = clamp(((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy), 0, 1)
+    const cx = x1 + t * dx
+    const cy = y1 + t * dy
+    return Math.hypot(px - cx, py - cy)
+  }
+
+  return ({ data, xAxisMap, yAxisMap }) => {
+    const rows = Array.isArray(data) ? data : []
+    const xAxis = xAxisMap ? Object.values(xAxisMap)[0] : null
+    const xScale = xAxis?.scale
+    const xBandwidth = typeof xScale?.bandwidth === 'function' ? xScale.bandwidth() : 0
+
+    const yBar = yAxisMap?.[barAxisId]?.scale
+    const yLine = yAxisMap?.[lineAxisId]?.scale
+
+    if (!xScale || !yBar || !yLine) return null
+
+    const zeroY = yBar(0)
+
+    const centers = rows.map((row) => {
+      const category = row?.pole
+      const x0 = xScale(category)
+      const cx = Number.isFinite(x0) ? x0 + xBandwidth / 2 : NaN
+      const y = yLine(safeNumber(row?.[lineKey]))
+      return { cx, y }
+    })
+
+    return (
+      <g>
+        {rows.map((row, idx) => {
+          const category = row?.pole
+          const x0 = xScale(category)
+          if (!Number.isFinite(x0)) return null
+
+          const barValue = safeNumber(row?.[barKey])
+          if (!barValue) return null
+
+          const lineValue = safeNumber(row?.[lineKey])
+
+          const cx = x0 + xBandwidth / 2
+          const barTopY = yBar(barValue)
+          const barHeight = Math.max(0, zeroY - barTopY)
+
+          const linePointY = yLine(lineValue)
+          const lineLabelY = linePointY - lineLabelOffset
+
+          const barText = formatter(barValue)
+          const barTextWidth = estimateTextWidth(barText, fontSize)
+          const barHalfW = barTextWidth / 2
+          const barHalfH = fontSize / 2
+
+          const lineText = lineLabelFormatter(lineValue)
+          const lineTextWidth = estimateTextWidth(lineText, lineLabelFontSize)
+          const lineLabelBox = Number.isFinite(lineLabelY)
+            ? {
+              x1: cx - lineTextWidth / 2,
+              x2: cx + lineTextWidth / 2,
+              y1: lineLabelY - lineLabelFontSize,
+              y2: lineLabelY + 2,
+            }
+            : null
+
+          const dotBox = Number.isFinite(linePointY)
+            ? {
+              x1: cx - (dotRadius + dotBuffer),
+              x2: cx + (dotRadius + dotBuffer),
+              y1: linePointY - (dotRadius + dotBuffer),
+              y2: linePointY + (dotRadius + dotBuffer),
+            }
+            : null
+
+          const prev = centers[idx - 1]
+          const curr = centers[idx]
+          const next = centers[idx + 1]
+          const segments = []
+          if (prev && Number.isFinite(prev.cx) && Number.isFinite(prev.y) && Number.isFinite(curr?.cx) && Number.isFinite(curr?.y)) {
+            segments.push([prev.cx, prev.y, curr.cx, curr.y])
+          }
+          if (next && Number.isFinite(next.cx) && Number.isFinite(next.y) && Number.isFinite(curr?.cx) && Number.isFinite(curr?.y)) {
+            segments.push([curr.cx, curr.y, next.cx, next.y])
+          }
+
+          const collides = (labelY) => {
+            const box = {
+              x1: cx - barHalfW,
+              x2: cx + barHalfW,
+              y1: labelY - barHalfH,
+              y2: labelY + barHalfH,
+            }
+
+            if (rectsIntersect(box, lineLabelBox)) return true
+            if (rectsIntersect(box, dotBox)) return true
+
+            const centerY = labelY
+            const sampleDx = Math.max(1, Math.min(barHalfW, barHalfW * 0.85))
+            const sampleXs = [cx, cx - sampleDx, cx + sampleDx]
+            for (const [x1, y1, x2, y2] of segments) {
+              for (const sx of sampleXs) {
+                const d = distPointToSegment(sx, centerY, x1, y1, x2, y2)
+                if (d <= lineStrokeBuffer) return true
+              }
+            }
+
+            if (Number.isFinite(linePointY) && Math.abs(centerY - linePointY) <= collisionYPx) return true
+            if (Number.isFinite(lineLabelY) && Math.abs(centerY - lineLabelY) <= collisionYPx) return true
+
+            return false
+          }
+
+          const aboveY = barTopY - 8
+          const insideStartY = barTopY + Math.min(barHeight / 2, 20)
+          const barBottomY = barTopY + barHeight
+          const minInsideY = barTopY + 14
+          const maxInsideY = Math.min(barBottomY - 14, zeroY - 8)
+          const stepPx = 3
+
+          let labelY = insideStartY
+          let dominantBaseline = 'middle'
+          let showBg = false
+
+          if (!collides(aboveY)) {
+            labelY = aboveY
+            dominantBaseline = 'auto'
+            showBg = true
+          } else if (Number.isFinite(minInsideY) && Number.isFinite(maxInsideY) && minInsideY <= maxInsideY) {
+            let found = false
+            const start = clamp(insideStartY, minInsideY, maxInsideY)
+            for (let yTry = start; yTry <= maxInsideY; yTry += stepPx) {
+              if (!collides(yTry)) {
+                labelY = yTry
+                dominantBaseline = 'middle'
+                showBg = false
+                found = true
+                break
+              }
+            }
+
+            if (!found) {
+              for (let yTry = start; yTry >= minInsideY; yTry -= stepPx) {
+                if (!collides(yTry)) {
+                  labelY = yTry
+                  dominantBaseline = 'middle'
+                  showBg = false
+                  found = true
+                  break
+                }
+              }
+            }
+
+            if (!found) {
+              labelY = insideStartY
+              dominantBaseline = 'middle'
+              showBg = false
+            }
+          } else {
+            const clamped = clamp(insideStartY, barTopY + 8, zeroY - 8)
+            labelY = clamped
+            dominantBaseline = 'middle'
+            showBg = false
+          }
+
+          if (labelY > zeroY - 6) {
+            labelY = zeroY - 6
+            dominantBaseline = 'auto'
+            showBg = true
+          }
+
+          const bgPadX = 4
+          const bgPadY = 2
+          const bgW = barTextWidth + bgPadX * 2
+          const bgH = fontSize + bgPadY * 2
+          const bgX = cx - bgW / 2
+          const bgY = labelY - fontSize - bgPadY
+
+          return (
+            <g key={`${String(category)}-${idx}`}>
+              {showBg ? (
+                <rect x={bgX} y={bgY} width={bgW} height={bgH} rx={4} fill="#FFFFFF" opacity={0.92} />
+              ) : null}
+              <text
+                x={cx}
+                y={labelY}
+                fill={showBg ? '#111827' : fill}
+                fontSize={fontSize}
+                fontWeight={fontWeight}
+                textAnchor="middle"
+                dominantBaseline={dominantBaseline}
+              >
+                {barText}
+              </text>
+            </g>
+          )
+        })}
+      </g>
+    )
+  }
+}
+
+const wrapCanvasText = (ctx, text, maxWidth) => {
+  const raw = String(text ?? '').trim()
+  if (!raw) return []
+  const safeMax = Math.max(40, safeNumber(maxWidth))
+
+  const words = raw.split(/\s+/g)
+  const lines = []
+  let current = ''
+
+  for (const w of words) {
+    const test = current ? `${current} ${w}` : w
+    const width = ctx.measureText(test).width
+    if (width <= safeMax) {
+      current = test
+      continue
+    }
+
+    if (current) lines.push(current)
+    current = w
+
+    if (ctx.measureText(current).width > safeMax) {
+      let chunk = ''
+      for (const ch of String(w)) {
+        const next = chunk + ch
+        if (ctx.measureText(next).width <= safeMax || !chunk) {
+          chunk = next
+        } else {
+          lines.push(chunk)
+          chunk = ch
+        }
+      }
+      current = chunk
+    }
+  }
+
+  if (current) lines.push(current)
+  return lines
 }
 
 const svgToPngBlob = async (svgElement, { scale = 5, background = '#ffffff', maxCanvasSize = 8192, title } = {}) => {
@@ -167,11 +622,33 @@ const svgToPngBlob = async (svgElement, { scale = 5, background = '#ffffff', max
   })
 
   const titleText = String(title || '').trim()
-  const headerHeightCssPx = titleText ? 40 : 0
-  const headerHeight = Math.round(headerHeightCssPx * pixelScale)
+  const headerPaddingX = 12
+  const headerPaddingY = 10
+  const headerLineHeight = 18
+  const headerTextMaxWidth = Math.max(40, safeNumber(width) - headerPaddingX * 2)
 
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(width * pixelScale)
+
+  const ctx0 = canvas.getContext('2d')
+  if (!ctx0) {
+    throw new Error('Canvas not supported')
+  }
+
+  let headerHeightCssPx = 0
+  let wrappedLines = []
+  if (titleText) {
+    ctx0.save()
+    ctx0.scale(pixelScale, pixelScale)
+    ctx0.font = '700 16px system-ui, -apple-system, Segoe UI, Roboto, Arial'
+    wrappedLines = wrapCanvasText(ctx0, titleText, headerTextMaxWidth)
+    ctx0.restore()
+
+    const textBlockH = wrappedLines.length * headerLineHeight
+    headerHeightCssPx = Math.max(40, headerPaddingY * 2 + textBlockH + 8)
+  }
+
+  const headerHeight = Math.round(headerHeightCssPx * pixelScale)
   canvas.height = Math.round(height * pixelScale) + headerHeight
 
   const ctx = canvas.getContext('2d')
@@ -187,14 +664,17 @@ const svgToPngBlob = async (svgElement, { scale = 5, background = '#ffffff', max
     ctx.scale(pixelScale, pixelScale)
     ctx.fillStyle = '#1F1F1F'
     ctx.font = '700 16px system-ui, -apple-system, Segoe UI, Roboto, Arial'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(titleText, 12, headerHeightCssPx / 2)
+    ctx.textBaseline = 'top'
+    const startY = headerPaddingY
+    wrappedLines.forEach((line, i) => {
+      ctx.fillText(line, headerPaddingX, startY + i * headerLineHeight)
+    })
     ctx.strokeStyle = '#F2A93B'
     ctx.globalAlpha = 0.9
     ctx.lineWidth = 2
     ctx.beginPath()
-    ctx.moveTo(12, headerHeightCssPx - 4)
-    ctx.lineTo(Math.max(12, (width - 12)), headerHeightCssPx - 4)
+    ctx.moveTo(headerPaddingX, headerHeightCssPx - 4)
+    ctx.lineTo(Math.max(headerPaddingX, (width - headerPaddingX)), headerHeightCssPx - 4)
     ctx.stroke()
     ctx.restore()
   }
@@ -234,20 +714,41 @@ const htmlToPngBlob = async (html, { width = 1200, height = 800, scale = 2, back
   })
 
   const titleText = String(title || '').trim()
-  const headerHeightCssPx = titleText ? 40 : 0
+  const headerPaddingX = 12
+  const headerPaddingY = 10
+  const headerLineHeight = 18
+  const headerTextMaxWidth = Math.max(40, safeNumber(safeWidth) - headerPaddingX * 2)
   const dpr = window.devicePixelRatio || 1
   let pixelScale = Math.max(1, safeNumber(scale) * dpr)
 
   const maxDim = Math.max(512, safeNumber(maxCanvasSize))
-  const largest = Math.max(safeWidth * pixelScale, (safeHeight + headerHeightCssPx) * pixelScale)
+  const largest = Math.max(safeWidth * pixelScale, safeHeight * pixelScale)
   if (largest > maxDim) {
     pixelScale = pixelScale * (maxDim / largest)
   }
 
-  const headerHeight = Math.round(headerHeightCssPx * pixelScale)
-
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(safeWidth * pixelScale)
+
+  const ctx0 = canvas.getContext('2d')
+  if (!ctx0) {
+    throw new Error('Canvas not supported')
+  }
+
+  let headerHeightCssPx = 0
+  let wrappedLines = []
+  if (titleText) {
+    ctx0.save()
+    ctx0.scale(pixelScale, pixelScale)
+    ctx0.font = '700 16px system-ui, -apple-system, Segoe UI, Roboto, Arial'
+    wrappedLines = wrapCanvasText(ctx0, titleText, headerTextMaxWidth)
+    ctx0.restore()
+
+    const textBlockH = wrappedLines.length * headerLineHeight
+    headerHeightCssPx = Math.max(40, headerPaddingY * 2 + textBlockH + 8)
+  }
+
+  const headerHeight = Math.round(headerHeightCssPx * pixelScale)
   canvas.height = Math.round(safeHeight * pixelScale) + headerHeight
 
   const ctx = canvas.getContext('2d')
@@ -263,14 +764,17 @@ const htmlToPngBlob = async (html, { width = 1200, height = 800, scale = 2, back
     ctx.scale(pixelScale, pixelScale)
     ctx.fillStyle = '#1F1F1F'
     ctx.font = '700 16px system-ui, -apple-system, Segoe UI, Roboto, Arial'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(titleText, 12, headerHeightCssPx / 2)
+    ctx.textBaseline = 'top'
+    const startY = headerPaddingY
+    wrappedLines.forEach((line, i) => {
+      ctx.fillText(line, headerPaddingX, startY + i * headerLineHeight)
+    })
     ctx.strokeStyle = '#F2A93B'
     ctx.globalAlpha = 0.9
     ctx.lineWidth = 2
     ctx.beginPath()
-    ctx.moveTo(12, headerHeightCssPx - 4)
-    ctx.lineTo(Math.max(12, (safeWidth - 12)), headerHeightCssPx - 4)
+    ctx.moveTo(headerPaddingX, headerHeightCssPx - 4)
+    ctx.lineTo(Math.max(headerPaddingX, (safeWidth - headerPaddingX)), headerHeightCssPx - 4)
     ctx.stroke()
     ctx.restore()
   }
@@ -327,6 +831,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
   }, [])
 
   const trendStroke = isDarkMode ? SGTM_COLORS.white : '#2E2E2E'
+  const filterStorageKey = 'monthly_report_theme_filters_v1'
   const [month, setMonth] = useState(() => {
     const now = new Date()
     const m = String(now.getMonth() + 1).padStart(2, '0')
@@ -340,15 +845,61 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
   // Week range filter state
   const [useWeekRange, setUseWeekRange] = useState(false)
   const [weekStart, setWeekStart] = useState(() => {
-    const now = new Date()
-    const weekNum = getISOWeek(now)
-    return `${now.getFullYear()}-W${String(weekNum).padStart(2, '0')}`
+    return toIsoWeekKey(new Date())
   })
   const [weekEnd, setWeekEnd] = useState(() => {
-    const now = new Date()
-    const weekNum = getISOWeek(now)
-    return `${now.getFullYear()}-W${String(weekNum).padStart(2, '0')}`
+    return toIsoWeekKey(new Date())
   })
+
+  const [selectedPole, setSelectedPole] = useState('')
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = window.localStorage.getItem(filterStorageKey)
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+
+      if (typeof parsed?.useWeekRange === 'boolean') setUseWeekRange(parsed.useWeekRange)
+      if (typeof parsed?.month === 'string') setMonth(parsed.month)
+      if (typeof parsed?.weekStart === 'string') setWeekStart(parsed.weekStart)
+      if (typeof parsed?.weekEnd === 'string') setWeekEnd(parsed.weekEnd)
+      if (typeof parsed?.projectId === 'string') setProjectId(parsed.projectId)
+
+      const lockedPole = String(focusPole || '').trim()
+      if (lockedPole === '' && typeof parsed?.selectedPole === 'string') {
+        setSelectedPole(parsed.selectedPole)
+      }
+    } catch (e) {
+    }
+  }, [focusPole])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    return () => {
+      try {
+        window.localStorage.removeItem(filterStorageKey)
+      } catch (e) {
+      }
+    }
+  }, [filterStorageKey])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const lockedPole = String(focusPole || '').trim()
+      const payloadToStore = {
+        useWeekRange,
+        month,
+        weekStart,
+        weekEnd,
+        projectId,
+        selectedPole: lockedPole ? '' : selectedPole,
+      }
+      window.localStorage.setItem(filterStorageKey, JSON.stringify(payloadToStore))
+    } catch (e) {
+    }
+  }, [focusPole, month, projectId, selectedPole, useWeekRange, weekEnd, weekStart])
 
   const chartRefs = useRef({})
 
@@ -366,6 +917,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
         params.month = month
       }
       if (String(projectId || '').trim() !== '') params.project_id = projectId
+      params.refresh = 1
       const res = await dashboardService.getMonthlyReportSummary(params)
       setPayload(res.data?.data ?? null)
     } catch (e) {
@@ -384,12 +936,19 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
   const sections = payload?.sections ?? {}
 
   const normalizedFocusPole = String(focusPole || '').trim()
+  const normalizedSelectedPole = String(selectedPole || '').trim()
   const filteredPoles = useMemo(() => {
     if (normalizedFocusPole === '') return labels
     return labels.filter((p) => String(p) === normalizedFocusPole)
   }, [labels, normalizedFocusPole])
 
-  const showSinglePole = filteredPoles.length <= 1
+  const displayedPoles = useMemo(() => {
+    if (normalizedFocusPole !== '') return filteredPoles
+    if (normalizedSelectedPole === '') return labels
+    return labels.filter((p) => String(p) === normalizedSelectedPole)
+  }, [filteredPoles, labels, normalizedFocusPole, normalizedSelectedPole])
+
+  const showSinglePole = displayedPoles.length <= 1
   const xAxisAngle = showSinglePole ? 0 : -20
   const xAxisHeight = showSinglePole ? 30 : 60
   const xAxisTextAnchor = showSinglePole ? 'middle' : 'end'
@@ -407,7 +966,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     const dsEnv = sections?.veille?.datasets?.[1]
     const valuesSst = Array.isArray(dsSst?.data) ? dsSst.data : []
     const valuesEnv = Array.isArray(dsEnv?.data) ? dsEnv.data : []
-    return filteredPoles.map((pole) => {
+    return displayedPoles.map((pole) => {
       const idx = labels.indexOf(pole)
       return {
         pole,
@@ -415,78 +974,78 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
         score_environment: safeNumber(valuesEnv[idx]),
       }
     })
-  }, [filteredPoles, labels, sections?.veille])
+  }, [displayedPoles, labels, sections?.veille])
 
   const sorRows = useMemo(() => {
     const d0 = sections?.sor?.datasets?.[0]
     const d1 = sections?.sor?.datasets?.[1]
     const totals = Array.isArray(d0?.data) ? d0.data : []
     const closure = Array.isArray(d1?.data) ? d1.data : []
-    return filteredPoles.map((pole) => {
+    return displayedPoles.map((pole) => {
       const idx = labels.indexOf(pole)
       return { pole, total: safeNumber(totals[idx]), closurePct: safeNumber(closure[idx]) }
     })
-  }, [filteredPoles, labels, sections?.sor])
+  }, [displayedPoles, labels, sections?.sor])
 
   const sorSubRows = useMemo(() => {
     const d0 = sections?.sor_subcontractors?.datasets?.[0]
     const d1 = sections?.sor_subcontractors?.datasets?.[1]
     const totals = Array.isArray(d0?.data) ? d0.data : []
     const closure = Array.isArray(d1?.data) ? d1.data : []
-    return filteredPoles.map((pole) => {
+    return displayedPoles.map((pole) => {
       const idx = labels.indexOf(pole)
       return { pole, total: safeNumber(totals[idx]), closurePct: safeNumber(closure[idx]) }
     })
-  }, [filteredPoles, labels, sections?.sor_subcontractors])
+  }, [displayedPoles, labels, sections?.sor_subcontractors])
 
   const durationRows = useMemo(() => {
     const ds = sections?.closure_duration?.datasets?.[0]
     const values = Array.isArray(ds?.data) ? ds.data : []
-    return filteredPoles.map((pole) => {
+    return displayedPoles.map((pole) => {
       const idx = labels.indexOf(pole)
       return { pole, avgHours: safeNumber(values[idx]) }
     })
-  }, [filteredPoles, labels, sections?.closure_duration])
+  }, [displayedPoles, labels, sections?.closure_duration])
 
   const durationSubRows = useMemo(() => {
     const ds = sections?.closure_duration_subcontractors?.datasets?.[0]
     const values = Array.isArray(ds?.data) ? ds.data : []
-    return filteredPoles.map((pole) => {
+    return displayedPoles.map((pole) => {
       const idx = labels.indexOf(pole)
       return { pole, avgHours: safeNumber(values[idx]) }
     })
-  }, [filteredPoles, labels, sections?.closure_duration_subcontractors])
+  }, [displayedPoles, labels, sections?.closure_duration_subcontractors])
 
   const trainingsRows = useMemo(() => {
     const d0 = sections?.trainings?.datasets?.[0]
     const d1 = sections?.trainings?.datasets?.[1]
     const counts = Array.isArray(d0?.data) ? d0.data : []
     const hours = Array.isArray(d1?.data) ? d1.data : []
-    return filteredPoles.map((pole) => {
+    return displayedPoles.map((pole) => {
       const idx = labels.indexOf(pole)
       return { pole, count: safeNumber(counts[idx]), hours: safeNumber(hours[idx]) }
     })
-  }, [filteredPoles, labels, sections?.trainings])
+  }, [displayedPoles, labels, sections?.trainings])
 
   const awarenessRows = useMemo(() => {
     const d0 = sections?.awareness?.datasets?.[0]
     const d1 = sections?.awareness?.datasets?.[1]
     const counts = Array.isArray(d0?.data) ? d0.data : []
     const hours = Array.isArray(d1?.data) ? d1.data : []
-    return filteredPoles.map((pole) => {
+    return displayedPoles.map((pole) => {
       const idx = labels.indexOf(pole)
       return { pole, count: safeNumber(counts[idx]), hours: safeNumber(hours[idx]) }
     })
-  }, [filteredPoles, labels, sections?.awareness])
+  }, [displayedPoles, labels, sections?.awareness])
 
   const medicalRows = useMemo(() => {
     const ds = sections?.medical?.datasets?.[0]
     const values = Array.isArray(ds?.data) ? ds.data : []
-    return filteredPoles.map((pole) => {
+    return displayedPoles.map((pole) => {
       const idx = labels.indexOf(pole)
       return { pole, pct: safeNumber(values[idx]) }
     })
-  }, [filteredPoles, labels, sections?.medical])
+  }, [displayedPoles, labels, sections?.medical])
 
   // TF/TG comparison data
   const tfTgRows = useMemo(() => {
@@ -494,7 +1053,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     const d1 = sections?.tf_tg?.datasets?.[1]
     const tfValues = Array.isArray(d0?.data) ? d0.data : []
     const tgValues = Array.isArray(d1?.data) ? d1.data : []
-    return filteredPoles.map((pole) => {
+    return displayedPoles.map((pole) => {
       const idx = labels.indexOf(pole)
       const byPole = sections?.tf_tg?.by_pole?.[pole] || {}
       return {
@@ -506,7 +1065,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
         hours: safeNumber(byPole.hours),
       }
     })
-  }, [filteredPoles, labels, sections?.tf_tg])
+  }, [displayedPoles, labels, sections?.tf_tg])
 
   // Accidents vs Incidents data
   const accidentsIncidentsRows = useMemo(() => {
@@ -514,7 +1073,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     const d1 = sections?.accidents_incidents?.datasets?.[1]
     const accValues = Array.isArray(d0?.data) ? d0.data : []
     const incValues = Array.isArray(d1?.data) ? d1.data : []
-    return filteredPoles.map((pole) => {
+    return displayedPoles.map((pole) => {
       const idx = labels.indexOf(pole)
       return {
         pole,
@@ -522,7 +1081,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
         incidents: safeNumber(incValues[idx]),
       }
     })
-  }, [filteredPoles, labels, sections?.accidents_incidents])
+  }, [displayedPoles, labels, sections?.accidents_incidents])
 
   // PPE consumption data
   const ppeConsumptionData = useMemo(() => {
@@ -530,7 +1089,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     const itemIds = sections?.ppe_consumption?.item_ids || []
     const byPole = sections?.ppe_consumption?.by_pole || {}
 
-    const rows = filteredPoles.map((pole) => {
+    const rows = displayedPoles.map((pole) => {
       const poleItems = byPole[pole] || {}
       const row = { pole }
       itemIds.forEach((id) => {
@@ -540,7 +1099,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     })
 
     return { rows, itemNames, itemIds }
-  }, [filteredPoles, sections?.ppe_consumption])
+  }, [displayedPoles, sections?.ppe_consumption])
 
   // Heavy machinery data
   const machineryRows = useMemo(() => {
@@ -548,7 +1107,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     const d1 = sections?.machinery?.datasets?.[1]
     const counts = Array.isArray(d0?.data) ? d0.data : []
     const completions = Array.isArray(d1?.data) ? d1.data : []
-    return filteredPoles.map((pole) => {
+    return displayedPoles.map((pole) => {
       const idx = labels.indexOf(pole)
       return {
         pole,
@@ -556,15 +1115,85 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
         avgCompletion: safeNumber(completions[idx]),
       }
     })
-  }, [filteredPoles, labels, sections?.machinery])
+  }, [displayedPoles, labels, sections?.machinery])
+
+  // Inspections data
+  const inspectionsRows = useMemo(() => {
+    const d0 = sections?.inspections?.datasets?.[0]
+    const counts = Array.isArray(d0?.data) ? d0.data : []
+    return displayedPoles.map((pole) => {
+      const idx = labels.indexOf(pole)
+      return {
+        pole,
+        count: safeNumber(counts[idx]),
+      }
+    })
+  }, [displayedPoles, labels, sections?.inspections])
 
   const tooltipDark = {
-    contentStyle: { backgroundColor: CHART_THEME.tooltipBg, border: `1px solid ${CHART_THEME.grid}`, borderRadius: 10, maxWidth: 400 },
+    contentStyle: { backgroundColor: CHART_THEME.tooltipBg, border: `1px solid ${CHART_THEME.grid}`, borderRadius: 10, maxWidth: 320, padding: 10, lineHeight: 1.2 },
     labelStyle: { color: CHART_THEME.label, fontWeight: 700 },
     itemStyle: { color: CHART_THEME.label },
-    allowEscapeViewBox: { x: true, y: true },
-    wrapperStyle: { zIndex: 9999, pointerEvents: 'none' },
+    allowEscapeViewBox: { x: false, y: false },
+    wrapperStyle: { zIndex: 99999, pointerEvents: 'none' },
+    isAnimationActive: false,
   }
+
+  const makeSmartTooltip = useCallback((renderContent, { side = 'auto', tooltipWidth = 320, gutter = 16, estimatedHeight = 220, containerKey = '' } = {}) => {
+    return ({ active, payload, label, coordinate, viewBox }) => {
+      if (!active || !payload || payload.length === 0) return null
+
+      const chartWidth = viewBox?.width || 500
+      const mouseX = coordinate?.x || 0
+      const mouseY = coordinate?.y || 0
+
+      const safeKey = String(containerKey || '').trim()
+      const containerEl = safeKey ? chartRefs.current?.[safeKey] : null
+      const rect = containerEl?.getBoundingClientRect ? containerEl.getBoundingClientRect() : null
+
+      const hasViewport = typeof window !== 'undefined' && typeof window.innerWidth === 'number' && typeof window.innerHeight === 'number'
+      const viewportW = hasViewport ? window.innerWidth : 1200
+      const viewportH = hasViewport ? window.innerHeight : 800
+
+      const baseX = rect ? rect.left + mouseX : mouseX
+      const baseY = rect ? rect.top + mouseY : mouseY
+
+      const desiredSide = side === 'auto'
+        ? (mouseX + tooltipWidth + gutter > chartWidth ? 'left' : 'right')
+        : side
+
+      const rawX = desiredSide === 'left'
+        ? baseX - tooltipWidth - gutter
+        : baseX + gutter
+
+      const rawY = baseY - 12
+
+      const left = clamp(rawX, 8, Math.max(8, viewportW - tooltipWidth - 8))
+      const top = clamp(rawY, 8, Math.max(8, viewportH - estimatedHeight - 8))
+
+      const node = (
+        <div
+          style={{
+            ...tooltipDark.contentStyle,
+            position: 'fixed',
+            left,
+            top,
+            width: tooltipWidth,
+            zIndex: 999999,
+            pointerEvents: 'none',
+          }}
+        >
+          {renderContent({ active, payload, label })}
+        </div>
+      )
+
+      if (typeof document !== 'undefined' && document.body) {
+        return createPortal(node, document.body)
+      }
+
+      return node
+    }
+  }, [tooltipDark.contentStyle])
 
   const axisCommon = {
     tick: { fontSize: 11, fill: CHART_THEME.axis },
@@ -576,25 +1205,31 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
 
   const renderPoleProjectTooltip = (pole, items, valueGetter, { maxRows = 12 } = {}) => {
     const list = Array.isArray(items) ? items : []
+    const safeMaxRows = Math.max(0, Math.min(12, safeNumber(maxRows)))
     const rows = list
       .slice()
       .sort((a, b) => safeNumber(valueGetter(b)) - safeNumber(valueGetter(a)))
-      .slice(0, maxRows)
+      .slice(0, safeMaxRows)
+
+    const remaining = Math.max(0, list.length - rows.length)
 
     return (
-      <div className="space-y-2">
-        <div className="text-xs font-semibold text-slate-200">{t('dashboard.monthlyReport.pole')}: {pole}</div>
+      <div className="space-y-1">
+        <div className="text-xs font-semibold text-slate-200 leading-tight">{t('dashboard.monthlyReport.pole')}: {pole}</div>
         {rows.length === 0 ? (
           <div className="text-xs text-slate-300">{t('common.noData')}</div>
         ) : (
-          <div className="max-h-56 overflow-auto pr-1">
+          <>
             {rows.map((r) => (
-              <div key={String(r.project_id)} className="grid grid-cols-[1fr_auto] items-center gap-3 text-xs text-slate-200">
+              <div key={String(r.project_id)} className="grid grid-cols-[1fr_auto] items-center gap-2 text-xs text-slate-200 leading-tight">
                 <div className="min-w-0 truncate">{r.project_name} ({r.project_code})</div>
                 <div className="text-right font-semibold tabular-nums">{safeNumber(valueGetter(r))}</div>
               </div>
             ))}
-          </div>
+            {remaining > 0 ? (
+              <div className="text-[10px] text-slate-300 leading-tight">+{remaining} {t('common.more') || 'more'}</div>
+            ) : null}
+          </>
         )}
       </div>
     )
@@ -638,6 +1273,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
         K_accidents_incidents: sectionTitle('accidents_incidents'),
         L_ppe_consumption: sectionTitle('ppe_consumption'),
         M_machinery: sectionTitle('machinery'),
+        N_inspections: sectionTitle('inspections'),
       }
 
       for (const [key, el] of entries) {
@@ -647,7 +1283,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
         const title = exportTitleByKey[key] || key
 
         if (key === 'F_subcontractor_documents') {
-          const rows = (filteredPoles || []).flatMap((pole) => {
+          const rows = (displayedPoles || []).flatMap((pole) => {
             const list = sections?.subcontractors?.by_pole?.[pole]
             const items = Array.isArray(list) ? list : []
             if (items.length === 0) {
@@ -745,7 +1381,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     } finally {
       setExporting(false)
     }
-  }, [filteredPoles, month, payload, sectionTitle, sections, t])
+  }, [displayedPoles, month, payload, sectionTitle, sections, t])
 
   if (!isAdmin) {
     return (
@@ -767,75 +1403,78 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
               <div className="text-xs text-gray-500 dark:text-gray-400">{t('dashboard.monthlyReport.subtitle')}</div>
             </div>
 
-            <div className="flex flex-wrap gap-3 items-end">
-              <div className="flex items-center gap-2">
+            <div className="grid grid-cols-1 xl:grid-cols-[auto_1fr_auto] gap-4 items-end">
+              <div className="inline-flex p-1 rounded-2xl bg-gray-100/80 dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700 shadow-sm w-fit">
                 <button
                   onClick={() => setUseWeekRange(false)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium ${!useWeekRange ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}`}
+                  className={`px-3 py-2 rounded-xl text-sm font-semibold transition ${!useWeekRange ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'}`}
                 >
                   {t('dashboard.monthlyReport.useMonth')}
                 </button>
                 <button
                   onClick={() => setUseWeekRange(true)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium ${useWeekRange ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}`}
+                  className={`px-3 py-2 rounded-xl text-sm font-semibold transition ${useWeekRange ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'}`}
                 >
                   {t('dashboard.monthlyReport.useWeekRange')}
                 </button>
               </div>
 
-              {!useWeekRange ? (
-                <div className="flex flex-col gap-1 min-w-[180px] flex-1 sm:flex-none">
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('dashboard.monthlyReport.month')}</label>
-                  <input
-                    type="month"
-                    value={month}
-                    onChange={(e) => setMonth(e.target.value)}
-                    className="w-full sm:w-auto px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm"
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {!useWeekRange ? (
+                  <div className="flex flex-col gap-1">
+                    <div className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('dashboard.monthlyReport.month')}</div>
+                    <MonthPicker value={month} onChange={setMonth} className="w-full" />
+                  </div>
+                ) : (
+                  <WeekRangePicker
+                    weekStart={weekStart}
+                    weekEnd={weekEnd}
+                    onChangeStart={setWeekStart}
+                    onChangeEnd={setWeekEnd}
+                    labelStart={t('dashboard.monthlyReport.weekStart')}
+                    labelEnd={t('dashboard.monthlyReport.weekEnd')}
                   />
-                </div>
-              ) : (
-                <>
-                  <div className="flex flex-col gap-1 min-w-[150px]">
-                    <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('dashboard.monthlyReport.weekStart')}</label>
-                    <input
-                      type="week"
-                      value={weekStart}
-                      onChange={(e) => setWeekStart(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1 min-w-[150px]">
-                    <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('dashboard.monthlyReport.weekEnd')}</label>
-                    <input
-                      type="week"
-                      value={weekEnd}
-                      onChange={(e) => setWeekEnd(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm"
-                    />
-                  </div>
-                </>
-              )}
+                )}
 
-              <div className="flex flex-col gap-1 min-w-[200px] flex-[2] sm:flex-none">
-                <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('dashboard.monthlyReport.filterProject')}</label>
-                <select
-                  value={projectId}
-                  onChange={(e) => setProjectId(e.target.value)}
-                  className="w-full sm:w-[260px] max-w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm"
-                >
-                  <option value="">{t('common.allProjects')}</option>
-                  {projectOptions.map((p) => (
-                    <option key={String(p.id)} value={String(p.id)}>
-                      {p.name} ({p.code})
-                    </option>
-                  ))}
-                </select>
+                {normalizedFocusPole === '' ? (
+                  <div className="flex flex-col gap-1 min-w-[200px]">
+                    <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('dashboard.monthlyReport.pole') || t('common.pole') || 'Pole'}</label>
+                    <select
+                      value={selectedPole}
+                      onChange={(e) => setSelectedPole(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200/80 dark:border-gray-700 bg-white/80 dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm shadow-sm hover:bg-white dark:hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="">{t('common.allPoles') || t('common.all') || 'All'}</option>
+                      {labels.map((p) => (
+                        <option key={String(p)} value={String(p)}>
+                          {String(p)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+
+                <div className="flex flex-col gap-1 min-w-[200px]">
+                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('dashboard.monthlyReport.filterProject')}</label>
+                  <select
+                    value={projectId}
+                    onChange={(e) => setProjectId(e.target.value)}
+                    className="w-full max-w-full px-3 py-2 rounded-xl border border-gray-200/80 dark:border-gray-700 bg-white/80 dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm shadow-sm hover:bg-white dark:hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">{t('common.allProjects')}</option>
+                    {projectOptions.map((p) => (
+                      <option key={String(p.id)} value={String(p.id)}>
+                        {p.name} ({p.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <button
                 onClick={handleExportZip}
                 disabled={exporting || loading}
-                className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium whitespace-nowrap"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-200/80 dark:border-gray-700 bg-white/80 dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-900 text-sm font-semibold whitespace-nowrap shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 {t('dashboard.monthlyReport.exportZip')}
@@ -864,7 +1503,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
         </div>
       )}
 
-      {!loading && payload && filteredPoles.length > 0 && (
+      {!loading && payload && displayedPoles.length > 0 && (
         <div className={`grid grid-cols-1 ${normalizedFocusPole ? '' : 'lg:grid-cols-2'} gap-6`}>
           <div className="card overflow-visible" ref={(el) => { chartRefs.current['A_veille_reglementaire'] = el }}>
             <div className="card-header">
@@ -873,18 +1512,17 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={veilleRows} margin={{ top: 10, right: 18, left: 8, bottom: 70 }}>
+                  <BarChart data={veilleRows} margin={{ top: 35, right: 18, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis domain={[0, 100]} {...axisCommon} />
                     <Tooltip
                       {...tooltipDark}
-                      content={({ active, payload: p, label }) => {
-                        if (!active || !p || p.length === 0) return null
+                      content={makeSmartTooltip(({ payload: p, label }) => {
                         const pole = String(label || '')
                         const list = sections?.veille?.by_pole_projects?.[pole]
                         return (
-                          <div style={tooltipDark.contentStyle}>
+                          <>
                             <div style={tooltipDark.labelStyle}>{t('dashboard.monthlyReport.veilleTooltipTitle')} - {pole}</div>
                             <div className="text-xs text-slate-200 mt-1">SST: {fmtPct2(payloadValue(p, 'score_sst'))}</div>
                             <div className="text-xs text-slate-200">ENV: {fmtPct2(payloadValue(p, 'score_environment'))}</div>
@@ -892,12 +1530,16 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
                             <div className="mt-2">{renderPoleProjectTooltip(pole, list, (r) => r?.score_sst)}</div>
                             <div className="text-[11px] text-slate-300 mt-2">ENV</div>
                             <div className="mt-2">{renderPoleProjectTooltip(pole, list, (r) => r?.score_environment)}</div>
-                          </div>
+                          </>
                         )
-                      }}
+                      }, { side: 'right', containerKey: 'A_veille_reglementaire' })}
                     />
-                    <Bar dataKey="score_sst" name="Veille SST %" fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="score_environment" name="Veille Environnement %" fill={SGTM_COLORS.darkGray} radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="score_sst" name="Veille SST %" fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="score_sst" position="top" fill={CHART_THEME.label} fontSize={10} fontWeight={600} formatter={(v) => `${safeNumber(v).toFixed(0)}%`} />
+                    </Bar>
+                    <Bar dataKey="score_environment" name="Veille Environnement %" fill={SGTM_COLORS.darkGray} radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="score_environment" position="top" fill={CHART_THEME.label} fontSize={10} fontWeight={600} formatter={(v) => `${safeNumber(v).toFixed(0)}%`} />
+                    </Bar>
                     <Customized
                       component={makeBottomLegend(
                         [
@@ -915,36 +1557,39 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
 
           <div className="card overflow-visible" ref={(el) => { chartRefs.current['B_deviations_closure'] = el }}>
             <div className="card-header">
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">{sectionTitle('sor')}</h3>
+              <h3 className="font-semibold text-sm leading-snug whitespace-normal break-words pr-2 print:pr-4 max-w-[95%] print:max-w-[92%] text-gray-900 dark:text-gray-100">{sectionTitle('sor')}</h3>
             </div>
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={sorRows} margin={{ top: 10, right: 22, left: 8, bottom: 70 }}>
+                  <ComposedChart data={sorRows} margin={{ top: 35, right: 22, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis yAxisId="left" allowDecimals={false} {...axisCommon} />
                     <YAxis yAxisId="right" orientation="right" domain={[0, 100]} {...axisCommon} />
                     <Tooltip
                       {...tooltipDark}
-                      content={({ active, payload: p, label }) => {
-                        if (!active || !p || p.length === 0) return null
+                      content={makeSmartTooltip(({ payload: p, label }) => {
                         const pole = String(label || '')
                         const list = sections?.sor?.by_pole_projects?.[pole]
                         const total = payloadValue(p, 'total')
                         const closure = payloadValue(p, 'closurePct')
                         return (
-                          <div style={tooltipDark.contentStyle}>
+                          <>
                             <div style={tooltipDark.labelStyle}>{t('dashboard.monthlyReport.deviationTooltipTitle')} - {pole}</div>
                             <div className="text-xs text-slate-200 mt-1">{t('dashboard.monthlyReport.totalDeviations')}: {fmtInt(total)}</div>
                             <div className="text-xs text-slate-200">{t('dashboard.monthlyReport.closureRate')}: {fmtPct2(closure)}</div>
                             <div className="mt-2">{renderPoleProjectTooltip(pole, list, (r) => r?.total)}</div>
-                          </div>
+                          </>
                         )
-                      }}
+                      }, { side: 'left', containerKey: 'B_deviations_closure' })}
                     />
-                    <Bar yAxisId="left" dataKey="total" name={t('dashboard.monthlyReport.totalDeviations')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
-                    <Line yAxisId="right" type="monotone" dataKey="closurePct" name={t('dashboard.monthlyReport.closureRate')} stroke={trendStroke} strokeWidth={2} dot={{ r: 3, fill: trendStroke }} />
+                    <Bar yAxisId="left" dataKey="total" name={t('dashboard.monthlyReport.totalDeviations')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]}>
+                    </Bar>
+                    <Line yAxisId="right" type="monotone" dataKey="closurePct" name={t('dashboard.monthlyReport.closureRate')} stroke={trendStroke} strokeWidth={2} dot={{ r: 3, fill: trendStroke }}>
+                      <LabelList dataKey="closurePct" position="top" offset={12} fill={trendStroke} fontSize={9} fontWeight={600} formatter={(v) => `${safeNumber(v).toFixed(0)}%`} />
+                    </Line>
+                    <Customized component={makeCollisionBarLabels({ barKey: 'total', lineKey: 'closurePct', barAxisId: 'left', lineAxisId: 'right', formatter: (v) => fmtInt(v) })} />
                     <Customized
                       component={makeBottomLegend(
                         [
@@ -967,15 +1612,34 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={durationRows} margin={{ top: 10, right: 18, left: 8, bottom: 70 }}>
+                  <BarChart data={durationRows} margin={{ top: 35, right: 18, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis {...axisCommon} />
                     <Tooltip
                       {...tooltipDark}
-                      formatter={(value) => [`${safeNumber(value).toFixed(2)} ${t('common.hourShort')}`, t('dashboard.monthlyReport.avgHours')]}
+                      content={makeSmartTooltip(({ payload: p, label }) => {
+                        const pole = String(label || '')
+                        const avg = payloadValue(p, 'avgHours')
+                        const list = sections?.closure_duration?.by_pole_projects?.[pole]
+                        const getProjectAvg = (r) => {
+                          const v = r?.avg_hours ?? r?.avgHours ?? r?.avg_hours_count ?? r?.hours ?? r?.value
+                          return safeNumber(v)
+                        }
+                        return (
+                          <>
+                            <div style={tooltipDark.labelStyle}>{sectionTitle('closure_duration')} - {pole}</div>
+                            <div className="text-xs text-slate-200 mt-1">{t('dashboard.monthlyReport.avgHours')}: {safeNumber(avg).toFixed(2)} {t('common.hourShort')}</div>
+                            {Array.isArray(list) ? (
+                              <div className="mt-2">{renderPoleProjectTooltip(pole, list, getProjectAvg, { maxRows: 8 })}</div>
+                            ) : null}
+                          </>
+                        )
+                      }, { side: 'right', estimatedHeight: 180, containerKey: 'C_closure_duration' })}
                     />
-                    <Bar dataKey="avgHours" name={t('dashboard.monthlyReport.avgHours')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="avgHours" name={t('dashboard.monthlyReport.avgHours')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="avgHours" position="top" fill={CHART_THEME.label} fontSize={10} fontWeight={600} formatter={(v) => safeNumber(v).toFixed(1)} />
+                    </Bar>
                     <Customized
                       component={makeBottomLegend(
                         [{ type: 'box', color: SGTM_COLORS.orange, label: t('dashboard.monthlyReport.avgHours') }],
@@ -995,32 +1659,35 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={trainingsRows} margin={{ top: 10, right: 22, left: 8, bottom: 70 }}>
+                  <ComposedChart data={trainingsRows} margin={{ top: 35, right: 22, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis yAxisId="left" allowDecimals={false} {...axisCommon} />
                     <YAxis yAxisId="right" orientation="right" {...axisCommon} />
                     <Tooltip
                       {...tooltipDark}
-                      content={({ active, payload: p, label }) => {
-                        if (!active || !p || p.length === 0) return null
+                      content={makeSmartTooltip(({ payload: p, label }) => {
                         const pole = String(label || '')
                         const list = sections?.trainings?.by_pole_projects?.[pole]
                         const count = payloadValue(p, 'count')
                         const hours = payloadValue(p, 'hours')
                         return (
-                          <div style={tooltipDark.contentStyle}>
+                          <>
                             <div style={tooltipDark.labelStyle}>{t('dashboard.monthlyReport.trainingsTooltipTitle')} - {pole}</div>
                             <div className="text-xs text-slate-200 mt-1">{t('dashboard.monthlyReport.trainingsCount')}: {fmtInt(count)}</div>
                             <div className="text-xs text-slate-200">{t('dashboard.monthlyReport.hours')}: {fmt2(hours)}</div>
                             <div className="mt-2">{renderPoleProjectTooltip(pole, list, (r) => r?.count)}</div>
                             <div className="mt-2">{renderPoleProjectTooltip(pole, list, (r) => r?.hours)}</div>
-                          </div>
+                          </>
                         )
-                      }}
+                      }, { side: 'left', containerKey: 'D_trainings' })}
                     />
-                    <Bar yAxisId="left" dataKey="count" name={t('dashboard.monthlyReport.trainingsCount')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
-                    <Line yAxisId="right" type="monotone" dataKey="hours" name={t('dashboard.monthlyReport.hours')} stroke={trendStroke} strokeWidth={2} dot={{ r: 3, fill: trendStroke }} />
+                    <Bar yAxisId="left" dataKey="count" name={t('dashboard.monthlyReport.trainingsCount')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]}>
+                    </Bar>
+                    <Line yAxisId="right" type="monotone" dataKey="hours" name={t('dashboard.monthlyReport.hours')} stroke={trendStroke} strokeWidth={2} dot={{ r: 3, fill: trendStroke }}>
+                      <LabelList dataKey="hours" position="top" offset={12} fill={trendStroke} fontSize={9} fontWeight={600} formatter={(v) => safeNumber(v).toFixed(0)} />
+                    </Line>
+                    <Customized component={makeCollisionBarLabels({ barKey: 'count', lineKey: 'hours', barAxisId: 'left', lineAxisId: 'right', formatter: (v) => fmtInt(v) })} />
                     <Customized
                       component={makeBottomLegend(
                         [
@@ -1038,37 +1705,40 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
 
           <div className="card overflow-visible" ref={(el) => { chartRefs.current['E_awareness_sessions'] = el }}>
             <div className="card-header">
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">{sectionTitle('awareness')}</h3>
+              <h3 className="font-semibold text-sm leading-snug whitespace-normal break-words pr-2 print:pr-4 max-w-[95%] print:max-w-[92%] text-gray-900 dark:text-gray-100">{sectionTitle('awareness')}</h3>
             </div>
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={awarenessRows} margin={{ top: 10, right: 22, left: 8, bottom: 70 }}>
+                  <ComposedChart data={awarenessRows} margin={{ top: 35, right: 22, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis yAxisId="left" allowDecimals={false} {...axisCommon} />
                     <YAxis yAxisId="right" orientation="right" {...axisCommon} />
                     <Tooltip
                       {...tooltipDark}
-                      content={({ active, payload: p, label }) => {
-                        if (!active || !p || p.length === 0) return null
+                      content={makeSmartTooltip(({ payload: p, label }) => {
                         const pole = String(label || '')
                         const list = sections?.awareness?.by_pole_projects?.[pole]
                         const count = payloadValue(p, 'count')
                         const hours = payloadValue(p, 'hours')
                         return (
-                          <div style={tooltipDark.contentStyle}>
+                          <>
                             <div style={tooltipDark.labelStyle}>{t('dashboard.monthlyReport.awarenessTooltipTitle')} - {pole}</div>
                             <div className="text-xs text-slate-200 mt-1">{t('dashboard.monthlyReport.sessionsCount')}: {fmtInt(count)}</div>
                             <div className="text-xs text-slate-200">{t('dashboard.monthlyReport.hours')}: {fmt2(hours)}</div>
                             <div className="mt-2">{renderPoleProjectTooltip(pole, list, (r) => r?.count)}</div>
                             <div className="mt-2">{renderPoleProjectTooltip(pole, list, (r) => r?.hours)}</div>
-                          </div>
+                          </>
                         )
-                      }}
+                      }, { side: 'right', containerKey: 'E_awareness_sessions' })}
                     />
-                    <Bar yAxisId="left" dataKey="count" name={t('dashboard.monthlyReport.sessionsCount')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
-                    <Line yAxisId="right" type="monotone" dataKey="hours" name={t('dashboard.monthlyReport.hours')} stroke={trendStroke} strokeWidth={2} dot={{ r: 3, fill: trendStroke }} />
+                    <Bar yAxisId="left" dataKey="count" name={t('dashboard.monthlyReport.sessionsCount')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]}>
+                    </Bar>
+                    <Line yAxisId="right" type="monotone" dataKey="hours" name={t('dashboard.monthlyReport.hours')} stroke={trendStroke} strokeWidth={2} dot={{ r: 3, fill: trendStroke }}>
+                      <LabelList dataKey="hours" position="top" offset={12} fill={trendStroke} fontSize={9} fontWeight={600} formatter={(v) => safeNumber(v).toFixed(0)} />
+                    </Line>
+                    <Customized component={makeCollisionBarLabels({ barKey: 'count', lineKey: 'hours', barAxisId: 'left', lineAxisId: 'right', formatter: (v) => fmtInt(v) })} />
                     <Customized
                       component={makeBottomLegend(
                         [
@@ -1091,15 +1761,34 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={medicalRows} margin={{ top: 10, right: 18, left: 8, bottom: 70 }}>
+                  <BarChart data={medicalRows} margin={{ top: 35, right: 18, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis domain={[0, 100]} {...axisCommon} />
                     <Tooltip
                       {...tooltipDark}
-                      formatter={(value) => [`${safeNumber(value).toFixed(2)}%`, t('dashboard.monthlyReport.medicalConformity')]}
+                      content={makeSmartTooltip(({ payload: p, label }) => {
+                        const pole = String(label || '')
+                        const pct = payloadValue(p, 'pct')
+                        const list = sections?.medical?.by_pole_projects?.[pole]
+                        const getProjectPct = (r) => {
+                          const v = r?.pct ?? r?.percentage ?? r?.value ?? r?.score
+                          return safeNumber(v)
+                        }
+                        return (
+                          <>
+                            <div style={tooltipDark.labelStyle}>{sectionTitle('medical')} - {pole}</div>
+                            <div className="text-xs text-slate-200 mt-1">{t('dashboard.monthlyReport.medicalConformity')}: {safeNumber(pct).toFixed(2)}%</div>
+                            {Array.isArray(list) ? (
+                              <div className="mt-2">{renderPoleProjectTooltip(pole, list, getProjectPct, { maxRows: 8 })}</div>
+                            ) : null}
+                          </>
+                        )
+                      }, { side: 'left', estimatedHeight: 180, containerKey: 'G_medical_conformity' })}
                     />
-                    <Bar dataKey="pct" name={t('dashboard.monthlyReport.medicalConformity')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="pct" name={t('dashboard.monthlyReport.medicalConformity')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="pct" position="top" fill={CHART_THEME.label} fontSize={10} fontWeight={600} formatter={(v) => `${safeNumber(v).toFixed(0)}%`} />
+                    </Bar>
                     <Customized
                       component={makeBottomLegend(
                         [{ type: 'box', color: SGTM_COLORS.orange, label: t('dashboard.monthlyReport.medicalConformity') }],
@@ -1134,7 +1823,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredPoles.flatMap((pole) => {
+                    {displayedPoles.flatMap((pole) => {
                       const rows = sections?.subcontractors?.by_pole?.[pole] || []
                       if (!Array.isArray(rows) || rows.length === 0) {
                         return [
@@ -1174,36 +1863,39 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
 
           <div className="card overflow-visible" ref={(el) => { chartRefs.current['H_deviations_closure_subcontractors'] = el }}>
             <div className="card-header">
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">{sectionTitle('sor_subcontractors')}</h3>
+              <h3 className="font-semibold text-sm leading-snug whitespace-normal break-words pr-2 print:pr-4 max-w-[95%] print:max-w-[92%] text-gray-900 dark:text-gray-100">{sectionTitle('sor_subcontractors')}</h3>
             </div>
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={sorSubRows} margin={{ top: 10, right: 22, left: 8, bottom: 70 }}>
+                  <ComposedChart data={sorSubRows} margin={{ top: 35, right: 22, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis yAxisId="left" allowDecimals={false} {...axisCommon} />
                     <YAxis yAxisId="right" orientation="right" domain={[0, 100]} {...axisCommon} />
                     <Tooltip
                       {...tooltipDark}
-                      content={({ active, payload: p, label }) => {
-                        if (!active || !p || p.length === 0) return null
+                      content={makeSmartTooltip(({ payload: p, label }) => {
                         const pole = String(label || '')
                         const list = sections?.sor_subcontractors?.by_pole_projects?.[pole]
                         const total = payloadValue(p, 'total')
                         const closure = payloadValue(p, 'closurePct')
                         return (
-                          <div style={tooltipDark.contentStyle}>
+                          <>
                             <div style={tooltipDark.labelStyle}>{t('dashboard.monthlyReport.deviationTooltipTitle')} - {pole}</div>
                             <div className="text-xs text-slate-200 mt-1">{t('dashboard.monthlyReport.totalDeviations')}: {fmtInt(total)}</div>
                             <div className="text-xs text-slate-200">{t('dashboard.monthlyReport.closureRate')}: {fmtPct2(closure)}</div>
                             <div className="mt-2">{renderPoleProjectTooltip(pole, list, (r) => r?.total)}</div>
-                          </div>
+                          </>
                         )
-                      }}
+                      }, { side: 'right', containerKey: 'H_deviations_closure_subcontractors' })}
                     />
-                    <Bar yAxisId="left" dataKey="total" name={t('dashboard.monthlyReport.totalDeviations')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
-                    <Line yAxisId="right" type="monotone" dataKey="closurePct" name={t('dashboard.monthlyReport.closureRate')} stroke={trendStroke} strokeWidth={2} dot={{ r: 3, fill: trendStroke }} />
+                    <Bar yAxisId="left" dataKey="total" name={t('dashboard.monthlyReport.totalDeviations')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]}>
+                    </Bar>
+                    <Line yAxisId="right" type="monotone" dataKey="closurePct" name={t('dashboard.monthlyReport.closureRate')} stroke={trendStroke} strokeWidth={2} dot={{ r: 3, fill: trendStroke }}>
+                      <LabelList dataKey="closurePct" position="top" offset={12} fill={trendStroke} fontSize={9} fontWeight={600} formatter={(v) => `${safeNumber(v).toFixed(0)}%`} />
+                    </Line>
+                    <Customized component={makeCollisionBarLabels({ barKey: 'total', lineKey: 'closurePct', barAxisId: 'left', lineAxisId: 'right', formatter: (v) => fmtInt(v) })} />
                     <Customized
                       component={makeBottomLegend(
                         [
@@ -1226,15 +1918,34 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={durationSubRows} margin={{ top: 10, right: 18, left: 8, bottom: 70 }}>
+                  <BarChart data={durationSubRows} margin={{ top: 35, right: 18, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis {...axisCommon} />
                     <Tooltip
                       {...tooltipDark}
-                      formatter={(value) => [`${safeNumber(value).toFixed(2)} ${t('common.hourShort')}`, t('dashboard.monthlyReport.avgHours')]}
+                      content={makeSmartTooltip(({ payload: p, label }) => {
+                        const pole = String(label || '')
+                        const avg = payloadValue(p, 'avgHours')
+                        const list = sections?.closure_duration_subcontractors?.by_pole_projects?.[pole]
+                        const getProjectAvg = (r) => {
+                          const v = r?.avg_hours ?? r?.avgHours ?? r?.hours ?? r?.value
+                          return safeNumber(v)
+                        }
+                        return (
+                          <>
+                            <div style={tooltipDark.labelStyle}>{sectionTitle('closure_duration_subcontractors')} - {pole}</div>
+                            <div className="text-xs text-slate-200 mt-1">{t('dashboard.monthlyReport.avgHours')}: {safeNumber(avg).toFixed(2)} {t('common.hourShort')}</div>
+                            {Array.isArray(list) ? (
+                              <div className="mt-2">{renderPoleProjectTooltip(pole, list, getProjectAvg, { maxRows: 8 })}</div>
+                            ) : null}
+                          </>
+                        )
+                      }, { side: 'left', estimatedHeight: 180, containerKey: 'I_closure_duration_subcontractors' })}
                     />
-                    <Bar dataKey="avgHours" name={t('dashboard.monthlyReport.avgHours')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="avgHours" name={t('dashboard.monthlyReport.avgHours')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="avgHours" position="top" fill={CHART_THEME.label} fontSize={10} fontWeight={600} formatter={(v) => safeNumber(v).toFixed(1)} />
+                    </Bar>
                     <Customized
                       component={makeBottomLegend(
                         [{ type: 'box', color: SGTM_COLORS.orange, label: t('dashboard.monthlyReport.avgHours') }],
@@ -1255,32 +1966,35 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={tfTgRows} margin={{ top: 10, right: 18, left: 8, bottom: 70 }}>
+                  <BarChart data={tfTgRows} margin={{ top: 35, right: 18, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis {...axisCommon} />
                     <Tooltip
                       {...tooltipDark}
-                      content={({ active, payload: p, label }) => {
-                        if (!active || !p || p.length === 0) return null
+                      content={makeSmartTooltip(({ payload: p, label }) => {
                         const pole = String(label || '')
                         const list = sections?.tf_tg?.by_pole_projects?.[pole]
                         const tf = payloadValue(p, 'tf')
                         const tg = payloadValue(p, 'tg')
                         return (
-                          <div style={tooltipDark.contentStyle}>
+                          <>
                             <div style={tooltipDark.labelStyle}>{t('dashboard.monthlyReport.tfTgTooltipTitle')} - {pole}</div>
                             <div className="text-xs text-slate-200 mt-1">{t('dashboard.monthlyReport.tf')}: {fmt2(tf)}</div>
                             <div className="text-xs text-slate-200">{t('dashboard.monthlyReport.tg')}: {fmt2(tg)}</div>
                             <div className="mt-2">
                               {renderPoleProjectTooltip(pole, list, (r) => r?.tf, { maxRows: 8 })}
                             </div>
-                          </div>
+                          </>
                         )
-                      }}
+                      }, { side: 'right', containerKey: 'J_tf_tg' })}
                     />
-                    <Bar dataKey="tf" name={t('dashboard.monthlyReport.tf')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="tg" name={t('dashboard.monthlyReport.tg')} fill={SGTM_COLORS.deepOrange} radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="tf" name={t('dashboard.monthlyReport.tf')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="tf" content={renderTopLabelWithBg({ formatter: (v) => safeNumber(v).toFixed(2), textColor: '#111827' })} />
+                    </Bar>
+                    <Bar dataKey="tg" name={t('dashboard.monthlyReport.tg')} fill={SGTM_COLORS.deepOrange} radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="tg" content={renderTopLabelWithBg({ formatter: (v) => safeNumber(v).toFixed(2), textColor: '#111827' })} />
+                    </Bar>
                     <Customized
                       component={makeBottomLegend(
                         [
@@ -1304,32 +2018,35 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={accidentsIncidentsRows} margin={{ top: 10, right: 18, left: 8, bottom: 70 }}>
+                  <BarChart data={accidentsIncidentsRows} margin={{ top: 35, right: 18, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis allowDecimals={false} {...axisCommon} />
                     <Tooltip
                       {...tooltipDark}
-                      content={({ active, payload: p, label }) => {
-                        if (!active || !p || p.length === 0) return null
+                      content={makeSmartTooltip(({ payload: p, label }) => {
                         const pole = String(label || '')
                         const list = sections?.accidents_incidents?.by_pole_projects?.[pole]
                         const accidents = payloadValue(p, 'accidents')
                         const incidents = payloadValue(p, 'incidents')
                         return (
-                          <div style={tooltipDark.contentStyle}>
+                          <>
                             <div style={tooltipDark.labelStyle}>{t('dashboard.monthlyReport.accidentsIncidentsTooltipTitle')} - {pole}</div>
                             <div className="text-xs text-slate-200 mt-1">{t('dashboard.monthlyReport.accidents')}: {fmtInt(accidents)}</div>
                             <div className="text-xs text-slate-200">{t('dashboard.monthlyReport.incidents')}: {fmtInt(incidents)}</div>
                             <div className="mt-2">
                               {renderPoleProjectTooltip(pole, list, (r) => r?.accidents + r?.incidents, { maxRows: 8 })}
                             </div>
-                          </div>
+                          </>
                         )
-                      }}
+                      }, { side: 'left', containerKey: 'K_accidents_incidents' })}
                     />
-                    <Bar dataKey="accidents" name={t('dashboard.monthlyReport.accidents')} fill={SGTM_COLORS.statusBad} radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="incidents" name={t('dashboard.monthlyReport.incidents')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="accidents" name={t('dashboard.monthlyReport.accidents')} fill={SGTM_COLORS.statusBad} radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="accidents" position="top" fill={CHART_THEME.label} fontSize={10} fontWeight={600} />
+                    </Bar>
+                    <Bar dataKey="incidents" name={t('dashboard.monthlyReport.incidents')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="incidents" position="top" fill={CHART_THEME.label} fontSize={10} fontWeight={600} />
+                    </Bar>
                     <Customized
                       component={makeBottomLegend(
                         [
@@ -1353,18 +2070,17 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={ppeConsumptionData.rows} margin={{ top: 10, right: 18, left: 8, bottom: 70 }}>
+                  <BarChart data={ppeConsumptionData.rows} margin={{ top: 35, right: 18, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis allowDecimals={false} {...axisCommon} />
                     <Tooltip
                       {...tooltipDark}
-                      content={({ active, payload: p, label }) => {
-                        if (!active || !p || p.length === 0) return null
+                      content={makeSmartTooltip(({ payload: p, label }) => {
                         const pole = String(label || '')
                         const list = sections?.ppe_consumption?.by_pole_projects?.[pole]
                         return (
-                          <div style={tooltipDark.contentStyle}>
+                          <>
                             <div style={tooltipDark.labelStyle}>{t('dashboard.monthlyReport.ppeTooltipTitle')} - {pole}</div>
                             <div className="mt-2 space-y-1">
                               {p.filter((item) => safeNumber(item.value) > 0).map((item) => (
@@ -1386,9 +2102,9 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
                                 {list.length > 6 && <div className="text-xs text-slate-400">... +{list.length - 6}</div>}
                               </div>
                             )}
-                          </div>
+                          </>
                         )
-                      }}
+                      }, { side: 'right', containerKey: 'L_ppe_consumption' })}
                     />
                     {ppeConsumptionData.itemIds.map((id, idx) => {
                       const colors = [SGTM_COLORS.orange, SGTM_COLORS.deepOrange, SGTM_COLORS.statusGood, SGTM_COLORS.gray, SGTM_COLORS.darkGray, '#6366F1', '#EC4899', '#14B8A6']
@@ -1416,33 +2132,36 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
             <div className="card-body">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={machineryRows} margin={{ top: 10, right: 22, left: 8, bottom: 70 }}>
+                  <ComposedChart data={machineryRows} margin={{ top: 35, right: 22, left: 8, bottom: 70 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
                     <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
                     <YAxis yAxisId="left" allowDecimals={false} {...axisCommon} />
                     <YAxis yAxisId="right" orientation="right" domain={[0, 100]} {...axisCommon} />
                     <Tooltip
                       {...tooltipDark}
-                      content={({ active, payload: p, label }) => {
-                        if (!active || !p || p.length === 0) return null
+                      content={makeSmartTooltip(({ payload: p, label }) => {
                         const pole = String(label || '')
                         const list = sections?.machinery?.by_pole_projects?.[pole]
                         const count = payloadValue(p, 'count')
                         const completion = payloadValue(p, 'avgCompletion')
                         return (
-                          <div style={tooltipDark.contentStyle}>
+                          <>
                             <div style={tooltipDark.labelStyle}>{t('dashboard.monthlyReport.machineryTooltipTitle')} - {pole}</div>
                             <div className="text-xs text-slate-200 mt-1">{t('dashboard.monthlyReport.machineCount')}: {fmtInt(count)}</div>
                             <div className="text-xs text-slate-200">{t('dashboard.monthlyReport.avgCompletion')}: {fmtPct2(completion)}</div>
                             <div className="mt-2">
                               {renderPoleProjectTooltip(pole, list, (r) => r?.machine_count, { maxRows: 8 })}
                             </div>
-                          </div>
+                          </>
                         )
-                      }}
+                      }, { side: 'left', containerKey: 'M_machinery' })}
                     />
-                    <Bar yAxisId="left" dataKey="count" name={t('dashboard.monthlyReport.machineCount')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]} />
-                    <Line yAxisId="right" type="monotone" dataKey="avgCompletion" name={t('dashboard.monthlyReport.avgCompletion')} stroke={trendStroke} strokeWidth={2} dot={{ r: 3, fill: trendStroke }} />
+                    <Bar yAxisId="left" dataKey="count" name={t('dashboard.monthlyReport.machineCount')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]}>
+                    </Bar>
+                    <Line yAxisId="right" type="monotone" dataKey="avgCompletion" name={t('dashboard.monthlyReport.avgCompletion')} stroke={trendStroke} strokeWidth={2} dot={{ r: 3, fill: trendStroke }}>
+                      <LabelList dataKey="avgCompletion" position="top" offset={12} fill={trendStroke} fontSize={9} fontWeight={600} formatter={(v) => `${safeNumber(v).toFixed(0)}%`} />
+                    </Line>
+                    <Customized component={makeCollisionBarLabels({ barKey: 'count', lineKey: 'avgCompletion', barAxisId: 'left', lineAxisId: 'right', formatter: (v) => fmtInt(v) })} />
                     <Customized
                       component={makeBottomLegend(
                         [
@@ -1453,6 +2172,50 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
                       )}
                     />
                   </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* N. Inspections Count by Pole */}
+          <div className="card overflow-visible" ref={(el) => { chartRefs.current['N_inspections'] = el }}>
+            <div className="card-header">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">{sectionTitle('inspections')}</h3>
+            </div>
+            <div className="card-body">
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={inspectionsRows} margin={{ top: 35, right: 22, left: 8, bottom: 70 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} opacity={gridStyle.opacity} />
+                    <XAxis dataKey="pole" angle={xAxisAngle} textAnchor={xAxisTextAnchor} height={xAxisHeight} {...axisCommon} />
+                    <YAxis allowDecimals={false} {...axisCommon} />
+                    <Tooltip
+                      {...tooltipDark}
+                      content={makeSmartTooltip(({ payload: p, label }) => {
+                        const pole = String(label || '')
+                        const list = sections?.inspections?.by_pole_projects?.[pole]
+                        const count = payloadValue(p, 'count')
+                        return (
+                          <>
+                            <div style={tooltipDark.labelStyle}>{t('dashboard.monthlyReport.inspectionsTooltipTitle')} - {pole}</div>
+                            <div className="text-xs text-slate-200 mt-1">{t('common.total')}: {fmtInt(count)}</div>
+                            <div className="mt-2">
+                              {renderPoleProjectTooltip(pole, list, (r) => r?.count, { maxRows: 8 })}
+                            </div>
+                          </>
+                        )
+                      }, { side: 'right', containerKey: 'N_inspections' })}
+                    />
+                    <Bar dataKey="count" name={t('common.total')} fill={SGTM_COLORS.orange} radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="count" position="top" fill={CHART_THEME.label} fontSize={11} fontWeight={600} />
+                    </Bar>
+                    <Customized
+                      component={makeBottomLegend(
+                        [{ type: 'box', color: SGTM_COLORS.orange, label: t('common.total') }],
+                        { textColor: legendTextColor }
+                      )}
+                    />
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>

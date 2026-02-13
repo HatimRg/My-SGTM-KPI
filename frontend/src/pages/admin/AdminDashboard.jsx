@@ -60,6 +60,7 @@ import DeviationTheme from '../../components/dashboard/themes/DeviationTheme'
 import MonthlyReportTheme from '../../components/dashboard/themes/MonthlyReportTheme'
 import { getAllWeeksForYear, getCurrentWeek } from '../../utils/weekHelper'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
+import YearPicker from '../../components/ui/YearPicker'
 
 const COLORS = ['#dc2626', '#f59e0b', '#16a34a', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6']
 
@@ -530,15 +531,17 @@ export default function AdminDashboard() {
           {/* Year selector */}
           <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2">
             <Calendar className="w-4 h-4 text-gray-400" />
-            <select
+            <YearPicker
               value={year}
-              onChange={(e) => setYear(Number(e.target.value))}
-              className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm font-medium"
-            >
-              {yearOptions.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
+              onChange={(y) => {
+                const n = Number(y)
+                if (!Number.isFinite(n)) return
+                setYear(n)
+              }}
+              className="min-w-[96px]"
+              minYear={Math.min(...yearOptions)}
+              maxYear={Math.max(...yearOptions)}
+            />
           </div>
           
           {/* Export buttons */}

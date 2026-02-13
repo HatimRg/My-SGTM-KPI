@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Modal from '../ui/Modal'
+import { DatePicker, TimePicker } from '../ui'
 import { hseEventService } from '../../services/api'
 import toast from 'react-hot-toast'
 
@@ -703,11 +704,11 @@ export default function AccidentIncidentModal({
             </div>
             <div>
               <label className="label">{tf('hseEvents.accidentForm.fields.date', 'Date')}</label>
-              <input type="date" className="input" value={form.event_date} onChange={(e) => setForm((p) => ({ ...p, event_date: e.target.value }))} required />
+              <DatePicker value={form.event_date} onChange={(val) => setForm((p) => ({ ...p, event_date: val }))} className="w-full" required />
             </div>
             <div>
               <label className="label">{tf('hseEvents.accidentForm.fields.time', 'Time')}</label>
-              <input type="time" className="input" value={form.event_time} onChange={(e) => setForm((p) => ({ ...p, event_time: e.target.value }))} />
+              <TimePicker value={form.event_time} onChange={(val) => setForm((p) => ({ ...p, event_time: val }))} className="w-full" />
             </div>
             <div>
               <label className="label">{tf('hseEvents.accidentForm.fields.shift', 'Shift')}</label>
@@ -881,7 +882,7 @@ export default function AccidentIncidentModal({
                       {v.death_timing === 'later' && (
                         <div className="md:col-span-2">
                           <label className="label">{tf('hseEvents.accidentForm.fields.datePicker', 'Date picker')}</label>
-                          <input type="date" className="input" value={v.death_date} onChange={(e) => setVictimField(idx, 'death_date', e.target.value)} required />
+                          <DatePicker value={v.death_date} onChange={(val) => setVictimField(idx, 'death_date', val)} className="w-full" required />
                         </div>
                       )}
                     </>
@@ -1098,7 +1099,7 @@ export default function AccidentIncidentModal({
                     onChange={(e) => updateCorrectiveAction(idx, 'responsible_role', e.target.value)}
                   />
                   <div className="grid grid-cols-2 gap-2">
-                    <input type="date" className="input" value={row.deadline} onChange={(e) => updateCorrectiveAction(idx, 'deadline', e.target.value)} />
+                    <DatePicker value={row.deadline} onChange={(val) => updateCorrectiveAction(idx, 'deadline', val)} className="w-full" />
                     <select className="input" value={row.status} onChange={(e) => updateCorrectiveAction(idx, 'status', e.target.value)}>
                       {ACTION_STATUSES.map((s) => (
                         <option key={s.value} value={s.value}>
@@ -1182,7 +1183,7 @@ export default function AccidentIncidentModal({
               <>
                 <div>
                   <label className="label">{tf('hseEvents.accidentForm.fields.closureDate', 'Closure date')}</label>
-                  <input type="date" className="input" value={form.closure_date} onChange={(e) => setForm((p) => ({ ...p, closure_date: e.target.value }))} />
+                  <DatePicker value={form.closure_date} onChange={(val) => setForm((p) => ({ ...p, closure_date: val }))} className="w-full" />
                 </div>
                 <div>
                   <label className="label">{tf('hseEvents.accidentForm.fields.closedByRole', 'Closed by (role)')}</label>

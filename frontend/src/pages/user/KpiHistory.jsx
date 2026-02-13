@@ -5,6 +5,7 @@ import { useLanguage } from '../../i18n'
 import { useAuthStore } from '../../store/authStore'
 import { Modal, ConfirmDialog, Select } from '../../components/ui'
 import DatePicker from '../../components/ui/DatePicker'
+import YearPicker from '../../components/ui/YearPicker'
 import DailyKpiPreview from '../../components/kpi/DailyKpiPreview'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
 import { getCurrentWeek } from '../../utils/weekHelper'
@@ -269,15 +270,11 @@ export default function KpiHistory() {
             </Select>
           </div>
           <div className="w-full sm:w-32">
-            <Select
+            <YearPicker
               value={filters.year}
-              onChange={(e) => setFilters({ ...filters, year: e.target.value })}
-            >
-              {[...Array(6)].map((_, i) => {
-                const y = getCurrentWeek().year + 1 - i
-                return <option key={y} value={y}>{y}</option>
-              })}
-            </Select>
+              onChange={(y) => setFilters({ ...filters, year: String(y ?? '') })}
+              className="w-full"
+            />
           </div>
           <div className="w-full sm:w-40">
             <DatePicker

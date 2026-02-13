@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLanguage } from '../../i18n'
 import { useAuthStore } from '../../store/authStore'
 import { projectService, wasteExportService } from '../../services/api'
+import { DatePicker } from '../../components/ui'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { sortProjects } from '../../utils/projectList'
@@ -351,12 +352,12 @@ export default function WasteManagement() {
 
           <div>
             <label className="label">{t('wasteManagement.filters.dateFrom')}</label>
-            <input className="input" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            <DatePicker value={dateFrom} onChange={setDateFrom} className="w-full" />
           </div>
 
           <div>
             <label className="label">{t('wasteManagement.filters.dateTo')}</label>
-            <input className="input" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            <DatePicker value={dateTo} onChange={setDateTo} className="w-full" />
           </div>
 
           <div className="md:col-span-2">
@@ -521,11 +522,10 @@ export default function WasteManagement() {
 
             <div>
               <label className="label">{t('wasteManagement.form.date')}</label>
-              <input
-                className="input"
-                type="date"
+              <DatePicker
                 value={formData.date}
-                onChange={(e) => setFormData((s) => ({ ...s, date: e.target.value }))}
+                onChange={(val) => setFormData((s) => ({ ...s, date: val }))}
+                className="w-full"
               />
             </div>
 

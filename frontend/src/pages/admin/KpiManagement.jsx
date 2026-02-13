@@ -23,6 +23,8 @@ import { kpiService, projectService, exportService } from '../../services/api'
 import { useLanguage } from '../../i18n'
 import { useAuthStore } from '../../store/authStore'
 import { Modal, ConfirmDialog } from '../../components/ui'
+import WeekPicker from '../../components/ui/WeekPicker'
+import YearPicker from '../../components/ui/YearPicker'
 import DailyKpiPreview from '../../components/kpi/DailyKpiPreview'
 import toast from 'react-hot-toast'
 import { getCurrentWeek } from '../../utils/weekHelper'
@@ -32,6 +34,22 @@ export default function KpiManagement() {
   const { t, language } = useLanguage()
   const { user } = useAuthStore()
   const location = useLocation()
+
+  const pad2 = (n) => String(Math.max(0, Math.trunc(Number(n) || 0))).padStart(2, '0')
+  const toWeekKey = (year, week) => {
+    const y = String(year ?? '').trim()
+    const w = String(week ?? '').trim()
+    if (!y || !w) return ''
+    return `${y}-W${pad2(w)}`
+  }
+  const parseWeekKey = (value) => {
+    const raw = String(value ?? '').trim()
+    const m = raw.match(/^(\d{4})-W(\d{2})$/)
+    if (!m) return null
+    const weekYear = m[1]
+    const week = String(Number(m[2]))
+    return { weekYear, week }
+  }
   const [reports, setReports] = useState([])
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
@@ -345,32 +363,50 @@ export default function KpiManagement() {
           </div>
 
           {/* Week Filter */}
-          <select
-            value={filters.week}
-            onChange={(e) => setFilters({ ...filters, week: e.target.value })}
-            className="input"
-          >
-            <option value="">{t('common.all')}</option>
-            {weekOptions.map((week) => (
-              <option key={week} value={week}>
-                {t('hseExport.week')} {week}
-              </option>
-            ))}
-          </select>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <WeekPicker
+                value={filters.week && filters.year ? toWeekKey(filters.year, filters.week) : ''}
+                onChange={(key) => {
+                  const parsed = parseWeekKey(key)
+                  if (!parsed) return
+                  setFilters((prev) => ({ ...prev, year: parsed.weekYear, week: parsed.week }))
+                }}
+                placeholder={t('common.all')}
+                className="w-full"
+              />
+            </div>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setFilters((prev) => ({ ...prev, week: '', year: '' }))}
+              title={t('common.all')}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
 
           {/* Year Filter */}
-          <select
-            value={filters.year}
-            onChange={(e) => setFilters({ ...filters, year: e.target.value })}
-            className="input"
-          >
-            <option value="">{t('common.all')}</option>
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <YearPicker
+                value={filters.year}
+                onChange={(y) => setFilters((prev) => ({ ...prev, year: String(y ?? '') }))}
+                placeholder={t('common.all')}
+                className="w-full"
+              />
+            </div>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setFilters((prev) => ({ ...prev, year: '' }))}
+              disabled={!filters.year}
+              aria-label={t('common.all')}
+              title={t('common.all')}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
 
           {/* Status Filter */}
           <select
@@ -949,33 +985,27 @@ export default function KpiManagement() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('hseExport.week')} *
               </label>
-              <select
-                value={exportParams.week}
-                onChange={(e) => setExportParams({ ...exportParams, week: parseInt(e.target.value) })}
-                className="input w-full"
-              >
-                {weekOptions.map((week) => (
-                  <option key={week} value={week}>
-                    {t('hseExport.week')} {week}
-                  </option>
-                ))}
-              </select>
+              <WeekPicker
+                value={toWeekKey(exportParams.year, exportParams.week)}
+                onChange={(key) => {
+                  const parsed = parseWeekKey(key)
+                  if (!parsed) return
+                  setExportParams((prev) => ({ ...prev, year: parseInt(parsed.weekYear), week: parseInt(parsed.week) }))
+                }}
+                className="w-full"
+                required
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t('hseExport.year')} *
               </label>
-              <select
+              <YearPicker
                 value={exportParams.year}
-                onChange={(e) => setExportParams({ ...exportParams, year: parseInt(e.target.value) })}
-                className="input w-full"
-              >
-                {yearOptions.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
+                onChange={(y) => setExportParams((prev) => ({ ...prev, year: parseInt(y) }))}
+                className="w-full"
+                required
+              />
             </div>
           </div>
 

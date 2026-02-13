@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/authStore'
 import { trainingService, exportService } from '../../services/api'
 import { useProjectStore } from '../../store/projectStore'
 import DatePicker from '../../components/ui/DatePicker'
+import WeekPicker from '../../components/ui/WeekPicker'
 import Select from '../../components/ui/Select'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
@@ -56,6 +57,19 @@ export default function Training() {
   const { t } = useLanguage()
   const { user } = useAuthStore()
   const { projects, isLoading: loadingProjects, fetchProjects } = useProjectStore()
+
+  const weekPickerYear = useMemo(() => {
+    const y = new Date().getFullYear()
+    return Number.isFinite(y) ? y : 2025
+  }, [])
+
+  const parseWeekKey = (value) => {
+    const raw = String(value ?? '').trim()
+    const m = raw.match(/^(\d{4})-W(\d{2})$/)
+    if (!m) return null
+    const week = String(Number(m[2]))
+    return { week }
+  }
 
   const [trainings, setTrainings] = useState([])
   const [loadingTrainings, setLoadingTrainings] = useState(false)
@@ -554,11 +568,11 @@ export default function Training() {
             <Filter className="w-4 h-4 text-hse-primary" />
             {t('training.listTitle')}
           </h2>
-          <div className="flex flex-wrap md:flex-nowrap items-center gap-3">
+          <div className="flex flex-col sm:flex-row flex-wrap md:flex-nowrap items-stretch sm:items-center gap-3">
             <Select
               value={filterProjectId}
               onChange={(e) => setFilterProjectId(e.target.value)}
-              className="h-10 text-sm min-w-[140px]"
+              className="h-10 text-sm w-full sm:min-w-[180px]"
             >
               <option value="">{t('training.allProjects')}</option>
               {sortedProjects.map((p) => (
@@ -567,35 +581,50 @@ export default function Training() {
                 </option>
               ))}
             </Select>
-            <Select
-              value={filterWeek}
-              onChange={(e) => setFilterWeek(e.target.value)}
-              className="h-10 text-sm min-w-[130px]"
-            >
-              <option value="">{t('training.allWeeks')}</option>
-              {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
-                <option key={w} value={w}>
-                  {t('training.weekLabel').replace('{{week}}', w)}
-                </option>
-              ))}
-            </Select>
+            <div className="w-full sm:w-[170px]">
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <WeekPicker
+                    value={filterWeek ? `${weekPickerYear}-W${String(filterWeek).padStart(2, '0')}` : ''}
+                    onChange={(key) => {
+                      const parsed = parseWeekKey(key)
+                      if (!parsed) return
+                      setFilterWeek(parsed.week)
+                      setCurrentPage(1)
+                    }}
+                    placeholder={t('training.allWeeks')}
+                    className="w-full h-10"
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setFilterWeek('')}
+                  disabled={!filterWeek}
+                  aria-label={t('training.allWeeks')}
+                  title={t('training.allWeeks')}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
             <DatePicker
               value={filterFromDate}
               onChange={(val) => { setFilterFromDate(val); setCurrentPage(1) }}
               placeholder="From date"
-              className="w-40 h-10"
+              className="w-full sm:w-40 h-10"
             />
             <DatePicker
               value={filterToDate}
               onChange={(val) => { setFilterToDate(val); setCurrentPage(1) }}
               placeholder="To date"
-              className="w-40 h-10"
+              className="w-full sm:w-40 h-10"
             />
             <button
               type="button"
               onClick={handleExportTrainings}
               disabled={exporting || trainings.length === 0}
-              className="btn-secondary flex items-center gap-2 text-sm"
+              className="btn-secondary flex items-center justify-center gap-2 text-sm w-full sm:w-auto"
             >
               <FileSpreadsheet className="w-4 h-4" />
               <span>{t('dashboard.exportExcel')}</span>

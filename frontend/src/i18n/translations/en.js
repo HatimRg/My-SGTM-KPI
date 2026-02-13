@@ -4,8 +4,10 @@ export default {
     appName: 'HSE KPI Tracker',
     companyName: 'SGTM',
     loading: 'Loading...',
+    comingSoon: 'Coming soon',
     other: 'Other',
     showMore: 'Show more',
+    more: 'more',
     save: 'Save',
     saved: 'Saved',
     cancel: 'Cancel',
@@ -54,6 +56,7 @@ export default {
     failed: 'Failed',
     refresh: 'Refresh',
     noData: 'No data available',
+    total: 'Total',
     error: 'Error',
     success: 'Success',
     warning: 'Warning',
@@ -433,6 +436,7 @@ export default {
     myProjects: 'My Projects',
     users: 'Users',
     bugReports: 'Bug Reports',
+    library: 'Library',
     kpiSubmission: 'KPI Submission',
     kpiHistory: 'KPI History',
     reports: 'Reports',
@@ -444,6 +448,33 @@ export default {
     monthlyMeasurements: 'Monthly Measurements',
     lightingMeasurements: 'Lighting Measurements (Lux)',
     wasteManagement: 'Waste Management',
+  },
+
+  library: {
+    title: 'Library',
+    subtitle: 'Search and download reference documents, procedures, and templates.',
+    searchPlaceholder: 'Search files and folders (typos and plurals supported)...',
+    searchHint: 'Tip: search is typo-tolerant and handles plural forms.',
+    adminUpload: 'Admin upload',
+    selectFiles: 'Select files',
+    uploadHint: 'Upload is admin-only for now. Supported: PDF, DOCX, XLSX, CSV.',
+    upload: 'Upload',
+    download: 'Download',
+    noResults: 'No results',
+    noResultsHint: 'Try a different query or clear filters.',
+    files: 'Files',
+    folders: 'Folders',
+    items: 'items',
+    toggleSort: 'Toggle sort direction',
+    sort: {
+      relevance: 'Relevance',
+      updated: 'Updated',
+      name: 'Name',
+    },
+  },
+
+  filters: {
+    pole: 'Pole',
   },
 
   bugReport: {
@@ -605,6 +636,7 @@ export default {
         accidents_incidents: 'K. Accidents vs Incidents by pole',
         ppe_consumption: 'L. PPE consumption by pole',
         machinery: 'M. Heavy machinery count and document completion by pole',
+        inspections: 'N. Inspections count by pole',
       },
       weekRange: 'Week range',
       weekStart: 'Start week',
@@ -623,6 +655,7 @@ export default {
       accidentsIncidentsTooltipTitle: 'Accidents/Incidents by project',
       ppeTooltipTitle: 'PPE consumption by project',
       machineryTooltipTitle: 'Machinery by project',
+      inspectionsTooltipTitle: 'Inspections by project',
     },
 
     deviations: {

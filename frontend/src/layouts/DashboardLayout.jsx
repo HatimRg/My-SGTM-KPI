@@ -291,6 +291,7 @@ export default function DashboardLayout() {
     { to: '/admin/projects', icon: FolderKanban, label: t('projects.title') },
     { to: '/admin/kpi', icon: Gauge, label: t('kpi.title') },
     { to: '/admin/kpi-history', icon: History, label: t('kpi.history') },
+    { to: '/admin/library', icon: BookOpen, label: t('nav.library') },
     { to: '/admin/hse-events', icon: Siren, label: t('nav.hseEvents') },
     { to: '/admin/monthly-measurements', icon: CalendarDays, label: t('nav.monthlyMeasurements') },
     { to: '/admin/lighting', icon: Lightbulb, label: t('nav.lightingMeasurements') },
@@ -771,7 +772,7 @@ export default function DashboardLayout() {
       {/* Main content */}
       <div className="lg:pl-72">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+        <header className="sticky top-0 z-[10000] bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center h-16 px-4 sm:px-6">
             {/* Mobile menu button */}
             <button

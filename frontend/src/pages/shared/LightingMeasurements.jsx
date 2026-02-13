@@ -4,13 +4,32 @@ import { useAuthStore } from '../../store/authStore'
 import { projectService, lightingMeasurementService } from '../../services/api'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import DatePicker from '../../components/ui/DatePicker'
+import YearPicker from '../../components/ui/YearPicker'
+import MonthPicker from '../../components/ui/MonthPicker'
 import { sortProjects } from '../../utils/projectList'
-import { Sun, Plus, Edit2, Trash2, Loader2 } from 'lucide-react'
+import { Sun, Plus, Edit2, Trash2, Loader2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function LightingMeasurements() {
   const { t } = useLanguage()
   const { user } = useAuthStore()
+
+  const pad2 = (n) => String(n).padStart(2, '0')
+  const toMonthKey = (year, month) => {
+    const y = String(year ?? '').trim()
+    const m = String(month ?? '').trim()
+    if (!y || !m) return ''
+    return `${y}-${pad2(m)}`
+  }
+  const parseMonthKey = (key) => {
+    const raw = String(key ?? '').trim()
+    const m = raw.match(/^(\d{4})-(\d{2})$/)
+    if (!m) return null
+    const year = m[1]
+    const month = String(Number(m[2]))
+    return { year, month }
+  }
 
   const [projects, setProjects] = useState([])
   const [items, setItems] = useState([])
@@ -195,26 +214,56 @@ export default function LightingMeasurements() {
 
           <div>
             <label className="label">{t('lightingMeasurements.filters.year')}</label>
-            <input
-              className="input"
-              type="number"
-              value={yearFilter}
-              onChange={(e) => setYearFilter(e.target.value)}
-              placeholder={t('lightingMeasurements.filters.yearPlaceholder')}
-            />
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <YearPicker
+                  value={yearFilter}
+                  onChange={(y) => setYearFilter(String(y ?? ''))}
+                  className="w-full"
+                  placeholder={t('lightingMeasurements.filters.yearPlaceholder')}
+                />
+              </div>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setYearFilter('')}
+                disabled={!yearFilter}
+                aria-label={t('common.all') ?? 'All'}
+                title={t('common.all') ?? 'All'}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           <div>
             <label className="label">{t('lightingMeasurements.filters.month')}</label>
-            <input
-              className="input"
-              type="number"
-              min="1"
-              max="12"
-              value={monthFilter}
-              onChange={(e) => setMonthFilter(e.target.value)}
-              placeholder={t('lightingMeasurements.filters.monthPlaceholder')}
-            />
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <MonthPicker
+                  value={toMonthKey(yearFilter, monthFilter)}
+                  defaultYear={yearFilter}
+                  onChange={(key) => {
+                    const parsed = parseMonthKey(key)
+                    if (!parsed) return
+                    setYearFilter(parsed.year)
+                    setMonthFilter(parsed.month)
+                  }}
+                  className="w-full"
+                  placeholder={t('lightingMeasurements.filters.monthPlaceholder')}
+                />
+              </div>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setMonthFilter('')}
+                disabled={!monthFilter}
+                aria-label={t('common.all') ?? 'All'}
+                title={t('common.all') ?? 'All'}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -291,7 +340,7 @@ export default function LightingMeasurements() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="label">{t('lightingMeasurements.form.date')}</label>
-              <input type="date" className="input" value={formData.measured_at} onChange={(e) => setFormData((p) => ({ ...p, measured_at: e.target.value }))} required />
+              <DatePicker value={formData.measured_at} onChange={(val) => setFormData((p) => ({ ...p, measured_at: val }))} className="w-full" required />
             </div>
             <div>
               <label className="label">{t('lightingMeasurements.form.location')}</label>

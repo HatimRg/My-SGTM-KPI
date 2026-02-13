@@ -12,6 +12,7 @@ export default function DatePicker({ value, onChange, placeholder, className = '
   const containerRef = useRef(null)
   const triggerRef = useRef(null)
   const popoverRef = useRef(null)
+  const rafRef = useRef(null)
   
   const days = t('datePicker.days')
   const months = t('datePicker.months')
@@ -38,19 +39,47 @@ export default function DatePicker({ value, onChange, placeholder, className = '
 
   useEffect(() => {
     if (!isOpen) return
-    const rect = triggerRef.current?.getBoundingClientRect()
-    if (!rect) return
 
-    const width = 256
-    const padding = 8
+    const updatePosition = () => {
+      const rect = triggerRef.current?.getBoundingClientRect()
+      if (!rect) return
 
-    let left = rect.left
-    if (left + width > window.innerWidth - padding) {
-      left = Math.max(padding, window.innerWidth - width - padding)
+      const width = 256
+      const padding = 8
+
+      let left = rect.left
+      if (left + width > window.innerWidth - padding) {
+        left = Math.max(padding, window.innerWidth - width - padding)
+      }
+
+      const top = rect.bottom + 4
+      setPopoverPos((prev) => {
+        if (prev.top === top && prev.left === left && prev.placement === 'bottom') return prev
+        return { top, left, placement: 'bottom' }
+      })
     }
 
-    const top = rect.bottom + 4
-    setPopoverPos({ top, left, placement: 'bottom' })
+    updatePosition()
+
+    const scheduleUpdate = () => {
+      if (rafRef.current) return
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null
+        updatePosition()
+      })
+    }
+
+    window.addEventListener('resize', scheduleUpdate)
+    window.addEventListener('scroll', scheduleUpdate, { capture: true, passive: true })
+
+    return () => {
+      window.removeEventListener('resize', scheduleUpdate)
+      window.removeEventListener('scroll', scheduleUpdate, true)
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+    }
   }, [isOpen])
 
   useEffect(() => {
@@ -60,9 +89,10 @@ export default function DatePicker({ value, onChange, placeholder, className = '
     if (!rect || !popRect) return
 
     const padding = 8
+    const topbarSafeTop = 72
     const overBottom = popRect.bottom > window.innerHeight - padding
     if (overBottom) {
-      const top = Math.max(padding, rect.top - popRect.height - 4)
+      const top = Math.max(topbarSafeTop, rect.top - popRect.height - 4)
       setPopoverPos((p) => ({ ...p, top, placement: 'top' }))
     }
   }, [isOpen, viewMode, viewDate])
@@ -141,7 +171,7 @@ export default function DatePicker({ value, onChange, placeholder, className = '
         <div
           ref={popoverRef}
           style={{ top: popoverPos.top, left: popoverPos.left, width: 256 }}
-          className="fixed z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2"
+          className="fixed z-[9999] max-h-[calc(100vh-96px)] overflow-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2"
         >
           <div className="flex items-center justify-between mb-2">
             <button type="button" onClick={() => setViewDate(prev => new Date(prev.getFullYear() - (viewMode === 'months' ? 1 : 0), prev.getMonth() - (viewMode === 'days' ? 1 : 0), 1))} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">

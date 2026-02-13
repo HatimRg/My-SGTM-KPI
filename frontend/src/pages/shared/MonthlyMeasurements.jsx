@@ -4,6 +4,8 @@ import { useAuthStore } from '../../store/authStore'
 import { projectService, monthlyKpiMeasurementService } from '../../services/api'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import YearPicker from '../../components/ui/YearPicker'
+import MonthPicker from '../../components/ui/MonthPicker'
 import { sortProjects } from '../../utils/projectList'
 import { FileText, Plus, Edit2, Trash2, Loader2, Volume2, Droplets, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -38,6 +40,22 @@ const INDICATORS = [
 export default function MonthlyMeasurements() {
   const { t } = useLanguage()
   const { user } = useAuthStore()
+
+  const pad2 = (n) => String(n).padStart(2, '0')
+  const toMonthKey = (year, month) => {
+    const y = String(year ?? '').trim()
+    const m = String(month ?? '').trim()
+    if (!y || !m) return ''
+    return `${y}-${pad2(m)}`
+  }
+  const parseMonthKey = (key) => {
+    const raw = String(key ?? '').trim()
+    const m = raw.match(/^(\d{4})-(\d{2})$/)
+    if (!m) return null
+    const year = m[1]
+    const month = String(Number(m[2]))
+    return { year, month }
+  }
 
   const [projects, setProjects] = useState([])
   const [items, setItems] = useState([])
@@ -263,12 +281,22 @@ export default function MonthlyMeasurements() {
 
           <div>
             <label className="label">{t('monthlyMeasurements.filters.year') ?? 'Year'}</label>
-            <input className="input" type="number" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} />
+            <YearPicker value={yearFilter} onChange={(y) => setYearFilter(String(y ?? ''))} className="w-full" />
           </div>
 
           <div>
             <label className="label">{t('monthlyMeasurements.filters.month') ?? 'Month'}</label>
-            <input className="input" type="number" min="1" max="12" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} />
+            <MonthPicker
+              value={toMonthKey(yearFilter, monthFilter)}
+              defaultYear={yearFilter}
+              onChange={(key) => {
+                const parsed = parseMonthKey(key)
+                if (!parsed) return
+                setYearFilter(parsed.year)
+                setMonthFilter(parsed.month)
+              }}
+              className="w-full"
+            />
           </div>
         </div>
       </div>
@@ -353,11 +381,28 @@ export default function MonthlyMeasurements() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="label">{t('monthlyMeasurements.fields.year') ?? 'Year'}</label>
-              <input type="number" className="input" value={formData.year} onChange={(e) => setFormData((p) => ({ ...p, year: e.target.value }))} required disabled={!!editing} />
+              <YearPicker
+                value={formData.year}
+                onChange={(y) => setFormData((p) => ({ ...p, year: String(y ?? '') }))}
+                className="w-full"
+                required
+                disabled={!!editing}
+              />
             </div>
             <div>
               <label className="label">{t('monthlyMeasurements.fields.month') ?? 'Month'}</label>
-              <input type="number" min="1" max="12" className="input" value={formData.month} onChange={(e) => setFormData((p) => ({ ...p, month: e.target.value }))} required disabled={!!editing} />
+              <MonthPicker
+                value={toMonthKey(formData.year, formData.month)}
+                defaultYear={formData.year}
+                onChange={(key) => {
+                  const parsed = parseMonthKey(key)
+                  if (!parsed) return
+                  setFormData((p) => ({ ...p, year: parsed.year, month: parsed.month }))
+                }}
+                className="w-full"
+                required
+                disabled={!!editing}
+              />
             </div>
             <div>
               <label className="label">{t('monthlyMeasurements.fields.indicator') ?? 'Indicator'}</label>

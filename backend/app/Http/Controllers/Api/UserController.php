@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Database\QueryException;
 use Maatwebsite\Excel\Excel as ExcelFormat;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\UsersFailedRowsExport;
@@ -332,14 +333,42 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
+        $actor = request()->user();
+        if ($actor) {
+            $this->assertCanManageUser($actor, $user);
+        }
+
         // Prevent self-deletion
         if ($user->id === auth()->id()) {
             return $this->error('You cannot delete your own account', 403);
         }
 
-        $user->delete();
+        try {
+            // Detach pivot relations first (these have cascade deletes but detaching reduces risk)
+            $user->projects()->detach();
+            $user->teamProjects()->detach();
 
-        return $this->success(null, 'User deleted successfully');
+            $user->delete();
+
+            return $this->success(null, 'User deleted successfully');
+        } catch (QueryException $e) {
+            // Common cause: user is referenced by other rows with restrictive FK constraints.
+            // Return a clear, actionable message instead of a generic 500.
+            Log::warning('User deletion blocked by database constraint', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->error('Cannot delete this user because it is linked to existing data. Please deactivate the user instead.', 422);
+        } catch (\Throwable $e) {
+            Log::error('User deletion failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return $this->error('Failed to delete user', 500);
+        }
     }
 
     /**

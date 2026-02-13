@@ -22,6 +22,7 @@ const UserManagement = lazy(() => import('./pages/admin/UserManagement'))
 const ProjectManagement = lazy(() => import('./pages/admin/ProjectManagement'))
 const KpiManagement = lazy(() => import('./pages/admin/KpiManagement'))
 const BugReports = lazy(() => import('./pages/admin/BugReports'))
+const Library = lazy(() => import('./pages/admin/Library'))
 
 // User Pages (lazy-loaded)
 const UserDashboard = lazy(() => import('./pages/user/UserDashboard'))
@@ -338,6 +339,14 @@ function App() {
         <Route path="/admin/projects" element={<ProjectManagement />} />
         <Route path="/admin/projects/:id" element={<ProjectDetails />} />
         <Route path="/admin/bug-reports" element={<BugReports />} />
+        <Route
+          path="/admin/library"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'consultation', 'dev']} enforceAllowedRoles>
+              <Library />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/admin/effectif"
           element={

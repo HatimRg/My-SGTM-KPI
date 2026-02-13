@@ -4,8 +4,10 @@ export default {
     appName: 'HSE KPI Tracker',
     companyName: 'SGTM',
     loading: 'Chargement...',
+    comingSoon: 'Bientôt disponible',
     other: 'Autre',
     showMore: 'Afficher plus',
+    more: 'de plus',
     save: 'Enregistrer',
     saved: 'Enregistré',
     cancel: 'Annuler',
@@ -54,6 +56,7 @@ export default {
     failed: 'Échoués',
     refresh: 'Actualiser',
     noData: 'Aucune donnée disponible',
+    total: 'Total',
     error: 'Erreur',
     success: 'Succès',
     warning: 'Attention',
@@ -433,6 +436,7 @@ export default {
     myProjects: 'Mes Projets',
     users: 'Utilisateurs',
     bugReports: 'Signalements',
+    library: 'Bibliothèque',
     kpiSubmission: 'Soumission KPI',
     kpiHistory: 'Historique KPI',
     reports: 'Rapports',
@@ -444,6 +448,33 @@ export default {
     monthlyMeasurements: 'Mesures mensuelles',
     lightingMeasurements: 'Mesures d\'éclairement (Lux)',
     wasteManagement: 'Gestion des déchets',
+  },
+
+  library: {
+    title: 'Bibliothèque',
+    subtitle: 'Recherchez et téléchargez des documents, procédures et modèles.',
+    searchPlaceholder: 'Rechercher des fichiers et dossiers (fautes et pluriels pris en charge)...',
+    searchHint: 'Astuce : la recherche tolère les fautes et gère les pluriels.',
+    adminUpload: 'Téléversement (admin)',
+    selectFiles: 'Choisir des fichiers',
+    uploadHint: 'Le téléversement est réservé aux admins pour le moment. Formats : PDF, DOCX, XLSX, CSV.',
+    upload: 'Téléverser',
+    download: 'Télécharger',
+    noResults: 'Aucun résultat',
+    noResultsHint: 'Essayez une autre recherche ou effacez les filtres.',
+    files: 'Fichiers',
+    folders: 'Dossiers',
+    items: 'éléments',
+    toggleSort: 'Changer le sens du tri',
+    sort: {
+      relevance: 'Pertinence',
+      updated: 'Mise à jour',
+      name: 'Nom',
+    },
+  },
+
+  filters: {
+    pole: 'Pôle',
   },
 
   bugReport: {
@@ -605,6 +636,7 @@ export default {
         accidents_incidents: 'K. Accidents vs Incidents par pôle',
         ppe_consumption: 'L. Consommation EPI par pôle',
         machinery: 'M. Nombre d\'engins et complétion documentaire par pôle',
+        inspections: 'N. Nombre d\'inspections par pôle',
       },
       weekRange: 'Plage de semaines',
       weekStart: 'Semaine début',
@@ -623,6 +655,7 @@ export default {
       accidentsIncidentsTooltipTitle: 'Accidents/Incidents par projet',
       ppeTooltipTitle: 'Consommation EPI par projet',
       machineryTooltipTitle: 'Engins par projet',
+      inspectionsTooltipTitle: 'Inspections par projet',
     },
 
     deviations: {

@@ -7,6 +7,8 @@ use App\Helpers\WeekHelper;
 use App\Models\AwarenessSession;
 use App\Models\DailyKpiSnapshot;
 use App\Models\HseEvent;
+use App\Models\KpiReport;
+use App\Models\Inspection;
 use App\Models\Machine;
 use App\Models\MachineDocument;
 use App\Models\PpeItem;
@@ -93,9 +95,10 @@ class MonthlyReportController extends Controller
 
             // Build week map for surrounding years to handle boundary weeks.
             // For week range mode, we check if week falls within range; for month mode, we map to month key.
+            // WeekHelper uses 52 weeks per year (Saturday to Friday), so we iterate 1-52.
             $weekMonthMap = [];
             foreach ([$targetYear - 1, $targetYear, $targetYear + 1] as $y) {
-                for ($w = 1; $w <= 53; $w++) {
+                for ($w = 1; $w <= 52; $w++) {
                     $dates = WeekHelper::getWeekDates($w, $y);
                     if ($useWeekRange) {
                         // For week range, store the week dates for range checking
@@ -241,6 +244,8 @@ class MonthlyReportController extends Controller
             $sorProject = [];
             $durationPoleSum = [];
             $durationPoleCount = [];
+            $durationProjectSum = [];
+            $durationProjectCount = [];
 
             // Subcontractors-only SOR (exclude SGTM, ignore unknown)
             $sorSubPole = [];
@@ -248,6 +253,8 @@ class MonthlyReportController extends Controller
             $sorSubProject = [];
             $durationSubPoleSum = [];
             $durationSubPoleCount = [];
+            $durationSubProjectSum = [];
+            $durationSubProjectCount = [];
 
             foreach ($sorRows as $r) {
                 $obsDate = $r->observation_date ? Carbon::parse($r->observation_date) : null;
@@ -293,9 +300,15 @@ class MonthlyReportController extends Controller
                             $durationPoleSum[$pole] = ($durationPoleSum[$pole] ?? 0) + $hours;
                             $durationPoleCount[$pole] = ($durationPoleCount[$pole] ?? 0) + 1;
 
+                            $durationProjectSum[$pid] = ($durationProjectSum[$pid] ?? 0) + $hours;
+                            $durationProjectCount[$pid] = ($durationProjectCount[$pid] ?? 0) + 1;
+
                             if (!empty($isSub)) {
                                 $durationSubPoleSum[$pole] = ($durationSubPoleSum[$pole] ?? 0) + $hours;
                                 $durationSubPoleCount[$pole] = ($durationSubPoleCount[$pole] ?? 0) + 1;
+
+                                $durationSubProjectSum[$pid] = ($durationSubProjectSum[$pid] ?? 0) + $hours;
+                                $durationSubProjectCount[$pid] = ($durationSubProjectCount[$pid] ?? 0) + 1;
                             }
                         }
                     } catch (\Throwable $e) {
@@ -357,6 +370,24 @@ class MonthlyReportController extends Controller
                 $durationPoleUsed[$pole] = $cnt;
             }
 
+            $durationPoleProjects = [];
+            foreach ($poles as $pole) {
+                $items = [];
+                foreach ($projectsByPole->get($pole, collect()) as $p) {
+                    $pid = (int) $p->id;
+                    $cnt = (int) ($durationProjectCount[$pid] ?? 0);
+                    $sum = (float) ($durationProjectSum[$pid] ?? 0);
+                    $items[] = [
+                        'project_id' => $pid,
+                        'project_name' => (string) $p->name,
+                        'project_code' => (string) $p->code,
+                        'avg_hours' => $cnt > 0 ? round($sum / $cnt, 2) : 0.0,
+                        'records_used' => $cnt,
+                    ];
+                }
+                $durationPoleProjects[$pole] = $items;
+            }
+
             $durationSubPoleAvg = [];
             $durationSubPoleUsed = [];
             foreach ($poles as $pole) {
@@ -364,6 +395,24 @@ class MonthlyReportController extends Controller
                 $sum = (float) ($durationSubPoleSum[$pole] ?? 0);
                 $durationSubPoleAvg[$pole] = $cnt > 0 ? round($sum / $cnt, 2) : 0.0;
                 $durationSubPoleUsed[$pole] = $cnt;
+            }
+
+            $durationSubPoleProjects = [];
+            foreach ($poles as $pole) {
+                $items = [];
+                foreach ($projectsByPole->get($pole, collect()) as $p) {
+                    $pid = (int) $p->id;
+                    $cnt = (int) ($durationSubProjectCount[$pid] ?? 0);
+                    $sum = (float) ($durationSubProjectSum[$pid] ?? 0);
+                    $items[] = [
+                        'project_id' => $pid,
+                        'project_name' => (string) $p->name,
+                        'project_code' => (string) $p->code,
+                        'avg_hours' => $cnt > 0 ? round($sum / $cnt, 2) : 0.0,
+                        'records_used' => $cnt,
+                    ];
+                }
+                $durationSubPoleProjects[$pole] = $items;
             }
 
             // SECTION D - Trainings
@@ -545,6 +594,42 @@ class MonthlyReportController extends Controller
                 $medicalPolePct[$pole] = $total > 0 ? round(($ok * 100.0) / $total, 2) : 0.0;
             }
 
+            $medicalProjectTotal = [];
+            $medicalProjectConforming = [];
+            foreach ($workers as $w) {
+                $pid = (int) $w->project_id;
+                if (!$projectsById->has($pid)) {
+                    continue;
+                }
+                $pole = $projectPoleLabel($pid);
+                if ($pole === '') {
+                    continue;
+                }
+                $medicalProjectTotal[$pid] = ($medicalProjectTotal[$pid] ?? 0) + 1;
+                if (!empty($medicalConforming[(int) $w->id])) {
+                    $medicalProjectConforming[$pid] = ($medicalProjectConforming[$pid] ?? 0) + 1;
+                }
+            }
+
+            $medicalPoleProjects = [];
+            foreach ($poles as $pole) {
+                $items = [];
+                foreach ($projectsByPole->get($pole, collect()) as $p) {
+                    $pid = (int) $p->id;
+                    $total = (int) ($medicalProjectTotal[$pid] ?? 0);
+                    $ok = (int) ($medicalProjectConforming[$pid] ?? 0);
+                    $items[] = [
+                        'project_id' => $pid,
+                        'project_name' => (string) $p->name,
+                        'project_code' => (string) $p->code,
+                        'total_workers' => $total,
+                        'conforming_workers' => $ok,
+                        'pct' => $total > 0 ? round(($ok * 100.0) / $total, 2) : 0.0,
+                    ];
+                }
+                $medicalPoleProjects[$pole] = $items;
+            }
+
             // Prepare chart-friendly payload (labels = poles)
             $labels = $poles;
 
@@ -589,19 +674,22 @@ class MonthlyReportController extends Controller
                 $awPoleProjectBreakdown[$pole] = $items;
             }
 
-            // SECTION H - TF/TG rates by pole (from daily KPI snapshots)
-            $kpiSnapshots = DailyKpiSnapshot::query()
+            // SECTION H - TF/TG rates by pole (from KpiReport - same source as Vue Ensemble theme)
+            $kpiReports = KpiReport::query()
                 ->whereIn('project_id', $projectsById->keys())
-                ->whereBetween('entry_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
-                ->get(['project_id', 'accidents', 'jours_arret', 'heures_travaillees']);
+                ->approved()
+                ->get(['project_id', 'week_number', 'report_year', 'accidents', 'lost_workdays', 'hours_worked']);
 
             $tfTgByProject = [];
-            foreach ($kpiSnapshots as $snap) {
-                $pid = (int) $snap->project_id;
+            foreach ($kpiReports as $report) {
+                $wkKey = ((int) $report->report_year) . '-' . ((int) $report->week_number);
+                if (!$isWeekInRange($wkKey)) continue;
+
+                $pid = (int) $report->project_id;
                 $tfTgByProject[$pid] = $tfTgByProject[$pid] ?? ['accidents' => 0, 'lost_days' => 0, 'hours' => 0];
-                $tfTgByProject[$pid]['accidents'] += (int) ($snap->accidents ?? 0);
-                $tfTgByProject[$pid]['lost_days'] += (int) ($snap->jours_arret ?? 0);
-                $tfTgByProject[$pid]['hours'] += (float) ($snap->heures_travaillees ?? 0);
+                $tfTgByProject[$pid]['accidents'] += (int) ($report->accidents ?? 0);
+                $tfTgByProject[$pid]['lost_days'] += (int) ($report->lost_workdays ?? 0);
+                $tfTgByProject[$pid]['hours'] += (float) ($report->hours_worked ?? 0);
             }
 
             $tfTgPole = [];
@@ -640,23 +728,17 @@ class MonthlyReportController extends Controller
                 $tfTgPoleProjects[$pole] = $breakdown;
             }
 
-            // SECTION I - Accidents vs Incidents by pole (from HSE events)
-            $hseEvents = HseEvent::query()
-                ->whereIn('project_id', $projectsById->keys())
-                ->whereBetween('event_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
-                ->get(['project_id', 'type']);
-
+            // SECTION I - Accidents vs Incidents by pole (from KpiReport - same source as Vue Ensemble theme)
+            // Reuse kpiReports already fetched for TF/TG section
             $accidentsByProject = [];
             $incidentsByProject = [];
-            foreach ($hseEvents as $ev) {
-                $pid = (int) $ev->project_id;
-                $type = strtolower(trim((string) ($ev->type ?? '')));
+            foreach ($kpiReports as $report) {
+                $wkKey = ((int) $report->report_year) . '-' . ((int) $report->week_number);
+                if (!$isWeekInRange($wkKey)) continue;
 
-                if ($type === 'accident') {
-                    $accidentsByProject[$pid] = ($accidentsByProject[$pid] ?? 0) + 1;
-                } elseif ($type === 'incident' || $type === 'near_miss' || $type === 'presquaccident') {
-                    $incidentsByProject[$pid] = ($incidentsByProject[$pid] ?? 0) + 1;
-                }
+                $pid = (int) $report->project_id;
+                $accidentsByProject[$pid] = ($accidentsByProject[$pid] ?? 0) + (int) ($report->accidents ?? 0);
+                $incidentsByProject[$pid] = ($incidentsByProject[$pid] ?? 0) + (int) ($report->near_misses ?? 0);
             }
 
             $accidentsIncidentsPole = [];
@@ -689,7 +771,7 @@ class MonthlyReportController extends Controller
             $ppeIssues = WorkerPpeIssue::query()
                 ->whereIn('project_id', $projectsById->keys())
                 ->whereBetween('received_at', [$monthStart->toDateString(), $monthEnd->toDateString()])
-                ->with('ppeItem:id,name,name_fr')
+                ->with('ppeItem:id,name')
                 ->get(['project_id', 'ppe_item_id', 'quantity']);
 
             $ppeByProjectItem = [];
@@ -703,7 +785,7 @@ class MonthlyReportController extends Controller
                 $ppeByProjectItem[$pid][$itemId] = ($ppeByProjectItem[$pid][$itemId] ?? 0) + $qty;
 
                 if (!isset($ppeItemNames[$itemId]) && $issue->ppeItem) {
-                    $ppeItemNames[$itemId] = (string) ($issue->ppeItem->name_fr ?: $issue->ppeItem->name ?: 'Item ' . $itemId);
+                    $ppeItemNames[$itemId] = (string) ($issue->ppeItem->name ?: 'Item ' . $itemId);
                 }
             }
 
@@ -815,6 +897,42 @@ class MonthlyReportController extends Controller
                 $machineryPoleProjects[$pole] = $breakdown;
             }
 
+            // SECTION L - Inspections count by pole
+            $inspections = Inspection::query()
+                ->whereIn('project_id', $projectsById->keys())
+                ->get(['id', 'project_id', 'week_number', 'week_year', 'nature', 'type']);
+
+            $inspectionsByProject = [];
+            foreach ($inspections as $insp) {
+                $wkKey = $insp->week_year . '-' . $insp->week_number;
+                if (!$isWeekInRange($wkKey)) continue;
+
+                $pid = (int) $insp->project_id;
+                $inspectionsByProject[$pid] = ($inspectionsByProject[$pid] ?? 0) + 1;
+            }
+
+            $inspectionsPole = [];
+            $inspectionsPoleProjects = [];
+            foreach ($poles as $pole) {
+                $poleCount = 0;
+                $breakdown = [];
+
+                foreach ($projectsByPole->get($pole, collect()) as $p) {
+                    $count = (int) ($inspectionsByProject[$p->id] ?? 0);
+                    $poleCount += $count;
+
+                    $breakdown[] = [
+                        'project_id' => (int) $p->id,
+                        'project_name' => (string) $p->name,
+                        'project_code' => (string) $p->code,
+                        'count' => $count,
+                    ];
+                }
+
+                $inspectionsPole[$pole] = $poleCount;
+                $inspectionsPoleProjects[$pole] = $breakdown;
+            }
+
             return $this->success([
                 'month' => $monthKey,
                 'project_id' => $projectId,
@@ -876,6 +994,7 @@ class MonthlyReportController extends Controller
                             ],
                         ],
                         'records_used' => $durationPoleUsed,
+                        'by_pole_projects' => $durationPoleProjects,
                     ],
                     'closure_duration_subcontractors' => [
                         'labels' => $labels,
@@ -886,6 +1005,7 @@ class MonthlyReportController extends Controller
                             ],
                         ],
                         'records_used' => $durationSubPoleUsed,
+                        'by_pole_projects' => $durationSubPoleProjects,
                     ],
                     'trainings' => [
                         'labels' => $labels,
@@ -932,6 +1052,7 @@ class MonthlyReportController extends Controller
                             'total_workers' => $medicalPoleTotal,
                             'conforming_workers' => $medicalPoleConforming,
                         ],
+                        'by_pole_projects' => $medicalPoleProjects,
                     ],
                     'tf_tg' => [
                         'labels' => $labels,
@@ -986,6 +1107,17 @@ class MonthlyReportController extends Controller
                         ],
                         'by_pole' => $machineryPole,
                         'by_pole_projects' => $machineryPoleProjects,
+                    ],
+                    'inspections' => [
+                        'labels' => $labels,
+                        'datasets' => [
+                            [
+                                'label' => 'Inspections',
+                                'data' => array_map(fn ($pole) => $inspectionsPole[$pole] ?? 0, $labels),
+                            ],
+                        ],
+                        'by_pole' => $inspectionsPole,
+                        'by_pole_projects' => $inspectionsPoleProjects,
                     ],
                 ],
             ]);

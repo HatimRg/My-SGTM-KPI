@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLanguage } from '../../i18n'
 import { useAuthStore } from '../../store/authStore'
 import { projectService, hseEventService } from '../../services/api'
+import DatePicker from '../../components/ui/DatePicker'
+import YearPicker from '../../components/ui/YearPicker'
+import MonthPicker from '../../components/ui/MonthPicker'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { sortProjects } from '../../utils/projectList'
-import { AlertTriangle, Plus, Edit2, Trash2, Loader2 } from 'lucide-react'
+import { AlertTriangle, Plus, Edit2, Trash2, Loader2, X } from 'lucide-react'
 import AccidentIncidentModal from '../../components/hse/AccidentIncidentModal'
 import toast from 'react-hot-toast'
 
@@ -35,6 +38,22 @@ const SEVERITIES = [
 export default function HseEvents() {
   const { t } = useLanguage()
   const { user } = useAuthStore()
+
+  const pad2 = (n) => String(n).padStart(2, '0')
+  const toMonthKey = (year, month) => {
+    const y = String(year ?? '').trim()
+    const m = String(month ?? '').trim()
+    if (!y || !m) return ''
+    return `${y}-${pad2(m)}`
+  }
+  const parseMonthKey = (key) => {
+    const raw = String(key ?? '').trim()
+    const m = raw.match(/^(\d{4})-(\d{2})$/)
+    if (!m) return null
+    const year = m[1]
+    const month = String(Number(m[2]))
+    return { year, month }
+  }
 
   const typeLabel = (val) => t(`hseEvents.types.${val}`) ?? val
   const severityLabel = (val) => {
@@ -431,40 +450,47 @@ export default function HseEvents() {
 
           <div>
             <label className="label">{t('hseEvents.filters.year') ?? 'Year'}</label>
-            <select className="input" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}>
-              {Array.from({ length: 6 }, (_, i) => String(new Date().getFullYear() - i)).map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
+            <YearPicker value={yearFilter} onChange={(y) => setYearFilter(String(y ?? ''))} className="w-full" />
           </div>
 
           <div>
             <label className="label">{t('hseEvents.filters.month') ?? 'Month'}</label>
-            <select className="input" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)}>
-              <option value="">{t('common.all') ?? 'All'}</option>
-              <option value="1">{t('months.january')}</option>
-              <option value="2">{t('months.february')}</option>
-              <option value="3">{t('months.march')}</option>
-              <option value="4">{t('months.april')}</option>
-              <option value="5">{t('months.may')}</option>
-              <option value="6">{t('months.june')}</option>
-              <option value="7">{t('months.july')}</option>
-              <option value="8">{t('months.august')}</option>
-              <option value="9">{t('months.september')}</option>
-              <option value="10">{t('months.october')}</option>
-              <option value="11">{t('months.november')}</option>
-              <option value="12">{t('months.december')}</option>
-            </select>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <MonthPicker
+                  value={monthFilter ? toMonthKey(yearFilter, monthFilter) : ''}
+                  defaultYear={yearFilter}
+                  onChange={(key) => {
+                    const parsed = parseMonthKey(key)
+                    if (!parsed) return
+                    setYearFilter(parsed.year)
+                    setMonthFilter(parsed.month)
+                  }}
+                  placeholder={t('common.all') ?? 'All'}
+                  className="w-full"
+                />
+              </div>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setMonthFilter('')}
+                disabled={!monthFilter}
+                aria-label={t('common.all') ?? 'All'}
+                title={t('common.all') ?? 'All'}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           <div>
             <label className="label">{t('hseEvents.filters.from') ?? 'From'}</label>
-            <input className="input" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+            <DatePicker value={fromDate} onChange={setFromDate} className="w-full" />
           </div>
 
           <div>
             <label className="label">{t('hseEvents.filters.to') ?? 'To'}</label>
-            <input className="input" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+            <DatePicker value={toDate} onChange={setToDate} className="w-full" />
           </div>
         </div>
       </div>
@@ -558,7 +584,7 @@ export default function HseEvents() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="label">{t('hseEvents.fields.date') ?? 'Date'}</label>
-              <input type="date" className="input" value={formData.event_date} onChange={(e) => setFormData((p) => ({ ...p, event_date: e.target.value }))} required />
+              <DatePicker value={formData.event_date} onChange={(val) => setFormData((p) => ({ ...p, event_date: val }))} className="w-full" required />
             </div>
             <div>
               <label className="label">{t('hseEvents.fields.type') ?? 'Type'}</label>
