@@ -7,7 +7,7 @@ import { useLanguage } from '../../i18n'
 import { ppeService } from '../../services/api'
 
 export default function PpePendingValidationReport() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const location = useLocation()
 
   const query = useMemo(() => new URLSearchParams(location.search || ''), [location.search])
@@ -70,12 +70,19 @@ export default function PpePendingValidationReport() {
 
     try {
       setDownloading(true)
-      const res = await ppeService.downloadPendingValidationReport({ project_id: Number(projectId), item_ids: itemIdsRaw })
+      const res = await ppeService.downloadPendingValidationReport({
+        project_id: Number(projectId),
+        item_ids: itemIdsRaw,
+        lang: language === 'fr' ? 'fr' : 'en',
+      })
       const blob = res.data
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `ppe_pending_validation_${projectId}.xlsx`
+      const contentDisposition = res.headers?.['content-disposition']
+      const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(contentDisposition || '')
+      const serverFilename = decodeURIComponent(match?.[1] ?? match?.[2] ?? '')
+      a.download = serverFilename !== '' ? serverFilename : `ppe_pending_validation_${projectId}.pdf`
       document.body.appendChild(a)
       a.click()
       a.remove()

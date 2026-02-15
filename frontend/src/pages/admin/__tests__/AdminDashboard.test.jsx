@@ -10,10 +10,6 @@ vi.mock('../../../services/api', () => ({
   dashboardService: {
     getAdminDashboard: vi.fn(),
   },
-  exportService: {
-    exportExcel: vi.fn(),
-    exportPdf: vi.fn(),
-  },
 }))
 
 // Mock toast

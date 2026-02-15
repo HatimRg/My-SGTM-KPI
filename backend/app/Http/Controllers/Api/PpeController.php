@@ -12,11 +12,13 @@ use App\Models\Worker;
 use App\Models\WorkerPpeIssue;
 use App\Services\NotificationService;
 use App\Services\PpeIssuesMassImportService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Http\Response;
 use Maatwebsite\Excel\Excel as ExcelFormat;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -620,6 +622,7 @@ class PpeController extends Controller
         $validated = $request->validate([
             'project_id' => 'required|integer|exists:projects,id',
             'item_ids' => 'required',
+            'lang' => 'nullable|string|in:en,fr',
         ]);
 
         // Reuse report computation
@@ -672,16 +675,134 @@ class PpeController extends Controller
         $hseManager = $project->hseManagers()->orderBy('project_user.assigned_at', 'desc')->first();
         $currentWorkers = Worker::query()->where('project_id', $project->id)->where('is_active', true)->count();
 
-        $meta = [
-            'project_name' => $project->name,
-            'project_pole' => $project->pole,
-            'hse_manager_name' => $hseManager?->name,
-            'hse_manager_email' => $hseManager?->email,
-            'current_total_workers' => $currentWorkers,
-            'report_date' => $end->toDateString(),
-        ];
+        $detailsRows = WorkerPpeIssue::query()
+            ->join('workers', 'workers.id', '=', 'worker_ppe_issues.worker_id')
+            ->where('worker_ppe_issues.project_id', $project->id)
+            ->whereIn('worker_ppe_issues.ppe_item_id', $itemIds)
+            ->whereBetween('worker_ppe_issues.received_at', [$startMonth->toDateString(), $end->toDateString()])
+            ->orderBy('worker_ppe_issues.received_at', 'desc')
+            ->orderBy('worker_ppe_issues.id', 'desc')
+            ->select([
+                'worker_ppe_issues.ppe_item_id as item_id',
+                'workers.cin as cin',
+                DB::raw("CONCAT(COALESCE(workers.prenom,''), ' ', COALESCE(workers.nom,'')) as name"),
+                'worker_ppe_issues.quantity as quantity',
+                'worker_ppe_issues.received_at as date',
+            ])
+            ->get()
+            ->groupBy('item_id');
 
-        $filename = 'ppe_pending_validation_' . ($project->code ?: $project->id) . '_' . date('Y-m-d_His') . '.xlsx';
-        return Excel::download(new \App\Exports\PpePendingValidationReportExport($meta, $rows), $filename);
+        $detailsByItem = [];
+        foreach ($rows as $r) {
+            $id = (int) ($r['item_id'] ?? 0);
+            $detailsByItem[] = [
+                'item_id' => $id,
+                'article' => $r['article'] ?? $r['item_name'] ?? '',
+                'rows' => ($detailsRows[$id] ?? collect())->map(function ($x) {
+                    return [
+                        'cin' => $x->cin,
+                        'name' => $x->name,
+                        'quantity' => (int) ($x->quantity ?? 0),
+                        'date' => $x->date,
+                    ];
+                })->values()->all(),
+            ];
+        }
+
+        $labels = ($validated['lang'] ?? 'en') === 'fr' ? [
+                'title' => 'Rapport EPI - Validation en attente',
+                'project' => 'Projet',
+                'pole' => 'Pôle',
+                'hse_manager' => 'Responsable HSE',
+                'current_total_workers' => 'Total des ouvriers (actuel)',
+                'report_date' => 'Date du rapport',
+                'summary' => 'Synthèse',
+                'workers_last_month' => 'Noms des ouvriers (dernier mois)',
+                'range' => 'Période',
+                'article' => 'Article',
+                'current_stock' => 'Stock actuel',
+                'distributed_last_week' => 'Distribué (dernière semaine)',
+                'distributed_last_month' => 'Distribué (dernier mois)',
+                'cin' => 'CIN',
+                'name' => 'Nom',
+                'quantity' => 'Quantité',
+                'date' => 'Date',
+                'no_data' => 'Aucune donnée',
+                'no_distributions' => 'Aucune distribution trouvée',
+                'page' => 'Page',
+                'of' => 'sur',
+            ] : [
+                'title' => 'PPE Pending Validation Report',
+                'project' => 'Project',
+                'pole' => 'Pole',
+                'hse_manager' => 'HSE Manager',
+                'current_total_workers' => 'Current Total Workers',
+                'report_date' => 'Report Date',
+                'summary' => 'Summary',
+                'workers_last_month' => 'Worker Names (Last Month)',
+                'range' => 'Range',
+                'article' => 'Article',
+                'current_stock' => 'Current Stock',
+                'distributed_last_week' => 'Distributed (Last Week)',
+                'distributed_last_month' => 'Distributed (Last Month)',
+                'cin' => 'CIN',
+                'name' => 'Name',
+                'quantity' => 'Quantity',
+                'date' => 'Date',
+                'no_data' => 'No data',
+                'no_distributions' => 'No distributions found',
+                'page' => 'Page',
+                'of' => 'of',
+            ];
+
+        $pdf = Pdf::loadView('exports.ppe-pending-validation-report', [
+            'labels' => $labels,
+            'project' => [
+                'id' => $project->id,
+                'name' => $project->name,
+                'pole' => $project->pole,
+                'hse_manager_name' => $hseManager?->name,
+                'hse_manager_email' => $hseManager?->email,
+                'current_total_workers' => $currentWorkers,
+            ],
+            'report_date' => $end->toDateString(),
+            'rows' => $rows,
+            'details_range' => [
+                'start' => $startMonth->toDateString(),
+                'end' => $end->toDateString(),
+            ],
+            'details_by_item' => $detailsByItem,
+        ]);
+
+        $pdf->setPaper('a4', 'portrait');
+
+        // Render once, then stamp page numbers on every page via canvas (no inline-PHP required).
+        $dompdf = $pdf->getDomPDF();
+        $dompdf->render();
+
+        $canvas = $dompdf->getCanvas();
+        $fontMetrics = $dompdf->getFontMetrics();
+        $font = $fontMetrics->getFont('Helvetica', 'normal');
+        $pageWord = (string) ($labels['page'] ?? 'Page');
+        $ofWord = (string) ($labels['of'] ?? 'of');
+
+        $canvas->page_script(function ($pageNumber, $pageCount, $canvas) use ($fontMetrics, $font, $pageWord, $ofWord) {
+            $size = 8;
+            $color = array(107, 114, 128);
+            $text = $pageWord . ' ' . $pageNumber . ' ' . $ofWord . ' ' . $pageCount;
+            $w = $fontMetrics->getTextWidth($text, $font, $size);
+            $x = $canvas->get_width() - 22 - $w;
+            $y = $canvas->get_height() - 28;
+            $canvas->text($x, $y, $text, $font, $size, $color);
+        });
+
+        $output = (string) $dompdf->output();
+        $filename = 'ppe_pending_validation_' . ($project->code ?: $project->id) . '_' . date('Y-m-d_His') . '.pdf';
+
+        return new Response($output, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Length' => strlen($output),
+        ]);
     }
 }

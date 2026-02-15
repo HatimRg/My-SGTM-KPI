@@ -102,6 +102,8 @@ export default function PpeManagement() {
   const [pendingValidationProjectId, setPendingValidationProjectId] = useState('')
   const [pendingValidationItemId, setPendingValidationItemId] = useState('')
   const [pendingValidationItems, setPendingValidationItems] = useState([])
+  const [pendingValidationCatalog, setPendingValidationCatalog] = useState([])
+  const [pendingValidationCatalogLoading, setPendingValidationCatalogLoading] = useState(false)
 
   const filteredProjectsForPendingValidation = useMemo(() => {
     if (!pendingValidationPole) return projects
@@ -118,17 +120,26 @@ export default function PpeManagement() {
       setPendingValidationProjectId('')
       setPendingValidationItemId('')
       setPendingValidationItems([])
+      setPendingValidationCatalog([])
+      setPendingValidationCatalogLoading(true)
       const res = await projectService.getPoles()
       const list = res?.data?.data?.poles ?? res?.data?.poles ?? []
       setPendingValidationPoles(Array.isArray(list) ? list : [])
+
+      const itemsRes = await ppeService.getItems({})
+      const payload = itemsRes?.data?.data ?? itemsRes?.data ?? []
+      setPendingValidationCatalog(Array.isArray(payload) ? payload : [])
     } catch {
       setPendingValidationPoles([])
+      setPendingValidationCatalog([])
     }
+
+    setPendingValidationCatalogLoading(false)
   }
 
   const addPendingValidationItem = () => {
     if (!pendingValidationItemId) return
-    const match = items.find((it) => String(it.id) === String(pendingValidationItemId))
+    const match = pendingValidationCatalog.find((it) => String(it.id) === String(pendingValidationItemId))
     if (!match) return
     setPendingValidationItems((prev) => {
       if (prev.some((x) => String(x.id) === String(match.id))) return prev
@@ -697,11 +708,19 @@ export default function PpeManagement() {
               <div className="flex flex-col md:flex-row gap-2">
                 <Select value={pendingValidationItemId} onChange={(e) => setPendingValidationItemId(e.target.value)}>
                   <option value="">{t('common.select')}</option>
-                  {itemsSorted.map((it) => (
+                  {pendingValidationCatalogLoading && (
+                    <option value="" disabled>
+                      {t('common.loading')}
+                    </option>
+                  )}
+                  {pendingValidationCatalog
+                    .slice()
+                    .sort((a, b) => String(a?.name ?? '').localeCompare(String(b?.name ?? '')))
+                    .map((it) => (
                     <option key={it.id} value={it.id}>
                       {it.name}
                     </option>
-                  ))}
+                    ))}
                 </Select>
                 <button type="button" className="btn-secondary" onClick={addPendingValidationItem}>
                   {t('common.add')}

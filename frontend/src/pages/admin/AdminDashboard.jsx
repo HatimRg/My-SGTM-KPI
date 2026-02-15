@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { dashboardService, exportService, projectService } from '../../services/api'
+import { dashboardService, projectService } from '../../services/api'
 import { cachedApiCall, invalidateCache } from '../../utils/apiCache'
 import {
   Users,
@@ -58,9 +58,10 @@ import PpeTheme from '../../components/dashboard/themes/PpeTheme'
 import EnvironmentalTheme from '../../components/dashboard/themes/EnvironmentalTheme'
 import DeviationTheme from '../../components/dashboard/themes/DeviationTheme'
 import MonthlyReportTheme from '../../components/dashboard/themes/MonthlyReportTheme'
-import { getAllWeeksForYear, getCurrentWeek } from '../../utils/weekHelper'
+import { getCurrentWeek } from '../../utils/weekHelper'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
 import YearPicker from '../../components/ui/YearPicker'
+import WeekPicker from '../../components/ui/WeekPicker'
 
 const COLORS = ['#dc2626', '#f59e0b', '#16a34a', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6']
 
@@ -79,7 +80,6 @@ export default function AdminDashboard() {
   const [year, setYear] = useState(getCurrentWeek().year)
   const [compareYear, setCompareYear] = useState(getCurrentWeek().year - 1)
   const [compareData, setCompareData] = useState(null)
-  const [exporting, setExporting] = useState(false)
   const [activeTheme, setActiveTheme] = useState('overview')
   const [focusPole, setFocusPole] = useState('')
   const [poles, setPoles] = useState([])
@@ -231,33 +231,38 @@ export default function AdminDashboard() {
     setCompareYear(year - 1)
   }, [year])
 
-  // Memoize export handler
-  const handleExport = useCallback(async (type) => {
-    setExporting(true)
-    try {
-      const response = type === 'excel' 
-        ? await exportService.exportExcel({ year })
-        : await exportService.exportPdf({ year })
-      
-      const blob = new Blob([response.data], {
-        type: type === 'excel' 
-          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-          : 'application/pdf'
-      })
-      
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `kpi_report_${year}.${type === 'excel' ? 'xlsx' : 'pdf'}`
-      a.click()
-      window.URL.revokeObjectURL(url)
-      toast.success(t('dashboard.exportSuccess'))
-    } catch (error) {
-      toast.error(t('dashboard.exportFailed') || t('errors.somethingWentWrong'))
-    } finally {
-      setExporting(false)
-    }
-  }, [year])
+  const weekPickerValue = useMemo(() => {
+    if (focusWeek === 'all') return ''
+    const n = Number(focusWeek)
+    if (!Number.isFinite(n) || n < 1) return ''
+    return `${year}-W${String(n).padStart(2, '0')}`
+  }, [focusWeek, year])
+
+  const handleWeekChange = useCallback(
+    (weekKey) => {
+      const raw = String(weekKey || '')
+      if (!raw) {
+        setFocusWeek('all')
+        return
+      }
+
+      const m = raw.match(/^(\d{4})-W(\d{2})$/)
+      if (!m) return
+
+      const pickedYear = Number(m[1])
+      const pickedWeek = Number(m[2])
+      if (!Number.isFinite(pickedYear) || !Number.isFinite(pickedWeek)) return
+
+      setFocusWeek(pickedWeek)
+
+      // Behavior 1: sync dashboard year to picked year, but never jump into a future year.
+      const currentCalendarYear = new Date().getFullYear()
+      if (pickedYear <= currentCalendarYear) {
+        setYear(pickedYear)
+      }
+    },
+    [setFocusWeek, setYear],
+  )
 
   // Memoize expensive data transformations (must be before any early returns!)
   const stats = useMemo(() => data?.stats ?? {}, [data?.stats])
@@ -276,13 +281,9 @@ export default function AdminDashboard() {
     })
   }, [weeklyStatus, year])
 
-  const focusWeeks = useMemo(() => getAllWeeksForYear(year), [year])
-
   const filteredWeeklyTrends = useMemo(() => {
     if (focusWeek === 'all') return weeklyTrends
-    const weekNum = Number(focusWeek)
-    if (Number.isNaN(weekNum)) return weeklyTrends
-    return (weeklyTrends || []).filter((w) => Number(w.week) === weekNum)
+    return weeklyTrends.filter((week) => week.week === focusWeek)
   }, [weeklyTrends, focusWeek])
 
   const filteredProjectPerformance = useMemo(() => {
@@ -543,26 +544,6 @@ export default function AdminDashboard() {
               maxYear={Math.max(...yearOptions)}
             />
           </div>
-          
-          {/* Export buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleExport('excel')}
-              disabled={exporting}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span className="hidden sm:inline">{t('dashboard.exportExcel')}</span>
-            </button>
-            <button
-              onClick={() => handleExport('pdf')}
-              disabled={exporting}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <FileText className="w-4 h-4" />
-              <span className="hidden sm:inline">{t('dashboard.exportPdf')}</span>
-            </button>
-          </div>
         </div>
       </div>
 
@@ -571,58 +552,59 @@ export default function AdminDashboard() {
 
       {/* Theme Focus Filters */}
       {activeTheme !== 'monthly_report' && (
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
-          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/40 px-3 py-2 w-full sm:w-auto">
-            <select
-              value={focusPole}
-              onChange={(e) => setFocusPole(e.target.value)}
-              className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm w-full sm:w-auto"
-            >
-              <option value="">{t('common.allPoles')}</option>
-              {poles.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-            <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700" />
-            <select
-              value={focusProjectId}
-              onChange={(e) => setFocusProjectId(e.target.value)}
-              className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm w-full sm:w-auto"
-            >
-              <option value="all">{t('common.allProjects')}</option>
-              {visibleProjectsSorted.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {getProjectLabel(p)}
-                </option>
-              ))}
-            </select>
+        <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/40 px-3 py-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('filters.pole')}</label>
+              <select
+                value={focusPole}
+                onChange={(e) => setFocusPole(e.target.value)}
+                className="input w-full"
+              >
+                <option value="">{t('common.allPoles')}</option>
+                {poles.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('common.project')}</label>
+              <select
+                value={focusProjectId}
+                onChange={(e) => setFocusProjectId(e.target.value)}
+                className="input w-full"
+              >
+                <option value="all">{t('common.allProjects')}</option>
+                {visibleProjectsSorted.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {getProjectLabel(p)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {activeTheme !== 'ppe' && activeTheme !== 'environmental' && (
-              <>
-                <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700" />
-                <select
-                  value={focusWeek}
-                  onChange={(e) => setFocusWeek(e.target.value)}
-                  className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm w-full sm:w-auto"
-                >
-                  <option value="all">{t('common.all')}</option>
-                  {focusWeeks.map((w) => (
-                    <option key={w.week} value={w.week}>
-                      {w.label}
-                    </option>
-                  ))}
-                </select>
-              </>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('common.week') || t('common.weekAbbrev')}</label>
+                <WeekPicker
+                  value={weekPickerValue}
+                  onChange={handleWeekChange}
+                  placeholder={t('common.all')}
+                  className="w-full"
+                />
+              </div>
             )}
 
             {activeTheme === 'environmental' && (
-              <>
-                <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-700" />
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('dashboard.monthlyReport.month')}</label>
                 <select
                   value={focusMonth}
                   onChange={(e) => setFocusMonth(e.target.value)}
-                  className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-none focus:ring-0 text-sm w-full sm:w-auto"
+                  className="input w-full"
                 >
                   <option value="all">{t('common.all')}</option>
                   <option value="1">{t('months.january')}</option>
@@ -638,7 +620,7 @@ export default function AdminDashboard() {
                   <option value="11">{t('months.november')}</option>
                   <option value="12">{t('months.december')}</option>
                 </select>
-              </>
+              </div>
             )}
           </div>
         </div>
