@@ -105,6 +105,34 @@ export default function PpeManagement() {
   const [pendingValidationCatalog, setPendingValidationCatalog] = useState([])
   const [pendingValidationCatalogLoading, setPendingValidationCatalogLoading] = useState(false)
 
+  const isPendingValidationAllSelected = useMemo(() => {
+    if (!Array.isArray(pendingValidationCatalog) || pendingValidationCatalog.length === 0) return false
+    if (!Array.isArray(pendingValidationItems) || pendingValidationItems.length === 0) return false
+
+    const catalogIds = new Set(pendingValidationCatalog.map((x) => String(x?.id)).filter((x) => x && x !== 'undefined' && x !== 'null'))
+    const selectedIds = new Set(pendingValidationItems.map((x) => String(x?.id)).filter((x) => x && x !== 'undefined' && x !== 'null'))
+    if (catalogIds.size === 0) return false
+    if (selectedIds.size !== catalogIds.size) return false
+    for (const id of catalogIds) {
+      if (!selectedIds.has(id)) return false
+    }
+    return true
+  }, [pendingValidationCatalog, pendingValidationItems])
+
+  const togglePendingValidationSelectAll = () => {
+    if (pendingValidationCatalogLoading) return
+    if (isPendingValidationAllSelected) {
+      setPendingValidationItems([])
+      return
+    }
+
+    const all = (pendingValidationCatalog ?? [])
+      .filter((x) => x && x.id != null)
+      .map((x) => ({ id: x.id, name: x.name }))
+    setPendingValidationItems(all)
+    setPendingValidationItemId('')
+  }
+
   const filteredProjectsForPendingValidation = useMemo(() => {
     if (!pendingValidationPole) return projects
     // Some project list payloads may omit pole; in that case just return all.
@@ -705,26 +733,39 @@ export default function PpeManagement() {
 
             <div>
               <label className="label text-xs">{t('ppe.pendingValidation.articles')}</label>
-              <div className="flex flex-col md:flex-row gap-2">
-                <Select value={pendingValidationItemId} onChange={(e) => setPendingValidationItemId(e.target.value)}>
-                  <option value="">{t('common.select')}</option>
-                  {pendingValidationCatalogLoading && (
-                    <option value="" disabled>
-                      {t('common.loading')}
-                    </option>
-                  )}
-                  {pendingValidationCatalog
-                    .slice()
-                    .sort((a, b) => String(a?.name ?? '').localeCompare(String(b?.name ?? '')))
-                    .map((it) => (
-                    <option key={it.id} value={it.id}>
-                      {it.name}
-                    </option>
-                    ))}
-                </Select>
-                <button type="button" className="btn-secondary" onClick={addPendingValidationItem}>
-                  {t('common.add')}
-                </button>
+              <div className="space-y-2">
+                <label className="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200 select-none">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={isPendingValidationAllSelected}
+                    onChange={togglePendingValidationSelectAll}
+                    disabled={pendingValidationCatalogLoading || pendingValidationCatalog.length === 0}
+                  />
+                  <span>{t('common.all')}</span>
+                </label>
+
+                <div className="flex flex-col md:flex-row gap-2">
+                  <Select value={pendingValidationItemId} onChange={(e) => setPendingValidationItemId(e.target.value)} disabled={isPendingValidationAllSelected}>
+                    <option value="">{t('common.select')}</option>
+                    {pendingValidationCatalogLoading && (
+                      <option value="" disabled>
+                        {t('common.loading')}
+                      </option>
+                    )}
+                    {pendingValidationCatalog
+                      .slice()
+                      .sort((a, b) => String(a?.name ?? '').localeCompare(String(b?.name ?? '')))
+                      .map((it) => (
+                      <option key={it.id} value={it.id}>
+                        {it.name}
+                      </option>
+                      ))}
+                  </Select>
+                  <button type="button" className="btn-secondary" onClick={addPendingValidationItem} disabled={isPendingValidationAllSelected}>
+                    {t('common.add')}
+                  </button>
+                </div>
               </div>
             </div>
 

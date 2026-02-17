@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\AppSetting;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +28,7 @@ class DbBackup extends Command
         File::ensureDirectoryExists($backupDir);
 
         $timestamp = now()->format('Y-m-d_H-i-s');
-        $keepDays = (int) ($this->option('keep') ?: env('DB_BACKUP_RETENTION_DAYS', 14));
+        $keepDays = $this->resolveRetentionDays();
 
         try {
             if ($driver === 'mysql') {
@@ -37,9 +38,15 @@ class DbBackup extends Command
                 $sqlPath = $backupDir . DIRECTORY_SEPARATOR . $baseName . '.sql';
                 $gzPath = $sqlPath . '.gz';
 
-                $this->dumpMysql($cfg, $sqlPath);
-                $this->gzipFile($sqlPath, $gzPath);
-                @unlink($sqlPath);
+                try {
+                    $this->dumpMysql($cfg, $sqlPath);
+                    $this->gzipFile($sqlPath, $gzPath);
+                } finally {
+                    // Ensure we never keep the uncompressed SQL on disk.
+                    if (is_file($sqlPath)) {
+                        @unlink($sqlPath);
+                    }
+                }
 
                 $this->info("Backup created: " . $gzPath);
                 $this->maybeQueueGoogleDriveUpload($gzPath);
@@ -75,6 +82,27 @@ class DbBackup extends Command
         }
     }
 
+    private function resolveRetentionDays(): int
+    {
+        $opt = $this->option('keep');
+        if ($opt !== null && $opt !== '') {
+            $n = (int) $opt;
+            return $n > 0 ? $n : 14;
+        }
+
+        try {
+            $fromSetting = (int) (AppSetting::getValue('backup.retention_days') ?: 0);
+            if ($fromSetting > 0) {
+                return $fromSetting;
+            }
+        } catch (\Throwable) {
+            // ignore
+        }
+
+        $envDays = (int) env('DB_BACKUP_RETENTION_DAYS', 14);
+        return $envDays > 0 ? $envDays : 14;
+    }
+
     private function dumpMysql(array $cfg, string $sqlPath): void
     {
         $mysqldump = (string) (env('MYSQLDUMP_PATH') ?: 'mysqldump');
@@ -97,8 +125,13 @@ class DbBackup extends Command
             '--single-transaction',
             '--quick',
             '--lock-tables=false',
+            '--no-tablespaces',
+            '--column-statistics=0',
+            '--default-character-set=utf8mb4',
+            '--hex-blob',
             '--routines',
             '--events',
+            '--triggers',
             '--databases',
             $db,
         ];

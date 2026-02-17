@@ -17,9 +17,76 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Excel as ExcelFormat;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class SorReportController extends Controller
 {
+    private function detectSorHeadingRow(UploadedFile $file, int $default = 3): int
+    {
+        try {
+            $path = $file->getRealPath();
+            if (!$path || !is_file($path)) {
+                return $default;
+            }
+
+            $reader = IOFactory::createReaderForFile($path);
+            $reader->setReadDataOnly(true);
+            $spreadsheet = $reader->load($path);
+            $sheet = $spreadsheet->getSheet(0);
+
+            $maxRow = min(12, (int) $sheet->getHighestRow());
+            $maxCol = min(25, (int) \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($sheet->getHighestColumn()));
+
+            $bestRow = $default;
+            $bestScore = -1;
+
+            for ($r = 1; $r <= $maxRow; $r++) {
+                $cells = [];
+                for ($c = 1; $c <= $maxCol; $c++) {
+                    $v = $sheet->getCellByColumnAndRow($c, $r)->getValue();
+                    $s = strtolower(trim((string) ($v ?? '')));
+                    if ($s !== '') {
+                        $cells[] = $s;
+                    }
+                }
+
+                if (empty($cells)) {
+                    continue;
+                }
+
+                $line = implode(' | ', $cells);
+                $score = 0;
+
+                // French/English heuristics
+                if (preg_match('/code\s*projet|project\s*code/', $line)) $score += 4;
+                if (preg_match('/date.*observ|observation\s*date/', $line)) $score += 4;
+                if (preg_match('/non.*conform|non\s*-?conform|nonconform/', $line)) $score += 4;
+                if (preg_match('/categorie|category/', $line)) $score += 3;
+                if (preg_match('/entreprise|societe|company/', $line)) $score += 1;
+                if (preg_match('/zone/', $line)) $score += 1;
+                if (preg_match('/superviseur|supervisor/', $line)) $score += 1;
+                if (preg_match('/responsable|responsible/', $line)) $score += 1;
+                if (preg_match('/echeance|deadline/', $line)) $score += 1;
+                if (preg_match('/action.*correct|corrective/', $line)) $score += 1;
+                if (preg_match('/statut|status/', $line)) $score += 1;
+
+                if ($score > $bestScore) {
+                    $bestScore = $score;
+                    $bestRow = $r;
+                }
+            }
+
+            // Only accept if we are confident; otherwise keep default.
+            if ($bestScore >= 8) {
+                return $bestRow;
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
+        return $default;
+    }
+
     private function storeOptimizedSorPhoto(UploadedFile $image, int $reportId, string $kind): string
     {
         $dir = 'sor-photos';
@@ -263,11 +330,13 @@ class SorReportController extends Controller
 
         $user = $request->user();
         $visibleProjectIds = $user ? $user->visibleProjectIds() : null;
-        $import = new SorReportsImport($user ? (int) $user->id : 0, $visibleProjectIds);
+        $upload = $request->file('file');
+        $headingRow = $this->detectSorHeadingRow($upload, 3);
+        $import = new SorReportsImport($user ? (int) $user->id : 0, $visibleProjectIds, $headingRow);
 
         try {
             DB::beginTransaction();
-            Excel::import($import, $request->file('file'));
+            Excel::import($import, $upload);
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();

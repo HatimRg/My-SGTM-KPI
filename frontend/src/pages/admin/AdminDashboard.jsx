@@ -22,7 +22,8 @@ import {
   Target,
   Leaf,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  X
 } from 'lucide-react'
 import {
   LineChart,
@@ -553,8 +554,8 @@ export default function AdminDashboard() {
       {/* Theme Focus Filters */}
       {activeTheme !== 'monthly_report' && (
         <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/40 px-3 py-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="space-y-1">
+          <div className="flex flex-nowrap items-end gap-3 overflow-x-auto">
+            <div className="space-y-1 shrink-0 w-[200px]">
               <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('filters.pole')}</label>
               <select
                 value={focusPole}
@@ -570,7 +571,7 @@ export default function AdminDashboard() {
               </select>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-[320px] flex-1">
               <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('common.project')}</label>
               <select
                 value={focusProjectId}
@@ -587,19 +588,30 @@ export default function AdminDashboard() {
             </div>
 
             {activeTheme !== 'ppe' && activeTheme !== 'environmental' && (
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('common.week') || t('common.weekAbbrev')}</label>
-                <WeekPicker
-                  value={weekPickerValue}
-                  onChange={handleWeekChange}
-                  placeholder={t('common.all')}
-                  className="w-full"
-                />
+              <div className="space-y-1 shrink-0 w-[320px]">
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('dashboard.weekPrefix')}</label>
+                <div className="flex items-center gap-2">
+                  <WeekPicker
+                    value={weekPickerValue}
+                    onChange={handleWeekChange}
+                    placeholder={t('common.all')}
+                    className="w-full"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFocusWeek('all')}
+                    disabled={focusWeek === 'all'}
+                    aria-label={t('common.clear')}
+                    className={`shrink-0 rounded-md border border-gray-200 dark:border-gray-700 p-2 transition-colors ${focusWeek === 'all' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                  >
+                    <X className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                  </button>
+                </div>
               </div>
             )}
 
             {activeTheme === 'environmental' && (
-              <div className="space-y-1">
+              <div className="space-y-1 shrink-0 w-[260px]">
                 <label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('dashboard.monthlyReport.month')}</label>
                 <select
                   value={focusMonth}

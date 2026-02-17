@@ -20,14 +20,16 @@ class SorReportsImport implements ToModel, WithHeadingRow, SkipsOnError, WithChu
 
     protected int $userId;
     protected ?array $allowedProjectIds;
+    protected int $headingRow;
 
     protected int $importedCount = 0;
     protected int $updatedCount = 0;
     protected array $rowErrors = [];
 
-    public function __construct(int $userId, $allowedProjectIds = null)
+    public function __construct(int $userId, $allowedProjectIds = null, int $headingRow = 3)
     {
         $this->userId = $userId;
+        $this->headingRow = $headingRow > 0 ? $headingRow : 3;
 
         if ($allowedProjectIds instanceof \Illuminate\Support\Collection) {
             $allowedProjectIds = $allowedProjectIds->all();
@@ -40,13 +42,25 @@ class SorReportsImport implements ToModel, WithHeadingRow, SkipsOnError, WithChu
 
     public function headingRow(): int
     {
-        return 3;
+        return $this->headingRow;
     }
 
     public function model(array $row)
     {
         try {
             $row = $this->normalizeRow($row);
+
+            // If the file doesn't match the expected template (missing headings), avoid a silent 0/0 import.
+            // We only record this once.
+            if (empty($this->rowErrors)) {
+                $requiredKeys = ['project_code', 'observation_date', 'category', 'non_conformity'];
+                $missing = array_values(array_filter($requiredKeys, fn ($k) => !array_key_exists($k, $row)));
+                if (!empty($missing)) {
+                    $this->rowErrors[] = [
+                        'error' => 'Invalid template headers. Missing columns: ' . implode(', ', $missing) . '. Detected headers: ' . implode(', ', array_slice(array_keys($row), 0, 40)),
+                    ];
+                }
+            }
 
             $projectCode = $this->emptyToNull($row['project_code'] ?? null);
             $observationDateRaw = $row['observation_date'] ?? null;
@@ -237,7 +251,85 @@ class SorReportsImport implements ToModel, WithHeadingRow, SkipsOnError, WithChu
             }
         }
 
+        // Flexible matching for French headers (templates can vary in punctuation/wording).
+        // We only fill missing canonical keys.
+        if (!array_key_exists('project_code', $out)) {
+            $match = $this->matchKey($out, ['/code.*projet/', '/projet.*code/']);
+            if ($match) $out['project_code'] = $out[$match];
+        }
+        if (!array_key_exists('company', $out)) {
+            $match = $this->matchKey($out, ['/entreprise/', '/societe/']);
+            if ($match) $out['company'] = $out[$match];
+        }
+        if (!array_key_exists('observation_date', $out)) {
+            $match = $this->matchKey($out, ['/date.*observation/', '/date.*observ/']);
+            if ($match) $out['observation_date'] = $out[$match];
+        }
+        if (!array_key_exists('observation_time', $out)) {
+            $match = $this->matchKey($out, ['/heure.*observation/', '/heure.*observ/']);
+            if ($match) $out['observation_time'] = $out[$match];
+        }
+        if (!array_key_exists('zone', $out)) {
+            $match = $this->matchKey($out, ['/zone/']);
+            if ($match) $out['zone'] = $out[$match];
+        }
+        if (!array_key_exists('supervisor', $out)) {
+            $match = $this->matchKey($out, ['/superviseur/', '/supervisor/']);
+            if ($match) $out['supervisor'] = $out[$match];
+        }
+        if (!array_key_exists('category', $out)) {
+            $match = $this->matchKey($out, ['/categorie/', '/category/']);
+            if ($match) $out['category'] = $out[$match];
+        }
+        if (!array_key_exists('non_conformity', $out)) {
+            $match = $this->matchKey($out, ['/non.*conform/']);
+            if ($match) $out['non_conformity'] = $out[$match];
+        }
+        if (!array_key_exists('responsible_person', $out)) {
+            $match = $this->matchKey($out, ['/responsable/', '/responsible/']);
+            if ($match) $out['responsible_person'] = $out[$match];
+        }
+        if (!array_key_exists('deadline', $out)) {
+            $match = $this->matchKey($out, ['/echeance/', '/deadline/']);
+            if ($match) $out['deadline'] = $out[$match];
+        }
+        if (!array_key_exists('corrective_action', $out)) {
+            $match = $this->matchKey($out, ['/action.*correct/']);
+            if ($match) $out['corrective_action'] = $out[$match];
+        }
+        if (!array_key_exists('corrective_action_date', $out)) {
+            $match = $this->matchKey($out, ['/date.*action.*correct/', '/date.*correct/']);
+            if ($match) $out['corrective_action_date'] = $out[$match];
+        }
+        if (!array_key_exists('corrective_action_time', $out)) {
+            $match = $this->matchKey($out, ['/heure.*action.*correct/', '/heure.*correct/']);
+            if ($match) $out['corrective_action_time'] = $out[$match];
+        }
+        if (!array_key_exists('status', $out)) {
+            $match = $this->matchKey($out, ['/statut/', '/status/']);
+            if ($match) $out['status'] = $out[$match];
+        }
+        if (!array_key_exists('notes', $out)) {
+            $match = $this->matchKey($out, ['/notes?/']);
+            if ($match) $out['notes'] = $out[$match];
+        }
+
         return $out;
+    }
+
+    private function matchKey(array $out, array $patterns): ?string
+    {
+        foreach (array_keys($out) as $key) {
+            $k = (string) $key;
+            foreach ($patterns as $pattern) {
+                if (@preg_match($pattern, $k)) {
+                    if (preg_match($pattern, $k) === 1) {
+                        return $k;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     protected function emptyToNull($value)
@@ -270,7 +362,38 @@ class SorReportsImport implements ToModel, WithHeadingRow, SkipsOnError, WithChu
                 return null;
             }
 
-            $formats = ['d/m/Y', 'd-m-Y', 'd.m.Y', 'Y-m-d', 'm/d/Y'];
+            // Prefer day-first parsing for slashed dates (common FR templates), even if time is present.
+            // Examples: 16/02/2026, 16/02/2026 00:00, 16/02/2026 00:00:00
+            if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/', $raw, $m)) {
+                $d = (int) $m[1];
+                $mo = (int) $m[2];
+                $y = (int) $m[3];
+                if ($y < 100) {
+                    $y += 2000;
+                }
+                if ($y >= 1900 && $y <= 2100 && $mo >= 1 && $mo <= 12 && $d >= 1 && $d <= 31) {
+                    return sprintf('%04d-%02d-%02d', $y, $mo, $d);
+                }
+            }
+
+            $formats = [
+                'd/m/Y',
+                'd/m/Y H:i',
+                'd/m/Y H:i:s',
+                'd-m-Y',
+                'd-m-Y H:i',
+                'd-m-Y H:i:s',
+                'd.m.Y',
+                'd.m.Y H:i',
+                'd.m.Y H:i:s',
+                'Y-m-d',
+                'Y-m-d H:i',
+                'Y-m-d H:i:s',
+                // US fallback (keep last)
+                'm/d/Y',
+                'm/d/Y H:i',
+                'm/d/Y H:i:s',
+            ];
             foreach ($formats as $format) {
                 try {
                     return Carbon::createFromFormat($format, $raw)->format('Y-m-d');

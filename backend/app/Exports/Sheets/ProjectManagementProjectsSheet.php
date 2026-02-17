@@ -7,9 +7,11 @@ use App\Models\AwarenessSession;
 use App\Models\Inspection;
 use App\Models\KpiReport;
 use App\Models\Machine;
+use App\Models\LightingMeasurement;
 use App\Models\Project;
 use App\Models\RegulatoryWatchSubmission;
 use App\Models\SorReport;
+use App\Models\SubcontractorOpening;
 use App\Models\Training;
 use App\Models\Worker;
 use App\Models\WorkerMedicalAptitude;
@@ -23,6 +25,8 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Style\Conditional;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
@@ -88,6 +92,17 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
         }, $weeks);
         sort($weeks);
         $labels = array_map(fn ($w) => $this->weekLabel($w), $weeks);
+        return implode(', ', $labels);
+    }
+
+    private function formatMonthList(array $months): string
+    {
+        $months = array_values(array_unique(array_filter(array_map(function ($m) {
+            $x = (int) $m;
+            return ($x >= 1 && $x <= 12) ? $x : null;
+        }, $months), fn ($x) => $x !== null)));
+        sort($months);
+        $labels = array_map(fn ($m) => str_pad((string) $m, 2, '0', STR_PAD_LEFT), $months);
         return implode(', ', $labels);
     }
 
@@ -162,14 +177,20 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
             $this->tr("Nb inspections ({$this->year})", "Inspections ({$this->year})"),
             $this->tr("Nb écarts / SOR ({$this->year})", "Deviations / SOR ({$this->year})"),
             $this->tr("Nb formations ({$this->year})", "Trainings ({$this->year})"),
-            $this->tr("TBM ({$this->year})", "TBM ({$this->year})"),
-            $this->tr("TBT ({$this->year})", "TBT ({$this->year})"),
+            $this->tr("TBM/TBT ({$this->year})", "TBM/TBT ({$this->year})"),
             $this->tr('Semaines réglementation SST', 'SST regulation weeks'),
             $this->tr('Semaines réglementation Environnement', 'Environment regulation weeks'),
             $this->tr('Effectif (actifs)', 'Workforce (active workers)'),
             $this->tr('Effectif avec induction', 'Workforce with induction'),
             $this->tr("Effectif avec aptitude médicale ({$this->year})", "Workforce with medical aptitude ({$this->year})"),
             $this->tr('Nombre machines', 'Machines count'),
+            $this->tr('Conformité documents machines %', 'Machine documents conformity %'),
+            $this->tr('Nombre sous-traitants', 'Subcontractors count'),
+            $this->tr('Conformité documents sous-traitants %', 'Subcontractors document conformity %'),
+            $this->tr('Mesure mensuel bruit', 'Monthly noise measure'),
+            $this->tr('Mesure mensuel eau', 'Monthly water measure'),
+            $this->tr('Mesure mensuel électricité', 'Monthly electricity measure'),
+            $this->tr('Mesure lux (soumissions)', 'Lux measurements (submissions)'),
             $this->tr('EPI distribués (total)', 'PPE distributed (total)'),
         ]);
     }
@@ -299,6 +320,152 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
             ->groupBy('project_id')
             ->pluck('c', 'project_id');
 
+        // Heavy machinery document conformity % (same required docs as monthly report)
+        $machines = Machine::query()
+            ->whereIn('project_id', $projects->pluck('id')->all())
+            ->where('is_active', true)
+            ->with(['documents', 'operators'])
+            ->get(['id', 'project_id']);
+
+        $requiredMachineDocKeys = ['rapport_reglementaire', 'assurance'];
+        $requiredMachineDocCount = count($requiredMachineDocKeys);
+        $machineCompletionByProject = [];
+        $today = now()->startOfDay();
+        foreach ($machines as $m) {
+            $pid = (int) $m->project_id;
+
+            $uploadedKeys = [];
+            foreach ($m->documents as $doc) {
+                $key = strtolower(trim((string) ($doc->document_key ?? '')));
+                if (!in_array($key, $requiredMachineDocKeys, true)) {
+                    continue;
+                }
+
+                $hasFile = !empty($doc->file_path);
+                $expiry = $doc->expiry_date ? Carbon::parse($doc->expiry_date)->startOfDay() : null;
+                $isExpired = $expiry !== null && $expiry->lt($today);
+                if ($hasFile && !$isExpired) {
+                    $uploadedKeys[$key] = true;
+                }
+            }
+
+            $hasOperator = ($m->operators?->count() ?? 0) > 0;
+            $operatorScore = $hasOperator ? 1 : 0;
+
+            $totalRequired = $requiredMachineDocCount + 1;
+            $totalComplete = count($uploadedKeys) + $operatorScore;
+            $pct = $totalRequired > 0 ? round(($totalComplete * 100.0) / $totalRequired, 1) : 0.0;
+
+            $machineCompletionByProject[$pid] = $machineCompletionByProject[$pid] ?? [];
+            $machineCompletionByProject[$pid][] = $pct;
+        }
+
+        $machineDocConformityPctByProject = [];
+        foreach ($projects as $p) {
+            $vals = $machineCompletionByProject[(int) $p->id] ?? [];
+            $machineDocConformityPctByProject[(int) $p->id] = count($vals) ? round(array_sum($vals) / count($vals), 1) : 0.0;
+        }
+
+        // Subcontractors: count openings + average document completion % (snapshot)
+        $openings = SubcontractorOpening::query()
+            ->whereIn('project_id', $projects->pluck('id')->all())
+            ->with(['documents'])
+            ->get(['id', 'project_id']);
+
+        $requiredKeys = array_values(array_filter(array_map(
+            fn ($d) => is_array($d) ? ($d['key'] ?? null) : null,
+            SubcontractorOpening::REQUIRED_DOCUMENTS
+        )));
+        $requiredSet = array_fill_keys($requiredKeys, true);
+        $requiredCount = count($requiredKeys);
+
+        $subCountByProject = [];
+        $subCompletionByProject = [];
+        foreach ($openings as $o) {
+            $pid = (int) $o->project_id;
+            $subCountByProject[$pid] = ($subCountByProject[$pid] ?? 0) + 1;
+
+            $docKeys = [];
+            foreach ($o->documents as $d) {
+                $key = trim((string) ($d->document_key ?? ''));
+                if ($key === '' || empty($requiredSet[$key])) {
+                    continue;
+                }
+
+                $hasFile = !empty($d->file_path);
+                $expiry = $d->expiry_date ? Carbon::parse($d->expiry_date)->startOfDay() : null;
+                $isExpired = $expiry !== null && $expiry->lt($today);
+                if ($hasFile && !$isExpired) {
+                    $docKeys[$key] = true;
+                }
+            }
+
+            $uploaded = count($docKeys);
+            $pct = $requiredCount > 0 ? round(($uploaded * 100.0) / $requiredCount, 1) : 0.0;
+            $subCompletionByProject[$pid] = $subCompletionByProject[$pid] ?? [];
+            $subCompletionByProject[$pid][] = $pct;
+        }
+
+        $subDocConformityPctByProject = [];
+        foreach ($projects as $p) {
+            $pid = (int) $p->id;
+            $vals = $subCompletionByProject[$pid] ?? [];
+            $subDocConformityPctByProject[$pid] = count($vals) ? round(array_sum($vals) / count($vals), 1) : 0.0;
+        }
+
+        // Monthly measures: output the list of months filled (01..12) per metric.
+        $kpiMonthlyRows = KpiReport::query()
+            ->where('report_year', $this->year)
+            ->where('status', KpiReport::STATUS_APPROVED)
+            ->get([
+                'project_id',
+                'report_month',
+                'noise_monitoring',
+                'water_consumption',
+                'electricity_consumption',
+            ]);
+
+        $noiseMonthsByProject = [];
+        $waterMonthsByProject = [];
+        $electricityMonthsByProject = [];
+
+        foreach ($kpiMonthlyRows as $r) {
+            $pid = (int) ($r->project_id ?? 0);
+            $month = (int) ($r->report_month ?? 0);
+            if ($pid <= 0 || $month < 1 || $month > 12) {
+                continue;
+            }
+
+            if ($r->noise_monitoring !== null && (float) $r->noise_monitoring > 0) {
+                $noiseMonthsByProject[$pid] = $noiseMonthsByProject[$pid] ?? [];
+                $noiseMonthsByProject[$pid][] = $month;
+            }
+            if ($r->water_consumption !== null && (float) $r->water_consumption > 0) {
+                $waterMonthsByProject[$pid] = $waterMonthsByProject[$pid] ?? [];
+                $waterMonthsByProject[$pid][] = $month;
+            }
+            if ($r->electricity_consumption !== null && (float) $r->electricity_consumption > 0) {
+                $electricityMonthsByProject[$pid] = $electricityMonthsByProject[$pid] ?? [];
+                $electricityMonthsByProject[$pid][] = $month;
+            }
+        }
+
+        $noiseByProject = [];
+        $waterByProject = [];
+        $electricityByProject = [];
+        foreach ($projects as $p) {
+            $pid = (int) $p->id;
+            $noiseByProject[$pid] = $this->formatMonthList($noiseMonthsByProject[$pid] ?? []);
+            $waterByProject[$pid] = $this->formatMonthList($waterMonthsByProject[$pid] ?? []);
+            $electricityByProject[$pid] = $this->formatMonthList($electricityMonthsByProject[$pid] ?? []);
+        }
+
+        $luxCounts = LightingMeasurement::query()
+            ->select('project_id', DB::raw('COUNT(*) as c'))
+            ->where('year', $this->year)
+            ->groupBy('project_id')
+            ->pluck('c', 'project_id');
+
         $ppeTotals = WorkerPpeIssue::query()
             ->select('project_id', DB::raw('COALESCE(SUM(quantity), 0) as s'))
             ->groupBy('project_id')
@@ -339,20 +506,27 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
                 ->filter(fn ($w) => $w !== null)
                 ->all();
             $tbt = (int) $kpisForProject->sum('toolbox_talks');
+            $tbmTbtTotal = (int) ($tbmCounts[$project->id] ?? 0) + $tbt;
 
             $rows[] = array_merge($base, [
                 $this->formatWeeks($kpiWeeks),
                 (int) ($inspectionCounts[$project->id] ?? 0),
                 (int) ($deviationCounts[$project->id] ?? 0),
                 (int) ($trainingCounts[$project->id] ?? 0),
-                (int) ($tbmCounts[$project->id] ?? 0),
-                $tbt,
+                $tbmTbtTotal,
                 $this->formatWeeks($regWeeksSstByProject[$project->id] ?? []),
                 $this->formatWeeks($regWeeksEnvByProject[$project->id] ?? []),
                 (int) ($workerCounts[$project->id] ?? 0),
                 (int) ($inductionCounts[$project->id] ?? 0),
                 (int) ($medicalCounts[$project->id] ?? 0),
                 (int) ($machineCounts[$project->id] ?? 0),
+                (float) ($machineDocConformityPctByProject[(int) $project->id] ?? 0.0),
+                (int) ($subCountByProject[(int) $project->id] ?? 0),
+                (float) ($subDocConformityPctByProject[(int) $project->id] ?? 0.0),
+                (string) ($noiseByProject[(int) $project->id] ?? ''),
+                (string) ($waterByProject[(int) $project->id] ?? ''),
+                (string) ($electricityByProject[(int) $project->id] ?? ''),
+                (int) ($luxCounts[(int) $project->id] ?? 0),
                 (int) ($ppeTotals[$project->id] ?? 0),
             ]);
         }
@@ -367,6 +541,91 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
 
     public function styles(Worksheet $sheet)
     {
+        if ($this->maxHseManagers === 0 && !$this->hasExtraHseManagers) {
+            $this->buildHseManagerColumns();
+        }
+
+        $lastRow = max(2, (int) $sheet->getHighestRow());
+        $baseCols = 5 + ($this->maxHseManagers * 3) + ($this->hasExtraHseManagers ? 1 : 0);
+
+        // After base columns, the appended KPI columns are:
+        // 1) KPI weeks
+        // 2) Inspections
+        // 3) Deviations
+        // 4) Trainings
+        // 5) TBM/TBT
+        // 6) Reg SST
+        // 7) Reg Env
+        // 8) Effectif
+        // 9) Induction
+        // 10) Medical
+        // 11) Machines
+        // 12) Machine doc %
+        // 13) Subcontractors count
+        // 14) Subcontractor doc %
+        $effectifCol = Coordinate::stringFromColumnIndex($baseCols + 8);
+        $inductionCol = Coordinate::stringFromColumnIndex($baseCols + 9);
+        $medicalCol = Coordinate::stringFromColumnIndex($baseCols + 10);
+        $machineDocCol = Coordinate::stringFromColumnIndex($baseCols + 12);
+        $subDocCol = Coordinate::stringFromColumnIndex($baseCols + 14);
+
+        $fillGreen = 'C6EFCE';
+        $fillYellow = 'FFEB9C';
+        $fillOrange = 'FFD966';
+        $fillRed = 'FFC7CE';
+        $textDark = '1F2937';
+
+        $makeCond = function (string $formula, string $fillRgb) use ($textDark) {
+            $cond = new Conditional();
+            $cond->setConditionType(Conditional::CONDITION_EXPRESSION);
+            $cond->setOperatorType(Conditional::OPERATOR_NONE);
+            $cond->addCondition($formula);
+            $cond->getStyle()->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($fillRgb);
+            $cond->getStyle()->getFont()->getColor()->setRGB($textDark);
+            $cond->setStopIfTrue(true);
+            return $cond;
+        };
+
+        $applyConds = function (string $range, array $conds) use ($sheet) {
+            $sheet->getStyle($range)->setConditionalStyles($conds);
+        };
+
+        $inductionRange = $inductionCol . '2:' . $inductionCol . $lastRow;
+        $inductionConds = [
+            $makeCond("IF(\${$effectifCol}2=0,0,\${$inductionCol}2/\${$effectifCol}2)>=0.9", $fillGreen),
+            $makeCond("IF(\${$effectifCol}2=0,0,\${$inductionCol}2/\${$effectifCol}2)>=0.7", $fillYellow),
+            $makeCond("IF(\${$effectifCol}2=0,0,\${$inductionCol}2/\${$effectifCol}2)>=0.4", $fillOrange),
+            $makeCond('TRUE', $fillRed),
+        ];
+        $applyConds($inductionRange, $inductionConds);
+
+        $medicalRange = $medicalCol . '2:' . $medicalCol . $lastRow;
+        $medicalConds = [
+            $makeCond("IF(\${$effectifCol}2=0,0,\${$medicalCol}2/\${$effectifCol}2)>=0.9", $fillGreen),
+            $makeCond("IF(\${$effectifCol}2=0,0,\${$medicalCol}2/\${$effectifCol}2)>=0.7", $fillYellow),
+            $makeCond("IF(\${$effectifCol}2=0,0,\${$medicalCol}2/\${$effectifCol}2)>=0.4", $fillOrange),
+            $makeCond('TRUE', $fillRed),
+        ];
+        $applyConds($medicalRange, $medicalConds);
+
+        $machineDocRange = $machineDocCol . '2:' . $machineDocCol . $lastRow;
+        $machineDocConds = [
+            $makeCond("\${$machineDocCol}2>=90", $fillGreen),
+            $makeCond("\${$machineDocCol}2>=70", $fillYellow),
+            $makeCond("\${$machineDocCol}2>=40", $fillOrange),
+            $makeCond('TRUE', $fillRed),
+        ];
+        $applyConds($machineDocRange, $machineDocConds);
+
+        $subDocRange = $subDocCol . '2:' . $subDocCol . $lastRow;
+        $subDocConds = [
+            $makeCond("\${$subDocCol}2>=90", $fillGreen),
+            $makeCond("\${$subDocCol}2>=70", $fillYellow),
+            $makeCond("\${$subDocCol}2>=40", $fillOrange),
+            $makeCond('TRUE', $fillRed),
+        ];
+        $applyConds($subDocRange, $subDocConds);
+
         return [
             1 => [
                 'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],

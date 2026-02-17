@@ -18,6 +18,11 @@ class BackupController extends Controller
                 $frequencyHours = 12;
             }
 
+            $retentionDays = (int) (AppSetting::getValue('backup.retention_days') ?: env('FULL_BACKUP_RETENTION_DAYS', env('DB_BACKUP_RETENTION_DAYS', 14)));
+            if ($retentionDays < 1) {
+                $retentionDays = 14;
+            }
+
             $lastRunAt = AppSetting::getValue('backup.last_run_at');
         } catch (\Throwable $e) {
             Log::warning('Backup settings read failed', ['error' => $e->getMessage()]);
@@ -32,6 +37,7 @@ class BackupController extends Controller
 
         return $this->success([
             'frequency_hours' => $frequencyHours,
+            'retention_days' => $retentionDays,
             'last_run_at' => $lastRunAt,
             'latest_filename' => $latestFilename,
         ]);
@@ -41,10 +47,14 @@ class BackupController extends Controller
     {
         $validated = $request->validate([
             'frequency_hours' => 'required|integer|min:1|max:168',
+            'retention_days' => 'nullable|integer|min:1|max:365',
         ]);
 
         try {
             AppSetting::setValue('backup.frequency_hours', (string) $validated['frequency_hours']);
+            if (array_key_exists('retention_days', $validated) && $validated['retention_days'] !== null) {
+                AppSetting::setValue('backup.retention_days', (string) $validated['retention_days']);
+            }
         } catch (\Throwable $e) {
             Log::warning('Backup settings update failed', ['error' => $e->getMessage()]);
             return $this->error(

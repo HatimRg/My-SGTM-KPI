@@ -69,7 +69,10 @@ class FullBackup extends Command
             }
         }
 
-        $keepDays = (int) ($this->option('keep') ?: env('FULL_BACKUP_RETENTION_DAYS', env('DB_BACKUP_RETENTION_DAYS', 14)));
+        $keepDays = (int) ($this->option('keep') ?: (AppSetting::getValue('backup.retention_days') ?: env('FULL_BACKUP_RETENTION_DAYS', env('DB_BACKUP_RETENTION_DAYS', 14))));
+        if ($keepDays < 1) {
+            $keepDays = 14;
+        }
 
         $fullDir = storage_path('app/backups/full');
         $dbDir = storage_path('app/backups/db');
