@@ -7,6 +7,9 @@ use App\Models\KpiReport;
 use App\Models\Project;
 use App\Models\DailyKpiSnapshot;
 use App\Models\HseEvent;
+use App\Models\RegulatoryWatchSubmission;
+use App\Models\Worker;
+use App\Models\WorkerMedicalAptitude;
 use App\Models\MonthlyKpiMeasurement;
 use App\Models\Notification;
 use App\Models\User;
@@ -833,7 +836,6 @@ class KpiReportController extends Controller
                 ->get();
 
             $trainingHours = $trainings->sum('training_hours');
-            $employeesTrained = $trainings->sum('participants');
             $trainingsCount = $trainings->count();
 
             // Get awareness sessions (sensibilisation) for the week
@@ -842,12 +844,7 @@ class KpiReportController extends Controller
                 ->get();
 
             $sensibilisationCount = $awarenessSessions->count();
-
-            // Get work permits for the week
-            $workPermits = \App\Models\WorkPermit::where('project_id', $projectId)
-                ->where('week_number', $week)
-                ->where('year', $year)
-                ->count();
+            $awarenessHours = $awarenessSessions->sum('session_hours');
 
             // Get inspections for the week
             $inspections = \App\Models\Inspection::where('project_id', $projectId)
@@ -866,8 +863,19 @@ class KpiReportController extends Controller
                 ->whereBetween('entry_date', [$startDate, $endDate])
                 ->get();
 
+            $computedHoursWorked = (float) $dailySnapshots->sum(function ($row) {
+                return (int) $row->effectif * 10;
+            });
+
+            if ($computedHoursWorked <= 0) {
+                $computedHoursWorked = (float) ($workersCount * 10 * 7);
+            }
+
             // HSE events (new authoritative tracker)
             $hseAgg = $this->aggregateHseEventsForDates((int) $projectId, (string) $startDate, (string) $endDate);
+
+            $hseComplianceRate = $this->computeHseComplianceRateYtd((int) $projectId, (int) $year, (int) $week);
+            $medicalComplianceRate = $this->computeMedicalComplianceRate((int) $projectId);
 
             // Monthly measurements (noise/water/electricity)
             $monthDate = Carbon::parse($startDate);
@@ -876,7 +884,6 @@ class KpiReportController extends Controller
             // Sum up daily data if available
             $dailyTotals = [
                 'effectif' => $dailySnapshots->sum('effectif') ?: $workersCount,
-                'heures_travaillees' => $dailySnapshots->sum('heures_travaillees') ?: 0,
                 'induction' => $dailySnapshots->sum('induction') ?: 0,
                 'releve_ecarts' => $dailySnapshots->sum('releve_ecarts') ?: $deviationsCount,
                 'sensibilisation' => $dailySnapshots->sum('sensibilisation') ?: $sensibilisationCount,
@@ -885,8 +892,8 @@ class KpiReportController extends Controller
                 'accidents' => $dailySnapshots->sum('accidents') ?: 0,
                 'jours_arret' => $dailySnapshots->sum('jours_arret') ?: 0,
                 'inspections' => $dailySnapshots->sum('inspections') ?: $inspectionsCount,
-                'heures_formation' => $dailySnapshots->sum('heures_formation') ?: $trainingHours,
-                'permis_travail' => $dailySnapshots->sum('permis_travail') ?: $workPermits,
+                'heures_formation' => $dailySnapshots->sum('heures_formation') ?: ((float) $trainingHours + (float) $awarenessHours),
+                'permis_travail' => $dailySnapshots->sum('permis_travail') ?: 0,
                 'mesures_disciplinaires' => $dailySnapshots->sum('mesures_disciplinaires') ?: 0,
                 'conformite_hse' => $dailySnapshots->avg('conformite_hse') ?: 0,
                 'conformite_medicale' => $dailySnapshots->avg('conformite_medicale') ?: 0,
@@ -919,8 +926,8 @@ class KpiReportController extends Controller
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'data' => [
-                    'hours_worked' => $dailyTotals['heures_travaillees'],
-                    'employees_trained' => $employeesTrained ?: $dailyTotals['induction'],
+                    'hours_worked' => $computedHoursWorked,
+                    'employees_trained' => (int) $dailyTotals['induction'],
                     'unsafe_conditions_reported' => $dailyTotals['releve_ecarts'],
                     'toolbox_talks' => $dailyTotals['sensibilisation'],
                     'near_misses' => $nearMisses,
@@ -934,8 +941,8 @@ class KpiReportController extends Controller
                     'training_hours' => $dailyTotals['heures_formation'],
                     'work_permits' => $dailyTotals['permis_travail'],
                     'corrective_actions' => $dailyTotals['mesures_disciplinaires'],
-                    'hse_compliance_rate' => round($dailyTotals['conformite_hse'], 2),
-                    'medical_compliance_rate' => round($dailyTotals['conformite_medicale'], 2),
+                    'hse_compliance_rate' => round($hseComplianceRate, 2),
+                    'medical_compliance_rate' => round($medicalComplianceRate, 2),
                     'noise_monitoring' => $noiseMonitoring,
                     'water_consumption' => $waterConsumption,
                     'electricity_consumption' => $electricityConsumption,
@@ -947,7 +954,6 @@ class KpiReportController extends Controller
                     'sor_reports' => $deviationsCount,
                     'trainings' => $trainingsCount,
                     'awareness_sessions' => $sensibilisationCount,
-                    'work_permits' => $workPermits,
                     'inspections' => $inspectionsCount,
                     'workers' => $workersCount,
                     'daily_snapshots' => $dailySnapshots->count(),
@@ -972,9 +978,9 @@ class KpiReportController extends Controller
                 return [];
             }
 
-            $accidentTypes = ['accident', 'work_accident', 'road_accident', 'traffic_accident'];
+            $accidentTypes = ['work_accident', 'road_accident', 'accident', 'traffic_accident'];
             $nearMissTypes = ['near_miss', 'near_misses', 'presquaccident', 'near-miss'];
-            $firstAidTypes = ['first_aid', 'first_aid_case', 'premiers_soins', 'first-aid'];
+            $firstAidTypes = ['first_aid', 'first_aid_case', 'premiers_soins', 'first-aid', 'first_aid_only'];
 
             $accidentEvents = $events->whereIn('type', $accidentTypes);
             $lostDays = (int) $events->where('lost_time', true)->sum('lost_days');
@@ -1028,6 +1034,58 @@ class KpiReportController extends Controller
             return $result;
         } catch (\Throwable $e) {
             return [];
+        }
+    }
+
+    private function computeMedicalComplianceRate(int $projectId): float
+    {
+        $total = (int) Worker::where('project_id', $projectId)->where('is_active', true)->count();
+        if ($total <= 0) return 0.0;
+        $apte = (int) WorkerMedicalAptitude::join('workers', 'workers.id', '=', 'worker_medical_aptitudes.worker_id')
+            ->where('workers.project_id', $projectId)->where('workers.is_active', true)
+            ->whereRaw('LOWER(worker_medical_aptitudes.aptitude_status) = ?', ['apte'])
+            ->distinct()->count('worker_medical_aptitudes.worker_id');
+        return round(($apte * 100.0) / $total, 2);
+    }
+
+    private function computeHseComplianceRateYtd(int $projectId, int $year, int $week): float
+    {
+        try {
+            $categories = ['sst', 'environment'];
+            $categoryRates = [];
+
+            foreach ($categories as $cat) {
+                $rows = RegulatoryWatchSubmission::query()
+                    ->where('project_id', $projectId)
+                    ->where('week_year', $year)
+                    ->where('week_number', '<=', $week)
+                    ->where('category', $cat)
+                    ->orderBy('week_number')
+                    ->orderByDesc('submitted_at')
+                    ->orderByDesc('id')
+                    ->get(['week_number', 'overall_score']);
+
+                if ($rows->isEmpty()) {
+                    continue;
+                }
+
+                $latestByWeek = [];
+                foreach ($rows as $r) {
+                    $wk = (int) $r->week_number;
+                    if (!isset($latestByWeek[$wk]) || $r->submitted_at > $latestByWeek[$wk]->submitted_at) {
+                        $latestByWeek[$wk] = $r;
+                    }
+                }
+
+                $scores = collect($latestByWeek)->pluck('overall_score')->filter(fn($v) => $v !== null);
+                if ($scores->isNotEmpty()) {
+                    $categoryRates[] = $scores->avg();
+                }
+            }
+
+            return count($categoryRates) > 0 ? round(collect($categoryRates)->avg(), 2) : 0.0;
+        } catch (\Throwable $e) {
+            return 0.0;
         }
     }
 

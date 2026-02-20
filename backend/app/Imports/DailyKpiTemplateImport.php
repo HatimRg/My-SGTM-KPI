@@ -45,19 +45,6 @@ class DailyKpiTemplateImport
         $fieldMap = [
             $dataStartRow + 0 => 'effectif',
             $dataStartRow + 1 => 'induction',
-            $dataStartRow + 2 => 'releve_ecarts',
-            $dataStartRow + 3 => 'sensibilisation',
-            $dataStartRow + 4 => 'presquaccident',
-            $dataStartRow + 5 => 'premiers_soins',
-            $dataStartRow + 6 => 'accidents',
-            $dataStartRow + 7 => 'jours_arret',
-            $dataStartRow + 8 => 'heures_travaillees',
-            $dataStartRow + 9 => 'inspections',
-            $dataStartRow + 10 => 'heures_formation',
-            $dataStartRow + 11 => 'permis_travail',
-            $dataStartRow + 12 => 'mesures_disciplinaires',
-            $dataStartRow + 13 => 'conformite_hse',
-            $dataStartRow + 14 => 'conformite_medicale',
         ];
 
         // Extract daily values
@@ -161,21 +148,6 @@ class DailyKpiTemplateImport
             
             // SUM
             'induction' => (int) $collect->sum('induction'),
-            'releve_ecarts' => (int) $collect->sum('releve_ecarts'),
-            'sensibilisation' => (int) $collect->sum('sensibilisation'),
-            'presquaccident' => (int) $collect->sum('presquaccident'),
-            'premiers_soins' => (int) $collect->sum('premiers_soins'),
-            'accidents' => (int) $collect->sum('accidents'),
-            'jours_arret' => (int) $collect->sum('jours_arret'),
-            'heures_travaillees' => (float) $collect->sum('heures_travaillees'),
-            'inspections' => (int) $collect->sum('inspections'),
-            'heures_formation' => (float) $collect->sum('heures_formation'),
-            'permis_travail' => (int) $collect->sum('permis_travail'),
-            'mesures_disciplinaires' => (int) $collect->sum('mesures_disciplinaires'),
-            
-            // AVG
-            'conformite_hse' => round($collect->whereNotNull('conformite_hse')->avg('conformite_hse') ?? 0, 2),
-            'conformite_medicale' => round($collect->whereNotNull('conformite_medicale')->avg('conformite_medicale') ?? 0, 2),
         ];
     }
 }

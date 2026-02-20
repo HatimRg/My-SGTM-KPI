@@ -9,9 +9,14 @@
   FileText
 } from 'lucide-react'
 
-export default function StepIncidentTracking({ formData, updateFormData, t }) {
+export default function StepIncidentTracking({ formData, updateFormData, t, editableFields = null }) {
   const handleChange = (field, value) => {
     updateFormData(field, value === '' ? 0 : parseInt(value))
+  }
+
+  const isEditable = (field) => {
+    if (!editableFields) return false
+    return editableFields.includes(field)
   }
 
   return (
@@ -42,6 +47,7 @@ export default function StepIncidentTracking({ formData, updateFormData, t }) {
             min="0"
             value={formData.accidents_fatal ?? ''}
             onChange={(e) => handleChange('accidents_fatal', e.target.value)}
+            disabled={!isEditable('accidents_fatal')}
             className="input border-red-300"
             placeholder="0"
           />
@@ -64,6 +70,7 @@ export default function StepIncidentTracking({ formData, updateFormData, t }) {
               min="0"
               value={formData.accidents_serious ?? ''}
               onChange={(e) => handleChange('accidents_serious', e.target.value)}
+              disabled={!isEditable('accidents_serious')}
               className="input border-orange-300"
               placeholder="0"
             />
@@ -77,6 +84,7 @@ export default function StepIncidentTracking({ formData, updateFormData, t }) {
               min="0"
               value={formData.lost_workdays ?? ''}
               onChange={(e) => handleChange('lost_workdays', e.target.value)}
+              disabled={!isEditable('lost_workdays')}
               className="input border-orange-300"
               placeholder="0"
             />
@@ -100,6 +108,7 @@ export default function StepIncidentTracking({ formData, updateFormData, t }) {
               min="0"
               value={formData.accidents_minor ?? ''}
               onChange={(e) => handleChange('accidents_minor', e.target.value)}
+              disabled={!isEditable('accidents_minor')}
               className="input border-yellow-300"
               placeholder="0"
             />
@@ -113,6 +122,7 @@ export default function StepIncidentTracking({ formData, updateFormData, t }) {
               min="0"
               value={formData.first_aid_cases ?? ''}
               onChange={(e) => handleChange('first_aid_cases', e.target.value)}
+              disabled={!isEditable('first_aid_cases')}
               className="input border-yellow-300"
               placeholder="0"
             />
@@ -135,6 +145,7 @@ export default function StepIncidentTracking({ formData, updateFormData, t }) {
             min="0"
             value={formData.near_misses ?? ''}
             onChange={(e) => handleChange('near_misses', e.target.value)}
+            disabled={!isEditable('near_misses')}
             className="input border-amber-300"
             placeholder="0"
           />
@@ -142,7 +153,7 @@ export default function StepIncidentTracking({ formData, updateFormData, t }) {
       </div>
 
       {/* Property & Environment */}
-      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6 border border-gray-200 dark:border-gray-600">
+      {false && <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6 border border-gray-200 dark:border-gray-600">
         <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
           <Package className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           {t('kpi.incidents.propertyDamage')} & {t('kpi.incidents.environmentalImpact')}
@@ -158,6 +169,7 @@ export default function StepIncidentTracking({ formData, updateFormData, t }) {
               min="0"
               value={formData.findings_open ?? ''}
               onChange={(e) => handleChange('findings_open', e.target.value)}
+              disabled={!isEditable('findings_open')}
               className="input"
               placeholder="0"
             />
@@ -172,12 +184,13 @@ export default function StepIncidentTracking({ formData, updateFormData, t }) {
               min="0"
               value={formData.findings_closed ?? ''}
               onChange={(e) => handleChange('findings_closed', e.target.value)}
+              disabled={!isEditable('findings_closed')}
               className="input"
               placeholder="0"
             />
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Notes */}
       <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">

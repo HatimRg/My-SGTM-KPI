@@ -11,10 +11,15 @@ import {
   Zap
 } from 'lucide-react'
 
-export default function StepWeeklyReporting({ formData, updateFormData, t }) {
+export default function StepWeeklyReporting({ formData, updateFormData, t, editableFields = null }) {
   // Use direct handler to avoid component recreation
   const handleChange = (field, value) => {
     updateFormData(field, value === '' ? 0 : parseFloat(value))
+  }
+
+  const isEditable = (field) => {
+    if (!editableFields) return true
+    return editableFields.includes(field)
   }
 
   return (
@@ -46,6 +51,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
               min="0"
               value={formData.hours_worked ?? ''}
               onChange={(e) => handleChange('hours_worked', e.target.value)}
+              disabled={!isEditable('hours_worked')}
               className="input"
               placeholder="0"
             />
@@ -60,6 +66,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
               min="0"
               value={formData.employees_trained ?? ''}
               onChange={(e) => handleChange('employees_trained', e.target.value)}
+              disabled={!isEditable('employees_trained')}
               className="input"
               placeholder="0"
             />
@@ -81,6 +88,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
               min="0"
               value={formData.unsafe_conditions_reported ?? ''}
               onChange={(e) => handleChange('unsafe_conditions_reported', e.target.value)}
+              disabled={!isEditable('unsafe_conditions_reported')}
               className="input"
               placeholder="0"
             />
@@ -92,6 +100,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
               min="0"
               value={formData.toolbox_talks ?? ''}
               onChange={(e) => handleChange('toolbox_talks', e.target.value)}
+              disabled={!isEditable('toolbox_talks')}
               className="input"
               placeholder="0"
             />
@@ -113,6 +122,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
               min="0"
               value={formData.near_misses ?? ''}
               onChange={(e) => handleChange('near_misses', e.target.value)}
+              disabled={!isEditable('near_misses')}
               className="input"
               placeholder="0"
             />
@@ -124,6 +134,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
               min="0"
               value={formData.first_aid_cases ?? ''}
               onChange={(e) => handleChange('first_aid_cases', e.target.value)}
+              disabled={!isEditable('first_aid_cases')}
               className="input"
               placeholder="0"
             />
@@ -135,6 +146,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
               min="0"
               value={formData.accidents ?? ''}
               onChange={(e) => handleChange('accidents', e.target.value)}
+              disabled={!isEditable('accidents')}
               className="input"
               placeholder="0"
             />
@@ -146,6 +158,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
               min="0"
               value={formData.lost_workdays ?? ''}
               onChange={(e) => handleChange('lost_workdays', e.target.value)}
+              disabled={!isEditable('lost_workdays')}
               className="input"
               placeholder="0"
             />
@@ -170,6 +183,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
               min="0"
               value={formData.inspections_completed ?? ''}
               onChange={(e) => handleChange('inspections_completed', e.target.value)}
+              disabled={!isEditable('inspections_completed')}
               className="input"
               placeholder="0"
             />
@@ -186,6 +200,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
                 step="0.5"
                 value={formData.training_hours ?? ''}
                 onChange={(e) => handleChange('training_hours', e.target.value)}
+                disabled={!isEditable('training_hours')}
                 className="input pr-10"
                 placeholder="0"
               />
@@ -212,6 +227,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
               min="0"
               value={formData.work_permits ?? ''}
               onChange={(e) => handleChange('work_permits', e.target.value)}
+              disabled={!isEditable('work_permits')}
               className="input"
               placeholder="0"
             />
@@ -223,6 +239,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
               min="0"
               value={formData.corrective_actions ?? ''}
               onChange={(e) => handleChange('corrective_actions', e.target.value)}
+              disabled={!isEditable('corrective_actions')}
               className="input"
               placeholder="0"
             />
@@ -246,6 +263,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
                 max="100"
                 value={formData.hse_compliance_rate ?? ''}
                 onChange={(e) => handleChange('hse_compliance_rate', e.target.value)}
+                disabled={!isEditable('hse_compliance_rate')}
                 className="input pr-10"
                 placeholder="0"
               />
@@ -261,31 +279,18 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
                 max="100"
                 value={formData.medical_compliance_rate ?? ''}
                 onChange={(e) => handleChange('medical_compliance_rate', e.target.value)}
+                disabled={!isEditable('medical_compliance_rate')}
                 className="input pr-10"
                 placeholder="0"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
             </div>
           </div>
-          <div>
-            <label className="label flex items-center gap-2">
-              <Volume2 className="w-4 h-4 text-gray-400" />
-              {t('kpi.weekly.suiviBruit')}
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={formData.noise_monitoring ?? ''}
-              onChange={(e) => handleChange('noise_monitoring', e.target.value)}
-              className="input"
-              placeholder="0"
-            />
-          </div>
         </div>
       </div>
 
       {/* Resource Consumption - Water & Electricity */}
-      <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-6">
+      {false && <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-6">
         <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
           <Droplets className="w-5 h-5 text-blue-500" />
           {t('kpi.weekly.consommation')}
@@ -303,6 +308,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
                 step="0.1"
                 value={formData.water_consumption ?? ''}
                 onChange={(e) => handleChange('water_consumption', e.target.value)}
+                disabled={!isEditable('water_consumption')}
                 className="input pr-12"
                 placeholder="0"
               />
@@ -321,6 +327,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
                 step="0.1"
                 value={formData.electricity_consumption ?? ''}
                 onChange={(e) => handleChange('electricity_consumption', e.target.value)}
+                disabled={!isEditable('electricity_consumption')}
                 className="input pr-14"
                 placeholder="0"
               />
@@ -328,7 +335,7 @@ export default function StepWeeklyReporting({ formData, updateFormData, t }) {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   )
 }

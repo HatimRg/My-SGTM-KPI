@@ -292,70 +292,9 @@ class DailyKpiSnapshotController extends Controller
         $year = (int) $request->year;
         $lang = $request->query('lang') ?: ($user->preferred_language ?? 'fr');
         
-        // Fetch auto-fill values from system data
-        $dates = WeekHelper::getWeekDates($weekNumber, $year);
-        $startDate = $dates['start'];
-        $regulatoryScore = RegulatoryWatchSubmission::query()
-            ->where('project_id', $projectId)
-            ->where('week_year', $year)
-            ->where('week_number', $weekNumber)
-            ->orderByDesc('submitted_at')
-            ->orderByDesc('id')
-            ->value('overall_score');
+        // Template now only contains user-editable fields (effectif, induction).
+        // Authoritative indicators are computed elsewhere; keep template minimal.
         $autoFillValues = [];
-
-        for ($i = 0; $i < 7; $i++) {
-            $currentDate = $startDate->copy()->addDays($i);
-            $dateString = $currentDate->format('Y-m-d');
-
-            // Deviations (SOR Reports) - count returns 0 if no records
-            $deviations = \App\Models\SorReport::where('project_id', $projectId)
-                ->whereDate('observation_date', $dateString)
-                ->count();
-
-            // TBM/Sensibilisation - count returns 0 if no records
-            $tbmCount = \App\Models\AwarenessSession::where('project_id', $projectId)
-                ->whereDate('date', $dateString)
-                ->count();
-
-            $tbmHours = (float) (\App\Models\AwarenessSession::where('project_id', $projectId)
-                ->whereDate('date', $dateString)
-                ->sum('session_hours') ?? 0);
-
-            // Training hours - sum can return NULL, so default to 0
-            $trainingHours = \App\Models\Training::where('project_id', $projectId)
-                ->whereDate('date', $dateString)
-                ->sum('training_hours') ?? 0;
-
-            // Work permits - count returns 0 if no records
-            $workPermits = \App\Models\WorkPermit::where('project_id', $projectId)
-                ->whereDate('commence_date', $dateString)
-                ->count();
-
-            // Inspections - count returns 0 if no records
-            $inspections = \App\Models\Inspection::where('project_id', $projectId)
-                ->whereDate('inspection_date', $dateString)
-                ->count();
-
-            $sanctions = WorkerSanction::query()
-                ->where('project_id', $projectId)
-                ->where('sanction_date', $dateString)
-                ->count();
-
-            // All values must be 0 if no data, never null or empty
-            $autoFillValues[] = [
-                'entry_date' => $dateString,
-                'auto_values' => [
-                    'releve_ecarts' => (int) $deviations,
-                    'sensibilisation' => (int) $tbmCount,
-                    'heures_formation' => (float) ($trainingHours ?? 0) + $tbmHours,
-                    'permis_travail' => (int) $workPermits,
-                    'inspections' => (int) $inspections,
-                    'mesures_disciplinaires' => (int) $sanctions,
-                    'conformite_hse' => $regulatoryScore !== null ? (float) $regulatoryScore : null,
-                ],
-            ];
-        }
         
         $filename = "KPI_Journalier_{$project->code}_S{$weekNumber}_{$year}.xlsx";
         
@@ -460,12 +399,10 @@ class DailyKpiSnapshotController extends Controller
                 'status' => 'submitted',
             ];
 
-            // Map all KPI fields
+            // Map user-editable KPI fields only
             $fields = [
-                'effectif', 'induction', 'releve_ecarts', 'sensibilisation',
-                'presquaccident', 'premiers_soins', 'accidents', 'jours_arret',
-                'heures_travaillees', 'inspections', 'heures_formation', 'permis_travail',
-                'mesures_disciplinaires', 'conformite_hse', 'conformite_medicale'
+                'effectif',
+                'induction',
             ];
 
             foreach ($fields as $field) {
@@ -641,14 +578,6 @@ class DailyKpiSnapshotController extends Controller
         $startDate = $dates['start'];
         $endDate = $dates['end'];
 
-        $regulatoryScore = RegulatoryWatchSubmission::query()
-            ->where('project_id', $projectId)
-            ->where('week_year', $year)
-            ->where('week_number', $weekNumber)
-            ->orderByDesc('submitted_at')
-            ->orderByDesc('id')
-            ->value('overall_score');
-
         $dailyValues = [];
 
         // Loop through each day of the week
@@ -662,78 +591,21 @@ class DailyKpiSnapshotController extends Controller
                 ->first();
 
             $effectif = $effectifEntry ? (int) $effectifEntry->effectif : null;
-            $workHours = $effectif !== null ? (float) ($effectif * 10) : null;
-
-            // 1. Deviations (SOR Reports) per day
-            $deviations = \App\Models\SorReport::where('project_id', $projectId)
-                ->whereDate('observation_date', $dateString)
-                ->count();
-
-            // 2. TBM/Sensibilisation entries per day
-            $tbmCount = \App\Models\AwarenessSession::where('project_id', $projectId)
-                ->whereDate('date', $dateString)
-                ->count();
-
-            $tbmHours = \App\Models\AwarenessSession::where('project_id', $projectId)
-                ->whereDate('date', $dateString)
-                ->sum('session_hours');
-
-            // 3. Training hours for the day
-            $trainingHours = \App\Models\Training::where('project_id', $projectId)
-                ->whereDate('date', $dateString)
-                ->sum('training_hours');
-
-            $totalTrainingHours = (float) $trainingHours + (float) $tbmHours;
-
-            // 3b. Inspections per day
-            $inspections = \App\Models\Inspection::where('project_id', $projectId)
-                ->whereDate('inspection_date', $dateString)
-                ->count();
-
-            // 4. Work permits - count by commence_date
-            $workPermits = \App\Models\WorkPermit::where('project_id', $projectId)
-                ->whereDate('commence_date', $dateString)
-                ->count();
-
-            $sanctions = WorkerSanction::query()
-                ->where('project_id', $projectId)
-                ->where('sanction_date', $dateString)
-                ->count();
 
             $dailyValues[] = [
                 'entry_date' => $dateString,
                 'day_name' => $currentDate->englishDayOfWeek,
                 'auto_values' => [
                     'effectif' => $effectif,
-                    'heures_travaillees' => $workHours,
-                    'releve_ecarts' => $deviations,        // Deviation tracking
-                    'sensibilisation' => $tbmCount,        // TBM/TBT count
-                    'heures_formation' => (float) $totalTrainingHours,  // Training hours
-                    'permis_travail' => $workPermits,      // Work permits
-                    'inspections' => (int) $inspections,    // Inspections
-                    'mesures_disciplinaires' => (int) $sanctions,
-                    'conformite_hse' => $regulatoryScore !== null ? (float) $regulatoryScore : null,
                 ],
             ];
         }
-
-        // Get total work permits for the week (alternative calculation by week number)
-        $weeklyWorkPermits = \App\Models\WorkPermit::where('project_id', $projectId)
-            ->where('week_number', $weekNumber)
-            ->where('year', $year)
-            ->count();
 
         return $this->success([
             'project_id' => $projectId,
             'week_number' => $weekNumber,
             'year' => $year,
             'daily_values' => $dailyValues,
-            'weekly_totals' => [
-                'work_permits' => $weeklyWorkPermits,
-            ],
-            'formulas' => [
-                'heures_travaillees' => 'effectif × 10',  // Work hours = workforce × 10
-            ],
         ]);
     }
 }

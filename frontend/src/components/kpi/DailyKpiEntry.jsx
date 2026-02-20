@@ -19,19 +19,6 @@ import toast from 'react-hot-toast'
 const KPI_FIELDS = [
   { key: 'effectif', label: 'Effectif', labelEn: 'Workforce', formula: 'MAX', unit: '' },
   { key: 'induction', label: 'Induction', labelEn: 'Induction', formula: 'SUM', unit: '' },
-  { key: 'releve_ecarts', label: 'Relevé des écarts', labelEn: 'Deviations', formula: 'SUM', unit: '' },
-  { key: 'sensibilisation', label: 'Sensibilisation (TBM)', labelEn: 'Awareness (TBM)', formula: 'SUM', unit: '' },
-  { key: 'presquaccident', label: 'Presqu\'accident', labelEn: 'Near Miss', formula: 'SUM', unit: '' },
-  { key: 'premiers_soins', label: 'Premiers soins', labelEn: 'First Aid', formula: 'SUM', unit: '' },
-  { key: 'accidents', label: 'Accident', labelEn: 'Accident', formula: 'SUM', unit: '' },
-  { key: 'jours_arret', label: 'Jours d\'arrêt', labelEn: 'Lost Days', formula: 'SUM', unit: '' },
-  { key: 'heures_travaillees', label: 'Heures travaillées', labelEn: 'Hours Worked', formula: 'SUM', unit: 'h' },
-  { key: 'inspections', label: 'Inspections', labelEn: 'Inspections', formula: 'SUM', unit: '' },
-  { key: 'heures_formation', label: 'Heures de formation', labelEn: 'Training Hours', formula: 'SUM', unit: 'h' },
-  { key: 'permis_travail', label: 'Permis de travail', labelEn: 'Work Permits', formula: 'SUM', unit: '' },
-  { key: 'mesures_disciplinaires', label: 'Mesures disciplinaires', labelEn: 'Disciplinary', formula: 'SUM', unit: '' },
-  { key: 'conformite_hse', label: 'Conformité HSE (%)', labelEn: 'HSE Compliance (%)', formula: 'AVG', unit: '%' },
-  { key: 'conformite_medicale', label: 'Conformité Médicale (%)', labelEn: 'Medical Compliance (%)', formula: 'AVG', unit: '%' },
 ]
 
 const DAY_NAMES = {

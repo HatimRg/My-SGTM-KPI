@@ -682,14 +682,29 @@ export default function KpiSubmission() {
                 projectId={formData.project_id}
                 weekNumber={formData.week_number}
                 year={formData.report_year}
-                onDataConfirmed={(aggregates) => {
+                onDataConfirmed={async (aggregates) => {
+                  try {
+                    const autoRes = await kpiService.getAutoPopulatedData({
+                      project_id: formData.project_id,
+                      week: formData.week_number,
+                      year: formData.report_year,
+                    })
+
+                    const autoData = autoRes?.data?.data?.data
+                    if (autoData) {
+                      setFormData(prev => { const n={...prev,...autoData};const h=+n.hours_worked||0,a=+n.accidents||0,l=+n.lost_workdays||0;n.tf_value=h?+(((a*1000000)/h).toFixed(2)):0;n.tg_value=h?+(((l*1000)/h).toFixed(4)):0;return n })
+                      return
+                    }
+                  } catch (e) {
+                    // fall back to daily aggregates mapping below
+                  }
                   // Auto-fill KPI form fields from daily aggregates
                   // Batch update all values at once for efficiency
                   setFormData(prev => {
                     const updated = { ...prev }
                     
                     // Map daily field names to KPI report field names
-                    if (aggregates.heures_travaillees !== undefined) updated.hours_worked = aggregates.heures_travaillees
+                    // hours_worked is computed from daily effectif (effectif * 10 per day) by the backend auto-populate endpoint
                     if (aggregates.induction !== undefined) updated.employees_trained = aggregates.induction
                     if (aggregates.releve_ecarts !== undefined) updated.unsafe_conditions_reported = aggregates.releve_ecarts
                     if (aggregates.sensibilisation !== undefined) updated.toolbox_talks = aggregates.sensibilisation
@@ -729,7 +744,7 @@ export default function KpiSubmission() {
             )}
 
             {/* Monthly-only Environmental KPI Measurements */}
-            {formData.project_id && (
+            {false && (
               <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 rounded-xl">
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div>
@@ -810,6 +825,7 @@ export default function KpiSubmission() {
               formData={formData}
               updateFormData={updateFormData}
               t={t}
+              editableFields={[]}
             />
           </>
         )}
@@ -819,6 +835,7 @@ export default function KpiSubmission() {
             formData={formData}
             updateFormData={updateFormData}
             t={t}
+            editableFields={[]}
           />
         )}
       </div>

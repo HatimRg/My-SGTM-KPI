@@ -115,65 +115,17 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
         }
         $rows[] = $dateRow;
 
-        // KPI rows (18 indicators) with field keys for auto-fill
-        // Fields that should show 0 when no data (auto-filled from system)
-        $autoFillFields = ['releve_ecarts', 'sensibilisation', 'heures_formation', 'permis_travail', 'inspections', 'mesures_disciplinaires'];
-        
         $kpiFields = [
             ['label' => $this->tr('Effectif', 'Workforce'), 'key' => 'effectif'],
             ['label' => $this->tr('Induction', 'Induction'), 'key' => 'induction'],
-            ['label' => $this->tr('Relevé des écarts', 'Deviations'), 'key' => 'releve_ecarts'],
-            ['label' => $this->tr('Nombre de Sensibilisation', 'Awareness sessions'), 'key' => 'sensibilisation'],
-            ['label' => $this->tr('Presqu\'accident', 'Near miss'), 'key' => 'presquaccident'],
-            ['label' => $this->tr('Premiers soins', 'First aid'), 'key' => 'premiers_soins'],
-            ['label' => $this->tr('Accident', 'Accident'), 'key' => 'accidents'],
-            ['label' => $this->tr('Nombre de jours d\'arrêt', 'Lost days'), 'key' => 'jours_arret'],
-            ['label' => $this->tr('Heures travaillées', 'Hours worked'), 'key' => 'heures_travaillees'],
-            ['label' => $this->tr('Nombre d\'Inspections', 'Inspections'), 'key' => 'inspections'],
-            ['label' => $this->tr('Heures de formation', 'Training hours'), 'key' => 'heures_formation'],
-            ['label' => $this->tr('Permis de travail', 'Work permits'), 'key' => 'permis_travail'],
-            ['label' => $this->tr('Mesures disciplinaires', 'Disciplinary measures'), 'key' => 'mesures_disciplinaires'],
-            ['label' => $this->tr('Taux de conformité HSE (%)', 'HSE compliance rate (%)'), 'key' => 'conformite_hse'],
-            ['label' => $this->tr('Taux de conformité Médicale (%)', 'Medical compliance rate (%)'), 'key' => 'conformite_medicale'],
         ];
 
         foreach ($kpiFields as $field) {
             $row = [$field['label']];
-            $isAutoFillField = in_array($field['key'], $autoFillFields);
             
             // Fill each of the 7 days (Saturday to Friday)
             for ($i = 0; $i < 7; $i++) {
                 $value = '';
-                
-                // For auto-fill fields: ALWAYS show a number (0 if no data)
-                if ($isAutoFillField) {
-                    // Default to 0
-                    $value = 0;
-                    
-                    // Get value from autoFillValues if available
-                    if (isset($this->autoFillValues[$i]['auto_values'][$field['key']])) {
-                        $dbValue = $this->autoFillValues[$i]['auto_values'][$field['key']];
-                        if (is_numeric($dbValue)) {
-                            $value = $field['key'] === 'heures_formation' ? (float) $dbValue : (int) $dbValue;
-                        } else {
-                            $value = 0;
-                        }
-                    }
-                    
-                    // IMPORTANT: Keep 0 as integer 0, don't let it become empty
-                    // Value is guaranteed to be an integer here
-                }
-
-                if (!$isAutoFillField && $field['key'] === 'conformite_hse') {
-                    if (
-                        isset($this->autoFillValues[$i]['auto_values'][$field['key']]) &&
-                        $this->autoFillValues[$i]['auto_values'][$field['key']] !== null &&
-                        $this->autoFillValues[$i]['auto_values'][$field['key']] !== ''
-                    ) {
-                        $dbValue = $this->autoFillValues[$i]['auto_values'][$field['key']];
-                        $value = is_numeric($dbValue) ? (float) $dbValue : '';
-                    }
-                }
                 
                 $row[] = $value;
             }
