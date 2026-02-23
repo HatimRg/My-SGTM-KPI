@@ -36,6 +36,8 @@ class MonthlyReportController extends Controller
             'all_months' => 'nullable|boolean',
             'week_start' => 'nullable|string', // Format: YYYY-WXX (e.g., 2026-W05)
             'week_end' => 'nullable|string',   // Format: YYYY-WXX (e.g., 2026-W08)
+            'no_cache' => 'nullable|boolean',
+            'refresh' => 'nullable|boolean',
         ]);
 
         // Determine date range: either by month or by week range
@@ -74,6 +76,148 @@ class MonthlyReportController extends Controller
         $projectId = $projectId !== null && $projectId !== '' ? (int) $projectId : null;
 
         $cacheKey = 'monthly_report:summary:' . $monthKey . ':project:' . ($projectId ?: 'all');
+
+        if ($request->boolean('no_cache', false) || $request->boolean('refresh', false)) {
+            Cache::forget($cacheKey);
+        }
+
+        $shouldBypassCache = (bool) $request->boolean('no_cache', false);
+        if (false && $shouldBypassCache) {
+            return (function () use ($monthKey, $projectId, $rangeStart, $rangeEnd, $targetYear, $useWeekRange) {
+                $monthStart = $rangeStart;
+                $monthEnd = $rangeEnd;
+
+                $projectsQuery = Project::query()->active();
+                if ($projectId) {
+                    $projectsQuery->where('id', $projectId);
+                }
+                $projects = $projectsQuery->get(['id', 'name', 'code', 'pole']);
+
+                $projectsById = $projects->keyBy('id');
+                $projectsByPole = $projects->groupBy(function ($p) {
+                    return (string) ($p->pole ?? '');
+                });
+
+                $poles = $projectsByPole->keys()->filter(fn ($p) => $p !== '')->values()->all();
+                sort($poles);
+
+                // Build week map for surrounding years to handle boundary weeks.
+                // For week range mode, we check if week falls within range; for month mode, we map to month key.
+                // WeekHelper uses 52 weeks per year (Saturday to Friday), so we iterate 1-52.
+                $weekMonthMap = [];
+                foreach ([$targetYear - 1, $targetYear, $targetYear + 1] as $y) {
+                    for ($w = 1; $w <= 52; $w++) {
+                        $dates = WeekHelper::getWeekDates($w, $y);
+                        if ($useWeekRange) {
+                            // For week range, store the week dates for range checking
+                            $weekMonthMap[$y . '-' . $w] = [
+                                'start' => Carbon::parse($dates['start'])->startOfDay(),
+                                'end' => Carbon::parse($dates['end'])->endOfDay(),
+                            ];
+                        } else {
+                            $weekMonthMap[$y . '-' . $w] = MonthlyReportWeekMonthMapper::weekToMonthKey($dates['start'], $dates['end']);
+                        }
+                    }
+                }
+
+                // Helper to check if a week key is within the selected range
+                $isWeekInRange = function ($wkKey) use ($useWeekRange, $weekMonthMap, $monthKey, $monthStart, $monthEnd) {
+                    if ($useWeekRange) {
+                        $weekDates = $weekMonthMap[$wkKey] ?? null;
+                        if (!$weekDates) return false;
+                        // Week is in range if it overlaps with the selected range
+                        return $weekDates['start']->lte($monthEnd) && $weekDates['end']->gte($monthStart);
+                    } else {
+                        $mapped = $weekMonthMap[$wkKey] ?? null;
+                        return $mapped === $monthKey;
+                    }
+                };
+
+                $projectPoleLabel = function ($projectId) use ($projectsById) {
+                    $p = $projectsById->get($projectId);
+                    return $p ? (string) ($p->pole ?? '') : '';
+                };
+
+                // SECTION A - Veille réglementaire (SST + Environnement)
+                $hasVeilleCategory = Schema::hasColumn('regulatory_watch_submissions', 'category');
+
+                $veilleSelect = ['project_id', 'week_year', 'week_number', 'overall_score'];
+                if ($hasVeilleCategory) {
+                    $veilleSelect[] = 'category';
+                }
+
+                $veilleRows = RegulatoryWatchSubmission::query()
+                    ->whereIn('project_id', $projectsById->keys())
+                    ->whereBetween('submitted_at', [$monthStart->copy()->subDays(40), $monthEnd->copy()->addDays(40)])
+                    ->get($veilleSelect);
+
+                $veilleByProjectSst = [];
+                $veilleByProjectEnv = [];
+                foreach ($veilleRows as $r) {
+                    $wkKey = ((int) $r->week_year) . '-' . ((int) $r->week_number);
+                    if (!$isWeekInRange($wkKey)) continue;
+                    $pid = (int) $r->project_id;
+
+                    $cat = $hasVeilleCategory ? (string) ($r->category ?? '') : 'sst';
+                    if ($cat === '') {
+                        $cat = 'sst';
+                    }
+
+                    $cat = strtolower(trim($cat));
+
+                    if ($cat === 'sst') {
+                        $veilleByProjectSst[$pid][] = (float) ($r->overall_score ?? 0);
+                    } elseif ($cat === 'environment' || $cat === 'environnement' || $cat === 'environmental') {
+                        $veilleByProjectEnv[$pid][] = (float) ($r->overall_score ?? 0);
+                    }
+                }
+
+                $veilleProjectScoreSst = [];
+                $veilleProjectScoreEnv = [];
+                foreach ($projectsById as $pid => $p) {
+                    $valsSst = $veilleByProjectSst[$pid] ?? [];
+                    $valsEnv = $veilleByProjectEnv[$pid] ?? [];
+                    $veilleProjectScoreSst[$pid] = count($valsSst) ? round(array_sum($valsSst) / count($valsSst), 2) : 0.0;
+                    $veilleProjectScoreEnv[$pid] = count($valsEnv) ? round(array_sum($valsEnv) / count($valsEnv), 2) : 0.0;
+                }
+
+                $veillePoleAvgSst = [];
+                $veillePoleAvgEnv = [];
+                $veillePoleProjects = [];
+                foreach ($projectsByPole as $pole => $poleProjects) {
+                    if ($pole === '') continue;
+
+                    $scoresSst = [];
+                    $scoresEnv = [];
+                    $breakdown = [];
+                    foreach ($poleProjects as $p) {
+                        $scoreSst = (float) ($veilleProjectScoreSst[$p->id] ?? 0);
+                        $scoreEnv = (float) ($veilleProjectScoreEnv[$p->id] ?? 0);
+
+                        $scoresSst[] = $scoreSst;
+                        $scoresEnv[] = $scoreEnv;
+
+                        $breakdown[] = [
+                            'project_id' => (int) $p->id,
+                            'project_name' => (string) $p->name,
+                            'project_code' => (string) $p->code,
+                            // Keep 'score' for backward compatibility (SST)
+                            'score' => $scoreSst,
+                            'score_sst' => $scoreSst,
+                            'score_environment' => $scoreEnv,
+                        ];
+                    }
+
+                    $veillePoleAvgSst[$pole] = count($scoresSst) ? round(array_sum($scoresSst) / count($scoresSst), 2) : 0.0;
+                    $veillePoleAvgEnv[$pole] = count($scoresEnv) ? round(array_sum($scoresEnv) / count($scoresEnv), 2) : 0.0;
+                    $veillePoleProjects[$pole] = $breakdown;
+                }
+
+                // Fall back to the same cached code path below for the remaining sections.
+                // By bypassing cache we only ensure this request recomputes live.
+                // The remainder of the method continues below in the original implementation.
+            })();
+        }
 
         return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($monthKey, $projectId, $rangeStart, $rangeEnd, $targetYear, $useWeekRange) {
             $monthStart = $rangeStart;
@@ -829,14 +973,65 @@ class MonthlyReportController extends Controller
                 ->get(['id', 'project_id', 'serial_number', 'machine_type']);
 
             // Required document keys for completion calculation
-            $requiredMachineDocKeys = ['rapport_reglementaire', 'assurance'];
-            $requiredMachineDocCount = count($requiredMachineDocKeys);
+            $vehicleMachineTypes = array_fill_keys([
+                'ambulance',
+                'bus',
+                'camion ampiroll',
+                'camion atelier (entretien)',
+                'camion citerne (eau)',
+                'camion citerne (gasoil)',
+                'camion de servitude',
+                'camion malaxeur béton',
+                'camion pompe à béton',
+                'camion semi-remorque',
+                'camion à benne',
+                'malaxeur à béton',
+                'minibus',
+                'pick-up',
+                'remorque',
+                'véhicule de service',
+                'vehicule de service',
+            ], true);
+
+            $noOperatorMachineTypes = array_fill_keys([
+                'ascenseur',
+                'compresseur d’air',
+                'compresseur d\'air',
+                'concasseur',
+                'concasseur mobile',
+                'crible',
+                'dame sauteuse',
+                'fabrique de glace',
+                'fraiseuse routière',
+                'groupe de refroidissement',
+                'groupe électrogène',
+                'installation de lavage de sable',
+                'plaque vibrante',
+                'pompe d’injection',
+                'pompe d\'injection',
+                'pompe à béton projeté',
+                'pompe à béton stationnaire',
+                'pompe à eau',
+                'poste électrique / transformateur',
+                'scie à câble',
+                'sondeuse',
+                'tour d’éclairage',
+                'trancheuse',
+                'élévateur de charges (monte-charge)',
+                'elevateur de charges (monte-charge)',
+            ], true);
+            $requiredMachineDocCount = 2;
 
             $machinesByProject = [];
             $machineCompletionByProject = [];
             foreach ($machines as $m) {
                 $pid = (int) $m->project_id;
                 $machinesByProject[$pid] = ($machinesByProject[$pid] ?? 0) + 1;
+
+                $machineType = strtolower(trim((string) ($m->machine_type ?? '')));
+                $regulatoryDocKey = isset($vehicleMachineTypes[$machineType]) ? 'visite_technique' : 'rapport_reglementaire';
+                $requiredMachineDocKeys = [$regulatoryDocKey, 'assurance'];
+                $skipOperator = isset($noOperatorMachineTypes[$machineType]);
 
                 // Calculate document completion for this machine
                 $uploadedKeys = [];
@@ -854,12 +1049,12 @@ class MonthlyReportController extends Controller
                     }
                 }
 
-                // Check if operator is assigned
+                // Check if operator is assigned (not required for some equipment types)
                 $hasOperator = $m->operators->count() > 0;
-                $operatorScore = $hasOperator ? 1 : 0;
+                $operatorScore = (!$skipOperator && $hasOperator) ? 1 : 0;
 
-                // Completion: (uploaded docs + operator) / (required docs + 1)
-                $totalRequired = $requiredMachineDocCount + 1; // +1 for operator
+                // Completion: (uploaded docs + operator) / (required docs + operator?)
+                $totalRequired = $requiredMachineDocCount + ($skipOperator ? 0 : 1);
                 $totalComplete = count($uploadedKeys) + $operatorScore;
                 $machineCompletion = $totalRequired > 0 ? round(($totalComplete * 100.0) / $totalRequired, 1) : 0;
 

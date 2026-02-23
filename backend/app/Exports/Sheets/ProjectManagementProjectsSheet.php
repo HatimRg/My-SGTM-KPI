@@ -317,6 +317,7 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
 
         $machineCounts = Machine::query()
             ->select('project_id', DB::raw('COUNT(*) as c'))
+            ->where('is_active', true)
             ->groupBy('project_id')
             ->pluck('c', 'project_id');
 
@@ -325,14 +326,65 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
             ->whereIn('project_id', $projects->pluck('id')->all())
             ->where('is_active', true)
             ->with(['documents', 'operators'])
-            ->get(['id', 'project_id']);
+            ->get(['id', 'project_id', 'machine_type']);
 
-        $requiredMachineDocKeys = ['rapport_reglementaire', 'assurance'];
-        $requiredMachineDocCount = count($requiredMachineDocKeys);
+        $vehicleMachineTypes = array_fill_keys([
+            'ambulance',
+            'bus',
+            'camion ampiroll',
+            'camion atelier (entretien)',
+            'camion citerne (eau)',
+            'camion citerne (gasoil)',
+            'camion de servitude',
+            'camion malaxeur béton',
+            'camion pompe à béton',
+            'camion semi-remorque',
+            'camion à benne',
+            'malaxeur à béton',
+            'minibus',
+            'pick-up',
+            'remorque',
+            'véhicule de service',
+            'vehicule de service',
+        ], true);
+
+        $noOperatorMachineTypes = array_fill_keys([
+            'ascenseur',
+            'compresseur d’air',
+            'compresseur d\'air',
+            'concasseur',
+            'concasseur mobile',
+            'crible',
+            'dame sauteuse',
+            'fabrique de glace',
+            'fraiseuse routière',
+            'groupe de refroidissement',
+            'groupe électrogène',
+            'installation de lavage de sable',
+            'plaque vibrante',
+            'pompe d’injection',
+            'pompe d\'injection',
+            'pompe à béton projeté',
+            'pompe à béton stationnaire',
+            'pompe à eau',
+            'poste électrique / transformateur',
+            'scie à câble',
+            'sondeuse',
+            'tour d’éclairage',
+            'trancheuse',
+            'élévateur de charges (monte-charge)',
+            'elevateur de charges (monte-charge)',
+        ], true);
+        $requiredMachineDocCount = 2;
         $machineCompletionByProject = [];
         $today = now()->startOfDay();
         foreach ($machines as $m) {
             $pid = (int) $m->project_id;
+
+            $machineType = strtolower(trim((string) ($m->machine_type ?? '')));
+            $regulatoryDocKey = isset($vehicleMachineTypes[$machineType]) ? 'visite_technique' : 'rapport_reglementaire';
+            $requiredMachineDocKeys = [$regulatoryDocKey, 'assurance'];
+            $skipOperator = isset($noOperatorMachineTypes[$machineType]);
 
             $uploadedKeys = [];
             foreach ($m->documents as $doc) {
@@ -350,9 +402,9 @@ class ProjectManagementProjectsSheet implements FromArray, WithHeadings, WithTit
             }
 
             $hasOperator = ($m->operators?->count() ?? 0) > 0;
-            $operatorScore = $hasOperator ? 1 : 0;
+            $operatorScore = (!$skipOperator && $hasOperator) ? 1 : 0;
 
-            $totalRequired = $requiredMachineDocCount + 1;
+            $totalRequired = $requiredMachineDocCount + ($skipOperator ? 0 : 1);
             $totalComplete = count($uploadedKeys) + $operatorScore;
             $pct = $totalRequired > 0 ? round(($totalComplete * 100.0) / $totalRequired, 1) : 0.0;
 

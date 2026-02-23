@@ -638,7 +638,7 @@ export default {
         tf_tg: 'J. Comparaison TF/TG par pôle',
         accidents_incidents: 'K. Accidents vs Incidents par pôle',
         ppe_consumption: 'L. Consommation EPI par pôle',
-        machinery: 'M. Nombre d\'engins et complétion documentaire par pôle',
+        machinery: 'M. Nombre d\'engins et taux de conformité documentaire par pôle',
         inspections: 'N. Nombre d\'inspections par pôle',
       },
       weekRange: 'Plage de semaines',
