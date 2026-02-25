@@ -19,7 +19,7 @@ class WorkerQualificationsMassTemplateExport implements FromArray, WithColumnWid
     private int $dataRows;
     private string $lang;
 
-    private string $qualificationTypesCsv = 'elingueur,equipier_premiere_intervention,habilitation_electrique,inspecteur_echafaudage,monteur_echafaudage,monteur_grue_a_tour,operateur_bulldozer,operateur_chargeuse,operateur_chariot_elevateur,operateur_compacteur,operateur_dumper,operateur_grue_a_tour,operateur_grue_mobile,operateur_niveleuse,operateur_nacelle,operateur_pelle,sst,soudeur,utilisation_meule,other';
+    private string $qualificationTypesCsv = 'elingueur,equipier_premiere_intervention,habilitation_electrique,inspecteur_echafaudage,monteur_echafaudage,monteur_grue_a_tour,chauffeur,operateur,operateur_bulldozer,operateur_chargeuse,operateur_chariot_elevateur,operateur_compacteur,operateur_dumper,operateur_grue_a_tour,operateur_grue_mobile,operateur_niveleuse,operateur_nacelle,operateur_pelle,sst,soudeur,utilisation_meule,other';
 
     private function labelizeKey(string $value): string
     {

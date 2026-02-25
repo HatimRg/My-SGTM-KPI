@@ -20,6 +20,8 @@ class CacheApiResponse
         if ($request->method() !== 'GET') {
             return $next($request);
         }
+
+        $shouldBypassCache = $request->boolean('refresh', false) || $request->boolean('no_cache', false);
         
         // Don't cache if user is authenticated (personalized data)
         // But allow caching for dashboard/stats endpoints
@@ -46,9 +48,13 @@ class CacheApiResponse
         // Generate cache key based on URL and user
         $userId = $request->user()?->id ?? 'guest';
         $cacheKey = 'api_cache:' . $userId . ':' . md5($request->fullUrl());
+
+        if ($shouldBypassCache) {
+            Cache::forget($cacheKey);
+        }
         
         // Return cached response if exists
-        if (Cache::has($cacheKey)) {
+        if (!$shouldBypassCache && Cache::has($cacheKey)) {
             $cached = Cache::get($cacheKey);
             return response()->json($cached['data'], $cached['status'])
                 ->header('X-Cache', 'HIT')

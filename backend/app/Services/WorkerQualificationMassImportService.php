@@ -26,6 +26,8 @@ class WorkerQualificationMassImportService
         'inspecteur_echafaudage',
         'monteur_echafaudage',
         'monteur_grue_a_tour',
+        'chauffeur',
+        'operateur',
         'operateur_bulldozer',
         'operateur_chargeuse',
         'operateur_chariot_elevateur',

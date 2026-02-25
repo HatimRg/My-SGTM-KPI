@@ -50,6 +50,8 @@ const MetricCard = memo(function MetricCard({ title, value, icon: Icon, color, t
 const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends, inspectionData, regulatoryWatch }) {
   const t = useTranslation()
 
+  const weekShortPrefix = t('dashboard.weekShortPrefix')
+
   const translateOr = (key, fallback) => {
     const value = t(key)
     return value === key ? fallback : value
@@ -75,7 +77,7 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
     const byWeek = Array.isArray(inspectionData?.by_week) ? inspectionData.by_week : []
     if (byWeek.length > 0) {
       return byWeek.map((w) => ({
-        week: 'S' + w.week_number,
+        week: `${weekShortPrefix}${w.week_number}`,
         inspections: w.count ?? 0,
       }))
     }
@@ -99,7 +101,7 @@ const ComplianceTheme = memo(function ComplianceTheme({ kpiSummary, weeklyTrends
     const rows = Array.isArray(regulatoryWatch?.by_week) ? regulatoryWatch.by_week : []
     if (rows.length > 0) {
       return rows.map((r) => ({
-        week: 'S' + r.week_number,
+        week: `${weekShortPrefix}${r.week_number}`,
         score: r.avg_overall_score ?? 0,
       }))
     }

@@ -2,25 +2,27 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Exports\MachinesFailedRowsExport;
 use App\Exports\MachinesTemplateExport;
-use App\Imports\MachinesImport;
+use App\Http\Controllers\Controller;
 use App\Models\Machine;
 use App\Models\MachineDocument;
 use App\Models\MachineDocumentKey;
 use App\Models\MachineInspection;
+use App\Models\MachineType;
 use App\Models\Project;
+use App\Models\User;
 use App\Models\Worker;
 use App\Models\WorkerQualification;
+use App\Services\NotificationService;
 use App\Support\MachineTypeCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Excel as ExcelFormat;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -48,9 +50,11 @@ class HeavyMachineryMachineController extends Controller
                 $q->whereRaw('LOWER(qualification_label) LIKE ?', ['%operator%'])
                     ->orWhereRaw('LOWER(qualification_label) LIKE ?', ['%operateur%'])
                     ->orWhereRaw('LOWER(qualification_label) LIKE ?', ['%opérateur%'])
+                    ->orWhereRaw('LOWER(qualification_label) LIKE ?', ['%chauffeur%'])
                     ->orWhereRaw('LOWER(qualification_type) LIKE ?', ['%operator%'])
                     ->orWhereRaw('LOWER(qualification_type) LIKE ?', ['%operateur%'])
-                    ->orWhereRaw('LOWER(qualification_type) LIKE ?', ['%opérateur%']);
+                    ->orWhereRaw('LOWER(qualification_type) LIKE ?', ['%opérateur%'])
+                    ->orWhereRaw('LOWER(qualification_type) LIKE ?', ['%chauffeur%']);
             })
             ->where(function ($d) use ($today) {
                 $d->whereNull('expiry_date')
@@ -74,6 +78,23 @@ class HeavyMachineryMachineController extends Controller
 
         $project = Project::findOrFail($machine->project_id);
         if (!$user->canAccessProject($project)) {
+            abort(403, 'Access denied');
+        }
+    }
+
+    private function ensureTransferAuthority(Request $request, Machine $machine, ?string $code): void
+    {
+        $user = $request->user();
+        if (!$user) {
+            abort(401);
+        }
+
+        $code = trim((string) ($code ?? ''));
+        if ($code === '') {
+            abort(422, 'Missing code');
+        }
+
+        if ($code !== (string) $machine->serial_number && $code !== (string) $machine->internal_code) {
             abort(403, 'Access denied');
         }
     }
@@ -617,14 +638,24 @@ class HeavyMachineryMachineController extends Controller
     {
         $user = $request->user();
 
-        $this->ensureAccessToMachine($request, $machine);
-
         $validated = $request->validate([
             'project_id' => 'required|exists:projects,id',
+            'code' => 'required|string|max:255',
         ]);
+
+        // Do NOT require access to the source project. Instead, require a machine code proof.
+        $this->ensureTransferAuthority($request, $machine, (string) $validated['code']);
 
         $toProjectId = (int) $validated['project_id'];
         $this->ensureAccessToProjectId($request, $toProjectId);
+
+        $fromProjectId = $machine->project_id !== null ? (int) $machine->project_id : null;
+
+        $fromProject = null;
+        if ($fromProjectId) {
+            $fromProject = Project::find($fromProjectId);
+        }
+        $toProject = Project::find($toProjectId);
 
         DB::transaction(function () use ($machine, $toProjectId, $user) {
             $machine->operators()->detach();
@@ -633,6 +664,39 @@ class HeavyMachineryMachineController extends Controller
                 'updated_by' => $user ? $user->id : null,
             ]);
         });
+
+        // Notify HSE managers of the source project that the machine was transferred.
+        if ($fromProject && $toProject) {
+            $sentById = $user ? (int) $user->id : null;
+            $sentByName = $user ? (string) $user->name : 'System';
+
+            $hseManagerIds = $fromProject
+                ->users()
+                ->whereIn('role', [User::ROLE_HSE_MANAGER, User::ROLE_REGIONAL_HSE_MANAGER])
+                ->where('is_active', true)
+                ->pluck('users.id')
+                ->toArray();
+
+            if (!empty($hseManagerIds)) {
+                NotificationService::sendToUsers(
+                    $hseManagerIds,
+                    'machine_transferred',
+                    'Transfert d\'engin',
+                    "L'engin {$machine->serial_number} a été transféré par {$sentByName} vers le projet {$toProject->name}",
+                    [
+                        'project_id' => $fromProject->id,
+                        'icon' => 'truck',
+                        'sent_by' => $sentById,
+                        'data' => [
+                            'machine_id' => $machine->id,
+                            'from_project_id' => $fromProject->id,
+                            'to_project_id' => $toProject->id,
+                            'to_project_name' => $toProject->name,
+                        ],
+                    ]
+                );
+            }
+        }
 
         $machine->load(['project:id,name']);
 
@@ -943,9 +1007,11 @@ class HeavyMachineryMachineController extends Controller
                     $q->whereRaw('LOWER(qualification_label) LIKE ?', ['%operator%'])
                         ->orWhereRaw('LOWER(qualification_label) LIKE ?', ['%operateur%'])
                         ->orWhereRaw('LOWER(qualification_label) LIKE ?', ['%opérateur%'])
+                        ->orWhereRaw('LOWER(qualification_label) LIKE ?', ['%chauffeur%'])
                         ->orWhereRaw('LOWER(qualification_type) LIKE ?', ['%operator%'])
                         ->orWhereRaw('LOWER(qualification_type) LIKE ?', ['%operateur%'])
-                        ->orWhereRaw('LOWER(qualification_type) LIKE ?', ['%opérateur%']);
+                        ->orWhereRaw('LOWER(qualification_type) LIKE ?', ['%opérateur%'])
+                        ->orWhereRaw('LOWER(qualification_type) LIKE ?', ['%chauffeur%']);
                 })->where(function ($d) use ($today) {
                     $d->whereNull('expiry_date')
                         ->orWhere('expiry_date', '>=', $today);

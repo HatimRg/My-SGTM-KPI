@@ -616,7 +616,7 @@ export const heavyMachineryService = {
   updateMachine: (id, data) => api.put(`/heavy-machinery/machines/${id}`, data),
   deleteMachine: (id) => api.delete(`/heavy-machinery/machines/${id}`),
 
-  transferMachine: (id, projectId) => api.post(`/heavy-machinery/machines/${id}/transfer`, { project_id: projectId }),
+  transferMachine: (id, projectId, code) => api.post(`/heavy-machinery/machines/${id}/transfer`, { project_id: projectId, code }),
   uploadMachineImage: (id, formData) => api.post(`/heavy-machinery/machines/${id}/image`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),

@@ -207,13 +207,19 @@ class KpiReportController extends Controller
 
         try {
             // Check for existing report for same week/year
-            $existingReport = KpiReport::where('project_id', $request->project_id)
+            $existingReport = KpiReport::withTrashed()
+                ->where('project_id', $request->project_id)
                 ->where('week_number', $request->week_number)
                 ->where('report_year', $request->report_year)
                 ->first();
 
             if ($existingReport) {
-                return $this->error('A report already exists for this week and year', 422);
+                // If the report was deleted (soft delete), hard delete it to free the unique key.
+                if ($existingReport->trashed()) {
+                    $existingReport->forceDelete();
+                } else {
+                    return $this->error('A report already exists for this week and year', 422);
+                }
             }
 
             $reportData = $this->filterToKpiReportColumns($request->all());

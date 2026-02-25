@@ -90,6 +90,8 @@ const QUALIFICATION_TYPE_OPTIONS = [
   { value: 'inspecteur_echafaudage', labelKey: 'workers.details.qualifications.types.inspecteur_echafaudage' },
   { value: 'monteur_echafaudage', labelKey: 'workers.details.qualifications.types.monteur_echafaudage' },
   { value: 'monteur_grue_a_tour', labelKey: 'workers.details.qualifications.types.monteur_grue_a_tour' },
+  { value: 'chauffeur', labelKey: 'workers.details.qualifications.types.chauffeur' },
+  { value: 'operateur', labelKey: 'workers.details.qualifications.types.operateur' },
   { value: 'operateur_bulldozer', labelKey: 'workers.details.qualifications.types.operateur_bulldozer' },
   { value: 'operateur_chargeuse', labelKey: 'workers.details.qualifications.types.operateur_chargeuse' },
   { value: 'operateur_chariot_elevateur', labelKey: 'workers.details.qualifications.types.operateur_chariot_elevateur' },

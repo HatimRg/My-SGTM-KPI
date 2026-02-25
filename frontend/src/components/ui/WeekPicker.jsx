@@ -117,11 +117,13 @@ export default function WeekPicker({ value, onChange, placeholder, className = '
 
   const weeks = useMemo(() => getAllWeeksForYear(cursorYear), [cursorYear])
 
+  const weekPrefix = language === 'fr' ? 'S' : 'W'
+
   const displayValue = useMemo(() => {
     const parsed = parseWeekKey(value)
     if (!parsed) return ''
-    return `W${pad2(parsed.week)} ${parsed.weekYear}`
-  }, [value])
+    return `${weekPrefix}${pad2(parsed.week)} ${parsed.weekYear}`
+  }, [value, weekPrefix])
 
   const locale = language === 'fr' ? 'fr-FR' : 'en-US'
 
@@ -162,7 +164,7 @@ export default function WeekPicker({ value, onChange, placeholder, className = '
               {weeks.map((w) => {
                 const key = `${w.year}-W${pad2(w.week)}`
                 const active = String(value) === key
-                const label = `W${pad2(w.week)} (${formatDateShort(w.start_date)} - ${formatDateShort(w.end_date)})`
+                const label = `${weekPrefix}${pad2(w.week)} (${formatDateShort(w.start_date)} - ${formatDateShort(w.end_date)})`
 
                 return (
                   <button
@@ -176,7 +178,7 @@ export default function WeekPicker({ value, onChange, placeholder, className = '
                       ${active ? 'bg-hse-primary border-hse-primary text-white' : 'bg-transparent border-transparent hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'}`}
                   >
                     <span className={`text-sm font-semibold ${active ? 'text-white' : 'text-gray-900 dark:text-gray-100'}`}>
-                      W{pad2(w.week)}
+                      {weekPrefix}{pad2(w.week)}
                     </span>
                     <span className={`text-xs ${active ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
                       {label}

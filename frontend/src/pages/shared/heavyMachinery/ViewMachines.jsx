@@ -547,7 +547,7 @@ export default function ViewMachines() {
           machine_type: inList ? typeKey : '',
           brand: found.brand ?? '',
           model: found.model ?? '',
-          project_id: found.project_id ? String(found.project_id) : '',
+          project_id: '',
           is_active: found.is_active !== undefined ? !!found.is_active : true,
           image: null,
         })
@@ -596,20 +596,31 @@ export default function ViewMachines() {
     setEditOpen(true)
   }
 
-  const handleCreate = async (e) => {
+  const handleCreateMachine = async (e) => {
     e.preventDefault()
 
     try {
       setCreating(true)
 
       if (createExistingMachineId) {
+        if (!createData.project_id) {
+          toast.error(t('common.fillRequired'))
+          return
+        }
+
+        // If the machine already exists (possibly in another project), transfer it first.
+        if (createData.project_id) {
+          const codeProof = createData.serial_number || createSerial
+          await heavyMachineryService.transferMachine(createExistingMachineId, createData.project_id, codeProof)
+        }
+
         const payload = {
           serial_number: createData.serial_number,
           internal_code: createData.internal_code?.trim() ? createData.internal_code.trim() : null,
-          machine_type: createData.machine_type,
+          machine_type: createMachineTypeChoice || createData.machine_type,
           brand: createData.brand,
-          model: createData.model?.trim() ? createData.model.trim() : null,
-          project_id: createData.project_id ? Number(createData.project_id) : null,
+          model: createData.model,
+          // project_id already handled by transferMachine above
           is_active: !!createData.is_active,
         }
 

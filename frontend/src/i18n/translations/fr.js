@@ -1484,6 +1484,8 @@ export default {
           inspecteur_echafaudage: 'Inspecteur échafaudage',
           monteur_echafaudage: 'Monteur échafaudage',
           monteur_grue_a_tour: 'Monteur grue à tour',
+          chauffeur: 'Chauffeur',
+          operateur: 'Opérateur',
           operateur_bulldozer: 'Opérateur bulldozer',
           operateur_chargeuse: 'Opérateur chargeuse',
           operateur_chariot_elevateur: 'Opérateur chariot élévateur',

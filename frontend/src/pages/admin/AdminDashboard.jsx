@@ -771,7 +771,7 @@ export default function AdminDashboard() {
                   <XAxis dataKey="week_label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip 
-                    labelFormatter={(label) => `${t('dashboard.weekPrefix')} ${label.replace('S', '')}`}
+                    labelFormatter={(label) => `${t('dashboard.weekPrefix')} ${String(label).replace(/^([SW])/, '')}`}
                     allowEscapeViewBox={{ x: true, y: true }}
                     portal={tooltipPortal}
                     wrapperStyle={tooltipWrapperStyle}
@@ -860,7 +860,7 @@ export default function AdminDashboard() {
                     label={{ value: t('dashboard.rates.severityRate'), angle: 90, position: 'insideRight', style: { fill: '#8b5cf6' } }}
                   />
                   <Tooltip 
-                    labelFormatter={(label) => `${t('dashboard.weekPrefix')} ${label.replace('S', '')}`}
+                    labelFormatter={(label) => `${t('dashboard.weekPrefix')} ${String(label).replace(/^([SW])/, '')}`}
                     formatter={(value, name) => [Number(value).toFixed(4), name]}
                     allowEscapeViewBox={{ x: true, y: true }}
                     portal={tooltipPortal}

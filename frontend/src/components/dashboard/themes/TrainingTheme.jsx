@@ -55,6 +55,8 @@ const MetricCard = memo(function MetricCard({ title, value, icon: Icon, color, t
 const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, projectPerformance, trainingData, awarenessData }) {
   const t = useTranslation()
 
+  const weekShortPrefix = t('dashboard.weekShortPrefix')
+
   // Training metrics from real data
   const trainingMetrics = useMemo(() => {
     const totalTrainings = trainingData?.total ?? kpiSummary?.total_trainings ?? 0
@@ -85,7 +87,7 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
   const trainingTrends = useMemo(() => {
     if (trainingData?.by_week?.length > 0) {
       return trainingData.by_week.map(w => ({
-        week: 'S' + w.week_number,
+        week: `${weekShortPrefix}${w.week_number}`,
         trainings: w.count ?? 0,
         participants: w.participants ?? 0
       }))

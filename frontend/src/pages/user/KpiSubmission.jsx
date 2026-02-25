@@ -43,6 +43,8 @@ export default function KpiSubmission() {
   const [existingReportId, setExistingReportId] = useState(null)
   const [rejectionInfo, setRejectionInfo] = useState(null)
 
+  const [showAutoPulledVerification, setShowAutoPulledVerification] = useState(false)
+
   const [monthlyEnv, setMonthlyEnv] = useState({
     noise_monitoring: '',
     water_consumption: '',
@@ -693,6 +695,7 @@ export default function KpiSubmission() {
                     const autoData = autoRes?.data?.data?.data
                     if (autoData) {
                       setFormData(prev => { const n={...prev,...autoData};const h=+n.hours_worked||0,a=+n.accidents||0,l=+n.lost_workdays||0;n.tf_value=h?+(((a*1000000)/h).toFixed(2)):0;n.tg_value=h?+(((l*1000)/h).toFixed(4)):0;return n })
+                      setShowAutoPulledVerification(true)
                       return
                     }
                   } catch (e) {
@@ -739,8 +742,46 @@ export default function KpiSubmission() {
                     
                     return updated
                   })
+
+                  setShowAutoPulledVerification(true)
                 }}
               />
+            )}
+
+            {showAutoPulledVerification && (
+              <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-xl">
+                <div className="font-semibold text-blue-900 dark:text-blue-200 mb-3">
+                  {t('kpi.dailyKpi.verificationTitle') ?? 'Verify auto-pulled KPI values'}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  {[
+                    ['hours_worked', t('kpi.rates.hoursWorked') ?? 'Hours worked'],
+                    ['employees_trained', t('kpi.weekly.induction') ?? 'Induction'],
+                    ['unsafe_conditions_reported', t('kpi.weekly.ecarts') ?? 'Safety observations'],
+                    ['toolbox_talks', t('kpi.weekly.sensibilisation') ?? 'Toolbox talks'],
+                    ['near_misses', t('kpi.weekly.presquAccident') ?? 'Near misses'],
+                    ['first_aid_cases', t('kpi.weekly.premiersSoins') ?? 'First aid cases'],
+                    ['accidents', t('kpi.weekly.accident') ?? 'Accidents'],
+                    ['lost_workdays', t('kpi.weekly.joursArret') ?? 'Lost workdays'],
+                    ['inspections_completed', t('kpi.weekly.inspections') ?? 'Inspections'],
+                    ['training_hours', t('kpi.weekly.heuresFormation') ?? 'Training hours'],
+                    ['work_permits', t('kpi.weekly.permisTravail') ?? 'Work permits'],
+                    ['corrective_actions', t('kpi.weekly.mesuresDisciplinaires') ?? 'Corrective actions'],
+                    ['hse_compliance_rate', t('kpi.weekly.conformiteHSE') ?? 'HSE compliance %'],
+                    ['medical_compliance_rate', t('kpi.weekly.conformiteMedecine') ?? 'Medical compliance %'],
+                    ['tf_value', 'TF'],
+                    ['tg_value', 'TG'],
+                    ['noise_monitoring', t('kpi.noiseMonitoring') ?? 'Noise'],
+                    ['water_consumption', t('kpi.waterConsumption') ?? 'Water'],
+                    ['electricity_consumption', t('kpi.electricityConsumption') ?? 'Electricity'],
+                  ].map(([key, label]) => (
+                    <div key={key} className="flex items-center justify-between bg-white/70 dark:bg-gray-800/70 rounded-lg px-3 py-2 border border-blue-200/60 dark:border-blue-800/40">
+                      <div className="text-gray-700 dark:text-gray-200">{label}</div>
+                      <div className="font-semibold text-gray-900 dark:text-gray-100">{formData[key] ?? 0}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/* Monthly-only Environmental KPI Measurements */}

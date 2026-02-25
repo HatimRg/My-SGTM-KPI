@@ -17,8 +17,22 @@ import toast from 'react-hot-toast'
 
 // KPI field definitions
 const KPI_FIELDS = [
-  { key: 'effectif', label: 'Effectif', labelEn: 'Workforce', formula: 'MAX', unit: '' },
-  { key: 'induction', label: 'Induction', labelEn: 'Induction', formula: 'SUM', unit: '' },
+  { key: 'effectif', label: 'Effectif', labelEn: 'Workforce', formula: 'MAX', unit: '', editable: true },
+  { key: 'induction', label: 'Induction', labelEn: 'Induction', formula: 'SUM', unit: '', editable: true },
+
+  { key: 'releve_ecarts', label: 'Relevé des écarts', labelEn: 'Deviations', formula: 'SUM', unit: '', editable: false },
+  { key: 'sensibilisation', label: 'Sensibilisation', labelEn: 'Awareness', formula: 'SUM', unit: '', editable: false },
+  { key: 'presquaccident', label: "Presqu'accident", labelEn: 'Near Miss', formula: 'SUM', unit: '', editable: false },
+  { key: 'premiers_soins', label: 'Premiers soins', labelEn: 'First Aid', formula: 'SUM', unit: '', editable: false },
+  { key: 'accidents', label: 'Accident', labelEn: 'Accident', formula: 'SUM', unit: '', editable: false },
+  { key: 'jours_arret', label: "Jours d'arrêt", labelEn: 'Lost Days', formula: 'SUM', unit: '', editable: false },
+  { key: 'heures_travaillees', label: 'Heures travaillées', labelEn: 'Hours Worked', formula: 'SUM', unit: 'h', editable: false },
+  { key: 'inspections', label: 'Inspections', labelEn: 'Inspections', formula: 'SUM', unit: '', editable: false },
+  { key: 'heures_formation', label: 'Heures formation', labelEn: 'Training Hours', formula: 'SUM', unit: 'h', editable: false },
+  { key: 'permis_travail', label: 'Permis de travail', labelEn: 'Work Permits', formula: 'SUM', unit: '', editable: false },
+  { key: 'mesures_disciplinaires', label: 'Mesures disc.', labelEn: 'Disciplinary', formula: 'SUM', unit: '', editable: false },
+  { key: 'conformite_hse', label: 'Conformité HSE', labelEn: 'HSE Compliance', formula: 'AVG', unit: '%', editable: false },
+  { key: 'conformite_medicale', label: 'Conformité Méd.', labelEn: 'Medical Compl.', formula: 'AVG', unit: '%', editable: false },
 ]
 
 const DAY_NAMES = {
@@ -269,6 +283,9 @@ export default function DailyKpiEntry({ projectId, weekNumber, year, onDataConfi
   // Update cell value
   const handleCellChange = (dayIndex, fieldKey, value) => {
     const newData = [...dailyData]
+    if (!newData[dayIndex] && weekDates?.[dayIndex]) {
+      newData[dayIndex] = createEmptyDay(weekDates[dayIndex].date, weekDates[dayIndex].day_name)
+    }
     const raw = Number(value)
     const numValue = value === '' ? '' : (Number.isFinite(raw) ? raw : 0)
     
@@ -285,9 +302,16 @@ export default function DailyKpiEntry({ projectId, weekNumber, year, onDataConfi
   const handleConfirmData = async () => {
     setLoading(true)
     try {
-      const entriesToSave = dailyData.filter(day =>
-        KPI_FIELDS.some(field => day[field.key] !== '' && day[field.key] !== null && day[field.key] !== undefined)
-      )
+      const editableFields = KPI_FIELDS.filter((f) => f.editable)
+      const entriesToSave = dailyData
+        .map((day) => {
+          const entry = { entry_date: day.entry_date }
+          for (const field of editableFields) {
+            entry[field.key] = day[field.key]
+          }
+          return entry
+        })
+        .filter((day) => editableFields.some((field) => day[field.key] !== '' && day[field.key] !== null && day[field.key] !== undefined))
 
       if (entriesToSave.length === 0) {
         toast.error(t('kpi.dailyKpi.noDataToSave'))
@@ -305,6 +329,36 @@ export default function DailyKpiEntry({ projectId, weekNumber, year, onDataConfi
       const { aggregates: finalAggregates } = response.data.data
       setAggregates(finalAggregates)
       setHasExistingData(true)
+
+      // Refresh auto-filled read-only daily values from the system.
+      try {
+        const autoRes = await dailyKpiService.getAutoFillValues({
+          project_id: projectId,
+          week_number: weekNumber,
+          year,
+        })
+        const dailyValues = autoRes.data?.data?.daily_values || []
+
+        if (Array.isArray(weekDates) && weekDates.length > 0) {
+          setDailyData((prev) => {
+            return weekDates.map((day, dayIndex) => {
+              const existing = prev?.[dayIndex] || createEmptyDay(day.date, day.day_name)
+              const autoForDay = dailyValues.find((v) => v.entry_date === day.date)?.auto_values || {}
+
+              const merged = { ...existing }
+              for (const field of KPI_FIELDS) {
+                if (field.editable) continue
+                if (autoForDay[field.key] !== undefined && autoForDay[field.key] !== null) {
+                  merged[field.key] = autoForDay[field.key]
+                }
+              }
+              return merged
+            })
+          })
+        }
+      } catch {
+        // ignore
+      }
       
       if (onDataConfirmed) {
         onDataConfirmed(finalAggregates)
@@ -481,17 +535,23 @@ export default function DailyKpiEntry({ projectId, weekNumber, year, onDataConfi
                           <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 py-2 px-3 font-medium text-gray-700 dark:text-gray-300 text-xs border-r border-gray-100 dark:border-gray-700">
                             {language === 'fr' ? field.label : field.labelEn}
                           </td>
-                          {dailyData.map((day, dayIndex) => (
+                          {weekDates.map((day, dayIndex) => (
                             <td key={dayIndex} className="py-1.5 px-1">
-                              <input
-                                type="number"
-                                step={field.formula === 'AVG' || field.key.includes('heures') ? '0.1' : '1'}
-                                min="0"
-                                value={day[field.key] ?? ''}
-                                onChange={(e) => handleCellChange(dayIndex, field.key, e.target.value)}
-                                className="w-full text-center py-1.5 px-1 text-sm border border-gray-200 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 focus:ring-2 focus:ring-hse-primary/30 focus:border-hse-primary transition-all"
-                                placeholder="-"
-                              />
+                              {field.editable ? (
+                                <input
+                                  type="number"
+                                  step={field.formula === 'AVG' || field.key.includes('heures') ? '0.1' : '1'}
+                                  min="0"
+                                  value={dailyData?.[dayIndex]?.[field.key] ?? ''}
+                                  onChange={(e) => handleCellChange(dayIndex, field.key, e.target.value)}
+                                  className="w-full text-center py-1.5 px-1 text-sm border border-gray-200 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 focus:ring-2 focus:ring-hse-primary/30 focus:border-hse-primary transition-all"
+                                  placeholder="-"
+                                />
+                              ) : (
+                                <div className="w-full text-center py-1.5 px-1 text-sm text-gray-700 dark:text-gray-300">
+                                  {formatValue(dailyData?.[dayIndex]?.[field.key] ?? '', field.unit)}
+                                </div>
+                              )}
                             </td>
                           ))}
                           <td className="py-2 px-3 text-center font-semibold text-hse-primary bg-hse-primary/5">

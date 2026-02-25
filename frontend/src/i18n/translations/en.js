@@ -1484,6 +1484,8 @@ export default {
           inspecteur_echafaudage: 'Scaffolding inspector',
           monteur_echafaudage: 'Scaffolding erector',
           monteur_grue_a_tour: 'Tower crane assembler',
+          chauffeur: 'Driver',
+          operateur: 'Operator',
           operateur_bulldozer: 'Bulldozer operator',
           operateur_chargeuse: 'Loader operator',
           operateur_chariot_elevateur: 'Forklift operator',

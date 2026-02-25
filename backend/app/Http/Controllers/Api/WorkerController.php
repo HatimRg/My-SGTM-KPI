@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Worker;
 use App\Models\Project;
+use App\Models\User;
+use App\Services\NotificationService;
 use App\Exports\WorkersExport;
 use App\Exports\WorkersFailedRowsExport;
 use App\Exports\WorkersTemplateExport;
@@ -148,6 +150,51 @@ class WorkerController extends Controller
         }
 
         $validated['cin'] = strtoupper(trim((string) $validated['cin']));
+
+        $existingWorker = Worker::query()->where('cin', $validated['cin'])->first();
+        if ($existingWorker && array_key_exists('project_id', $validated) && !empty($validated['project_id'])) {
+            $toProjectId = (int) $validated['project_id'];
+            $fromProjectId = $existingWorker->project_id !== null ? (int) $existingWorker->project_id : null;
+
+            // Allow transfer even if user does not have access to the source project.
+            // Only require access to destination project (already checked above).
+            if ($fromProjectId !== null && $fromProjectId !== $toProjectId) {
+                $fromProject = Project::find($fromProjectId);
+                $toProject = Project::find($toProjectId);
+
+                // Notify HSE managers of the source project.
+                if ($fromProject && $toProject) {
+                    $hseManagerIds = $fromProject
+                        ->users()
+                        ->whereIn('role', [User::ROLE_HSE_MANAGER, User::ROLE_REGIONAL_HSE_MANAGER])
+                        ->where('is_active', true)
+                        ->pluck('users.id')
+                        ->toArray();
+
+                    if (!empty($hseManagerIds)) {
+                        NotificationService::sendToUsers(
+                            $hseManagerIds,
+                            'worker_transferred',
+                            'Transfert de collaborateur',
+                            "Le collaborateur {$existingWorker->full_name} ({$existingWorker->cin}) a été transféré par {$user->name} vers le projet {$toProject->name}",
+                            [
+                                'project_id' => $fromProject->id,
+                                'icon' => 'users',
+                                'sent_by' => (int) $user->id,
+                                'data' => [
+                                    'worker_id' => $existingWorker->id,
+                                    'cin' => $existingWorker->cin,
+                                    'from_project_id' => $fromProject->id,
+                                    'to_project_id' => $toProject->id,
+                                    'to_project_name' => $toProject->name,
+                                ],
+                            ]
+                        );
+                    }
+                }
+            }
+        }
+
         $worker = Worker::findOrMergeByCin($validated, (int) $user->id);
         $worker->load('project:id,name,code,pole');
 

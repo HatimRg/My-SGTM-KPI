@@ -7,14 +7,21 @@ use App\Helpers\WeekHelper;
 use App\Models\DailyEffectifEntry;
 use App\Models\DailyKpiSnapshot;
 use App\Models\Project;
+use App\Models\SorReport;
 use App\Models\Training;
 use App\Models\AwarenessSession;
 use App\Models\RegulatoryWatchSubmission;
 use App\Models\WorkerSanction;
+use App\Models\WorkPermit;
+use App\Models\Inspection;
+use App\Models\HseEvent;
+use App\Models\Worker;
+use App\Models\WorkerMedicalAptitude;
 use App\Exports\DailyKpiTemplateExport;
 use App\Imports\DailyKpiTemplateImport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class DailyKpiSnapshotController extends Controller
@@ -578,6 +585,127 @@ class DailyKpiSnapshotController extends Controller
         $startDate = $dates['start'];
         $endDate = $dates['end'];
 
+        $startDateStr = $startDate->format('Y-m-d');
+        $endDateStr = $endDate->format('Y-m-d');
+
+        $deviationsByDate = SorReport::query()
+            ->where('project_id', $projectId)
+            ->whereBetween('observation_date', [$startDateStr, $endDateStr])
+            ->selectRaw('DATE(observation_date) as d, COUNT(*) as c')
+            ->groupBy('d')
+            ->pluck('c', 'd')
+            ->toArray();
+
+        $awarenessByDate = AwarenessSession::query()
+            ->where('project_id', $projectId)
+            ->whereBetween('date', [$startDateStr, $endDateStr])
+            ->selectRaw('DATE(date) as d, COUNT(*) as c, COALESCE(SUM(session_hours),0) as h')
+            ->groupBy('d')
+            ->get()
+            ->keyBy('d');
+
+        $trainingByDate = Training::query()
+            ->where('project_id', $projectId)
+            ->whereBetween('date', [$startDateStr, $endDateStr])
+            ->selectRaw('DATE(date) as d, COUNT(*) as c, COALESCE(SUM(training_hours),0) as h')
+            ->groupBy('d')
+            ->get()
+            ->keyBy('d');
+
+        $inspectionsByDate = Inspection::query()
+            ->where('project_id', $projectId)
+            ->whereBetween('inspection_date', [$startDateStr, $endDateStr])
+            ->selectRaw('DATE(inspection_date) as d, COUNT(*) as c')
+            ->groupBy('d')
+            ->pluck('c', 'd')
+            ->toArray();
+
+        $workPermitsByDate = WorkPermit::query()
+            ->where('project_id', $projectId)
+            ->whereNotNull('commence_date')
+            ->whereBetween('commence_date', [$startDateStr, $endDateStr])
+            ->selectRaw('DATE(commence_date) as d, COUNT(*) as c')
+            ->groupBy('d')
+            ->pluck('c', 'd')
+            ->toArray();
+
+        $sanctionsByDate = WorkerSanction::query()
+            ->where('project_id', $projectId)
+            ->whereBetween('sanction_date', [$startDateStr, $endDateStr])
+            ->selectRaw('DATE(sanction_date) as d, COUNT(*) as c')
+            ->groupBy('d')
+            ->pluck('c', 'd')
+            ->toArray();
+
+        $events = HseEvent::query()
+            ->where('project_id', $projectId)
+            ->whereBetween('event_date', [$startDateStr, $endDateStr])
+            ->get(['event_date', 'type', 'lost_time', 'lost_days']);
+
+        $accidentTypes = ['work_accident', 'road_accident', 'accident', 'traffic_accident'];
+        $nearMissTypes = ['near_miss', 'near_misses', 'presquaccident', 'near-miss'];
+        $firstAidTypes = ['first_aid', 'first_aid_case', 'premiers_soins', 'first-aid', 'first_aid_only'];
+
+        $hseByDate = [];
+        foreach ($events as $e) {
+            $d = Carbon::parse($e->event_date)->format('Y-m-d');
+            if (!isset($hseByDate[$d])) {
+                $hseByDate[$d] = [
+                    'accidents' => 0,
+                    'near_misses' => 0,
+                    'first_aid_cases' => 0,
+                    'lost_workdays' => 0,
+                ];
+            }
+
+            $t = (string) $e->type;
+            if (in_array($t, $accidentTypes, true)) {
+                $hseByDate[$d]['accidents']++;
+            }
+            if (in_array($t, $nearMissTypes, true)) {
+                $hseByDate[$d]['near_misses']++;
+            }
+            if (in_array($t, $firstAidTypes, true)) {
+                $hseByDate[$d]['first_aid_cases']++;
+            }
+            if ($e->lost_time) {
+                $hseByDate[$d]['lost_workdays'] += (int) ($e->lost_days ?? 0);
+            }
+        }
+
+        $medicalComplianceRate = 0.0;
+        $totalWorkers = (int) Worker::where('project_id', $projectId)->where('is_active', true)->count();
+        if ($totalWorkers > 0) {
+            $apte = (int) WorkerMedicalAptitude::join('workers', 'workers.id', '=', 'worker_medical_aptitudes.worker_id')
+                ->where('workers.project_id', $projectId)
+                ->where('workers.is_active', true)
+                ->whereRaw('LOWER(worker_medical_aptitudes.aptitude_status) = ?', ['apte'])
+                ->distinct()
+                ->count('worker_medical_aptitudes.worker_id');
+            $medicalComplianceRate = round(($apte * 100.0) / $totalWorkers, 2);
+        }
+
+        $hseComplianceRate = 0.0;
+        $latestByCategory = RegulatoryWatchSubmission::query()
+            ->where('project_id', $projectId)
+            ->where('week_year', $year)
+            ->where('week_number', $weekNumber)
+            ->whereIn('category', ['sst', 'environment'])
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('id')
+            ->get(['category', 'overall_score']);
+
+        $scores = [];
+        foreach ($latestByCategory as $row) {
+            $cat = (string) $row->category;
+            if (!array_key_exists($cat, $scores)) {
+                $scores[$cat] = (float) ($row->overall_score ?? 0);
+            }
+        }
+        if (!empty($scores)) {
+            $hseComplianceRate = round(array_sum($scores) / max(1, count($scores)), 2);
+        }
+
         $dailyValues = [];
 
         // Loop through each day of the week
@@ -592,11 +720,40 @@ class DailyKpiSnapshotController extends Controller
 
             $effectif = $effectifEntry ? (int) $effectifEntry->effectif : null;
 
+            $awarenessRow = $awarenessByDate->get($dateString);
+            $trainingRow = $trainingByDate->get($dateString);
+            $hseRow = $hseByDate[$dateString] ?? null;
+
+            $sensibilisation = $awarenessRow ? (int) ($awarenessRow->c ?? 0) : 0;
+            $awarenessHours = $awarenessRow ? (float) ($awarenessRow->h ?? 0) : 0.0;
+            $trainingHours = $trainingRow ? (float) ($trainingRow->h ?? 0) : 0.0;
+            $heuresFormation = $trainingHours + $awarenessHours;
+
+            $releveEcarts = (int) ($deviationsByDate[$dateString] ?? 0);
+            $inspections = (int) ($inspectionsByDate[$dateString] ?? 0);
+            $permisTravail = (int) ($workPermitsByDate[$dateString] ?? 0);
+            $mesuresDisciplinaires = (int) ($sanctionsByDate[$dateString] ?? 0);
+            $heuresTravaillees = $effectif !== null ? ((float) $effectif * 10.0) : null;
+
             $dailyValues[] = [
                 'entry_date' => $dateString,
                 'day_name' => $currentDate->englishDayOfWeek,
                 'auto_values' => [
                     'effectif' => $effectif,
+                    'induction' => 0,
+                    'releve_ecarts' => $releveEcarts,
+                    'sensibilisation' => $sensibilisation,
+                    'presquaccident' => (int) ($hseRow['near_misses'] ?? 0),
+                    'premiers_soins' => (int) ($hseRow['first_aid_cases'] ?? 0),
+                    'accidents' => (int) ($hseRow['accidents'] ?? 0),
+                    'jours_arret' => (int) ($hseRow['lost_workdays'] ?? 0),
+                    'heures_travaillees' => $heuresTravaillees,
+                    'inspections' => $inspections,
+                    'heures_formation' => $heuresFormation,
+                    'permis_travail' => $permisTravail,
+                    'mesures_disciplinaires' => $mesuresDisciplinaires,
+                    'conformite_hse' => $hseComplianceRate,
+                    'conformite_medicale' => $medicalComplianceRate,
                 ],
             ];
         }
