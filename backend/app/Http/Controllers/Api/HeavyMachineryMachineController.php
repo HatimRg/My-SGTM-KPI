@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Exports\MachinesFailedRowsExport;
 use App\Exports\MachinesTemplateExport;
 use App\Http\Controllers\Controller;
+use App\Imports\MachinesImport;
 use App\Models\Machine;
 use App\Models\MachineDocument;
 use App\Models\MachineDocumentKey;

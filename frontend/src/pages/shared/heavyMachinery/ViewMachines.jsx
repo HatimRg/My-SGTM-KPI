@@ -1262,7 +1262,7 @@ export default function ViewMachines() {
           title={t('heavyMachinery.viewMachines.form.createTitle')}
           size="xl"
         >
-          <form onSubmit={handleCreate} className="space-y-4">
+          <form onSubmit={handleCreateMachine} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="label text-xs">{t('heavyMachinery.viewMachines.machine.serial')}</label>

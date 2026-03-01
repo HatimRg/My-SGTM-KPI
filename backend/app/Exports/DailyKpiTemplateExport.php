@@ -8,15 +8,13 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\WithDrawings;
-use Maatwebsite\Excel\Concerns\WithEvents;
-use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
-class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths, WithTitle, WithDrawings, WithEvents
+class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths, WithTitle, WithDrawings
 {
     protected $projectName;
     protected $projectCode;
@@ -95,7 +93,7 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
         
         // Rows 3-5: Project info in a professional card style
         $rows[] = [$this->tr('PROJET', 'PROJECT'), $this->projectName, '', '', 'CODE', $this->projectCode, '', ''];
-        $rows[] = [$this->tr('SEMAINE', 'WEEK'), "S{$this->weekNumber}", '', '', $this->tr('ANNÉE', 'YEAR'), $this->year, '', ''];
+        $rows[] = [$this->tr('SEMAINE', 'WEEK'), ($this->lang === 'en' ? 'W' : 'S') . $this->weekNumber, '', '', $this->tr('ANNÉE', 'YEAR'), $this->year, '', ''];
         $rows[] = [$this->tr('PÉRIODE', 'PERIOD'), $this->weekDates['start']->format('d/m/Y') . $this->tr(' au ', ' to ') . $this->weekDates['end']->format('d/m/Y'), '', '', '', '', '', ''];
         
         // Row 6: Empty separator
@@ -230,7 +228,7 @@ class DailyKpiTemplateExport implements FromArray, WithStyles, WithColumnWidths,
         $sheet->getRowDimension(8)->setVisible(false);
 
         // Data entry area styling (rows 9-23)
-        $lastDataRow = 23;
+        $lastDataRow = 10;
         
         // KPI labels column - Amber tinted with dark text
         $sheet->getStyle("A9:A{$lastDataRow}")->applyFromArray([
