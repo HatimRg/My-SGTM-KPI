@@ -770,7 +770,7 @@ export default function KpiManagement() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-white dark:bg-gray-900 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
                     <p className="text-xs text-gray-500 dark:text-gray-400">1. {t('kpi.weekly.effectif')}</p>
-                    <p className="text-lg font-bold text-blue-600">{selectedReport.hours_worked ?? 0}</p>
+                    <p className="text-lg font-bold text-blue-600">{selectedReport.effectif ?? 0}</p>
                   </div>
                   <div className="bg-white dark:bg-gray-900 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
                     <p className="text-xs text-gray-500 dark:text-gray-400">2. {t('kpi.weekly.induction')}</p>

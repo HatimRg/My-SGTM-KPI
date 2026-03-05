@@ -761,7 +761,7 @@ export default function AdminDashboard() {
         {/* Weekly Trends Chart */}
         <div className="card">
           <div className="card-header">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.weeklyKpiTrends')}</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{`${t('dashboard.weeklyKpiTrends')} - ${t('dashboard.accidents')}`}</h3>
           </div>
           <div className="card-body">
             <div className="h-80">
@@ -785,22 +785,6 @@ export default function AdminDashboard() {
                     dot={{ fill: '#dc2626', r: 3 }}
                     name={t('dashboard.accidents')}
                   />
-                  <Line
-                    type="monotone"
-                    dataKey="trainings"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    dot={{ fill: '#3b82f6', r: 3 }}
-                    name={t('dashboard.training.totalTrainings')}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="inspections"
-                    stroke="#16a34a"
-                    strokeWidth={2}
-                    dot={{ fill: '#16a34a', r: 3 }}
-                    name={t('dashboard.inspections')}
-                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -816,20 +800,88 @@ export default function AdminDashboard() {
                     {t('dashboard.viewKpiReports')}
                   </button>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <p className="text-gray-500 dark:text-gray-400">{t('dashboard.accidents')}</p>
                     <p className="font-semibold">{selectedWeek.accidents ?? 0}</p>
                   </div>
-                  <div>
-                    <p className="text-gray-500 dark:text-gray-400">{t('dashboard.training.totalTrainings')}</p>
-                    <p className="font-semibold">{selectedWeek.trainings ?? 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 dark:text-gray-400">{t('dashboard.inspections')}</p>
-                    <p className="font-semibold">{selectedWeek.inspections ?? 0}</p>
-                  </div>
                 </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{`${t('dashboard.weeklyKpiTrends')} - ${t('dashboard.training.totalTrainings')}`}</h3>
+          </div>
+          <div className="card-body">
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={filteredWeeklyTrends} onClick={handleWeeklyChartClick}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
+                  <XAxis dataKey="week_label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    labelFormatter={(label) => `${t('dashboard.weekPrefix')} ${String(label).replace(/^([SW])/, '')}`}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    portal={tooltipPortal}
+                    wrapperStyle={tooltipWrapperStyle}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="trainings"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={{ fill: '#3b82f6', r: 3 }}
+                    name={t('dashboard.training.totalTrainings')}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            {selectedWeek && (
+              <div className="mt-4 text-xs text-gray-600 dark:text-gray-300">
+                <p className="text-gray-500 dark:text-gray-400">{t('dashboard.training.totalTrainings')}</p>
+                <p className="font-semibold">{selectedWeek.trainings ?? 0}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{`${t('dashboard.weeklyKpiTrends')} - ${t('dashboard.inspections')}`}</h3>
+          </div>
+          <div className="card-body">
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={filteredWeeklyTrends} onClick={handleWeeklyChartClick}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-20" />
+                  <XAxis dataKey="week_label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    labelFormatter={(label) => `${t('dashboard.weekPrefix')} ${String(label).replace(/^([SW])/, '')}`}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    portal={tooltipPortal}
+                    wrapperStyle={tooltipWrapperStyle}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="inspections"
+                    stroke="#16a34a"
+                    strokeWidth={2}
+                    dot={{ fill: '#16a34a', r: 3 }}
+                    name={t('dashboard.inspections')}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            {selectedWeek && (
+              <div className="mt-4 text-xs text-gray-600 dark:text-gray-300">
+                <p className="text-gray-500 dark:text-gray-400">{t('dashboard.inspections')}</p>
+                <p className="font-semibold">{selectedWeek.inspections ?? 0}</p>
               </div>
             )}
           </div>

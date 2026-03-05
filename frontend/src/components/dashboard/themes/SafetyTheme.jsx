@@ -67,7 +67,41 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
     const s = String(value).trim()
     if (!s) return t('common.unknown')
     if (s.toLowerCase() === 'unknown') return t('common.unknown')
+    if (s.toLowerCase() === 'inconnu') return t('common.unknown')
     return s
+  }
+
+  const toKeyPart = (value) => {
+    const s = String(value ?? '').trim().toLowerCase()
+    if (!s) return ''
+    return s.replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  }
+
+  const translateDynamicLabel = (namespace, value) => {
+    const raw = normalizeLabel(value)
+    const keyPart = toKeyPart(raw)
+    if (!keyPart) return raw
+    const allowedKeys = {
+      activity: new Set(['work_at_height', 'machine_tool_use', 'walking_circulation', 'chute_dobjet']),
+      ground: new Set(['dry', 'wet', 'uneven']),
+      lighting: new Set(['adequate']),
+      cause: new Set([
+        'contact_with_object',
+        'human_factor',
+        'equipment_tools',
+        'organization_planning',
+        'method_procedure',
+        'slip_trip_fall',
+        'environment_conditions',
+        'chute_dobjet',
+      ]),
+      action_type: new Set(['training', 'inspection', 'organizational', 'technical']),
+    }
+
+    if (!allowedKeys?.[namespace]?.has(keyPart)) return raw
+
+    const key = `dashboard.safety.dynamic.${namespace}.${keyPart}`
+    return t(key)
   }
 
   const hasSafetyPerformance = !!safetyPerformance?.kpis
@@ -96,6 +130,11 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
     return rows.slice(0, 10).map((r) => ({
       ...r,
       project_name: normalizeLabel(r?.project_name),
+      medical_first: Number(r?.medical ?? 0) + Number(r?.first_aid ?? 0),
+      fatal: 0,
+      medical: 0,
+      first_aid: 0,
+      near_miss: 0,
     }))
   }, [spCharts, t])
 
@@ -104,7 +143,7 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
     if (!Array.isArray(rows)) return []
     return rows.slice(0, 10).map((r) => ({
       ...r,
-      activity: normalizeLabel(r?.activity),
+      activity: translateDynamicLabel('activity', r?.activity),
     }))
   }, [spCharts, t])
 
@@ -113,12 +152,12 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
     const data = Array.isArray(m.data) ? m.data : []
     const rows = Array.isArray(m.rows) ? m.rows : []
     const cols = Array.isArray(m.cols) ? m.cols : []
-    const mappedRows = rows.map((r) => normalizeLabel(r))
-    const mappedCols = cols.map((c) => normalizeLabel(c))
+    const mappedRows = rows.map((r) => translateDynamicLabel('ground', r))
+    const mappedCols = cols.map((c) => translateDynamicLabel('lighting', c))
     const mappedData = data.map((d) => ({
       ...d,
-      ground_condition: normalizeLabel(d?.ground_condition),
-      lighting: normalizeLabel(d?.lighting),
+      ground_condition: translateDynamicLabel('ground', d?.ground_condition),
+      lighting: translateDynamicLabel('lighting', d?.lighting),
     }))
     const max = mappedData.reduce((acc, d) => Math.max(acc, Number(d?.value ?? 0)), 0)
     return { rows: mappedRows, cols: mappedCols, data: mappedData, max }
@@ -129,7 +168,7 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
     const nodes = Array.isArray(cp.nodes) ? cp.nodes : []
     const links = Array.isArray(cp.links) ? cp.links : []
     return {
-      nodes: nodes.map((n) => ({ ...n, name: normalizeLabel(n?.name) })),
+      nodes: nodes.map((n) => ({ ...n, name: translateDynamicLabel('cause', n?.name) })),
       links,
     }
   }, [spCharts, t])
@@ -141,7 +180,7 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
       severity: Number(r?.severity_score ?? 0),
       victims: Number(r?.victims ?? 0),
       events: Number(r?.events ?? 0),
-      activity: normalizeLabel(r?.activity),
+      activity: translateDynamicLabel('activity', r?.activity),
     }))
   }, [spCharts, t])
 
@@ -150,7 +189,7 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
     if (!Array.isArray(rows)) return []
     return rows.slice(0, 10).map((r) => ({
       ...r,
-      type: normalizeLabel(r?.type),
+      type: translateDynamicLabel('action_type', r?.type),
     }))
   }, [spCharts, t])
 
@@ -326,12 +365,9 @@ const SafetyTheme = memo(function SafetyTheme({ kpiSummary, weeklyTrends, projec
                       />
                       <Tooltip allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999 }} />
                       <Legend />
-                      <Bar dataKey="fatal" stackId="a" fill="#dc2626" name={t('dashboard.safety.eventTypes.fatal') || t('dashboard.safety.fatal') || 'Fatal'} />
                       <Bar dataKey="serious" stackId="a" fill="#f59e0b" name={t('dashboard.safety.eventTypes.serious') || t('dashboard.safety.serious') || 'Serious'} />
                       <Bar dataKey="lta" stackId="a" fill="#8b5cf6" name={t('dashboard.safety.eventTypes.lta') || 'LTA'} />
-                      <Bar dataKey="medical" stackId="a" fill="#3b82f6" name={t('dashboard.safety.eventTypes.medical') || 'Medical'} />
-                      <Bar dataKey="first_aid" stackId="a" fill="#16a34a" name={t('dashboard.safety.eventTypes.firstAid') || 'First aid'} />
-                      <Bar dataKey="near_miss" stackId="a" fill="#14b8a6" name={t('dashboard.safety.eventTypes.nearMiss') || 'Near miss'} />
+                      <Bar dataKey="medical_first" stackId="a" fill="#3b82f6" name={t('dashboard.safety.eventTypes.medicalFirst') || 'Medical First'} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

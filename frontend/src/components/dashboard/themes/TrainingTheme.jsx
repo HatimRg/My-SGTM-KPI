@@ -168,7 +168,7 @@ const TrainingTheme = memo(function TrainingTheme({ kpiSummary, weeklyTrends, pr
               value={awarenessMetrics.totalSessions}
               icon={Users}
               color="green"
-              trend={`${awarenessMetrics.totalParticipants} participants`}
+              trend={`${awarenessMetrics.totalParticipants} ${t('dashboard.training.metrics.participants') || 'Participants'}`}
             />
             <MetricCard
               title={t('dashboard.training.awarenessParticipants')}

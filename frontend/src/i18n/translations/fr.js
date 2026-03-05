@@ -751,6 +751,7 @@ export default {
         lta: 'AAT (LTA)',
         medical: 'Médical',
         firstAid: 'Premiers secours',
+        medicalFirst: 'Premiers secours',
         nearMiss: 'Presqu\'accident',
       },
       metrics: {
@@ -765,6 +766,38 @@ export default {
         open: 'Ouvert',
         inProgress: 'En cours',
         closed: 'Clôturé',
+      },
+      dynamic: {
+        activity: {
+          work_at_height: 'Travail en hauteur',
+          machine_tool_use: 'Utilisation machine / outil',
+          walking_circulation: 'Marche / circulation',
+          chute_dobjet: 'Chute d\'objet',
+        },
+        ground: {
+          dry: 'Sec',
+          wet: 'Mouillé',
+          uneven: 'Irrégulier',
+        },
+        lighting: {
+          adequate: 'Adéquat',
+        },
+        cause: {
+          contact_with_object: 'Contact avec un objet',
+          human_factor: 'Facteur humain',
+          equipment_tools: 'Équipement / outils',
+          organization_planning: 'Organisation / planification',
+          method_procedure: 'Méthode / procédure',
+          slip_trip_fall: 'Glissade / trébuchement / chute',
+          environment_conditions: 'Conditions environnementales',
+          chute_dobjet: 'Chute d\'objet',
+        },
+        action_type: {
+          training: 'Formation',
+          inspection: 'Inspection',
+          organizational: 'Organisationnel',
+          technical: 'Technique',
+        },
       },
     },
     // Thème Formation
@@ -798,7 +831,7 @@ export default {
       noTrainingData: 'Aucune donnée de formation',
       internal: 'Interne',
       external: 'Externe',
-      totalAwareness: 'Sessions TBT/TBM',
+      totalAwareness: 'Sessions sensibilisation',
       awarenessParticipants: 'Participants Sensibilisation',
       awarenessHours: 'Heures Sensibilisation',
       metrics: {

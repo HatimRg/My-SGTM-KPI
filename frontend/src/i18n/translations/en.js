@@ -751,6 +751,7 @@ export default {
         lta: 'LTA',
         medical: 'Medical',
         firstAid: 'First aid',
+        medicalFirst: 'First aid',
         nearMiss: 'Near miss',
       },
       metrics: {
@@ -765,6 +766,38 @@ export default {
         open: 'Open',
         inProgress: 'In progress',
         closed: 'Closed',
+      },
+      dynamic: {
+        activity: {
+          work_at_height: 'Work at height',
+          machine_tool_use: 'Machine / tool use',
+          walking_circulation: 'Walking / circulation',
+          chute_dobjet: 'Falling object',
+        },
+        ground: {
+          dry: 'Dry',
+          wet: 'Wet',
+          uneven: 'Uneven',
+        },
+        lighting: {
+          adequate: 'Adequate',
+        },
+        cause: {
+          contact_with_object: 'Contact with object',
+          human_factor: 'Human factor',
+          equipment_tools: 'Equipment / tools',
+          organization_planning: 'Organization / planning',
+          method_procedure: 'Method / procedure',
+          slip_trip_fall: 'Slip / trip / fall',
+          environment_conditions: 'Environment conditions',
+          chute_dobjet: 'Falling object',
+        },
+        action_type: {
+          training: 'Training',
+          inspection: 'Inspection',
+          organizational: 'Organizational',
+          technical: 'Technical',
+        },
       },
     },
     // Training Theme
@@ -798,7 +831,7 @@ export default {
       noTrainingData: 'No training data',
       internal: 'Internal',
       external: 'External',
-      totalAwareness: 'TBT/TBM Sessions',
+      totalAwareness: 'Awareness Sessions',
       awarenessParticipants: 'Awareness Participants',
       awarenessHours: 'Awareness Hours',
       metrics: {

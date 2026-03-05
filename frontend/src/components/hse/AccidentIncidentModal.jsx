@@ -243,6 +243,29 @@ export default function AccidentIncidentModal({
     return tf(`hseEvents.accidentForm.options.${group}.${key}`, String(value))
   }
 
+  const isUnknownLike = (value) => {
+    const v = String(value ?? '').trim().toLowerCase()
+    if (!v) return true
+    return ['inconnu', 'inconnue', 'unknown', 'unk', 'n/a', 'na', 'non_renseigne', 'non renseigné', 'non renseigne'].includes(v)
+  }
+
+  const normalizeSelectValue = (value, allowed) => {
+    if (isUnknownLike(value)) return ''
+    const raw = String(value ?? '').trim()
+    if (!raw) return ''
+    if (!allowed) return raw
+    return allowed.has(raw) ? raw : ''
+  }
+
+  const normalizeSelectArray = (arr, allowed) => {
+    const list = Array.isArray(arr) ? arr : []
+    const out = list
+      .map((v) => normalizeSelectValue(v, allowed))
+      .filter(Boolean)
+
+    return Array.from(new Set(out))
+  }
+
   const [form, setForm] = useState(() => ({
     project_id: selectedProjectId || '',
     category: 'work_accident',
@@ -317,6 +340,44 @@ export default function AccidentIncidentModal({
           closed_by_role: details.closed_by_role ?? merged.closed_by_role,
         })
       }
+
+      const allowedActivity = new Set(ACTIVITIES.map((o) => o.value))
+      const allowedGround = new Set(GROUND_CONDITIONS.map((o) => o.value))
+      const allowedLighting = new Set(LIGHTING_OPTIONS.map((o) => o.value))
+      const allowedWeather = new Set(WEATHER_OPTIONS.map((o) => o.value))
+      const allowedWorkArea = new Set(WORK_AREA_OPTIONS.map((o) => o.value))
+      const allowedPpe = new Set(PPE_OPTIONS.map((o) => o.value))
+      const allowedCollective = new Set(COLLECTIVE_PROTECTIONS.map((o) => o.value))
+      const allowedImmediateCause = new Set(IMMEDIATE_CAUSES.map((o) => o.value))
+      const allowedRootCause = new Set(ROOT_CAUSE_CATEGORIES.map((o) => o.value))
+      const allowedMethodConformity = new Set(METHOD_CONFORMITY.map((o) => o.value))
+      const allowedImmediateActions = new Set(IMMEDIATE_ACTIONS.map((o) => o.value))
+      const allowedPreventiveActionTypes = new Set(PREVENTIVE_ACTION_TYPES.map((o) => o.value))
+      const allowedActionStatuses = new Set(ACTION_STATUSES.map((o) => o.value))
+
+      merged.activity = normalizeSelectValue(merged.activity, allowedActivity)
+      merged.ground_condition = normalizeSelectValue(merged.ground_condition, allowedGround)
+      merged.lighting = normalizeSelectValue(merged.lighting, allowedLighting)
+      merged.weather = normalizeSelectValue(merged.weather, allowedWeather)
+      merged.work_area = normalizeSelectValue(merged.work_area, allowedWorkArea)
+      merged.ppe_worn = normalizeSelectArray(merged.ppe_worn, allowedPpe)
+      merged.collective_protections = normalizeSelectValue(merged.collective_protections, allowedCollective)
+      merged.immediate_cause = normalizeSelectValue(merged.immediate_cause, allowedImmediateCause)
+      merged.root_causes = normalizeSelectArray(merged.root_causes, allowedRootCause)
+      merged.method_conformity = normalizeSelectValue(merged.method_conformity, allowedMethodConformity)
+      merged.immediate_actions = normalizeSelectArray(merged.immediate_actions, allowedImmediateActions)
+      merged.activity_other = merged.activity === 'other' ? (merged.activity_other ?? '') : ''
+      merged.immediate_cause_other = merged.immediate_cause === 'other' ? (merged.immediate_cause_other ?? '') : ''
+      merged.ppe_other = merged.ppe_worn.includes('other') ? (merged.ppe_other ?? '') : ''
+      merged.corrective_actions = (Array.isArray(merged.corrective_actions) ? merged.corrective_actions : []).map((a) => {
+        const row = a && typeof a === 'object' ? { ...a } : { type: '', description: '', responsible_role: '', deadline: '', status: 'open' }
+        row.type = normalizeSelectValue(row.type, allowedPreventiveActionTypes)
+        row.status = normalizeSelectValue(row.status || 'open', allowedActionStatuses) || 'open'
+        row.description = row.description ?? ''
+        row.responsible_role = row.responsible_role ?? ''
+        row.deadline = row.deadline ?? ''
+        return row
+      })
 
       setForm(merged)
       const initialAttachments = Array.isArray(details?.attachments) ? details.attachments : []
