@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/authStore'
 import api, { sorService, projectService, exportService, workerService } from '../../services/api'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
 import { DatePicker, TimePicker, Modal } from '../../components/ui'
+import ResultsFooter from '../../components/ui/ResultsFooter'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import AutocompleteInput from '../../components/ui/AutocompleteInput'
 import {
@@ -104,8 +105,12 @@ export default function SorSubmission() {
   const [bulkFile, setBulkFile] = useState(null)
   const [bulkUploading, setBulkUploading] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [reports, setReports] = useState([])
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [perPage, setPerPage] = useState(50)
   const [projects, setProjects] = useState([])
   const [projectZones, setProjectZones] = useState([])
   const [companies, setCompanies] = useState([])
@@ -410,18 +415,58 @@ export default function SorSubmission() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const params = {}
+      const nextPerPage = 50
+      setPerPage(nextPerPage)
+      setPage(1)
+      const params = { per_page: nextPerPage, page: 1 }
       if (filters.project_id) params.project_id = filters.project_id
       if (filters.status) params.status = filters.status
       if (filters.category) params.category = filters.category
 
       const response = await sorService.getAll(params)
-      setReports(response.data.data ?? [])
+      const items = response.data?.data ?? []
+      const meta = response.data?.meta ?? {}
+      setReports(Array.isArray(items) ? items : [])
+      setTotal(Number(meta.total ?? 0) || 0)
+      setPage(Number(meta.current_page ?? 1) || 1)
+      setPerPage(Number(meta.per_page ?? nextPerPage) || nextPerPage)
     } catch (error) {
       console.error('Error fetching SOR reports:', error)
       toast.error(t('errors.fetchFailed'))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const showMore = async () => {
+    if (loadingMore || loading) return
+    const shown = Array.isArray(reports) ? reports.length : 0
+    if (!total || shown >= total) return
+
+    const nextPage = (Number(page) || 1) + 1
+    try {
+      setLoadingMore(true)
+      const params = { per_page: perPage || 50, page: nextPage }
+      if (filters.project_id) params.project_id = filters.project_id
+      if (filters.status) params.status = filters.status
+      if (filters.category) params.category = filters.category
+
+      const response = await sorService.getAll(params)
+      const items = response.data?.data ?? []
+      const meta = response.data?.meta ?? {}
+      setReports((prev) => {
+        const current = Array.isArray(prev) ? prev : []
+        const nextItems = Array.isArray(items) ? items : []
+        return [...current, ...nextItems]
+      })
+      setTotal(Number(meta.total ?? total) || total)
+      setPage(Number(meta.current_page ?? nextPage) || nextPage)
+      setPerPage(Number(meta.per_page ?? perPage) || perPage)
+    } catch (error) {
+      console.error('Error fetching more SOR reports:', error)
+      toast.error(t('errors.fetchFailed'))
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -1007,6 +1052,15 @@ export default function SorSubmission() {
                 ))}
               </tbody>
             </table>
+            <div className="px-4 pb-4">
+              <ResultsFooter
+                t={t}
+                shown={Array.isArray(reports) ? reports.length : 0}
+                total={total}
+                onShowMore={showMore}
+                loading={loadingMore}
+              />
+            </div>
           </div>
         )}
       </div>

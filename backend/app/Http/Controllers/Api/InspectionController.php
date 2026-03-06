@@ -34,7 +34,8 @@ class InspectionController extends Controller
         } else if (!$user->hasGlobalProjectScope()) {
             $projectIds = $user->visibleProjectIds();
             if (is_iterable($projectIds) && count($projectIds) === 0) {
-                return $this->success($query->whereRaw('1 = 0')->paginate($request->per_page ?? 50));
+                $empty = $query->whereRaw('1 = 0')->paginate($request->per_page ?? 50);
+                return $this->paginated($empty);
             }
             if ($projectIds !== null) {
                 $query->whereIn('project_id', $projectIds);
@@ -65,7 +66,7 @@ class InspectionController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate($request->per_page ?? 50);
 
-        return $this->success($inspections);
+        return $this->paginated($inspections);
     }
 
     public function export(Request $request)

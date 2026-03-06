@@ -6,6 +6,7 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import Modal from '../../components/ui/Modal'
 import DatePicker from '../../components/ui/DatePicker'
 import Select from '../../components/ui/Select'
+import ResultsFooter from '../../components/ui/ResultsFooter'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
 import {
   ClipboardCheck,
@@ -52,6 +53,11 @@ export default function Inspections() {
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
   const [projectZones, setProjectZones] = useState([])
+
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [perPage, setPerPage] = useState(50)
+  const [loadingMore, setLoadingMore] = useState(false)
   
   // Filters
   const [selectedProject, setSelectedProject] = useState(null)
@@ -125,7 +131,8 @@ export default function Inspections() {
     setLoading(true)
     try {
       const params = {
-        per_page: 100,
+        per_page: 50,
+        page: 1,
       }
       if (selectedProject) params.project_id = selectedProject.id
       if (filterStatus) params.status = filterStatus
@@ -133,13 +140,50 @@ export default function Inspections() {
       
       const response = await inspectionService.getAll(params)
       const payload = response.data
-      const data = payload.data ?? payload
-      const items = Array.isArray(data) ? data : (data?.data ?? [])
+      const items = Array.isArray(payload?.data) ? payload.data : (payload?.data?.data ?? [])
       setInspections(items)
+      setPage(Number(payload?.meta?.current_page ?? 1) || 1)
+      setTotal(Number(payload?.meta?.total ?? 0) || 0)
+      setPerPage(Number(payload?.meta?.per_page ?? 50) || 50)
     } catch (error) {
       console.error('Error fetching inspections:', error)
+      setInspections([])
+      setPage(1)
+      setTotal(0)
+      setPerPage(50)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const canShowMore = inspections.length > 0 && total > inspections.length
+
+  const showMore = async () => {
+    if (loadingMore || loading || !canShowMore) return
+
+    const nextPage = page + 1
+    setLoadingMore(true)
+    try {
+      const params = {
+        per_page: perPage,
+        page: nextPage,
+      }
+      if (selectedProject) params.project_id = selectedProject.id
+      if (filterStatus) params.status = filterStatus
+      if (filterNature) params.nature = filterNature
+
+      const response = await inspectionService.getAll(params)
+      const payload = response.data
+      const items = Array.isArray(payload?.data) ? payload.data : (payload?.data?.data ?? [])
+      setInspections((p) => [...(Array.isArray(p) ? p : []), ...(Array.isArray(items) ? items : [])])
+      setPage(Number(payload?.meta?.current_page ?? nextPage) || nextPage)
+      setTotal(Number(payload?.meta?.total ?? total) || total)
+      setPerPage(Number(payload?.meta?.per_page ?? perPage) || perPage)
+    } catch (error) {
+      console.error('Error fetching more inspections:', error)
+      toast.error(t('errors.somethingWentWrong'))
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -560,6 +604,16 @@ export default function Inspections() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                <div className="px-4 pb-4">
+                  <ResultsFooter
+                    t={t}
+                    shown={inspections.length}
+                    total={total}
+                    loading={loadingMore}
+                    onShowMore={showMore}
+                  />
                 </div>
               </>
             ) : (

@@ -7,6 +7,7 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import DatePicker from '../../components/ui/DatePicker'
 import YearPicker from '../../components/ui/YearPicker'
 import MonthPicker from '../../components/ui/MonthPicker'
+import ResultsFooter from '../../components/ui/ResultsFooter'
 import { sortProjects } from '../../utils/projectList'
 import { Sun, Plus, Edit2, Trash2, Loader2, X } from 'lucide-react'
 import FilterBar from '../../components/ui/filters/FilterBar'
@@ -37,6 +38,11 @@ export default function LightingMeasurements() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [perPage, setPerPage] = useState(50)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const [selectedProjectId, setSelectedProjectId] = useState('')
   const [yearFilter, setYearFilter] = useState('')
@@ -78,20 +84,52 @@ export default function LightingMeasurements() {
   const fetchItems = async () => {
     setLoading(true)
     try {
-      const params = { per_page: 100 }
+      const params = { per_page: 50, page: 1 }
       if (selectedProjectId) params.project_id = selectedProjectId
       if (yearFilter) params.year = yearFilter
       if (monthFilter) params.month = monthFilter
 
       const res = await lightingMeasurementService.getAll(params)
       const payload = res.data
-      const data = payload?.data ?? payload
-      const rows = Array.isArray(data) ? data : (data?.data ?? [])
-      setItems(rows)
+      const rows = Array.isArray(payload?.data) ? payload.data : (payload?.data?.data ?? [])
+      setItems(Array.isArray(rows) ? rows : [])
+      setPage(Number(payload?.meta?.current_page ?? 1) || 1)
+      setTotal(Number(payload?.meta?.total ?? 0) || 0)
+      setPerPage(Number(payload?.meta?.per_page ?? 50) || 50)
     } catch (e) {
       setItems([])
+      setPage(1)
+      setTotal(0)
+      setPerPage(50)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const canShowMore = items.length > 0 && total > items.length
+
+  const showMore = async () => {
+    if (loadingMore || loading || !canShowMore) return
+    const nextPage = page + 1
+    setLoadingMore(true)
+    try {
+      const params = { per_page: perPage, page: nextPage }
+      if (selectedProjectId) params.project_id = selectedProjectId
+      if (yearFilter) params.year = yearFilter
+      if (monthFilter) params.month = monthFilter
+
+      const res = await lightingMeasurementService.getAll(params)
+      const payload = res.data
+      const rows = Array.isArray(payload?.data) ? payload.data : (payload?.data?.data ?? [])
+      const list = Array.isArray(rows) ? rows : []
+      setItems((p) => [...(Array.isArray(p) ? p : []), ...list])
+      setPage(Number(payload?.meta?.current_page ?? nextPage) || nextPage)
+      setTotal(Number(payload?.meta?.total ?? total) || total)
+      setPerPage(Number(payload?.meta?.per_page ?? perPage) || perPage)
+    } catch (e) {
+      toast.error(t('common.error'))
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -323,6 +361,16 @@ export default function LightingMeasurements() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="px-4 pb-4">
+          <ResultsFooter
+            t={t}
+            shown={items.length}
+            total={total}
+            loading={loadingMore}
+            onShowMore={showMore}
+          />
         </div>
       </div>
 

@@ -8,6 +8,7 @@ import WeekPicker from '../../components/ui/WeekPicker'
 import Select from '../../components/ui/Select'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import Modal from '../../components/ui/Modal'
+import ResultsFooter from '../../components/ui/ResultsFooter'
 import { Search, X, Filter, ChevronDown, ChevronUp, Plus, Check, FileSpreadsheet, Trash2, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getWeekFromDate } from '../../utils/weekHelper'
@@ -15,7 +16,6 @@ import { getProjectLabel, sortProjects } from '../../utils/projectList'
 
 // Duration options in minutes (15 min increments from 15 to 60)
 const DURATION_OPTIONS = [15, 30, 45, 60]
-const SESSIONS_PER_PAGE = 10
 
 export default function AwarenessSession() {
   const { t } = useLanguage()
@@ -46,6 +46,10 @@ export default function AwarenessSession() {
 
   const [sessions, setSessions] = useState([])
   const [loadingSessions, setLoadingSessions] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [perPage, setPerPage] = useState(50)
 
   const [projectId, setProjectId] = useState('')
   const [date, setDate] = useState('')
@@ -61,7 +65,6 @@ export default function AwarenessSession() {
   const [filterFromDate, setFilterFromDate] = useState('')
   const [filterToDate, setFilterToDate] = useState('')
   const [formExpanded, setFormExpanded] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
   const [exporting, setExporting] = useState(false)
 
   const [confirmDeleteSession, setConfirmDeleteSession] = useState(null)
@@ -174,21 +177,46 @@ export default function AwarenessSession() {
   }, [fetchProjects])
 
   useEffect(() => {
-    fetchSessions()
-  }, [filterProjectId, filterWeek])
+    fetchSessions(1, { reset: true })
+  }, [filterProjectId, filterWeek, filterFromDate, filterToDate])
 
-  const fetchSessions = async () => {
+  const fetchSessions = async (nextPage = 1, { reset = false } = {}) => {
     try {
-      setLoadingSessions(true)
-      const params = {}
+      if (reset) {
+        setLoadingSessions(true)
+        setPage(1)
+      } else {
+        setLoadingMore(true)
+      }
+
+      const params = { per_page: perPage || 50, page: nextPage }
       if (filterProjectId) params.project_id = filterProjectId
       if (filterWeek) params.week = filterWeek
+      if (filterFromDate) params.from_date = filterFromDate
+      if (filterToDate) params.to_date = filterToDate
       const res = await awarenessService.getAll(params)
-      setSessions(res.data?.data ?? res.data ?? [])
+
+      const items = res.data?.data ?? []
+      const meta = res.data?.meta ?? {}
+      const list = Array.isArray(items) ? items : []
+
+      if (reset) {
+        setSessions(list)
+      } else {
+        setSessions((prev) => {
+          const current = Array.isArray(prev) ? prev : []
+          return [...current, ...list]
+        })
+      }
+
+      setTotal(Number(meta.total ?? 0) || 0)
+      setPage(Number(meta.current_page ?? nextPage) || nextPage)
+      setPerPage(Number(meta.per_page ?? (perPage || 50)) || (perPage || 50))
     } catch (error) {
       console.error('Failed to load awareness sessions', error)
     } finally {
       setLoadingSessions(false)
+      setLoadingMore(false)
     }
   }
 
@@ -208,27 +236,13 @@ export default function AwarenessSession() {
   const durationHours = duration / 60
   const sessionHours = durationHours * participantsNumber
 
-  const filteredSessionsList = useMemo(() => {
-    if (!Array.isArray(sessions)) return []
-    return sessions.filter((s) => {
-      const dateStr = s.date ? s.date.substring(0, 10) : ''
-      if (filterFromDate && (!dateStr || dateStr < filterFromDate)) return false
-      if (filterToDate && (!dateStr || dateStr > filterToDate)) return false
-      return true
-    })
-  }, [sessions, filterFromDate, filterToDate])
-
-  const totalPages = Math.max(1, Math.ceil((filteredSessionsList.length ?? 0) / SESSIONS_PER_PAGE))
-
-  const paginatedSessions = useMemo(() => {
-    if (!Array.isArray(filteredSessionsList)) return []
-    const start = (currentPage - 1) * SESSIONS_PER_PAGE
-    return filteredSessionsList.slice(start, start + SESSIONS_PER_PAGE)
-  }, [filteredSessionsList, currentPage])
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [filterProjectId, filterWeek])
+  const showMore = async () => {
+    if (loadingMore || loadingSessions) return
+    const shown = Array.isArray(sessions) ? sessions.length : 0
+    if (!total || shown >= total) return
+    const nextPage = (Number(page) || 1) + 1
+    await fetchSessions(nextPage)
+  }
 
   const handleExportAwareness = async () => {
     try {
@@ -594,7 +608,6 @@ export default function AwarenessSession() {
                       const parsed = parseWeekKey(key)
                       if (!parsed) return
                       setFilterWeek(parsed.week)
-                      setCurrentPage(1)
                     }}
                     placeholder={t('awareness.allWeeks')}
                     className="w-full h-10"
@@ -614,13 +627,13 @@ export default function AwarenessSession() {
             </div>
             <DatePicker
               value={filterFromDate}
-              onChange={(val) => { setFilterFromDate(val); setCurrentPage(1) }}
+              onChange={(val) => { setFilterFromDate(val) }}
               placeholder="From date"
               className="w-full sm:w-40 h-10"
             />
             <DatePicker
               value={filterToDate}
-              onChange={(val) => { setFilterToDate(val); setCurrentPage(1) }}
+              onChange={(val) => { setFilterToDate(val) }}
               placeholder="To date"
               className="w-full sm:w-40 h-10"
             />
@@ -668,7 +681,7 @@ export default function AwarenessSession() {
           <>
             {/* Mobile cards */}
             <div className="space-y-3 md:hidden">
-              {paginatedSessions.map((s) => (
+              {sessions.map((s) => (
                 <div
                   key={s.id}
                   className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800"
@@ -734,7 +747,7 @@ export default function AwarenessSession() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedSessions.map((s) => (
+                  {sessions.map((s) => (
                     <tr key={s.id} className="border-b border-gray-100 dark:border-gray-800">
                       <td className="py-2 pr-4 text-gray-900 dark:text-gray-100 text-xs">
                         {s.date ? s.date.substring(0, 10) : ''}
@@ -772,33 +785,15 @@ export default function AwarenessSession() {
                 </tbody>
               </table>
             </div>
-          </>
-        )}
 
-        {!loadingSessions && sessions.length > 0 && totalPages > 1 && (
-          <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t('common.page')} {currentPage} {t('common.of')} {totalPages}
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t('common.previous') ?? 'Previous'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t('common.next') ?? 'Next'}
-              </button>
-            </div>
-          </div>
+            <ResultsFooter
+              t={t}
+              shown={Array.isArray(sessions) ? sessions.length : 0}
+              total={total}
+              onShowMore={showMore}
+              loading={loadingMore}
+            />
+          </>
         )}
       </div>
 

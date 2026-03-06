@@ -127,6 +127,7 @@ class SubcontractorOpeningController extends Controller
     {
         $request->validate([
             'project_id' => 'nullable|exists:projects,id',
+            'per_page' => 'nullable|integer|min:1|max:500',
         ]);
 
         $user = $request->user();
@@ -149,9 +150,15 @@ class SubcontractorOpeningController extends Controller
             }
         }
 
-        $openings = $query->orderBy('contractor_name')->get();
+        $perPage = (int) $request->get('per_page', 50);
 
-        $projectIds = $openings->pluck('project_id')->unique()->filter()->values()->toArray();
+        $openings = $query
+            ->orderBy('contractor_name')
+            ->paginate($perPage);
+
+        $openingsCollection = $openings->getCollection();
+
+        $projectIds = $openingsCollection->pluck('project_id')->unique()->filter()->values()->toArray();
         $workerCountsMap = [];
         if (!empty($projectIds)) {
             $rows = Worker::active()
@@ -168,7 +175,7 @@ class SubcontractorOpeningController extends Controller
             }
         }
 
-        $data = $openings->map(function ($o) use ($workerCountsMap) {
+        $data = $openingsCollection->map(function ($o) use ($workerCountsMap) {
             $key = ((int) $o->project_id) . '|' . mb_strtolower(trim((string) $o->contractor_name));
             $workersCount = (int) ($workerCountsMap[$key] ?? 0);
             return $this->serializeOpening($o, $workersCount);
@@ -184,7 +191,9 @@ class SubcontractorOpeningController extends Controller
             return $aIs ? -1 : 1;
         });
 
-        return $this->success($data);
+        $openings->setCollection(collect($data));
+
+        return $this->paginated($openings);
     }
 
     public function show(Request $request, SubcontractorOpening $subcontractorOpening)

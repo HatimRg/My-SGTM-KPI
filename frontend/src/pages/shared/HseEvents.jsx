@@ -13,6 +13,7 @@ import AccidentIncidentModal from '../../components/hse/AccidentIncidentModal'
 import FilterBar from '../../components/ui/filters/FilterBar'
 import SegmentedToggle from '../../components/ui/filters/SegmentedToggle'
 import FilterSelect from '../../components/ui/filters/FilterSelect'
+import ResultsFooter from '../../components/ui/ResultsFooter'
 import toast from 'react-hot-toast'
 
 const EVENT_TYPES = [
@@ -70,6 +71,10 @@ export default function HseEvents() {
   const [saving, setSaving] = useState(false)
 
   const [items, setItems] = useState([])
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [perPage, setPerPage] = useState(50)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [selectedPole, setSelectedPole] = useState('')
   const [selectedProjectId, setSelectedProjectId] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
@@ -133,7 +138,8 @@ export default function HseEvents() {
     setLoading(true)
     try {
       const params = {
-        per_page: 100,
+        per_page: 50,
+        page: 1,
       }
       if (selectedPole) params.pole = selectedPole
       if (selectedProjectId) params.project_id = selectedProjectId
@@ -144,13 +150,51 @@ export default function HseEvents() {
 
       const res = await hseEventService.getAll(params)
       const payload = res.data
-      const data = payload?.data ?? payload
-      const rows = Array.isArray(data) ? data : (data?.data ?? [])
-      setItems(rows)
+      const rows = Array.isArray(payload?.data) ? payload.data : (payload?.data?.data ?? [])
+      setItems(Array.isArray(rows) ? rows : [])
+      setPage(Number(payload?.meta?.current_page ?? 1) || 1)
+      setTotal(Number(payload?.meta?.total ?? 0) || 0)
+      setPerPage(Number(payload?.meta?.per_page ?? 50) || 50)
     } catch (e) {
       setItems([])
+      setPage(1)
+      setTotal(0)
+      setPerPage(50)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const canShowMore = items.length > 0 && total > items.length
+
+  const showMore = async () => {
+    if (loadingMore || loading || !canShowMore) return
+    const nextPage = page + 1
+    setLoadingMore(true)
+    try {
+      const params = {
+        per_page: perPage,
+        page: nextPage,
+      }
+      if (selectedPole) params.pole = selectedPole
+      if (selectedProjectId) params.project_id = selectedProjectId
+      if (yearFilter) params.year = yearFilter
+      if (monthFilter) params.month = monthFilter
+      if (fromDate) params.from_date = fromDate
+      if (toDate) params.to_date = toDate
+
+      const res = await hseEventService.getAll(params)
+      const payload = res.data
+      const rows = Array.isArray(payload?.data) ? payload.data : (payload?.data?.data ?? [])
+      const list = Array.isArray(rows) ? rows : []
+      setItems((p) => [...(Array.isArray(p) ? p : []), ...list])
+      setPage(Number(payload?.meta?.current_page ?? nextPage) || nextPage)
+      setTotal(Number(payload?.meta?.total ?? total) || total)
+      setPerPage(Number(payload?.meta?.per_page ?? perPage) || perPage)
+    } catch (e) {
+      toast.error(t('common.error') ?? 'Error')
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -538,6 +582,16 @@ export default function HseEvents() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="px-4 pb-4">
+          <ResultsFooter
+            t={t}
+            shown={items.length}
+            total={total}
+            loading={loadingMore}
+            onShowMore={showMore}
+          />
         </div>
       </div>
 

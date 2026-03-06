@@ -25,6 +25,7 @@ import { useAuthStore } from '../../store/authStore'
 import { Modal, ConfirmDialog } from '../../components/ui'
 import WeekPicker from '../../components/ui/WeekPicker'
 import YearPicker from '../../components/ui/YearPicker'
+import ResultsFooter from '../../components/ui/ResultsFooter'
 import DailyKpiPreview from '../../components/kpi/DailyKpiPreview'
 import toast from 'react-hot-toast'
 import { getCurrentWeek } from '../../utils/weekHelper'
@@ -53,6 +54,10 @@ export default function KpiManagement() {
   const [reports, setReports] = useState([])
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [perPage, setPerPage] = useState(50)
   const [selectedReport, setSelectedReport] = useState(null)
   const [dailySnapshots, setDailySnapshots] = useState([])
   const [loadingDetails, setLoadingDetails] = useState(false)
@@ -182,18 +187,53 @@ export default function KpiManagement() {
   const loadData = async () => {
     try {
       setLoading(true)
+      const nextPerPage = 50
+      setPerPage(nextPerPage)
+      setPage(1)
       const [reportsRes, projectsRes] = await Promise.all([
-        kpiService.getAll(filters),
+        kpiService.getAll({ ...filters, per_page: nextPerPage, page: 1 }),
         projectService.getAllList({ status: 'active' })
       ])
-      const reportsData = reportsRes.data.data || reportsRes.data || []
-      setReports(Array.isArray(reportsData) ? reportsData : [])
+
+      const items = reportsRes.data?.data ?? []
+      const meta = reportsRes.data?.meta ?? {}
+      setReports(Array.isArray(items) ? items : [])
+      setTotal(Number(meta.total ?? 0) || 0)
+      setPage(Number(meta.current_page ?? 1) || 1)
+      setPerPage(Number(meta.per_page ?? nextPerPage) || nextPerPage)
       setProjects(Array.isArray(projectsRes) ? projectsRes : [])
     } catch (error) {
       console.error('Error loading KPI data:', error)
       toast.error(t('errors.somethingWentWrong'))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const showMore = async () => {
+    if (loadingMore || loading) return
+    const shown = Array.isArray(reports) ? reports.length : 0
+    if (!total || shown >= total) return
+
+    const nextPage = (Number(page) || 1) + 1
+    try {
+      setLoadingMore(true)
+      const res = await kpiService.getAll({ ...filters, per_page: perPage || 50, page: nextPage })
+      const items = res.data?.data ?? []
+      const meta = res.data?.meta ?? {}
+      setReports((prev) => {
+        const current = Array.isArray(prev) ? prev : []
+        const nextItems = Array.isArray(items) ? items : []
+        return [...current, ...nextItems]
+      })
+      setTotal(Number(meta.total ?? total) || total)
+      setPage(Number(meta.current_page ?? nextPage) || nextPage)
+      setPerPage(Number(meta.per_page ?? perPage) || perPage)
+    } catch (error) {
+      console.error('Error loading more KPI reports:', error)
+      toast.error(t('errors.somethingWentWrong'))
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -659,6 +699,16 @@ export default function KpiManagement() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            <div className="px-4 pb-4">
+              <ResultsFooter
+                t={t}
+                shown={Array.isArray(visibleReports) ? visibleReports.length : 0}
+                total={total}
+                onShowMore={showMore}
+                loading={loadingMore}
+              />
             </div>
           </>
         )}

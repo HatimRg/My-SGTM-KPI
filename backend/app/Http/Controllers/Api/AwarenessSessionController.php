@@ -36,23 +36,23 @@ class AwarenessSessionController extends Controller
         }
 
         // Apply filters
-        if ($request->has('project_id') && $request->project_id) {
+        if ($request->filled('project_id')) {
             $query->where('project_id', $request->project_id);
         }
 
-        if ($request->has('week') && $request->week) {
+        if ($request->filled('week')) {
             $query->where('week_number', $request->week);
         }
 
-        if ($request->has('year') && $request->year) {
+        if ($request->filled('year')) {
             $query->where('week_year', $request->year);
         }
 
-        if ($request->has('from_date')) {
+        if ($request->filled('from_date')) {
             $query->where('date', '>=', $request->from_date);
         }
 
-        if ($request->has('to_date')) {
+        if ($request->filled('to_date')) {
             $query->where('date', '<=', $request->to_date);
         }
 
@@ -60,7 +60,7 @@ class AwarenessSessionController extends Controller
         $sessions = $query->orderBy('date', 'desc')
                           ->paginate($request->get('per_page', 50));
 
-        return response()->json($sessions);
+        return $this->paginated($sessions);
     }
 
     public function export(Request $request)

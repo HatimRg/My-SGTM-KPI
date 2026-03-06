@@ -6,6 +6,7 @@ import { useAuthStore } from '../../store/authStore'
 import Select from '../../components/ui/Select'
 import Modal from '../../components/ui/Modal'
 import DatePicker from '../../components/ui/DatePicker'
+import ResultsFooter from '../../components/ui/ResultsFooter'
 import {
   PlusCircle,
   Building2,
@@ -39,6 +40,11 @@ export default function SubcontractorOpenings() {
 
   const [openings, setOpenings] = useState([])
   const [loading, setLoading] = useState(false)
+
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [perPage, setPerPage] = useState(50)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const [search, setSearch] = useState('')
 
@@ -91,17 +97,48 @@ export default function SubcontractorOpenings() {
   const fetchOpenings = async () => {
     try {
       setLoading(true)
-      const params = {}
+      setPage(1)
+      setTotal(0)
+      setPerPage(50)
+      const params = { per_page: 50, page: 1 }
       if (selectedProject) params.project_id = selectedProject
       const res = await subcontractorOpeningsService.getAll(params)
       const payload = res.data
-      const data = payload.data ?? payload
-      setOpenings(Array.isArray(data) ? data : (data.data ?? []))
+      const rows = Array.isArray(payload?.data) ? payload.data : (payload?.data?.data ?? [])
+      setOpenings(Array.isArray(rows) ? rows : [])
+      setPage(Number(payload?.meta?.current_page ?? 1) || 1)
+      setTotal(Number(payload?.meta?.total ?? 0) || 0)
+      setPerPage(Number(payload?.meta?.per_page ?? 50) || 50)
     } catch (e) {
       console.error('Failed to load subcontractor openings', e)
       toast.error(e.response?.data?.message ?? t('errors.somethingWentWrong') ?? 'Failed to load')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const canShowMore = openings.length > 0 && total > openings.length
+
+  const showMore = async () => {
+    if (loadingMore || loading || !canShowMore) return
+    const nextPage = page + 1
+    setLoadingMore(true)
+    try {
+      const params = { per_page: perPage, page: nextPage }
+      if (selectedProject) params.project_id = selectedProject
+      const res = await subcontractorOpeningsService.getAll(params)
+      const payload = res.data
+      const rows = Array.isArray(payload?.data) ? payload.data : (payload?.data?.data ?? [])
+      const list = Array.isArray(rows) ? rows : []
+      setOpenings((p) => [...(Array.isArray(p) ? p : []), ...list])
+      setPage(Number(payload?.meta?.current_page ?? nextPage) || nextPage)
+      setTotal(Number(payload?.meta?.total ?? total) || total)
+      setPerPage(Number(payload?.meta?.per_page ?? perPage) || perPage)
+    } catch (e) {
+      console.error('Failed to load more subcontractor openings', e)
+      toast.error(e.response?.data?.message ?? t('errors.somethingWentWrong') ?? 'Failed to load')
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -255,8 +292,9 @@ export default function SubcontractorOpenings() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {cards.map((o) => {
+        <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {cards.map((o) => {
             const dot = STATUS_DOT[o.status] ?? STATUS_DOT.red
             const uploaded = o.documents_uploaded ?? 0
             const required = o.required_documents_count ?? 0
@@ -389,7 +427,18 @@ export default function SubcontractorOpenings() {
                 </div>
               </div>
             )
-          })}
+            })}
+          </div>
+
+          <div className="pt-4">
+            <ResultsFooter
+              t={t}
+              shown={openings.length}
+              total={total}
+              loading={loadingMore}
+              onShowMore={showMore}
+            />
+          </div>
         </div>
       )}
 

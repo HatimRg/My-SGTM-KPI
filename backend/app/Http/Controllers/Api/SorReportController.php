@@ -197,23 +197,23 @@ class SorReportController extends Controller
         }
 
         // Apply filters
-        if ($request->has('project_id')) {
-            $query->where('project_id', $request->project_id);
+        if ($request->filled('project_id')) {
+            $query->where('project_id', (int) $request->project_id);
         }
 
-        if ($request->has('status')) {
+        if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        if ($request->has('category')) {
+        if ($request->filled('category')) {
             $query->where('category', $request->category);
         }
 
-        if ($request->has('from_date')) {
+        if ($request->filled('from_date')) {
             $query->where('observation_date', '>=', $request->from_date);
         }
 
-        if ($request->has('to_date')) {
+        if ($request->filled('to_date')) {
             $query->where('observation_date', '<=', $request->to_date);
         }
 
@@ -226,7 +226,7 @@ class SorReportController extends Controller
                          ->orderBy('observation_date', 'desc')
                          ->paginate($request->get('per_page', 15));
 
-        return response()->json($reports);
+        return $this->paginated($reports);
     }
 
     public function export(Request $request)
