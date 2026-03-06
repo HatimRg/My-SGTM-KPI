@@ -7,6 +7,10 @@ export default {
     comingSoon: 'Bientôt disponible',
     other: 'Autre',
     showMore: 'Afficher plus',
+    results: {
+      showing: 'Affichage de {{shown}} sur {{total}} résultats',
+      showMore: 'Afficher plus',
+    },
     more: 'de plus',
     save: 'Enregistrer',
     saved: 'Enregistré',

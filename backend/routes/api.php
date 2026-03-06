@@ -389,6 +389,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/template', [WorkerController::class, 'template']);
         Route::get('/export', [WorkerController::class, 'export']);
         Route::post('/import', [WorkerController::class, 'import']);
+        Route::post('/normalize-cins', [WorkerController::class, 'normalizeCins']);
         Route::post('/bulk-deactivate', [WorkerController::class, 'bulkDeactivate']);
         Route::post('/bulk-activate', [WorkerController::class, 'bulkActivate']);
         Route::post('/', [WorkerController::class, 'store']);

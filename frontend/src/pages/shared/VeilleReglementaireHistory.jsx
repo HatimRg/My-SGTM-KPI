@@ -5,6 +5,7 @@ import { useLanguage } from '../../i18n'
 import { useAuthStore } from '../../store/authStore'
 import Select from '../../components/ui/Select'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import ResultsFooter from '../../components/ui/ResultsFooter'
 import { FileText, Loader2, PlusCircle, Eye, RotateCcw, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getProjectLabel, sortProjects } from '../../utils/projectList'
@@ -61,6 +62,11 @@ export default function VeilleReglementaireHistory() {
   const [loading, setLoading] = useState(true)
   const [avgOverall, setAvgOverall] = useState(null)
   const [submissions, setSubmissions] = useState([])
+
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [perPage, setPerPage] = useState(50)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const [confirmDelete, setConfirmDelete] = useState(null)
 
@@ -122,9 +128,13 @@ export default function VeilleReglementaireHistory() {
     const loadHistory = async () => {
       try {
         setLoading(true)
+        setPage(1)
+        setTotal(0)
+        setPerPage(50)
         const params = {
           per_page: 50,
           category,
+          page: 1,
         }
         if (selectedProjectId) params.project_id = Number(selectedProjectId)
 
@@ -135,9 +145,12 @@ export default function VeilleReglementaireHistory() {
         const paginator = data?.submissions
         const rows = paginator?.data ?? []
         setSubmissions(Array.isArray(rows) ? rows : [])
+        setTotal(Number(paginator?.total ?? 0) || 0)
+        setPerPage(Number(paginator?.per_page ?? 50) || 50)
       } catch (e) {
         setAvgOverall(null)
         setSubmissions([])
+        setTotal(0)
         toast.error(e.response?.data?.message ?? t('errors.somethingWentWrong'))
       } finally {
         setLoading(false)
@@ -146,6 +159,37 @@ export default function VeilleReglementaireHistory() {
 
     loadHistory()
   }, [selectedProjectId, category])
+
+  const canShowMore = submissions.length > 0 && total > submissions.length
+
+  const showMore = async () => {
+    if (loadingMore || loading || !canShowMore) return
+
+    const nextPage = page + 1
+    setLoadingMore(true)
+    try {
+      const params = {
+        per_page: perPage,
+        category,
+        page: nextPage,
+      }
+      if (selectedProjectId) params.project_id = Number(selectedProjectId)
+
+      const res = await regulatoryWatchService.getAll(params)
+      const data = res.data?.data ?? null
+      const paginator = data?.submissions
+      const rows = paginator?.data ?? []
+      const list = Array.isArray(rows) ? rows : []
+      setSubmissions((p) => [...(Array.isArray(p) ? p : []), ...list])
+      setPage(nextPage)
+      setTotal(Number(paginator?.total ?? total) || 0)
+      setPerPage(Number(paginator?.per_page ?? perPage) || perPage)
+    } catch (e) {
+      toast.error(e.response?.data?.message ?? t('errors.somethingWentWrong'))
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   const handleDelete = (submission) => {
     setConfirmDelete(submission)
@@ -161,6 +205,7 @@ export default function VeilleReglementaireHistory() {
       const params = {
         per_page: 50,
         category,
+        page: 1,
       }
       if (selectedProjectId) params.project_id = Number(selectedProjectId)
 
@@ -170,6 +215,9 @@ export default function VeilleReglementaireHistory() {
       const paginator = data?.submissions
       const rows = paginator?.data ?? []
       setSubmissions(Array.isArray(rows) ? rows : [])
+      setPage(1)
+      setTotal(Number(paginator?.total ?? 0) || 0)
+      setPerPage(Number(paginator?.per_page ?? 50) || 50)
     } catch (e) {
       toast.error(e.response?.data?.message ?? t('errors.somethingWentWrong'))
     } finally {
@@ -264,8 +312,9 @@ export default function VeilleReglementaireHistory() {
         ) : submissions.length === 0 ? (
           <div className="p-6 text-sm text-gray-500 dark:text-gray-400">{t('regulatoryWatch.noSubmissions')}</div>
         ) : (
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {submissions.map((s) => {
+          <div>
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {submissions.map((s) => {
               const overall = s?.overall_score
               const overallLabel = overall === null || overall === undefined ? '-' : `${Number(overall).toFixed(2)}%`
 
@@ -326,7 +375,18 @@ export default function VeilleReglementaireHistory() {
                   </div>
                 </div>
               )
-            })}
+              })}
+            </div>
+
+            <div className="px-4 pb-4">
+              <ResultsFooter
+                t={t}
+                shown={submissions.length}
+                total={total}
+                loading={loadingMore}
+                onShowMore={showMore}
+              />
+            </div>
           </div>
         )}
       </div>

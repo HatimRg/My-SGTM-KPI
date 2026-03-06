@@ -96,7 +96,8 @@ class WorkersImport implements ToModel, WithHeadingRow, SkipsOnError, WithBatchI
             }
 
             // Clean data
-            $cin = trim((string) $cin);
+            $cin = strtoupper(trim((string) $cin));
+            $cin = preg_replace('/\s+/', '', $cin);
             $nom = trim((string) $nom);
             $prenom = trim((string) $prenom);
 

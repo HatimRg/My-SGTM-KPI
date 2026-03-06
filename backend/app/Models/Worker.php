@@ -44,6 +44,18 @@ class Worker extends Model
         return "{$this->prenom} {$this->nom}";
     }
 
+    public function setCinAttribute($value): void
+    {
+        if ($value === null) {
+            $this->attributes['cin'] = null;
+            return;
+        }
+
+        $raw = strtoupper(trim((string) $value));
+        $raw = preg_replace('/\s+/', '', $raw);
+        $this->attributes['cin'] = $raw !== '' ? $raw : null;
+    }
+
     /**
      * Project relationship
      */

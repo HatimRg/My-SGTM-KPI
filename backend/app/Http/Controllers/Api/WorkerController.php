@@ -51,6 +51,17 @@ class WorkerController extends Controller
         return is_array($ids) ? $ids : null;
     }
 
+    private function normalizeCin($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $raw = strtoupper(trim((string) $value));
+        $raw = preg_replace('/\s+/', '', $raw);
+        return $raw !== '' ? $raw : null;
+    }
+
     /**
      * Ensure the authenticated user can access the worker based on project visibility.
      */
@@ -149,7 +160,7 @@ class WorkerController extends Controller
             }
         }
 
-        $validated['cin'] = strtoupper(trim((string) $validated['cin']));
+        $validated['cin'] = $this->normalizeCin($validated['cin']);
 
         $existingWorker = Worker::query()->where('cin', $validated['cin'])->first();
         if ($existingWorker && array_key_exists('project_id', $validated) && !empty($validated['project_id'])) {
@@ -235,7 +246,7 @@ class WorkerController extends Controller
         }
 
         if (array_key_exists('cin', $validated)) {
-            $validated['cin'] = strtoupper(trim((string) $validated['cin']));
+            $validated['cin'] = $this->normalizeCin($validated['cin']);
         }
         $validated['updated_by'] = (int) $user->id;
 
@@ -243,6 +254,42 @@ class WorkerController extends Controller
         $worker->load('project:id,name,code,pole');
 
         return $this->success($worker, 'Worker updated successfully');
+    }
+
+    /**
+     * Background cleanup: normalize existing worker CINs by stripping whitespace and uppercasing.
+     */
+    public function normalizeCins(Request $request)
+    {
+        $this->checkAccess($request);
+
+        $batch = max(50, min(5000, (int) ($request->get('batch') ?? 1000)));
+
+        $updated = 0;
+        $scanned = 0;
+
+        Worker::query()
+            ->select(['id', 'cin'])
+            ->orderBy('id')
+            ->chunkById($batch, function ($rows) use (&$updated, &$scanned) {
+                foreach ($rows as $w) {
+                    $scanned++;
+                    $before = $w->cin;
+                    $after = $before !== null ? preg_replace('/\s+/', '', strtoupper(trim((string) $before))) : null;
+                    $after = $after !== '' ? $after : null;
+
+                    if ($after !== $before) {
+                        $w->cin = $after;
+                        $w->save();
+                        $updated++;
+                    }
+                }
+            });
+
+        return $this->success([
+            'scanned' => $scanned,
+            'updated' => $updated,
+        ], 'CIN cleanup completed');
     }
 
     /**
