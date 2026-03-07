@@ -16,6 +16,7 @@ export default function UrgentNotificationOverlay({ enabled }) {
   const pollingRef = useRef(null)
   const inFlightRef = useRef(false)
   const failureCountRef = useRef(0)
+  const afterIdRef = useRef(null)
 
   const forcedSeconds = useMemo(() => {
     const raw = active?.data?.forced_visibility_seconds
@@ -79,6 +80,7 @@ export default function UrgentNotificationOverlay({ enabled }) {
       setActive(null)
       setSecondsLeft(0)
       setAfterId(null)
+      afterIdRef.current = null
       return
     }
 
@@ -112,7 +114,7 @@ export default function UrgentNotificationOverlay({ enabled }) {
       inFlightRef.current = true
 
       try {
-        const res = await notificationService.urgentUnread({ after_id: afterId ?? undefined, limit: 20 })
+        const res = await notificationService.urgentUnread({ after_id: afterIdRef.current ?? undefined, limit: 20 })
         const payload = res.data?.data
         const items = payload?.items ?? []
         const lastId = payload?.last_id
@@ -124,8 +126,13 @@ export default function UrgentNotificationOverlay({ enabled }) {
             const prevNum = prev === null ? null : Number(prev)
             const nextNum = Number(lastId)
             if (!Number.isFinite(nextNum)) return prev
-            if (prevNum === null) return nextNum
-            return Math.max(prevNum, nextNum)
+            if (prevNum === null) {
+              afterIdRef.current = nextNum
+              return nextNum
+            }
+            const merged = Math.max(prevNum, nextNum)
+            afterIdRef.current = merged
+            return merged
           })
         }
 
@@ -170,7 +177,7 @@ export default function UrgentNotificationOverlay({ enabled }) {
       stopTimer()
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-  }, [enabled, afterId])
+  }, [enabled])
 
   useEffect(() => {
     if (!enabled) return

@@ -148,6 +148,12 @@ export default function HseEvents() {
       if (fromDate) params.from_date = fromDate
       if (toDate) params.to_date = toDate
 
+      if (typeFilter) {
+        params.type = typeFilter
+      } else {
+        params.types = activeTab === 'accidents' ? ACCIDENT_INCIDENT_TYPES : MEDICAL_VISIT_TYPES
+      }
+
       const res = await hseEventService.getAll(params)
       const payload = res.data
       const rows = Array.isArray(payload?.data) ? payload.data : (payload?.data?.data ?? [])
@@ -182,6 +188,12 @@ export default function HseEvents() {
       if (monthFilter) params.month = monthFilter
       if (fromDate) params.from_date = fromDate
       if (toDate) params.to_date = toDate
+
+      if (typeFilter) {
+        params.type = typeFilter
+      } else {
+        params.types = activeTab === 'accidents' ? ACCIDENT_INCIDENT_TYPES : MEDICAL_VISIT_TYPES
+      }
 
       const res = await hseEventService.getAll(params)
       const payload = res.data
@@ -223,7 +235,7 @@ export default function HseEvents() {
   useEffect(() => {
     fetchItems()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPole, selectedProjectId, yearFilter, monthFilter, fromDate, toDate])
+  }, [selectedPole, selectedProjectId, yearFilter, monthFilter, fromDate, toDate, activeTab, typeFilter])
 
   useEffect(() => {
     if (!selectedPole) return

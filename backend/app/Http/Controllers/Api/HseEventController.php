@@ -208,6 +208,14 @@ class HseEventController extends Controller
             $query->where('pole', $pole);
         }
 
+        $types = $request->input('types');
+        if (is_string($types)) {
+            $types = array_values(array_filter(array_map('trim', explode(',', $types)), fn ($v) => $v !== ''));
+        }
+        if (is_array($types) && count($types) > 0) {
+            $query->whereIn('type', $types);
+        }
+
         if ($request->filled('type')) {
             $query->where('type', $request->type);
         }

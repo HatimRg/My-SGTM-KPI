@@ -12,6 +12,7 @@ const CACHE_TTL = 60000 // 60 seconds (increased for better performance under lo
 const DASHBOARD_CACHE_TTL = 120000 // 2 minutes for dashboard data
 const LIST_CACHE_TTL = 90000 // 90 seconds for list endpoints
 const pendingRequests = new Map()
+const rateLimitUntilByUrl = new Map()
 
 const getUiLang = () => {
   try {
@@ -85,6 +86,19 @@ const isSensitiveUrl = (url) => {
 // Request interceptor with deduplication
 api.interceptors.request.use(
   (config) => {
+    try {
+      const url = String(config?.url || '')
+      const until = rateLimitUntilByUrl.get(url)
+      if (until && Date.now() < until) {
+        const err = new Error('Rate limited')
+        err.code = 'RATE_LIMITED'
+        err.config = config
+        return Promise.reject(err)
+      }
+    } catch {
+      // ignore
+    }
+
     // Add request timestamp for performance tracking
     config.metadata = { startTime: Date.now(), requestId: makeRequestId() }
     return config
@@ -347,7 +361,9 @@ api.interceptors.response.use(
       error?.name === 'CanceledError' ||
       error?.name === 'AbortError'
 
-    if (isCanceled) {
+    const isRateLimited = error?.code === 'RATE_LIMITED'
+
+    if (isCanceled || isRateLimited) {
       return Promise.reject(error)
     }
 
@@ -393,6 +409,20 @@ api.interceptors.response.use(
 
     if (response) {
       switch (response.status) {
+        case 429: {
+          try {
+            const url = String(config?.url || '')
+            const header = response.headers?.['retry-after']
+            const retrySeconds = Number(header)
+            const delayMs = Number.isFinite(retrySeconds) && retrySeconds > 0 ? retrySeconds * 1000 : 30000
+            if (url) {
+              rateLimitUntilByUrl.set(url, Date.now() + delayMs)
+            }
+          } catch {
+            // ignore
+          }
+          break
+        }
         case 401:
           // Unauthorized - redirect to login
           localStorage.removeItem('hse-auth-storage')

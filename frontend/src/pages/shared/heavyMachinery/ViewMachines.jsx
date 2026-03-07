@@ -8,6 +8,7 @@ import FilterBar from '../../../components/ui/filters/FilterBar'
 import FilterSelect from '../../../components/ui/filters/FilterSelect'
 import Modal from '../../../components/ui/Modal'
 import DatePicker from '../../../components/ui/DatePicker'
+import ResultsFooter from '../../../components/ui/ResultsFooter'
 import { getProjectLabel, sortProjects } from '../../../utils/projectList'
 import {
   PlusCircle,
@@ -114,7 +115,12 @@ export default function ViewMachines() {
 
   const [machines, setMachines] = useState([])
   const [loadingMachines, setLoadingMachines] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [perPage, setPerPage] = useState(50)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
 
   // Advanced filters are managed from the Filters dropdown button (search is kept outside).
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -407,26 +413,67 @@ export default function ViewMachines() {
     }
   }, [])
 
-  const fetchMachines = useCallback(async () => {
+  const fetchMachines = useCallback(async (opts = {}) => {
+    const nextPage = Number(opts?.page ?? 1)
+    const append = !!opts?.append
+
     try {
-      setLoadingMachines(true)
-      const res = await heavyMachineryService.getMachines()
+      if (append) {
+        setLoadingMore(true)
+      } else {
+        setLoadingMachines(true)
+      }
+
+      const params = {
+        page: nextPage,
+        per_page: perPage,
+        pole: selectedPole || undefined,
+        project_id: selectedProjectId || undefined,
+        machine_type: selectedMachineType || undefined,
+        status: selectedStatus || undefined,
+        search: debouncedSearch?.trim() ? debouncedSearch.trim() : undefined,
+      }
+
+      const res = await heavyMachineryService.getMachines(params)
       const payload = res.data?.data ?? []
-      setMachines(Array.isArray(payload) ? payload : [])
+      const meta = res.data?.meta ?? {}
+
+      setMachines((prev) => {
+        const list = Array.isArray(payload) ? payload : []
+        if (!append) return list
+        return [...(Array.isArray(prev) ? prev : []), ...list]
+      })
+
+      setPage(Number(meta.current_page ?? nextPage ?? 1))
+      setTotal(Number(meta.total ?? 0))
+      setPerPage(Number(meta.per_page ?? perPage))
     } catch (e) {
       toast.error(e.response?.data?.message ?? t('errors.failedToLoad') ?? 'Failed to load')
       setMachines([])
+      setPage(1)
+      setTotal(0)
     } finally {
       setLoadingMachines(false)
+      setLoadingMore(false)
     }
-  }, [t])
+  }, [debouncedSearch, perPage, selectedMachineType, selectedPole, selectedProjectId, selectedStatus, t])
 
   useEffect(() => {
     fetchProjects()
-    fetchMachines()
     fetchDocumentKeys()
     fetchMachineTypes()
-  }, [fetchProjects, fetchMachines, fetchDocumentKeys, fetchMachineTypes])
+  }, [fetchProjects, fetchDocumentKeys, fetchMachineTypes])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  useEffect(() => {
+    fetchMachines({ page: 1, append: false })
+  }, [fetchMachines])
 
   // Close the filter dropdown on outside click / ESC.
   useEffect(() => {
@@ -469,44 +516,14 @@ export default function ViewMachines() {
     }
   }, [previewUrl])
 
-  const filteredMachines = useMemo(() => {
-    let list = Array.isArray(machines) ? machines : []
+  const shownCount = Array.isArray(machines) ? machines.length : 0
+  const hasMore = total > shownCount
 
-    if (selectedPole) {
-      list = list.filter((m) => String(m?.project?.pole ?? '') === String(selectedPole))
-    }
-    if (selectedProjectId) {
-      list = list.filter((m) => String(m?.project_id ?? m?.project?.id ?? '') === String(selectedProjectId))
-    }
-    if (selectedMachineType) {
-      list = list.filter((m) => String(m?.machine_type_key ?? m?.machine_type ?? '') === String(selectedMachineType))
-    }
-    if (selectedStatus === 'active') {
-      list = list.filter((m) => !!m?.is_active)
-    } else if (selectedStatus === 'inactive') {
-      list = list.filter((m) => !m?.is_active)
-    }
-
-    const q = search.trim().toLowerCase()
-    if (!q) return list
-
-    return list.filter((m) => {
-      const hay = [
-        m.serial_number,
-        m.internal_code,
-        m.machine_type,
-        m.machine_type_label_fr,
-        m.machine_type_label_en,
-        m.brand,
-        m.model,
-        m.project?.name,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-      return hay.includes(q)
-    })
-  }, [machines, search, selectedMachineType, selectedPole, selectedProjectId, selectedStatus])
+  const showMore = async () => {
+    if (loadingMachines || loadingMore) return
+    if (!hasMore) return
+    await fetchMachines({ page: page + 1, append: true })
+  }
 
   const openCreate = () => {
     setCreateData({
@@ -1081,7 +1098,7 @@ export default function ViewMachines() {
 
             <button
               type="button"
-              onClick={fetchMachines}
+              onClick={() => fetchMachines({ page: 1, append: false })}
               className="btn-secondary flex items-center gap-2"
               disabled={loadingMachines}
             >
@@ -1132,7 +1149,7 @@ export default function ViewMachines() {
         <div className="flex items-center justify-center py-10">
           <Loader2 className="w-6 h-6 animate-spin text-hse-primary" />
         </div>
-      ) : filteredMachines.length === 0 ? (
+      ) : machines.length === 0 ? (
         <div className="card p-8 text-center">
           <Truck className="w-10 h-10 text-gray-300 dark:text-gray-700 mx-auto mb-3" />
           <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -1143,50 +1160,60 @@ export default function ViewMachines() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filteredMachines.map((m) => (
-            <div
-              key={m.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => openDetails(m.id)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') openDetails(m.id)
-              }}
-              className="card p-4 text-left hover:shadow-md transition-shadow cursor-pointer"
-            >
-              {m.image_url && (
-                <div className="mb-3">
-                  <div className="w-full h-40 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden">
-                    <MachineImage machineId={m.id} updatedAt={m.updated_at} alt={m.serial_number} className="w-full h-full object-cover" />
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {machines.map((m) => (
+              <div
+                key={m.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => openDetails(m.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') openDetails(m.id)
+                }}
+                className="card p-4 text-left hover:shadow-md transition-shadow cursor-pointer"
+              >
+                {m.image_url && (
+                  <div className="mb-3">
+                    <div className="w-full h-40 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 overflow-hidden">
+                      <MachineImage machineId={m.id} updatedAt={m.updated_at} alt={m.serial_number} className="w-full h-full object-cover" />
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                    {m.internal_code ? `${m.internal_code} · ${m.serial_number}` : m.serial_number}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
-                    {getMachineTypeLabel(m) + (m.brand ? ` · ${m.brand}` : '') + (m.model ? ` · ${m.model}` : '')}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">{m.project?.name ?? '-'}</p>
-                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                      {m.internal_code ? `${m.internal_code} · ${m.serial_number}` : m.serial_number}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+                      {getMachineTypeLabel(m) + (m.brand ? ` · ${m.brand}` : '') + (m.model ? ` · ${m.model}` : '')}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">{m.project?.name ?? '-'}</p>
+                  </div>
 
-                <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] ${
-                    m.is_active
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-200'
-                      : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                  }`}
-                >
-                  {m.is_active ? t('common.active') : t('common.inactive')}
-                </span>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] ${
+                      m.is_active
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-200'
+                        : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                    }`}
+                  >
+                    {m.is_active ? t('common.active') : t('common.inactive')}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+
+          <ResultsFooter
+            shown={shownCount}
+            total={total}
+            onShowMore={showMore}
+            loadingMore={loadingMore}
+            className="mt-4"
+          />
+        </>
       )}
 
       {bulkModalOpen && (

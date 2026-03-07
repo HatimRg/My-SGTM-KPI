@@ -418,7 +418,7 @@ class HeavyMachineryMachineController extends Controller
             'project_id' => 'nullable|exists:projects,id',
         ]);
 
-        $query = Machine::query()->with(['project:id,name']);
+        $query = Machine::query()->with(['project:id,name,pole']);
 
         if ($request->filled('project_id')) {
             $projectId = (int) $request->get('project_id');
@@ -428,15 +428,54 @@ class HeavyMachineryMachineController extends Controller
             $visibleProjectIds = $user ? $user->visibleProjectIds() : [];
             if ($visibleProjectIds !== null) {
                 if (count($visibleProjectIds) === 0) {
-                    return $this->success([]);
+                    $empty = Machine::query()->whereRaw('1=0')->paginate($request->get('per_page', 50));
+                    $empty->setCollection(collect([]));
+                    return $this->paginated($empty);
                 }
                 $query->whereIn('project_id', $visibleProjectIds);
             }
         }
 
-        $machines = $query->orderBy('internal_code')->orderBy('serial_number')->get();
+        if ($request->filled('pole')) {
+            $pole = (string) $request->get('pole');
+            $query->whereHas('project', function ($q) use ($pole) {
+                $q->where('pole', $pole);
+            });
+        }
 
-        return $this->success($machines->map(fn ($m) => $this->serializeMachine($m))->toArray());
+        if ($request->filled('machine_type')) {
+            $query->where('machine_type', (string) $request->get('machine_type'));
+        }
+
+        if ($request->filled('status')) {
+            $status = strtolower(trim((string) $request->get('status')));
+            if ($status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($status === 'inactive') {
+                $query->where('is_active', false);
+            }
+        }
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->get('search'));
+            $query->where(function ($q) use ($search) {
+                $q->where('serial_number', 'like', "%{$search}%")
+                    ->orWhere('internal_code', 'like', "%{$search}%")
+                    ->orWhere('brand', 'like', "%{$search}%")
+                    ->orWhere('model', 'like', "%{$search}%");
+            });
+        }
+
+        $machines = $query
+            ->orderBy('internal_code')
+            ->orderBy('serial_number')
+            ->paginate($request->get('per_page', 50));
+
+        $machines->setCollection(
+            $machines->getCollection()->map(fn ($m) => $this->serializeMachine($m))
+        );
+
+        return $this->paginated($machines);
     }
 
     public function show(Request $request, Machine $machine)
