@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\DailyKpiSnapshotController;
 use App\Http\Controllers\Api\DailyEffectifController;
 use App\Http\Controllers\Api\MonthlyReportController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\CommunityFeedController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\WorkPermitController;
 use App\Http\Controllers\Api\InspectionController;
@@ -248,6 +249,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/series', [DailyEffectifController::class, 'series']);
         Route::get('/history', [DailyEffectifController::class, 'history']);
         Route::get('/by-project', [DailyEffectifController::class, 'byProject']);
+    });
+
+
+    // Community Feed
+    Route::prefix('community-feed')->group(function () {
+        Route::get('/posts', [CommunityFeedController::class, 'index']);
+        Route::post('/posts', [CommunityFeedController::class, 'storePost']);
+        Route::post('/posts/{post}/comments', [CommunityFeedController::class, 'addComment']);
+        Route::post('/posts/{post}/reactions', [CommunityFeedController::class, 'react']);
     });
 
     // Notifications
