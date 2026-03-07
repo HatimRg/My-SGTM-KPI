@@ -2920,4 +2920,53 @@ export default {
       workPermits: 'Work Permits',
     },
   },
+
+  communityFeed: {
+    nav: 'HSE Community Feed',
+    pageTitle: 'HSE Community Feed',
+    pageSubtitle: 'An internal space to share positive HSE actions, initiatives, improvements, and learning moments.',
+    fallbackName: 'Internal user',
+    fallbackRoleFr: 'Collaborator',
+    fallbackRoleEn: 'Team member',
+    fallbackProject: 'Unassigned project',
+    filters: {
+      title: 'Filters',
+      searchPlaceholder: 'Search by content, hashtag, name, or project...',
+      allCategories: 'All categories',
+    },
+    categories: {
+      'good-practice': 'Good practice',
+      initiative: 'Initiative',
+      improvement: 'Improvement',
+      learning: 'Learning moment',
+    },
+    create: {
+      title: 'Publish a positive HSE action',
+      bodyPlaceholder: 'Share an HSE action, improvement, or learning moment... (#Safety)',
+      uploadImages: 'Add images (max 6)',
+      imagesSelected: '{count} image(s) selected',
+      publish: 'Publish',
+      restrictedMessage: 'Posting is restricted to authorized roles. You can still read, like, and comment on posts.',
+    },
+    comments: {
+      placeholder: 'Add a comment...',
+      add: 'Comment',
+    },
+    moderation: {
+      notAllowed: 'This content is not allowed.',
+    },
+    reactions: {
+      total: 'reactions',
+    },
+    notifications: {
+      loadFailed: 'Failed to load feed.',
+      createFailed: 'Failed to publish post.',
+      postCreated: 'Post created.',
+      reactionFailed: 'Failed to react.',
+      commentFailed: 'Failed to comment.',
+      commentBan: '{days} day(s) is left to be able to comment.',
+    },
+    emptyState: 'No posts yet. Be the first to share a positive action.',
+  },
+
 }

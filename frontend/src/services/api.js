@@ -702,6 +702,23 @@ export const notificationService = {
   urgentSend: (data) => api.post('/notifications/urgent/send', data),
 }
 
+
+export const communityFeedService = {
+  getPosts: (params) => api.get('/community-feed/posts', { params }),
+  createPost: ({ category, bodyRaw, projectId, images }) => {
+    const formData = new FormData()
+    formData.append('category', category)
+    formData.append('body_raw', bodyRaw)
+    if (projectId) formData.append('project_id', String(projectId))
+    ;(images || []).forEach((img) => formData.append('images[]', img))
+    return api.post('/community-feed/posts', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  addComment: (postId, bodyRaw) => api.post(`/community-feed/posts/${postId}/comments`, { body_raw: bodyRaw }),
+  react: (postId, reactionType) => api.post(`/community-feed/posts/${postId}/reactions`, { reaction_type: reactionType }),
+}
+
 export const bugReportService = {
   submit: (data) => {
     const formData = new FormData()

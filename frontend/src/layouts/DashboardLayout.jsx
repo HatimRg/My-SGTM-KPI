@@ -61,6 +61,7 @@ import {
   Play,
   Send,
   Trash2,
+  MessageSquare,
 } from 'lucide-react'
 import appLogo from '../App_Logo.png'
 
@@ -306,6 +307,7 @@ export default function DashboardLayout() {
     { to: '/admin/workers', icon: HardHat, label: t('workers.title') },
     { to: '/admin/ppe', icon: ShieldCheck, label: t('ppe.nav') },
     { to: '/admin/subcontractors', icon: Handshake, label: t('subcontractors.title') },
+    { to: '/community-feed', icon: MessageSquare, label: t('communityFeed.nav') },
   ]
 
   const directorNavItems = [
@@ -325,12 +327,14 @@ export default function DashboardLayout() {
     { to: '/admin/workers', icon: HardHat, label: t('workers.title') },
     { to: '/admin/ppe', icon: ShieldCheck, label: t('ppe.nav') },
     { to: '/admin/subcontractors', icon: Handshake, label: t('subcontractors.title') },
+    { to: '/community-feed', icon: MessageSquare, label: t('communityFeed.nav') },
   ]
 
   const hrDirectorNavItems = [
     { to: '/admin', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/admin/effectif', icon: UserRound, label: t('effectif.title') },
     { to: '/admin/workers', icon: HardHat, label: t('workers.title') },
+    { to: '/community-feed', icon: MessageSquare, label: t('communityFeed.nav') },
   ]
 
   const resetBugForm = () => {
@@ -461,6 +465,7 @@ export default function DashboardLayout() {
     { to: '/workers', icon: HardHat, label: t('workers.title') },
     { to: '/ppe', icon: ShieldCheck, label: t('ppe.nav') },
     { to: '/subcontractors', icon: Handshake, label: t('subcontractors.title') },
+    { to: '/community-feed', icon: MessageSquare, label: t('communityFeed.nav') },
   ]
 
   const hseOfficerNavItems = [
@@ -475,6 +480,7 @@ export default function DashboardLayout() {
     { to: '/supervisor/awareness', icon: Megaphone, label: t('awareness.navLabel') },
     { to: '/supervisor/training', icon: GraduationCap, label: t('training.navLabel') },
     { to: '/supervisor/work-permits', icon: ClipboardSignature, label: t('workPermits.title') },
+    { to: '/community-feed', icon: MessageSquare, label: t('communityFeed.nav') },
     { to: '/supervisor/inspections', icon: FileSearch, label: t('inspections.title') },
     { to: '/supervisor/regulatory-watch', icon: Gavel, label: t('regulatoryWatch.nav') },
     { to: '/supervisor/workers', icon: HardHat, label: t('workers.title') },
@@ -484,6 +490,7 @@ export default function DashboardLayout() {
   const hrNavItems = [
     { to: '/hr/workers', icon: HardHat, label: t('workers.title') },
     { to: '/hr/effectif', icon: UserRound, label: t('effectif.title') },
+    { to: '/community-feed', icon: MessageSquare, label: t('communityFeed.nav') },
   ]
 
   const getNavItems = () => {

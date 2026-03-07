@@ -45,6 +45,7 @@ const Workers = lazy(() => import('./pages/shared/Workers'))
 const PpeManagement = lazy(() => import('./pages/shared/PpeManagement'))
 const PpePendingValidationReport = lazy(() => import('./pages/shared/PpePendingValidationReport'))
 const Notifications = lazy(() => import('./pages/shared/Notifications'))
+const HseCommunityFeed = lazy(() => import('./pages/shared/HseCommunityFeed'))
 const SubcontractorOpenings = lazy(() => import('./pages/shared/SubcontractorOpenings'))
 const SubcontractorOpeningDetails = lazy(() => import('./pages/shared/SubcontractorOpeningDetails'))
 const EffectifSubmission = lazy(() => import('./pages/shared/EffectifSubmission'))
@@ -553,6 +554,7 @@ function App() {
         }
       >
         <Route path="/notifications" element={<Notifications />} />
+        <Route path="/community-feed" element={<HseCommunityFeed />} />
       </Route>
 
       {/* Heavy Machinery Tracking - available for all authenticated roles except HR and HR Director */}
