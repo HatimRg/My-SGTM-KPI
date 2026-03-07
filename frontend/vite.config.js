@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const isNetlify = process.env.NETLIFY === 'true'
+
 export default defineConfig({
   plugins: [react()],
   server: {
@@ -22,9 +24,9 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: '../backend/public',
+    outDir: isNetlify ? 'dist' : '../backend/public',
     assetsDir: 'assets',
-    emptyOutDir: false,
+    emptyOutDir: isNetlify,
     // Optimize chunk splitting for faster initial load
     rollupOptions: {
       output: {
