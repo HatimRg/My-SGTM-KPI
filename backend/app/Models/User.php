@@ -25,6 +25,7 @@ class User extends Authenticatable
         'preferred_language',
         'project_list_preference',
         'is_active',
+        'comments_banned_until',
         'created_by',
     ];
 
@@ -37,6 +38,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'is_active' => 'boolean',
         'must_change_password' => 'boolean',
+        'comments_banned_until' => 'datetime',
     ];
 
     public function setPasswordAttribute($value)

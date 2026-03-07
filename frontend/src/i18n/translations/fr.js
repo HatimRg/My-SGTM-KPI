@@ -141,7 +141,7 @@ export default {
       delete: {
         confirm: 'Supprimer cet engin ?',
         confirmProfessional:
-          "Veuillez supprimer cet engin uniquement s'il a été ajouté par erreur. Si l'engin existe toujours mais n'est plus dans votre projet, mettez-le plutôt sur INACTIF.\n\nVoulez-vous le supprimer maintenant ?",
+          "Veuillez supprimer cet engin uniquement s'il a été ajouté par erreur. Si l'engin existe toujours mais n\'est plus dans votre projet, mettez-le plutôt sur INACTIF.\n\nVoulez-vous le supprimer maintenant ?",
         success: 'Engin supprimé',
         failed: 'Échec de suppression',
       },
@@ -2920,4 +2920,53 @@ export default {
       workPermits: 'Permis de Travail',
     },
   },
+
+  communityFeed: {
+    nav: 'Fil communauté HSE',
+    pageTitle: 'Fil communauté HSE',
+    pageSubtitle: "Un espace interne pour partager les bonnes pratiques, initiatives et apprentissages HSE.",
+    fallbackName: 'Utilisateur interne',
+    fallbackRoleFr: 'Collaborateur',
+    fallbackRoleEn: 'Team member',
+    fallbackProject: 'Projet non attribué',
+    filters: {
+      title: 'Filtres',
+      searchPlaceholder: 'Rechercher par contenu, hashtag, nom ou projet...',
+      allCategories: 'Toutes les catégories',
+    },
+    categories: {
+      'good-practice': 'Bonne pratique',
+      initiative: 'Initiative',
+      improvement: 'Amélioration',
+      learning: 'Retour d\'expérience',
+    },
+    create: {
+      title: 'Publier une action HSE positive',
+      bodyPlaceholder: 'Partagez une action, une amélioration ou un moment d\'apprentissage HSE... (#Sécurité)',
+      uploadImages: 'Ajouter des images (max 6)',
+      imagesSelected: '{count} image(s) sélectionnée(s)',
+      publish: 'Publier',
+      restrictedMessage: 'La publication est réservée aux rôles autorisés. Vous pouvez consulter, liker et commenter les publications.',
+    },
+    comments: {
+      placeholder: 'Ajouter un commentaire...',
+      add: 'Commenter',
+    },
+    moderation: {
+      notAllowed: 'Ce contenu n\'est pas autorisé.',
+    },
+    reactions: {
+      total: 'réactions',
+    },
+    notifications: {
+      loadFailed: 'Échec du chargement du fil.',
+      createFailed: 'Échec de la publication.',
+      postCreated: 'Publication créée.',
+      reactionFailed: 'Échec de la réaction.',
+      commentFailed: 'Échec du commentaire.',
+      commentBan: 'Il reste {days} jour(s) avant de pouvoir commenter.',
+    },
+    emptyState: 'Aucune publication pour le moment. Soyez le premier à partager une action positive.',
+  },
+
 }
