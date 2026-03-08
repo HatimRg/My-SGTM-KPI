@@ -58,6 +58,9 @@ Route::prefix('auth')->group(function () {
 // Public stats for login page (no auth required)
 Route::get('/public-stats', [DashboardController::class, 'publicStats']);
 
+// Public community feed assets (needed for <img> tags)
+Route::get('/community-feed/images/{image}', [CommunityFeedController::class, 'showImage']);
+
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
 

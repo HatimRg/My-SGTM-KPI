@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CommunityPost;
 use App\Models\CommunityPostComment;
 use App\Models\CommunityPostHashtag;
+use App\Models\CommunityPostImage;
 use App\Models\CommunityPostReaction;
 use App\Models\User;
 use App\Services\CommunityModerationService;
@@ -17,6 +18,37 @@ use Illuminate\Support\Facades\Storage;
 
 class CommunityFeedController extends Controller
 {
+    public function showImage(Request $request, CommunityPostImage $image)
+    {
+        $disk = Storage::disk('public');
+        $path = (string) $image->file_path;
+
+        if ($path === '' || !$disk->exists($path)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Not found',
+            ], 404);
+        }
+
+        $fullPath = $disk->path($path);
+        $mime = $image->mime_type ?: $disk->mimeType($path) ?: 'application/octet-stream';
+
+        $originalName = (string) ($image->original_name ?: basename($path));
+        $download = (bool) $request->boolean('download', false);
+
+        if ($download) {
+            return response()->download($fullPath, $originalName, [
+                'Content-Type' => $mime,
+                'Cache-Control' => 'private, max-age=3600',
+            ]);
+        }
+
+        return response()->file($fullPath, [
+            'Content-Type' => $mime,
+            'Cache-Control' => 'private, max-age=3600',
+        ]);
+    }
+
     public function listReactions(Request $request, CommunityPost $post)
     {
         $validated = $request->validate([
@@ -112,7 +144,7 @@ class CommunityFeedController extends Controller
                 ],
                 'images' => $post->images->map(fn ($img) => [
                     'id' => $img->id,
-                    'url' => Storage::disk('public')->url($img->file_path),
+                    'url' => "/api/community-feed/images/{$img->id}",
                     'name' => $img->original_name,
                 ])->values(),
                 'hashtags' => $post->hashtags->map(fn ($h) => [

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { communityFeedService } from '../../services/api'
 import { useLanguage } from '../../i18n'
@@ -41,15 +41,7 @@ const resolveAssetUrl = (value) => {
   if (!raw) return ''
 
   if (/^https?:\/\//i.test(raw)) {
-    try {
-      const url = new URL(raw)
-      if (typeof window !== 'undefined' && window.location?.origin && url.origin !== window.location.origin) {
-        return `${window.location.origin}${url.pathname}${url.search}${url.hash}`
-      }
-      return raw
-    } catch {
-      return raw
-    }
+    return raw
   }
 
   if (raw.startsWith('/')) {
@@ -61,8 +53,23 @@ const resolveAssetUrl = (value) => {
   return raw
 }
 
-const FeedImage = ({ src, alt }) => {
+const FeedImage = ({ src, alt, className }) => {
   const resolvedSrc = useMemo(() => resolveAssetUrl(src), [src])
+  const sameOriginFallbackSrc = useMemo(() => {
+    const raw = String(src || '').trim()
+    if (!raw) return ''
+    if (!/^https?:\/\//i.test(raw)) return ''
+    try {
+      const url = new URL(raw)
+      if (typeof window === 'undefined' || !window.location?.origin) return ''
+      if (url.origin === window.location.origin) return ''
+      return `${window.location.origin}${url.pathname}${url.search}${url.hash}`
+    } catch {
+      return ''
+    }
+  }, [src])
+
+  const [activeSrc, setActiveSrc] = useState('')
   const [blobUrl, setBlobUrl] = useState('')
   const [triedBlob, setTriedBlob] = useState(false)
   const [hidden, setHidden] = useState(false)
@@ -70,6 +77,7 @@ const FeedImage = ({ src, alt }) => {
   useEffect(() => {
     setHidden(false)
     setTriedBlob(false)
+    setActiveSrc(resolvedSrc)
     setBlobUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev)
       return ''
@@ -85,12 +93,13 @@ const FeedImage = ({ src, alt }) => {
     }
   }, [])
 
-  const tryBlob = useCallback(async () => {
-    if (!resolvedSrc || triedBlob) return
+  const tryBlob = useCallback(async (urlToFetch) => {
+    const url = String(urlToFetch || '').trim()
+    if (!url || triedBlob) return
     setTriedBlob(true)
 
     try {
-      const res = await fetch(resolvedSrc, { credentials: 'include' })
+      const res = await fetch(url, { credentials: 'include' })
       if (!res.ok) throw new Error('Failed to load image')
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
@@ -101,22 +110,28 @@ const FeedImage = ({ src, alt }) => {
     } catch {
       setHidden(true)
     }
-  }, [resolvedSrc, triedBlob])
+  }, [triedBlob])
 
-  if (!resolvedSrc || hidden) return null
+  if (!activeSrc || hidden) return null
 
   return (
     <img
-      src={blobUrl || resolvedSrc}
+      src={blobUrl || activeSrc}
       alt={alt}
-      className="w-full h-32 object-cover"
+      className={className || 'w-full h-32 object-cover'}
       loading="lazy"
       onError={() => {
         if (blobUrl) {
           setHidden(true)
           return
         }
-        tryBlob()
+
+        if (sameOriginFallbackSrc && activeSrc !== sameOriginFallbackSrc) {
+          setActiveSrc(sameOriginFallbackSrc)
+          return
+        }
+
+        tryBlob(activeSrc)
       }}
     />
   )
@@ -179,6 +194,8 @@ export default function HseCommunityFeed() {
   const [newProjectId, setNewProjectId] = useState('')
   const [newImages, setNewImages] = useState([])
   const [newImagePreviews, setNewImagePreviews] = useState([])
+  const imageInputRef = useRef(null)
+  const [isDraggingImages, setIsDraggingImages] = useState(false)
   const [posting, setPosting] = useState(false)
   const [commentDrafts, setCommentDrafts] = useState({})
   const [blockedTerms, setBlockedTerms] = useState([])
@@ -188,6 +205,8 @@ export default function HseCommunityFeed() {
   const [reactionsModalTab, setReactionsModalTab] = useState('all')
   const [reactionsModalLoading, setReactionsModalLoading] = useState(false)
   const [reactionsModalItems, setReactionsModalItems] = useState([])
+
+  const [imageViewer, setImageViewer] = useState({ isOpen: false, src: '', name: '' })
 
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, type: '', postId: null, commentId: null })
   const [deleting, setDeleting] = useState(false)
@@ -335,9 +354,34 @@ export default function HseCommunityFeed() {
     }
   }
 
+  const setSelectedImages = (files) => {
+    const list = Array.isArray(files) ? files : []
+    setNewImages(list.slice(0, 6))
+  }
+
   const handleImageSelect = (event) => {
     const files = Array.from(event.target.files || [])
-    setNewImages(files.slice(0, 6))
+    setSelectedImages(files)
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = ''
+    }
+  }
+
+  const handleDropImages = (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setIsDraggingImages(false)
+
+    const files = Array.from(event.dataTransfer?.files || [])
+      .filter((f) => f && typeof f.type === 'string' && f.type.startsWith('image/'))
+
+    if (!files.length) return
+    setSelectedImages(files)
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = ''
+    }
   }
 
   useEffect(() => {
@@ -364,6 +408,10 @@ export default function HseCommunityFeed() {
       list.splice(index, 1)
       return list
     })
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = ''
+    }
   }
 
   const react = async (postId, reactionType) => {
@@ -503,6 +551,29 @@ export default function HseCommunityFeed() {
     setReactionsModalLoading(false)
   }
 
+  const openImageViewer = (image) => {
+    const src = resolveAssetUrl(image?.url)
+    if (!src) return
+    setImageViewer({ isOpen: true, src, name: image?.name || '' })
+  }
+
+  const closeImageViewer = () => {
+    setImageViewer({ isOpen: false, src: '', name: '' })
+  }
+
+  const getDownloadUrl = (src) => {
+    const raw = String(src || '').trim()
+    if (!raw) return ''
+    try {
+      const url = new URL(raw)
+      url.searchParams.set('download', '1')
+      return url.toString()
+    } catch {
+      const joiner = raw.includes('?') ? '&' : '?'
+      return `${raw}${joiner}download=1`
+    }
+  }
+
   const filteredReactionsModalItems = useMemo(() => {
     const list = Array.isArray(reactionsModalItems) ? reactionsModalItems : []
     if (!reactionsModalTab || reactionsModalTab === 'all') return list
@@ -541,7 +612,7 @@ export default function HseCommunityFeed() {
       {canPublish && (
         <div className="card">
           <div className="card-header flex items-center gap-2"><Plus className="w-5 h-5 text-hse-primary" /><h2 className="font-semibold text-gray-900 dark:text-gray-100">{t('communityFeed.create.title')}</h2></div>
-          <div className="space-y-3">
+          <div className="space-y-3 p-4 sm:p-6">
             {visibleProjects.length > 1 && (
               <select value={newProjectId} onChange={(event) => setNewProjectId(event.target.value)} className="input" disabled={posting}>
                 <option value="">{t('communityFeed.create.selectProject')}</option>
@@ -567,14 +638,66 @@ export default function HseCommunityFeed() {
                 <p>{blockedTerms.join(', ')}</p>
               </div>
             )}
-            <label
-              className={`inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 ${posting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            <div
+              className={`rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2 transition-colors ${
+                isDraggingImages ? 'bg-blue-50 dark:bg-blue-900/20 border-hse-primary' : 'bg-white dark:bg-gray-900'
+              }`}
+              onDragEnter={(event) => {
+                if (posting) return
+                event.preventDefault()
+                event.stopPropagation()
+                setIsDraggingImages(true)
+              }}
+              onDragOver={(event) => {
+                if (posting) return
+                event.preventDefault()
+                event.stopPropagation()
+                setIsDraggingImages(true)
+              }}
+              onDragLeave={(event) => {
+                if (posting) return
+                event.preventDefault()
+                event.stopPropagation()
+                setIsDraggingImages(false)
+              }}
+              onDrop={(event) => {
+                if (posting) return
+                handleDropImages(event)
+              }}
             >
-              <ImageIcon className="w-4 h-4" />
-              {t('communityFeed.create.uploadImages')}
-              <input type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" disabled={posting} />
-            </label>
-            {newImages.length > 0 && <p className="text-xs text-gray-500 dark:text-gray-400">{t('communityFeed.create.imagesSelected', { count: String(newImages.length) })}</p>}
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (posting) return
+                    imageInputRef.current?.click()
+                  }}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm ${
+                    posting
+                      ? 'opacity-60 cursor-not-allowed border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  <span className="font-medium">{t('communityFeed.create.uploadImages')}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">(max 6)</span>
+                </button>
+
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {newImages.length > 0 ? t('communityFeed.create.imagesSelected', { count: String(newImages.length) }) : null}
+                </div>
+              </div>
+
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageSelect}
+                className="hidden"
+                disabled={posting}
+              />
+            </div>
 
             {newImagePreviews.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -596,15 +719,20 @@ export default function HseCommunityFeed() {
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={createPost}
-              className="btn-primary inline-flex items-center gap-2"
-              disabled={posting || !String(newBody || '').trim() || (visibleProjects.length > 1 && !newProjectId)}
-            >
-              {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              {posting ? t('communityFeed.create.publishing') : t('communityFeed.create.publish')}
-            </button>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {isDraggingImages ? t('communityFeed.create.dropHint') : null}
+              </div>
+              <button
+                type="button"
+                onClick={createPost}
+                className="btn-primary inline-flex items-center gap-2"
+                disabled={posting || !String(newBody || '').trim() || (visibleProjects.length > 1 && !newProjectId)}
+              >
+                {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {posting ? t('communityFeed.create.publishing') : t('communityFeed.create.publish')}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -616,7 +744,7 @@ export default function HseCommunityFeed() {
         {!loading && posts.length === 0 && <div className="card text-center py-10 text-gray-500 dark:text-gray-400">{t('communityFeed.emptyState')}</div>}
 
         {!loading && posts.map((post) => (
-          <article key={post.id} className="card space-y-4">
+          <article key={post.id} className="card space-y-4 p-4 sm:p-6">
             <header className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-sm font-semibold text-gray-700 dark:text-gray-200">
                 {String(post.user?.full_name || '').trim().slice(0, 1).toUpperCase() || '?'}
@@ -646,12 +774,39 @@ export default function HseCommunityFeed() {
             <p className="whitespace-pre-line text-sm text-gray-800 dark:text-gray-100" dir="auto">{post.body_raw}</p>
             {!!post.hashtags?.length && <div className="flex flex-wrap gap-2">{post.hashtags.map((tag) => <span key={`${post.id}-${tag.normalized}`} className="inline-flex items-center gap-1 text-xs rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-1"><Hash className="w-3 h-3" />{tag.original}</span>)}</div>}
             {!!post.images?.length && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {post.images.map((image) => (
-                  <div key={image.id} className="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                    <FeedImage src={image.url} alt={image.name} />
+              <div
+                className={`w-full flex justify-center ${
+                  post.images.length === 1
+                    ? ''
+                    : post.images.length === 2
+                      ? ''
+                      : ''
+                }`}
+              >
+                {post.images.length === 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => openImageViewer(post.images[0])}
+                    className="w-full max-w-2xl rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
+                    title={t('communityFeed.images.open')}
+                  >
+                    <FeedImage src={post.images[0].url} alt={post.images[0].name} className="w-full h-64 sm:h-80 object-contain bg-black/5 dark:bg-black/20" />
+                  </button>
+                ) : (
+                  <div className={`grid gap-2 w-full ${post.images.length === 2 ? 'grid-cols-2 max-w-3xl' : 'grid-cols-2 md:grid-cols-3 max-w-4xl'}`}>
+                    {post.images.map((image) => (
+                      <button
+                        key={image.id}
+                        type="button"
+                        onClick={() => openImageViewer(image)}
+                        className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
+                        title={t('communityFeed.images.open')}
+                      >
+                        <FeedImage src={image.url} alt={image.name} className="w-full h-44 sm:h-52 object-cover" />
+                      </button>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             )}
 
@@ -847,6 +1002,32 @@ export default function HseCommunityFeed() {
         onConfirm={confirmDelete}
         onCancel={closeDeleteDialog}
       />
+
+      <Modal
+        isOpen={!!imageViewer?.isOpen}
+        onClose={closeImageViewer}
+        title={t('communityFeed.images.viewerTitle')}
+        size="lg"
+      >
+        <div className="space-y-3">
+          <div className="flex items-center justify-end gap-2">
+            <a
+              href={getDownloadUrl(imageViewer?.src)}
+              className="btn-secondary"
+              download
+            >
+              {t('communityFeed.images.download')}
+            </a>
+          </div>
+          <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+            <img
+              src={imageViewer?.src}
+              alt={imageViewer?.name || t('communityFeed.images.alt')}
+              className="w-full max-h-[75vh] object-contain"
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
