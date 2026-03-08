@@ -717,6 +717,9 @@ export const communityFeedService = {
   },
   addComment: (postId, bodyRaw) => api.post(`/community-feed/posts/${postId}/comments`, { body_raw: bodyRaw }),
   react: (postId, reactionType) => api.post(`/community-feed/posts/${postId}/reactions`, { reaction_type: reactionType }),
+  listPostReactions: (postId, params) => api.get(`/community-feed/posts/${postId}/reactions`, { params }),
+  deletePost: (postId) => api.delete(`/community-feed/posts/${postId}`),
+  deleteComment: (commentId) => api.delete(`/community-feed/comments/${commentId}`),
 }
 
 export const bugReportService = {

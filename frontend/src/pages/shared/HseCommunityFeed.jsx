@@ -3,9 +3,11 @@ import toast from 'react-hot-toast'
 import { communityFeedService } from '../../services/api'
 import { useLanguage } from '../../i18n'
 import ResultsFooter from '../../components/ui/ResultsFooter'
+import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { useAuthStore } from '../../store/authStore'
 import { useProjectStore } from '../../store/projectStore'
-import { ChevronDown, Filter, Hash, ImageIcon, Loader2, MessageCircle, Plus, Send, X } from 'lucide-react'
+import { ChevronDown, Filter, Hash, ImageIcon, Loader2, MessageCircle, Plus, Send, Trash2, X } from 'lucide-react'
 
 const CATEGORIES = ['good-practice', 'initiative', 'improvement', 'learning']
 
@@ -182,6 +184,14 @@ export default function HseCommunityFeed() {
   const [blockedTerms, setBlockedTerms] = useState([])
   const [reactionPickerPostId, setReactionPickerPostId] = useState(null)
 
+  const [reactionsModalPost, setReactionsModalPost] = useState(null)
+  const [reactionsModalTab, setReactionsModalTab] = useState('all')
+  const [reactionsModalLoading, setReactionsModalLoading] = useState(false)
+  const [reactionsModalItems, setReactionsModalItems] = useState([])
+
+  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, type: '', postId: null, commentId: null })
+  const [deleting, setDeleting] = useState(false)
+
   useEffect(() => {
     fetchProjects({ status: 'active' }).catch(() => {})
   }, [fetchProjects])
@@ -203,6 +213,11 @@ export default function HseCommunityFeed() {
 
   const canPublish = useMemo(() => {
     const roles = ['admin', 'dev', 'consultation', 'pole_director', 'works_director', 'hse_director', 'hr_director', 'hse_manager', 'regional_hse_manager', 'responsable', 'supervisor']
+    return roles.includes(user?.role)
+  }, [user?.role])
+
+  const canModerateCommunityFeed = useMemo(() => {
+    const roles = ['admin', 'dev', 'consultation', 'pole_director', 'works_director', 'hse_director', 'hr_director']
     return roles.includes(user?.role)
   }, [user?.role])
 
@@ -411,6 +426,89 @@ export default function HseCommunityFeed() {
     }
   }
 
+  const requestDeletePost = (postId) => {
+    setDeleteDialog({ isOpen: true, type: 'post', postId, commentId: null })
+  }
+
+  const requestDeleteComment = (postId, commentId) => {
+    setDeleteDialog({ isOpen: true, type: 'comment', postId, commentId })
+  }
+
+  const closeDeleteDialog = () => {
+    if (deleting) return
+    setDeleteDialog({ isOpen: false, type: '', postId: null, commentId: null })
+  }
+
+  const confirmDelete = async () => {
+    if (deleting) return
+    if (!deleteDialog?.isOpen) return
+
+    const type = deleteDialog.type
+    const postId = deleteDialog.postId
+    const commentId = deleteDialog.commentId
+
+    setDeleting(true)
+    try {
+      if (type === 'post' && postId) {
+        setPosts((prev) => (Array.isArray(prev) ? prev : []).filter((p) => String(p?.id) !== String(postId)))
+        await communityFeedService.deletePost(postId)
+        toast.success(t('communityFeed.notifications.postDeleted'))
+      } else if (type === 'comment' && commentId) {
+        setPosts((prev) => {
+          const list = Array.isArray(prev) ? prev : []
+          return list.map((p) => {
+            if (String(p?.id) !== String(postId)) return p
+            const next = { ...p }
+            const comments = Array.isArray(next.comments) ? next.comments : []
+            next.comments = comments.filter((c) => String(c?.id) !== String(commentId))
+            next.comments_count = Math.max(0, Number(next.comments_count || 0) - 1)
+            return next
+          })
+        })
+        await communityFeedService.deleteComment(commentId)
+        toast.success(t('communityFeed.notifications.commentDeleted'))
+      }
+    } catch (error) {
+      toast.error(error?.response?.data?.message || t('communityFeed.notifications.deleteFailed'))
+      await loadPosts({ page: 1, append: false })
+    } finally {
+      setDeleting(false)
+      setDeleteDialog({ isOpen: false, type: '', postId: null, commentId: null })
+    }
+  }
+
+  const openReactionsModal = async (post) => {
+    if (!post?.id) return
+    setReactionsModalPost(post)
+    setReactionsModalTab('all')
+    setReactionsModalItems([])
+    setReactionsModalLoading(true)
+
+    try {
+      const res = await communityFeedService.listPostReactions(post.id)
+      const items = res.data?.data?.items
+      setReactionsModalItems(Array.isArray(items) ? items : [])
+    } catch {
+      toast.error(t('communityFeed.notifications.loadFailed'))
+      setReactionsModalItems([])
+    } finally {
+      setReactionsModalLoading(false)
+    }
+  }
+
+  const closeReactionsModal = () => {
+    setReactionsModalPost(null)
+    setReactionsModalTab('all')
+    setReactionsModalItems([])
+    setReactionsModalLoading(false)
+  }
+
+  const filteredReactionsModalItems = useMemo(() => {
+    const list = Array.isArray(reactionsModalItems) ? reactionsModalItems : []
+    if (!reactionsModalTab || reactionsModalTab === 'all') return list
+    return list.filter((item) => String(item?.reaction_type) === String(reactionsModalTab))
+  }, [reactionsModalItems, reactionsModalTab])
+
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-6 space-y-5 sm:space-y-6 animate-fade-in">
       <div>
@@ -532,6 +630,18 @@ export default function HseCommunityFeed() {
                 {formatDate(post.created_at, language)}
               </p>
               </div>
+
+              {(canModerateCommunityFeed || String(post.user?.id) === String(user?.id)) && (
+                <button
+                  type="button"
+                  onClick={() => requestDeletePost(post.id)}
+                  className="ml-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+                  title={t('common.delete')}
+                  aria-label={t('common.delete')}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </header>
             <p className="whitespace-pre-line text-sm text-gray-800 dark:text-gray-100" dir="auto">{post.body_raw}</p>
             {!!post.hashtags?.length && <div className="flex flex-wrap gap-2">{post.hashtags.map((tag) => <span key={`${post.id}-${tag.normalized}`} className="inline-flex items-center gap-1 text-xs rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-1"><Hash className="w-3 h-3" />{tag.original}</span>)}</div>}
@@ -601,10 +711,14 @@ export default function HseCommunityFeed() {
                 )}
               </div>
 
-              <span className="inline-flex items-center gap-1 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600">
+              <button
+                type="button"
+                onClick={() => openReactionsModal(post)}
+                className="inline-flex items-center gap-1 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
                 <span className="font-medium">{getReactionTotal(post.reactions)}</span>
                 <span className="text-gray-500 dark:text-gray-400">{t('communityFeed.reactions.total')}</span>
-              </span>
+              </button>
 
               <span className="inline-flex items-center gap-1 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600">
                 <MessageCircle className="w-4 h-4" />
@@ -614,9 +728,22 @@ export default function HseCommunityFeed() {
 
             <div className="space-y-2">
               {(post.comments || []).map((comment) => (
-                <div key={comment.id} className="rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm">
-                  <span className="font-medium text-gray-900 dark:text-gray-100">{comment.author}</span>
-                  <p className="text-gray-700 dark:text-gray-300" dir="auto">{comment.body_raw}</p>
+                <div key={comment.id} className="rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm flex gap-2">
+                  <div className="min-w-0 flex-1">
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{comment.author}</span>
+                    <p className="text-gray-700 dark:text-gray-300" dir="auto">{comment.body_raw}</p>
+                  </div>
+                  {(canModerateCommunityFeed || String(comment.user_id) === String(user?.id)) && (
+                    <button
+                      type="button"
+                      onClick={() => requestDeleteComment(post.id, comment.id)}
+                      className="shrink-0 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+                      title={t('common.delete')}
+                      aria-label={t('common.delete')}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               ))}
 
@@ -637,6 +764,89 @@ export default function HseCommunityFeed() {
           />
         )}
       </div>
+
+      <Modal
+        isOpen={!!reactionsModalPost}
+        onClose={closeReactionsModal}
+        title={t('communityFeed.reactions.modalTitle')}
+        size="md"
+      >
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-700 pb-3">
+            <button
+              type="button"
+              onClick={() => setReactionsModalTab('all')}
+              className={`px-3 py-1.5 rounded-full text-sm border ${
+                reactionsModalTab === 'all'
+                  ? 'border-hse-primary text-hse-primary bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200'
+              }`}
+            >
+              {t('communityFeed.reactions.tabs.all')}
+              {reactionsModalPost ? ` (${getReactionTotal(reactionsModalPost.reactions)})` : ''}
+            </button>
+
+            {REACTIONS.map((r) => (
+              <button
+                key={r.key}
+                type="button"
+                onClick={() => setReactionsModalTab(r.key)}
+                className={`px-3 py-1.5 rounded-full text-sm border inline-flex items-center gap-2 ${
+                  reactionsModalTab === r.key
+                    ? 'border-hse-primary text-hse-primary bg-blue-50 dark:bg-blue-900/20'
+                    : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200'
+                }`}
+                title={t(`communityFeed.reactions.types.${r.key}`)}
+              >
+                <span className="text-base leading-none">{r.emoji}</span>
+                <span className="font-medium">{Number(reactionsModalPost?.reactions?.[r.key] || 0)}</span>
+              </button>
+            ))}
+          </div>
+
+          {reactionsModalLoading && (
+            <div className="py-10 text-center text-gray-500 dark:text-gray-400">
+              <Loader2 className="w-5 h-5 animate-spin inline-block" />
+            </div>
+          )}
+
+          {!reactionsModalLoading && filteredReactionsModalItems.length === 0 && (
+            <div className="py-10 text-center text-gray-500 dark:text-gray-400">
+              {t('communityFeed.reactions.empty')}
+            </div>
+          )}
+
+          {!reactionsModalLoading && filteredReactionsModalItems.length > 0 && (
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {filteredReactionsModalItems.map((item) => (
+                <div key={item.id} className="py-3 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    {String(item.user?.name || '').trim().slice(0, 1).toUpperCase() || '?'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900 dark:text-gray-100 truncate">{item.user?.name || t('communityFeed.fallbackName')}</span>
+                      <span className="text-base leading-none">{getReactionEmoji(item.reaction_type)}</span>
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{getTimeAgoLabel(item.created_at, t, language)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={!!deleteDialog?.isOpen}
+        title={t('communityFeed.delete.title')}
+        message={deleteDialog?.type === 'post' ? t('communityFeed.delete.postMessage') : t('communityFeed.delete.commentMessage')}
+        confirmLabel={deleting ? t('communityFeed.delete.deleting') : t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={closeDeleteDialog}
+      />
     </div>
   )
 }

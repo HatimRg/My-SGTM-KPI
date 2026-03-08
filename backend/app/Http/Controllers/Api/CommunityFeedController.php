@@ -17,6 +17,43 @@ use Illuminate\Support\Facades\Storage;
 
 class CommunityFeedController extends Controller
 {
+    public function listReactions(Request $request, CommunityPost $post)
+    {
+        $validated = $request->validate([
+            'reaction_type' => 'nullable|string',
+        ]);
+
+        $allowed = config('community_feed.reaction_types', []);
+        $type = $validated['reaction_type'] ?? null;
+        if ($type !== null && $type !== '' && !in_array($type, $allowed, true)) {
+            return $this->error('Invalid reaction type.', 422);
+        }
+
+        $query = CommunityPostReaction::query()
+            ->where('post_id', $post->id)
+            ->with('user:id,name')
+            ->latest();
+
+        if ($type !== null && $type !== '') {
+            $query->where('reaction_type', $type);
+        }
+
+        $items = $query
+            ->get()
+            ->map(fn (CommunityPostReaction $r) => [
+                'id' => $r->id,
+                'reaction_type' => $r->reaction_type,
+                'created_at' => $r->created_at,
+                'user' => [
+                    'id' => $r->user?->id,
+                    'name' => $r->user?->name,
+                ],
+            ])
+            ->values();
+
+        return $this->success(['items' => $items]);
+    }
+
     public function index(Request $request)
     {
         $query = CommunityPost::query()
@@ -85,6 +122,7 @@ class CommunityFeedController extends Controller
                 'comments_count' => (int) $post->comments_count,
                 'comments' => $post->comments->map(fn ($c) => [
                     'id' => $c->id,
+                    'user_id' => $c->user_id,
                     'author' => $c->user?->name,
                     'body_raw' => $c->body_raw,
                     'created_at' => $c->created_at,
@@ -165,6 +203,24 @@ class CommunityFeedController extends Controller
         });
 
         return $this->success(['id' => $post->id], 'Post created', 201);
+    }
+
+    public function deletePost(Request $request, CommunityPost $post)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
+        $isAuthor = (int) $post->user_id === (int) $user->id;
+        $canModerate = $user->isAdminLike();
+        if (!$isAuthor && !$canModerate) {
+            return $this->error('Forbidden', 403);
+        }
+
+        $post->delete();
+
+        return $this->success(['deleted' => true], 'Post deleted');
     }
 
     public function addComment(Request $request, CommunityPost $post)
@@ -248,10 +304,29 @@ class CommunityFeedController extends Controller
 
         return $this->success([
             'id' => $comment->id,
+            'user_id' => $comment->user_id,
             'author' => $user->name,
             'body_raw' => $comment->body_raw,
             'created_at' => $comment->created_at,
         ], 'Comment added', 201);
+    }
+
+    public function deleteComment(Request $request, CommunityPostComment $comment)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
+        $isAuthor = (int) $comment->user_id === (int) $user->id;
+        $canModerate = $user->isAdminLike();
+        if (!$isAuthor && !$canModerate) {
+            return $this->error('Forbidden', 403);
+        }
+
+        $comment->delete();
+
+        return $this->success(['deleted' => true], 'Comment deleted');
     }
 
     public function react(Request $request, CommunityPost $post)
