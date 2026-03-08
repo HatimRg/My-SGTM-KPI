@@ -2933,6 +2933,7 @@ export default {
       title: 'Filtres',
       searchPlaceholder: 'Rechercher par contenu, hashtag, nom ou projet...',
       allCategories: 'Toutes les catégories',
+      allProjects: 'Tous les projets',
     },
     categories: {
       'good-practice': 'Bonne pratique',
@@ -2942,10 +2943,13 @@ export default {
     },
     create: {
       title: 'Publier une action HSE positive',
+      selectProject: 'Choisir un projet',
       bodyPlaceholder: 'Partagez une action, une amélioration ou un moment d\'apprentissage HSE... (#Sécurité)',
       uploadImages: 'Ajouter des images (max 6)',
       imagesSelected: '{count} image(s) sélectionnée(s)',
       publish: 'Publier',
+      publishing: 'Publication...',
+      imagePreviewAlt: 'Aperçu de l\'image sélectionnée',
       restrictedMessage: 'La publication est réservée aux rôles autorisés. Vous pouvez consulter, liker et commenter les publications.',
     },
     comments: {
@@ -2957,6 +2961,23 @@ export default {
     },
     reactions: {
       total: 'réactions',
+      reactButton: 'Réagir',
+      remove: 'Retirer la réaction',
+      types: {
+        like: 'Like',
+        heart: 'J\'aime',
+        praying_hands: 'Bravo',
+        sad: 'Triste',
+        red_helmet: 'Casque rouge',
+      },
+    },
+
+    timeAgo: {
+      justNow: 'À l\'instant',
+      minutes: 'il y a {{count}} min',
+      hours: 'il y a {{count}} h',
+      yesterday: 'Hier',
+      days: 'il y a {{count}} j',
     },
     notifications: {
       loadFailed: 'Échec du chargement du fil.',

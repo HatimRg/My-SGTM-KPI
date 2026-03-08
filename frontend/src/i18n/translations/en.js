@@ -2933,6 +2933,7 @@ export default {
       title: 'Filters',
       searchPlaceholder: 'Search by content, hashtag, name, or project...',
       allCategories: 'All categories',
+      allProjects: 'All projects',
     },
     categories: {
       'good-practice': 'Good practice',
@@ -2942,10 +2943,13 @@ export default {
     },
     create: {
       title: 'Publish a positive HSE action',
+      selectProject: 'Select a project',
       bodyPlaceholder: 'Share an HSE action, improvement, or learning moment... (#Safety)',
       uploadImages: 'Add images (max 6)',
       imagesSelected: '{count} image(s) selected',
       publish: 'Publish',
+      publishing: 'Publishing...',
+      imagePreviewAlt: 'Selected image preview',
       restrictedMessage: 'Posting is restricted to authorized roles. You can still read, like, and comment on posts.',
     },
     comments: {
@@ -2957,6 +2961,23 @@ export default {
     },
     reactions: {
       total: 'reactions',
+      reactButton: 'React',
+      remove: 'Remove reaction',
+      types: {
+        like: 'Like',
+        heart: 'Heart',
+        praying_hands: 'Praying hands',
+        sad: 'Sad',
+        red_helmet: 'Red helmet',
+      },
+    },
+
+    timeAgo: {
+      justNow: 'Just now',
+      minutes: '{{count}} min ago',
+      hours: '{{count}} h ago',
+      yesterday: 'Yesterday',
+      days: '{{count}} d ago',
     },
     notifications: {
       loadFailed: 'Failed to load feed.',

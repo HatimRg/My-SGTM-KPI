@@ -78,9 +78,13 @@ export function LanguageProvider({ children }) {
 
     // Replace parameters in the string
     // Usage: t('greeting', { name: 'John' }) with 'greeting': 'Hello, {name}!'
-    return value.replace(/\{(\w+)\}/g, (match, paramKey) => {
-      return params[paramKey] !== undefined ? params[paramKey] : match
-    })
+    return value
+      .replace(/\{\{(\w+)\}\}/g, (match, paramKey) => {
+        return params[paramKey] !== undefined ? params[paramKey] : match
+      })
+      .replace(/\{(\w+)\}/g, (match, paramKey) => {
+        return params[paramKey] !== undefined ? params[paramKey] : match
+      })
   }, [language])
 
   // Get current language info
@@ -140,9 +144,13 @@ export function useLanguage() {
       return key
     }
 
-    return value.replace(/\{(\w+)\}/g, (match, paramKey) => {
-      return params[paramKey] !== undefined ? params[paramKey] : match
-    })
+    return value
+      .replace(/\{\{(\w+)\}\}/g, (match, paramKey) => {
+        return params[paramKey] !== undefined ? params[paramKey] : match
+      })
+      .replace(/\{(\w+)\}/g, (match, paramKey) => {
+        return params[paramKey] !== undefined ? params[paramKey] : match
+      })
   }
 
   const currentLanguage = languages.find(l => l.code === language) || languages[0]

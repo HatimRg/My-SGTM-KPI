@@ -256,6 +256,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('community-feed')->group(function () {
         Route::get('/posts', [CommunityFeedController::class, 'index']);
         Route::post('/posts', [CommunityFeedController::class, 'storePost']);
+        Route::get('/posts/{post}/reactions', [CommunityFeedController::class, 'listReactions']);
         Route::post('/posts/{post}/comments', [CommunityFeedController::class, 'addComment']);
         Route::post('/posts/{post}/reactions', [CommunityFeedController::class, 'react']);
     });
