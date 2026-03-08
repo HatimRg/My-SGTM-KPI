@@ -1,5 +1,7 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
+import en from '../i18n/translations/en'
+import fr from '../i18n/translations/fr'
 import bugReportRecorder from '../utils/bugReportRecorder'
 
 const API_BASE_URL = '/api'
@@ -8,23 +10,50 @@ const MASS_IMPORT_TIMEOUT = 10 * 60 * 1000
 
 // Simple in-memory cache for GET requests
 const requestCache = new Map()
-const CACHE_TTL = 60000 // 60 seconds (increased for better performance under load)
+const CACHE_TTL = 60000 // 1 minute default cache
 const DASHBOARD_CACHE_TTL = 120000 // 2 minutes for dashboard data
 const LIST_CACHE_TTL = 90000 // 90 seconds for list endpoints
 const pendingRequests = new Map()
 const rateLimitUntilByUrl = new Map()
 
-const getUiLang = () => {
-  try {
-    const raw = localStorage.getItem('hse-kpi-language')
-    const normalized = String(raw || '').trim().split(/[-_]/)[0]
-    return normalized === 'en' ? 'en' : 'fr'
-  } catch {
-    return 'fr'
-  }
+const LANGUAGE_STORAGE_KEY = 'hse-kpi-language'
+const normalizeLang = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  return raw.split(/[-_]/)[0]
 }
 
-// Cache helper functions
+const getI18nString = (obj, key) => {
+  const keys = String(key || '').split('.')
+  let value = obj
+  for (const k of keys) {
+    if (value && typeof value === 'object' && k in value) {
+      value = value[k]
+    } else {
+      return null
+    }
+  }
+  return typeof value === 'string' ? value : null
+}
+
+const i18n = (key, params = {}) => {
+  const saved = (() => {
+    try {
+      return localStorage.getItem(LANGUAGE_STORAGE_KEY)
+    } catch {
+      return null
+    }
+  })()
+  const lang = normalizeLang(saved) === 'en' ? 'en' : 'fr'
+  const dict = lang === 'en' ? en : fr
+  const fallback = fr
+
+  const template = getI18nString(dict, key) || getI18nString(fallback, key) || key
+  return String(template)
+    .replace(/\{\{(\w+)\}\}/g, (match, paramKey) => (params[paramKey] !== undefined ? params[paramKey] : match))
+    .replace(/\{(\w+)\}/g, (match, paramKey) => (params[paramKey] !== undefined ? params[paramKey] : match))
+}
+
 const getCacheKey = (url, params) => {
   return `${url}:${JSON.stringify(params || {})}`
 }
@@ -429,7 +458,14 @@ api.interceptors.response.use(
           window.location.href = '/login'
           break
         case 403:
-          toast.error('Access denied. You do not have permission to perform this action.')
+          if (
+            typeof response?.data?.errors?.days_left !== 'undefined' &&
+            String(response?.data?.message || '').toLowerCase().includes('comment')
+          ) {
+            toast.error(i18n('communityFeed.notifications.commentBannedAccessDenied', { days: String(response.data.errors.days_left) }))
+          } else {
+            toast.error(i18n('common.accessDenied'))
+          }
           break
         case 404:
           toast.error('Resource not found.')

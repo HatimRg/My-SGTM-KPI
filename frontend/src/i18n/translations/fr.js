@@ -96,6 +96,7 @@ export default {
     importIssues: '{count} ligne(s) ont des problèmes',
     addedCount: 'Ajoutés : {added}',
     exportFailed: "Échec de l'export",
+    accessDenied: "Accès refusé. Vous n'avez pas la permission d'effectuer cette action.",
   },
 
   heavyMachinery: {
@@ -2995,6 +2996,7 @@ export default {
       commentDeleted: 'Commentaire supprimé.',
       deleteFailed: 'Échec de la suppression.',
       commentBan: 'Il reste {days} jour(s) avant de pouvoir commenter.',
+      commentBannedAccessDenied: 'Accès refusé. Vous avez été banni des commentaires. Il reste {days} jour(s).',
     },
     delete: {
       title: 'Supprimer',

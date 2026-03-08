@@ -96,6 +96,7 @@ export default {
     importIssues: 'Import issues: {count} row(s)',
     addedCount: 'Added: {added}',
     exportFailed: 'Export failed',
+    accessDenied: 'Access denied. You do not have permission to perform this action.',
   },
 
   heavyMachinery: {
@@ -2995,6 +2996,7 @@ export default {
       commentDeleted: 'Comment deleted.',
       deleteFailed: 'Failed to delete.',
       commentBan: '{days} day(s) is left to be able to comment.',
+      commentBannedAccessDenied: 'Access denied. You have been banned from commenting. {days} day(s) left.',
     },
     delete: {
       title: 'Delete',
