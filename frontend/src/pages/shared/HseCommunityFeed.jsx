@@ -7,7 +7,7 @@ import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { useAuthStore } from '../../store/authStore'
 import { useProjectStore } from '../../store/projectStore'
-import { ChevronDown, Filter, Hash, ImageIcon, Loader2, MessageCircle, Plus, Send, Trash2, X } from 'lucide-react'
+import { ChevronDown, Clock, Filter, Hash, ImageIcon, Loader2, MessageCircle, Plus, Send, Trash2, X } from 'lucide-react'
 
 const CATEGORIES = ['good-practice', 'initiative', 'improvement', 'learning']
 
@@ -173,6 +173,16 @@ const getTimeAgoLabel = (value, t, language) => {
   return formatDate(value, language)
 }
 
+const isFeaturedActive = (post) => {
+  if (!post?.is_featured) return false
+  if (!post?.featured_from || !post?.featured_until) return false
+  const from = new Date(post.featured_from)
+  const until = new Date(post.featured_until)
+  if (Number.isNaN(from.getTime()) || Number.isNaN(until.getTime())) return false
+  const now = Date.now()
+  return now >= from.getTime() && now <= until.getTime()
+}
+
 export default function HseCommunityFeed() {
   const { t, language } = useLanguage()
   const { user } = useAuthStore()
@@ -189,6 +199,8 @@ export default function HseCommunityFeed() {
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [projectFilter, setProjectFilter] = useState('all')
+  const [showFilters, setShowFilters] = useState(false)
+  const [historyOnly, setHistoryOnly] = useState(false)
   const [newBody, setNewBody] = useState('')
   const [newCategory, setNewCategory] = useState(CATEGORIES[0])
   const [newProjectId, setNewProjectId] = useState('')
@@ -255,6 +267,7 @@ export default function HseCommunityFeed() {
         search: debouncedQuery?.trim() ? debouncedQuery.trim() : undefined,
         category: categoryFilter && categoryFilter !== 'all' ? categoryFilter : undefined,
         project_id: projectFilter && projectFilter !== 'all' ? projectFilter : undefined,
+        author_id: historyOnly ? user?.id : undefined,
         page: nextPage,
         per_page: perPage,
       })
@@ -279,7 +292,7 @@ export default function HseCommunityFeed() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [categoryFilter, debouncedQuery, perPage, projectFilter, t])
+  }, [categoryFilter, debouncedQuery, historyOnly, perPage, projectFilter, t, user?.id])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -461,13 +474,28 @@ export default function HseCommunityFeed() {
     if (!value) return
 
     try {
-      await communityFeedService.addComment(postId, value)
+      const res = await communityFeedService.addComment(postId, value)
+      const created = res?.data?.data
       setCommentDrafts((prev) => ({ ...prev, [postId]: '' }))
-      loadPosts()
+
+      if (created?.id) {
+        setPosts((prev) => {
+          const list = Array.isArray(prev) ? prev : []
+          return list.map((p) => {
+            if (String(p?.id) !== String(postId)) return p
+            const prevComments = Array.isArray(p?.comments) ? p.comments : []
+            const nextComments = [created, ...prevComments]
+            return {
+              ...p,
+              comments: nextComments,
+              comments_count: Number(p?.comments_count || 0) + 1,
+            }
+          })
+        })
+      }
     } catch (error) {
       const daysLeft = error?.response?.data?.errors?.days_left
       if (daysLeft) {
-        toast.error(t('communityFeed.notifications.commentBan', { days: String(daysLeft) }))
         return
       }
       toast.error(error?.response?.data?.message || t('communityFeed.notifications.commentFailed'))
@@ -589,23 +617,63 @@ export default function HseCommunityFeed() {
       </div>
 
       <div className="card">
-        <div className="card-header flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-2"><Filter className="w-4 h-4 text-hse-primary" /><span className="font-medium text-gray-900 dark:text-gray-100">{t('communityFeed.filters.title')}</span></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 w-full md:w-auto">
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('communityFeed.filters.searchPlaceholder')} className="input w-full" />
-            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="input w-full">
-              <option value="all">{t('communityFeed.filters.allCategories')}</option>
-              {CATEGORIES.map((category) => <option key={category} value={category}>{t(`communityFeed.categories.${category}`)}</option>)}
-            </select>
-            <select value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)} className="input w-full">
-              <option value="all">{t('communityFeed.filters.allProjects')}</option>
-              {visibleProjects.map((p) => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
-            </select>
-            <button type="button" onClick={() => loadPosts({ page: 1, append: false })} className="btn-secondary" disabled={loading}>
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {t('common.search')}
-            </button>
+        <div className="card-header flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-hse-primary" />
+              <span className="font-medium text-gray-900 dark:text-gray-100">{t('communityFeed.filters.title')}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowFilters((prev) => !prev)}
+                className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                  showFilters
+                    ? 'border-hse-primary text-hse-primary bg-orange-50 dark:bg-orange-900/20'
+                    : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}
+                aria-expanded={showFilters}
+              >
+                <Filter className="w-4 h-4" />
+                {t('communityFeed.filters.toggle')}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setHistoryOnly((prev) => !prev)
+                  setPage(1)
+                }}
+                className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                  historyOnly
+                    ? 'border-hse-primary text-hse-primary bg-orange-50 dark:bg-orange-900/20'
+                    : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}
+              >
+                <Clock className="w-4 h-4" />
+                {t('communityFeed.history.toggle')}
+              </button>
+            </div>
           </div>
+
+          {showFilters && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 w-full">
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('communityFeed.filters.searchPlaceholder')} className="input w-full" />
+              <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="input w-full">
+                <option value="all">{t('communityFeed.filters.allCategories')}</option>
+                {CATEGORIES.map((category) => <option key={category} value={category}>{t(`communityFeed.categories.${category}`)}</option>)}
+              </select>
+              <select value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)} className="input w-full">
+                <option value="all">{t('communityFeed.filters.allProjects')}</option>
+                {visibleProjects.map((p) => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
+              </select>
+              <button type="button" onClick={() => loadPosts({ page: 1, append: false })} className="btn-secondary w-full" disabled={loading}>
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {t('common.search')}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -744,26 +812,43 @@ export default function HseCommunityFeed() {
         {!loading && posts.length === 0 && <div className="card text-center py-10 text-gray-500 dark:text-gray-400">{t('communityFeed.emptyState')}</div>}
 
         {!loading && posts.map((post) => (
-          <article key={post.id} className="card space-y-4 p-4 sm:p-6">
+          <article
+            key={post.id}
+            className={`card space-y-3 sm:space-y-4 p-3 sm:p-6 ${
+              isFeaturedActive(post)
+                ? 'border-2 border-orange-500 dark:border-orange-400'
+                : ''
+            }`}
+          >
             <header className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-sm font-semibold text-gray-700 dark:text-gray-200">
                 {String(post.user?.full_name || '').trim().slice(0, 1).toUpperCase() || '?'}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">{post.user?.full_name}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-300">{t(`roles.${post.user?.role}`)} • {post.user?.project || t('communityFeed.fallbackProject')}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {getTimeAgoLabel(post.created_at, t, language)}
-                <span className="mx-1 text-gray-300 dark:text-gray-700">•</span>
-                {formatDate(post.created_at, language)}
-              </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">{post.user?.full_name}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">{t(`roles.${post.user?.role}`)} • {post.user?.project || t('communityFeed.fallbackProject')}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {getTimeAgoLabel(post.created_at, t, language)}
+                      <span className="mx-1 text-gray-300 dark:text-gray-700">•</span>
+                      {formatDate(post.created_at, language)}
+                    </p>
+                  </div>
+
+                  {isFeaturedActive(post) && (
+                    <span className="inline-flex w-fit items-center rounded-full border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 px-2.5 py-1 text-xs font-semibold">
+                      {t('communityFeed.featured.label')}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {(canModerateCommunityFeed || String(post.user?.id) === String(user?.id)) && (
                 <button
                   type="button"
                   onClick={() => requestDeletePost(post.id)}
-                  className="ml-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+                  className="ml-1 sm:ml-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
                   title={t('common.delete')}
                   aria-label={t('common.delete')}
                 >
@@ -802,7 +887,7 @@ export default function HseCommunityFeed() {
                         className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
                         title={t('communityFeed.images.open')}
                       >
-                        <FeedImage src={image.url} alt={image.name} className="w-full h-44 sm:h-52 object-cover" />
+                        <FeedImage src={image.url} alt={image.name} className="w-full h-36 sm:h-52 object-cover" />
                       </button>
                     ))}
                   </div>
@@ -810,12 +895,12 @@ export default function HseCommunityFeed() {
               </div>
             )}
 
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative" data-reaction-picker="true">
+            <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center">
+              <div className="relative col-span-1" data-reaction-picker="true">
                 <button
                   type="button"
                   onClick={() => setReactionPickerPostId((prev) => (String(prev) === String(post.id) ? null : post.id))}
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm ${
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm w-full sm:w-auto justify-center sm:justify-start ${
                     post.my_reaction
                       ? 'border-hse-primary text-hse-primary bg-blue-50 dark:bg-blue-900/20'
                       : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200'
@@ -869,13 +954,13 @@ export default function HseCommunityFeed() {
               <button
                 type="button"
                 onClick={() => openReactionsModal(post)}
-                className="inline-flex items-center gap-1 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+                className="col-span-1 inline-flex items-center justify-center sm:justify-start gap-1 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 w-full sm:w-auto"
               >
                 <span className="font-medium">{getReactionTotal(post.reactions)}</span>
                 <span className="text-gray-500 dark:text-gray-400">{t('communityFeed.reactions.total')}</span>
               </button>
 
-              <span className="inline-flex items-center gap-1 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600">
+              <span className="col-span-1 inline-flex items-center justify-center sm:justify-start gap-1 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600 w-full sm:w-auto">
                 <MessageCircle className="w-4 h-4" />
                 <span className="font-medium">{post.comments_count || 0}</span>
               </span>
@@ -883,10 +968,10 @@ export default function HseCommunityFeed() {
 
             <div className="space-y-2">
               {(post.comments || []).map((comment) => (
-                <div key={comment.id} className="rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm flex gap-2">
+                <div key={comment.id} className="rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm flex items-start gap-2">
                   <div className="min-w-0 flex-1">
-                    <span className="font-medium text-gray-900 dark:text-gray-100">{comment.author}</span>
-                    <p className="text-gray-700 dark:text-gray-300" dir="auto">{comment.body_raw}</p>
+                    <div className="font-medium text-gray-900 dark:text-gray-100 leading-snug">{comment.author}</div>
+                    <p className="text-gray-700 dark:text-gray-300 leading-snug" dir="auto">{comment.body_raw}</p>
                   </div>
                   {(canModerateCommunityFeed || String(comment.user_id) === String(user?.id)) && (
                     <button
@@ -902,9 +987,9 @@ export default function HseCommunityFeed() {
                 </div>
               ))}
 
-              <div className="flex gap-2">
-                <input value={commentDrafts[post.id] || ''} onChange={(event) => setCommentDrafts((prev) => ({ ...prev, [post.id]: event.target.value }))} className="input" placeholder={t('communityFeed.comments.placeholder')} dir="auto" />
-                <button type="button" onClick={() => addComment(post.id)} className="btn-secondary">{t('communityFeed.comments.add')}</button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input value={commentDrafts[post.id] || ''} onChange={(event) => setCommentDrafts((prev) => ({ ...prev, [post.id]: event.target.value }))} className="input w-full" placeholder={t('communityFeed.comments.placeholder')} dir="auto" />
+                <button type="button" onClick={() => addComment(post.id)} className="btn-secondary w-full sm:w-auto">{t('communityFeed.comments.add')}</button>
               </div>
             </div>
           </article>

@@ -88,6 +88,7 @@ const api = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
+  withCredentials: true,
   timeout: 30000,
 })
 
@@ -756,6 +757,38 @@ export const communityFeedService = {
   listPostReactions: (postId, params) => api.get(`/community-feed/posts/${postId}/reactions`, { params }),
   deletePost: (postId) => api.delete(`/community-feed/posts/${postId}`),
   deleteComment: (commentId) => api.delete(`/community-feed/comments/${commentId}`),
+}
+
+export const libraryService = {
+  listItems: (params) => api.get('/library/items', { params }),
+  createFolder: ({ name, parentId }) => api.post('/library/folders', { name, parent_id: parentId ?? null }),
+  uploadDocument: ({ file, title, folderId }) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (title) formData.append('title', title)
+    if (folderId) formData.append('folder_id', String(folderId))
+    return api.post('/library/documents', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  getDocumentViewUrl: (id) => `/api/library/documents/${id}/view`,
+  getDocumentDownloadUrl: (id) => `/api/library/documents/${id}/download`,
+  getDocumentThumbnailUrl: (id) => `/api/library/documents/${id}/thumbnail`,
+  getFolderZipUrl: (folderId) => `/api/library/folders/${folderId}/download-zip`,
+
+  fetchThumbnailBlob: (id, config = {}) => api.get(`/library/documents/${id}/thumbnail`, { responseType: 'blob', ...config }),
+  fetchViewBlob: (id, config = {}) => api.get(`/library/documents/${id}/view`, { responseType: 'blob', ...config }),
+  fetchDownloadBlob: (id, config = {}) => api.get(`/library/documents/${id}/download`, { responseType: 'blob', ...config }),
+
+  deleteDocument: (id) => api.delete(`/library/documents/${id}`),
+  replaceDocument: ({ id, file }) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post(`/library/documents/${id}/replace`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  reindexDocument: (id) => api.post(`/library/documents/${id}/reindex`),
 }
 
 export const bugReportService = {

@@ -465,9 +465,14 @@ export default {
     searchHint: 'Astuce : la recherche tolère les fautes et gère les pluriels.',
     adminUpload: 'Téléversement (admin)',
     selectFiles: 'Choisir des fichiers',
-    uploadHint: 'Le téléversement est réservé aux admins pour le moment. Formats : PDF, DOCX, XLSX, CSV.',
+    uploadHint: 'Le téléversement est réservé aux admins pour le moment. Formats : PDF, DOCX, XLSX, PPTX, TXT, PNG, JPG, JPEG.',
     upload: 'Téléverser',
     download: 'Télécharger',
+    open: 'Ouvrir',
+    createFolder: 'Créer un dossier',
+    folderName: 'Nom du dossier',
+    downloadZip: 'Télécharger le dossier (.zip)',
+    root: 'Bibliothèque',
     noResults: 'Aucun résultat',
     noResultsHint: 'Essayez une autre recherche ou effacez les filtres.',
     files: 'Fichiers',
@@ -2031,6 +2036,7 @@ export default {
   notifications: {
     title: 'Notifications',
     markAllRead: 'Tout marquer comme lu',
+    markRead: 'Marquer comme lu',
     viewAll: 'Voir toutes les notifications',
     deleteRead: 'Supprimer les lus',
     noNotifications: 'Aucune notification',
@@ -2932,9 +2938,13 @@ export default {
     fallbackProject: 'Projet non attribué',
     filters: {
       title: 'Filtres',
+      toggle: 'Filtres',
       searchPlaceholder: 'Rechercher par contenu, hashtag, nom ou projet...',
       allCategories: 'Toutes les catégories',
       allProjects: 'Tous les projets',
+    },
+    history: {
+      toggle: 'Voir mon historique',
     },
     categories: {
       'good-practice': 'Bonne pratique',
@@ -2977,6 +2987,10 @@ export default {
         sad: 'Triste',
         red_helmet: 'Casque rouge',
       },
+    },
+
+    featured: {
+      label: 'Publication du mois',
     },
 
     timeAgo: {

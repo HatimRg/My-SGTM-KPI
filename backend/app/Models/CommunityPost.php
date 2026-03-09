@@ -18,10 +18,14 @@ class CommunityPost extends Model
         'body_normalized',
         'status',
         'is_featured',
+        'featured_from',
+        'featured_until',
     ];
 
     protected $casts = [
         'is_featured' => 'boolean',
+        'featured_from' => 'datetime',
+        'featured_until' => 'datetime',
     ];
 
     public function user()

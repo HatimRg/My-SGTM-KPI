@@ -465,9 +465,14 @@ export default {
     searchHint: 'Tip: search is typo-tolerant and handles plural forms.',
     adminUpload: 'Admin upload',
     selectFiles: 'Select files',
-    uploadHint: 'Upload is admin-only for now. Supported: PDF, DOCX, XLSX, CSV.',
+    uploadHint: 'Upload is admin-only for now. Supported: PDF, DOCX, XLSX, PPTX, TXT, PNG, JPG, JPEG.',
     upload: 'Upload',
     download: 'Download',
+    open: 'Open',
+    createFolder: 'Create folder',
+    folderName: 'Folder name',
+    downloadZip: 'Download folder (.zip)',
+    root: 'Library',
     noResults: 'No results',
     noResultsHint: 'Try a different query or clear filters.',
     files: 'Files',
@@ -2031,6 +2036,7 @@ export default {
   notifications: {
     title: 'Notifications',
     markAllRead: 'Mark all as read',
+    markRead: 'Mark as read',
     viewAll: 'View all notifications',
     deleteRead: 'Delete read',
     noNotifications: 'No notifications yet',
@@ -2932,9 +2938,13 @@ export default {
     fallbackProject: 'Unassigned project',
     filters: {
       title: 'Filters',
+      toggle: 'Filters',
       searchPlaceholder: 'Search by content, hashtag, name, or project...',
       allCategories: 'All categories',
       allProjects: 'All projects',
+    },
+    history: {
+      toggle: 'View history',
     },
     categories: {
       'good-practice': 'Good practice',
@@ -2977,6 +2987,10 @@ export default {
         sad: 'Sad',
         red_helmet: 'Red helmet',
       },
+    },
+
+    featured: {
+      label: 'Post of the Month',
     },
 
     timeAgo: {

@@ -88,6 +88,7 @@ class CommunityFeedController extends Controller
 
     public function index(Request $request)
     {
+        $now = now();
         $query = CommunityPost::query()
             ->with([
                 'user:id,name,role',
@@ -98,6 +99,10 @@ class CommunityFeedController extends Controller
             ])
             ->withCount(['comments', 'reactions'])
             ->where('status', 'published')
+            ->orderByRaw(
+                '(CASE WHEN is_featured = 1 AND featured_from IS NOT NULL AND featured_until IS NOT NULL AND ? BETWEEN featured_from AND featured_until THEN 0 ELSE 1 END) ASC',
+                [$now]
+            )
             ->latest();
 
         if ($request->filled('category') && $request->category !== 'all') {
@@ -106,6 +111,10 @@ class CommunityFeedController extends Controller
 
         if ($request->filled('project_id')) {
             $query->where('project_id', (int) $request->project_id);
+        }
+
+        if ($request->filled('author_id')) {
+            $query->where('user_id', (int) $request->author_id);
         }
 
         $search = trim((string) $request->query('search', ''));
@@ -136,6 +145,9 @@ class CommunityFeedController extends Controller
                 'body_raw' => $post->body_raw,
                 'body_normalized' => $post->body_normalized,
                 'created_at' => $post->created_at,
+                'is_featured' => (bool) $post->is_featured,
+                'featured_from' => $post->featured_from,
+                'featured_until' => $post->featured_until,
                 'user' => [
                     'id' => $post->user?->id,
                     'full_name' => $post->user?->name,

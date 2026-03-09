@@ -40,6 +40,7 @@ use App\Http\Controllers\Api\LightingMeasurementController;
 use App\Http\Controllers\Api\BugReportController;
 use App\Http\Controllers\Api\WasteExportController;
 use App\Http\Controllers\Api\BackupController;
+use App\Http\Controllers\Api\LibraryController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -90,6 +91,24 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [BugReportController::class, 'index']);
         Route::get('/{bugReport}', [BugReportController::class, 'show']);
         Route::get('/{bugReport}/attachment', [BugReportController::class, 'downloadAttachment']);
+    });
+
+    // Library (all authenticated users: browse/open/download)
+    Route::prefix('library')->group(function () {
+        Route::get('/items', [LibraryController::class, 'index']);
+        Route::get('/documents/{document}/view', [LibraryController::class, 'view']);
+        Route::get('/documents/{document}/download', [LibraryController::class, 'download']);
+        Route::get('/documents/{document}/thumbnail', [LibraryController::class, 'thumbnail']);
+        Route::get('/folders/{folder}/download-zip', [LibraryController::class, 'downloadFolderZip']);
+
+        // Admin-like only: create folders, upload documents
+        Route::middleware('admin')->group(function () {
+            Route::post('/folders', [LibraryController::class, 'createFolder']);
+            Route::post('/documents', [LibraryController::class, 'upload']);
+            Route::delete('/documents/{document}', [LibraryController::class, 'destroyDocument']);
+            Route::post('/documents/{document}/replace', [LibraryController::class, 'replaceDocument']);
+            Route::post('/documents/{document}/reindex', [LibraryController::class, 'reindexDocument']);
+        });
     });
 
     Route::prefix('bootstrap')->group(function () {

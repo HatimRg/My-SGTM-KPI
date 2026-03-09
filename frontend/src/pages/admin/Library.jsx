@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLanguage } from '../../i18n'
 import { useAuthStore } from '../../store/authStore'
+import { libraryService } from '../../services/api'
 import toast from 'react-hot-toast'
 import {
   Download,
@@ -8,6 +9,11 @@ import {
   FileSpreadsheet,
   File,
   Folder,
+  FolderPlus,
+  MoreVertical,
+  Pencil,
+  RefreshCw,
+  Trash2,
   Search,
   UploadCloud,
   X,
@@ -15,6 +21,9 @@ import {
   SortAsc,
   SortDesc,
 } from 'lucide-react'
+
+import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 
 const normalizeQuery = (q) => {
   const raw = String(q ?? '')
@@ -116,55 +125,6 @@ const fileIcon = (ext) => {
   return File
 }
 
-const MOCK_ITEMS = [
-  {
-    id: 'folder-sst',
-    kind: 'folder',
-    name: 'SST / Sécurité',
-    path: ['Library'],
-    updated_at: '2026-02-10',
-    count: 18,
-  },
-  {
-    id: 'folder-procedures',
-    kind: 'folder',
-    name: 'Procédures',
-    path: ['Library'],
-    updated_at: '2026-02-08',
-    count: 42,
-  },
-  {
-    id: 'file-epi-guide',
-    kind: 'file',
-    name: 'Guide EPI - Distribution et traçabilité',
-    ext: 'pdf',
-    size: 2_180_000,
-    path: ['Library', 'SST / Sécurité'],
-    updated_at: '2026-02-07',
-    url: '#',
-  },
-  {
-    id: 'file-toolbox',
-    kind: 'file',
-    name: 'Toolbox Meeting - Checklist',
-    ext: 'docx',
-    size: 410_000,
-    path: ['Library', 'SST / Sécurité'],
-    updated_at: '2026-01-29',
-    url: '#',
-  },
-  {
-    id: 'file-training-matrix',
-    kind: 'file',
-    name: 'Matrice des formations (modèle)',
-    ext: 'xlsx',
-    size: 188_000,
-    path: ['Library', 'Procédures'],
-    updated_at: '2026-01-11',
-    url: '#',
-  },
-]
-
 export default function Library() {
   const { t } = useLanguage()
   const { user, isAdmin } = useAuthStore()
@@ -173,8 +133,29 @@ export default function Library() {
 
   const [query, setQuery] = useState('')
   const [kindFilter, setKindFilter] = useState('all') // all | file | folder
-  const [sortBy, setSortBy] = useState('relevance') // relevance | name | updated_at
+  const [sortBy, setSortBy] = useState('updated_at') // name | updated_at
   const [sortDir, setSortDir] = useState('desc') // asc | desc
+
+  const [currentFolder, setCurrentFolder] = useState(null)
+  const [breadcrumbs, setBreadcrumbs] = useState([])
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(false)
+
+  const [createFolderName, setCreateFolderName] = useState('')
+  const [creatingFolder, setCreatingFolder] = useState(false)
+
+  const [viewer, setViewer] = useState({ isOpen: false, item: null })
+  const [viewerUrl, setViewerUrl] = useState(null)
+
+  const [thumbUrlsById, setThumbUrlsById] = useState({})
+  const thumbAbortRef = useRef({})
+
+  const [actionsOpenId, setActionsOpenId] = useState(null)
+
+  const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, item: null })
+
+  const replaceInputRef = useRef(null)
+  const [replaceTarget, setReplaceTarget] = useState(null)
 
   const [uploadFiles, setUploadFiles] = useState([])
   const uploadInputRef = useRef(null)
@@ -182,9 +163,10 @@ export default function Library() {
   const results = useMemo(() => {
     const q = normalizeQuery(query)
 
-    const scored = MOCK_ITEMS
+    const scored = (Array.isArray(items) ? items : [])
       .map((item) => {
-        const haystack = `${item.name} ${(item.path || []).join(' / ')}`
+        const displayName = item.kind === 'folder' ? item.name : (item.title || item.original_name || '')
+        const haystack = `${displayName} ${(breadcrumbs || []).map((b) => b.name).join(' / ')}`
         const score = q ? similarityScore(q, haystack) : 1
         return { ...item, _score: score }
       })
@@ -198,29 +180,257 @@ export default function Library() {
 
     scored.sort((a, b) => {
       if (sortBy === 'name') {
-        return a.name.localeCompare(b.name) * dirMul
+        const an = a.kind === 'folder' ? a.name : (a.title || '')
+        const bn = b.kind === 'folder' ? b.name : (b.title || '')
+        return an.localeCompare(bn) * dirMul
       }
       if (sortBy === 'updated_at') {
         return String(a.updated_at).localeCompare(String(b.updated_at)) * dirMul
       }
 
-      // relevance
-      if (b._score !== a._score) return (b._score - a._score) * dirMul
-      return String(b.updated_at).localeCompare(String(a.updated_at))
+      // default
+      return String(b.updated_at).localeCompare(String(a.updated_at)) * dirMul
     })
 
     return scored
-  }, [query, kindFilter, sortBy, sortDir])
+  }, [breadcrumbs, items, kindFilter, query, sortBy, sortDir])
 
-  const handleDownload = (item) => {
-    if (item.kind !== 'file') return
+  const isImageFile = (item) => item?.kind === 'file' && ['png', 'jpg', 'jpeg'].includes(String(item.file_type || '').toLowerCase())
 
-    if (!item.url || item.url === '#') {
-      toast(t('common.comingSoon'))
+  const ensureThumbUrl = async (item) => {
+    if (!item?.id || !isImageFile(item)) return null
+    if (thumbUrlsById[item.id]) return thumbUrlsById[item.id]
+    if (!item.thumbnail_url) return null
+
+    try {
+      const existing = thumbAbortRef.current[item.id]
+      if (existing) {
+        try { existing.abort() } catch {}
+      }
+
+      const controller = new AbortController()
+      thumbAbortRef.current[item.id] = controller
+
+      const res = await libraryService.fetchThumbnailBlob(item.id, { signal: controller.signal })
+      const url = URL.createObjectURL(res.data)
+
+      setThumbUrlsById((prev) => ({ ...prev, [item.id]: url }))
+      return url
+    } catch {
+      return null
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      try {
+        Object.values(thumbUrlsById).forEach((u) => {
+          try { URL.revokeObjectURL(u) } catch {}
+        })
+      } catch {}
+      try {
+        if (viewerUrl) URL.revokeObjectURL(viewerUrl)
+      } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const imgs = results.filter((it) => isImageFile(it) && it.thumbnail_url)
+    imgs.slice(0, 18).forEach((it) => {
+      if (!thumbUrlsById[it.id]) ensureThumbUrl(it)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results])
+
+  const fetchItems = async () => {
+    try {
+      setLoading(true)
+      const res = await libraryService.listItems({
+        folder_id: currentFolder?.id ?? undefined,
+      })
+      const list = res.data?.data?.items
+      setItems(Array.isArray(list) ? list : [])
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to load')
+      setItems([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchItems()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentFolder?.id])
+
+  const handleDownload = async (item) => {
+    if (item?.kind !== 'file') return
+    if (!item?.id) return
+
+    try {
+      const res = await libraryService.fetchDownloadBlob(item.id)
+      const url = URL.createObjectURL(res.data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = item?.original_name || item?.title || `document-${item.id}`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      try { URL.revokeObjectURL(url) } catch {}
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Download failed')
+    }
+  }
+
+  const handleOpen = (item) => {
+    if (item?.kind === 'folder') {
+      enterFolder(item)
+      return
+    }
+    if (item?.kind !== 'file') return
+    if (!item?.view_url) return
+
+    const type = String(item.file_type || '').toLowerCase()
+    const canInline = ['pdf', 'png', 'jpg', 'jpeg', 'txt'].includes(type)
+    if (!canInline) {
+      window.open(item.view_url, '_blank', 'noopener,noreferrer')
       return
     }
 
-    window.open(item.url, '_blank', 'noopener,noreferrer')
+    setViewer({ isOpen: true, item })
+  }
+
+  const closeViewer = () => {
+    try {
+      if (viewerUrl) URL.revokeObjectURL(viewerUrl)
+    } catch {
+      // ignore
+    }
+    setViewerUrl(null)
+    setViewer({ isOpen: false, item: null })
+  }
+
+  useEffect(() => {
+    const load = async () => {
+      if (!viewer?.isOpen || !viewer?.item?.id) return
+      try {
+        if (viewerUrl) {
+          try { URL.revokeObjectURL(viewerUrl) } catch {}
+          setViewerUrl(null)
+        }
+        const res = await libraryService.fetchViewBlob(viewer.item.id)
+        const url = URL.createObjectURL(res.data)
+        setViewerUrl(url)
+      } catch (e) {
+        toast.error(e?.response?.data?.message || 'Failed to open')
+      }
+    }
+
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewer?.isOpen, viewer?.item?.id])
+
+  useEffect(() => {
+    if (!actionsOpenId) return
+    const onDocDown = (e) => {
+      const root = e.target?.closest?.('[data-actions-root]')
+      if (!root) {
+        setActionsOpenId(null)
+        return
+      }
+      const rootId = root.getAttribute('data-actions-root')
+      if (String(rootId) !== String(actionsOpenId)) {
+        setActionsOpenId(null)
+      }
+    }
+    document.addEventListener('mousedown', onDocDown)
+    return () => document.removeEventListener('mousedown', onDocDown)
+  }, [actionsOpenId])
+
+  const onDelete = async (item) => {
+    try {
+      await libraryService.deleteDocument(item.id)
+      setConfirmDelete({ isOpen: false, item: null })
+      await fetchItems()
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Delete failed')
+    }
+  }
+
+  const openReplace = (item) => {
+    setReplaceTarget(item)
+    try {
+      replaceInputRef.current?.click()
+    } catch {}
+  }
+
+  const onReplacePicked = async (file) => {
+    if (!replaceTarget?.id || !file) return
+    try {
+      await libraryService.replaceDocument({ id: replaceTarget.id, file })
+      setReplaceTarget(null)
+      if (replaceInputRef.current) replaceInputRef.current.value = ''
+      await fetchItems()
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Update failed')
+    }
+  }
+
+  const onReindex = async (item) => {
+    try {
+      await libraryService.reindexDocument(item.id)
+      await fetchItems()
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Reindex failed')
+    }
+  }
+
+  const enterFolder = (folder) => {
+    if (!folder || folder.kind !== 'folder') return
+    setCurrentFolder({ id: folder.id, name: folder.name })
+    setBreadcrumbs((prev) => [...(Array.isArray(prev) ? prev : []), { id: folder.id, name: folder.name }])
+  }
+
+  const goToCrumb = (idx) => {
+    if (idx < 0) {
+      setBreadcrumbs([])
+      setCurrentFolder(null)
+      return
+    }
+    const next = breadcrumbs.slice(0, idx + 1)
+    setBreadcrumbs(next)
+    const last = next[next.length - 1]
+    setCurrentFolder(last ? { id: last.id, name: last.name } : null)
+  }
+
+  const createFolder = async () => {
+    const name = String(createFolderName || '').trim()
+    if (!name) return
+    try {
+      setCreatingFolder(true)
+      await libraryService.createFolder({ name, parentId: currentFolder?.id ?? null })
+      setCreateFolderName('')
+      await fetchItems()
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to create folder')
+    } finally {
+      setCreatingFolder(false)
+    }
+  }
+
+  const uploadSelected = async () => {
+    if (!uploadFiles.length) return
+    try {
+      for (const f of uploadFiles) {
+        await libraryService.uploadDocument({ file: f, folderId: currentFolder?.id ?? null })
+      }
+      setUploadFiles([])
+      if (uploadInputRef.current) uploadInputRef.current.value = ''
+      await fetchItems()
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Upload failed')
+    }
   }
 
   return (
@@ -232,20 +442,22 @@ export default function Library() {
         </div>
 
         {isAdminUser && (
-          <div className="w-full lg:w-[420px]">
-            <div className="card p-4 border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/40">
+          <div className="w-full lg:w-[440px]">
+            <div className="card p-4 border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/50">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <UploadCloud className="w-4 h-4 text-hse-primary" />
                   <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('library.adminUpload')}</div>
                 </div>
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => uploadInputRef.current?.click()}
-                >
-                  {t('library.selectFiles')}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => uploadInputRef.current?.click()}
+                  >
+                    {t('library.selectFiles')}
+                  </button>
+                </div>
               </div>
 
               <input
@@ -257,7 +469,7 @@ export default function Library() {
                   const list = Array.from(e.target.files || [])
                   setUploadFiles(list)
                 }}
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.csv"
+                accept=".pdf,.docx,.xlsx,.pptx,.txt,.png,.jpg,.jpeg"
               />
 
               <div className="mt-3">
@@ -268,7 +480,7 @@ export default function Library() {
                 ) : (
                   <div className="space-y-2">
                     {uploadFiles.slice(0, 4).map((f) => (
-                      <div key={f.name} className="flex items-center justify-between gap-3 text-xs">
+                      <div key={f.name} className="flex items-center justify-between gap-3 text-xs rounded-lg px-2 py-1 bg-gray-50 dark:bg-gray-800">
                         <div className="truncate text-gray-700 dark:text-gray-200">{f.name}</div>
                         <div className="text-gray-400">{bytesLabel(f.size)}</div>
                       </div>
@@ -293,7 +505,7 @@ export default function Library() {
                       <button
                         type="button"
                         className="btn-primary"
-                        onClick={() => toast(t('common.comingSoon'))}
+                        onClick={uploadSelected}
                       >
                         {t('library.upload')}
                       </button>
@@ -304,6 +516,52 @@ export default function Library() {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="card p-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              <button type="button" className="hover:underline" onClick={() => goToCrumb(-1)}>{t('library.root')}</button>
+              {breadcrumbs.map((c, idx) => (
+                <span key={c.id}>
+                  {' / '}
+                  <button type="button" className="hover:underline" onClick={() => goToCrumb(idx)}>{c.name}</button>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            {currentFolder?.id && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => window.open(libraryService.getFolderZipUrl(currentFolder.id), '_blank', 'noopener,noreferrer')}
+              >
+                <Download className="w-4 h-4" />
+                {t('library.downloadZip')}
+              </button>
+            )}
+
+            {isAdminUser && (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/40 px-3 py-2">
+                  <FolderPlus className="w-4 h-4 text-gray-400" />
+                  <input
+                    value={createFolderName}
+                    onChange={(e) => setCreateFolderName(e.target.value)}
+                    placeholder={t('library.folderName')}
+                    className="bg-transparent text-sm text-gray-900 dark:text-gray-100 border-none focus:ring-0 w-44"
+                  />
+                </div>
+                <button type="button" className="btn-primary" onClick={createFolder} disabled={creatingFolder || !String(createFolderName || '').trim()}>
+                  {t('library.createFolder')}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="card p-5">
@@ -359,7 +617,6 @@ export default function Library() {
                 onChange={(e) => setSortBy(e.target.value)}
                 className="bg-transparent text-sm text-gray-900 dark:text-gray-100 border-none focus:ring-0"
               >
-                <option value="relevance">{t('library.sort.relevance')}</option>
                 <option value="updated_at">{t('library.sort.updated')}</option>
                 <option value="name">{t('library.sort.name')}</option>
               </select>
@@ -392,60 +649,143 @@ export default function Library() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {results.map((item) => {
-                const Icon = item.kind === 'folder' ? Folder : fileIcon(item.ext)
+                const Icon = item.kind === 'folder' ? Folder : fileIcon(item.file_type)
+                const displayName = item.kind === 'folder' ? item.name : (item.title || item.original_name)
+                const isImage = isImageFile(item)
+                const thumbUrl = isImage ? thumbUrlsById[item.id] : null
 
                 return (
                   <div
                     key={item.id}
-                    className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 hover:shadow-md transition-shadow"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleOpen(item)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleOpen(item)
+                      }
+                    }}
+                    className="group cursor-pointer rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 hover:shadow-sm hover:border-gray-300 dark:hover:border-gray-600 transition"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-lg bg-hse-primary/10 flex items-center justify-center flex-shrink-0">
-                          <Icon className="w-5 h-5 text-hse-primary" />
-                        </div>
+                        {isImage && item.thumbnail_url ? (
+                          <div
+                            className="w-14 h-14 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-shrink-0"
+                          >
+                            {thumbUrl ? (
+                              <img src={thumbUrl} alt={displayName} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Icon className="w-5 h-5 text-hse-primary" />
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="w-14 h-14 rounded-xl bg-hse-primary/10 flex items-center justify-center flex-shrink-0">
+                            <Icon className="w-5 h-5 text-hse-primary" />
+                          </div>
+                        )}
                         <div className="min-w-0">
-                          <div className="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                            {item.name}
+                          <div className="font-semibold text-gray-900 dark:text-gray-100 leading-snug break-words whitespace-normal pr-12">
+                            {displayName}
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
-                            {(item.path || []).join(' / ')}
-                          </div>
+                          {item.kind === 'file' && item.status && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              {String(item.status)}
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      {item.kind === 'file' && (
-                        <button
-                          type="button"
-                          className="btn-secondary"
-                          onClick={() => handleDownload(item)}
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                      )}
+                      <div
+                        className="relative flex items-center gap-2"
+                        data-actions-root={item.id}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {item.kind === 'file' && (
+                          <>
+                            <button
+                              type="button"
+                              className="h-9 w-9 inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                              onClick={() => setActionsOpenId((v) => (v === item.id ? null : item.id))}
+                              aria-label="Actions"
+                              title="Actions"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+
+                            {actionsOpenId === item.id && (
+                              <div className="absolute right-0 top-10 z-20 w-56 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg p-1">
+                                <button
+                                  type="button"
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                                  onClick={() => {
+                                    setActionsOpenId(null)
+                                    handleDownload(item)
+                                  }}
+                                >
+                                  <Download className="w-4 h-4" />
+                                  {t('library.download')}
+                                </button>
+
+                                {isAdminUser && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                                      onClick={() => {
+                                        setActionsOpenId(null)
+                                        openReplace(item)
+                                      }}
+                                    >
+                                      <Pencil className="w-4 h-4" />
+                                      {t('common.update')}
+                                    </button>
+
+                                    {String(item.status) === 'failed' && (
+                                      <button
+                                        type="button"
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                                        onClick={() => {
+                                          setActionsOpenId(null)
+                                          onReindex(item)
+                                        }}
+                                      >
+                                        <RefreshCw className="w-4 h-4" />
+                                        {t('common.retry')}
+                                      </button>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-red-600"
+                                      onClick={() => {
+                                        setActionsOpenId(null)
+                                        setConfirmDelete({ isOpen: true, item })
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      {t('common.delete')}
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
 
                     <div className="mt-3 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                       <div>
                         {item.kind === 'folder'
                           ? `${item.count ?? 0} ${t('library.items')}`
-                          : `${String(item.ext || '').toUpperCase()} · ${bytesLabel(item.size)}`}
+                          : `${String(item.file_type || '').toUpperCase()} · ${bytesLabel(item.size_bytes)}`}
                       </div>
-                      <div>{item.updated_at}</div>
+                      <div>{String(item.updated_at || '').slice(0, 10)}</div>
                     </div>
-
-                    {item.kind === 'file' && (
-                      <div className="mt-3">
-                        <button
-                          type="button"
-                          onClick={() => handleDownload(item)}
-                          className="w-full btn-primary flex items-center justify-center gap-2"
-                        >
-                          <Download className="w-4 h-4" />
-                          {t('library.download')}
-                        </button>
-                      </div>
-                    )}
                   </div>
                 )
               })}
@@ -453,6 +793,57 @@ export default function Library() {
           )}
         </div>
       </div>
+
+      <Modal
+        isOpen={!!viewer?.isOpen}
+        onClose={closeViewer}
+        title={viewer?.item?.title || viewer?.item?.original_name || t('library.open')}
+        size="lg"
+      >
+        {viewer?.item ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-end gap-2">
+              <button type="button" className="btn-secondary" onClick={() => handleDownload(viewer.item)}>
+                {t('library.download')}
+              </button>
+            </div>
+            <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+              {viewerUrl ? (
+                ['png', 'jpg', 'jpeg'].includes(String(viewer.item.file_type || '').toLowerCase()) ? (
+                  <img src={viewerUrl} alt={viewer.item.title || viewer.item.original_name} className="w-full max-h-[75vh] object-contain" />
+                ) : (
+                  <iframe title="preview" src={viewerUrl} className="w-full h-[75vh]" />
+                )
+              ) : (
+                <div className="p-6 text-sm text-gray-500">{t('common.loading')}</div>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      <input
+        ref={replaceInputRef}
+        type="file"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f) onReplacePicked(f)
+        }}
+        accept=".pdf,.docx,.xlsx,.pptx,.txt,.png,.jpg,.jpeg"
+      />
+
+      <ConfirmDialog
+        isOpen={confirmDelete.isOpen}
+        title={t('common.delete')}
+        message={confirmDelete?.item ? `${t('common.delete')} "${confirmDelete.item.title || confirmDelete.item.original_name || ''}"?` : ''}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        onCancel={() => setConfirmDelete({ isOpen: false, item: null })}
+        onConfirm={() => {
+          if (confirmDelete.item) onDelete(confirmDelete.item)
+        }}
+      />
     </div>
   )
 }
