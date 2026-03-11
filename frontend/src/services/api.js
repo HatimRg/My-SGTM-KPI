@@ -762,6 +762,9 @@ export const communityFeedService = {
 export const libraryService = {
   listItems: (params) => api.get('/library/items', { params }),
   createFolder: ({ name, parentId }) => api.post('/library/folders', { name, parent_id: parentId ?? null }),
+  renameFolder: ({ id, name }) => api.patch(`/library/folders/${id}`, { name }),
+  setFolderVisibility: ({ id, isPublic }) => api.patch(`/library/folders/${id}/visibility`, { is_public: !!isPublic }),
+  deleteFolder: (id, params) => api.delete(`/library/folders/${id}`, { params }),
   uploadDocument: ({ file, title, folderId }) => {
     const formData = new FormData()
     formData.append('file', file)
@@ -779,6 +782,7 @@ export const libraryService = {
   fetchThumbnailBlob: (id, config = {}) => api.get(`/library/documents/${id}/thumbnail`, { responseType: 'blob', ...config }),
   fetchViewBlob: (id, config = {}) => api.get(`/library/documents/${id}/view`, { responseType: 'blob', ...config }),
   fetchDownloadBlob: (id, config = {}) => api.get(`/library/documents/${id}/download`, { responseType: 'blob', ...config }),
+  fetchFolderZipBlob: (folderId, config = {}) => api.get(`/library/folders/${folderId}/download-zip`, { responseType: 'blob', ...config }),
 
   deleteDocument: (id) => api.delete(`/library/documents/${id}`),
   replaceDocument: ({ id, file }) => {
@@ -789,6 +793,7 @@ export const libraryService = {
     })
   },
   reindexDocument: (id) => api.post(`/library/documents/${id}/reindex`),
+  cancelDocument: (id) => api.post(`/library/documents/${id}/cancel`),
 }
 
 export const bugReportService = {

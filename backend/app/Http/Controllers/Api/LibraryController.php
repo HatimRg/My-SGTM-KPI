@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LibraryDocument;
 use App\Models\LibraryDocumentKeyword;
 use App\Models\LibraryFolder;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -20,10 +21,13 @@ class LibraryController extends Controller
     {
         $folderId = $request->filled('folder_id') ? (int) $request->query('folder_id') : null;
         $search = trim((string) $request->query('search', ''));
+        $searchNorm = $search !== '' ? mb_strtolower($this->normalizeKeyword($search)) : '';
+
+        $currentFolder = null;
 
         if ($folderId !== null) {
-            $exists = LibraryFolder::query()->where('id', $folderId)->exists();
-            if (!$exists) {
+            $currentFolder = LibraryFolder::query()->where('id', $folderId)->first();
+            if (!$currentFolder) {
                 return $this->error('Folder not found', 404);
             }
         }
@@ -33,9 +37,20 @@ class LibraryController extends Controller
 
         if ($search !== '') {
             $foldersQ->where('name', 'like', "%{$search}%");
-            $docsQ->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                    ->orWhereHas('keywords', fn ($kq) => $kq->where('keyword', 'like', "%{$search}%"));
+        }
+
+        if ($search !== '' || $searchNorm !== '') {
+            $docsQ->where(function ($q) use ($search, $searchNorm) {
+                if ($search !== '') {
+                    $q->where('title', 'like', "%{$search}%")
+                        ->orWhereHas('keywords', fn ($kq) => $kq->where('keyword', 'like', "%{$search}%"));
+                }
+                if ($searchNorm !== '') {
+                    $q->orWhereHas('keywords', function ($kq) use ($searchNorm) {
+                        $kq->whereNotNull('keyword_normalized')
+                            ->where('keyword_normalized', 'like', "%{$searchNorm}%");
+                    });
+                }
             });
         }
 
@@ -50,6 +65,7 @@ class LibraryController extends Controller
                 'kind' => 'folder',
                 'name' => $f->name,
                 'parent_id' => $f->parent_id,
+                'is_public' => (bool) ($f->is_public ?? false),
                 'created_at' => $f->created_at,
                 'updated_at' => $f->updated_at,
                 'count' => (int) $f->children()->count() + (int) $f->documents()->count(),
@@ -79,7 +95,62 @@ class LibraryController extends Controller
 
         return $this->success([
             'items' => $items,
+            'folder' => $currentFolder ? [
+                'id' => $currentFolder->id,
+                'name' => $currentFolder->name,
+                'is_public' => (bool) ($currentFolder->is_public ?? false),
+                'parent_id' => $currentFolder->parent_id,
+            ] : null,
         ]);
+    }
+
+    private function canUploadToFolder(?LibraryFolder $folder, ?User $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        if ($user->isAdminLike()) {
+            return true;
+        }
+
+        if (!$folder) {
+            return false;
+        }
+
+        if (!($folder->is_public ?? false)) {
+            return false;
+        }
+
+        $role = (string) ($user->role ?? '');
+        return in_array($role, [
+            User::ROLE_SUPERVISOR,
+            User::ROLE_RESPONSABLE,
+            User::ROLE_HSE_MANAGER,
+            User::ROLE_REGIONAL_HSE_MANAGER,
+        ], true);
+    }
+
+    private function normalizeKeyword(string $keyword): string
+    {
+        $s = trim($keyword);
+        if ($s === '') {
+            return '';
+        }
+
+        if (class_exists(\Transliterator::class)) {
+            try {
+                $t = \Transliterator::create('NFD; [:Nonspacing Mark:] Remove; NFC');
+                if ($t) {
+                    $s = $t->transliterate($s);
+                }
+            } catch (\Throwable) {
+            }
+        }
+
+        $s = preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $s) ?? $s;
+        $s = preg_replace('/\s+/u', ' ', $s) ?? $s;
+        return trim($s);
     }
 
     public function createFolder(Request $request)
@@ -100,6 +171,73 @@ class LibraryController extends Controller
         ], 'Folder created');
     }
 
+    public function renameFolder(Request $request, LibraryFolder $folder)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $folder->forceFill([
+            'name' => trim((string) $validated['name']),
+        ])->save();
+
+        return $this->success([
+            'id' => $folder->id,
+        ], 'Folder updated');
+    }
+
+    public function destroyFolder(Request $request, LibraryFolder $folder)
+    {
+        $force = (string) $request->query('force', '0') === '1';
+
+        $subfolderCount = (int) LibraryFolder::query()->where('parent_id', $folder->id)->count();
+        $documentCount = (int) LibraryDocument::query()->where('folder_id', $folder->id)->count();
+
+        if (!$force && ($subfolderCount > 0 || $documentCount > 0)) {
+            return $this->error('Folder not empty', 400, [
+                'documents' => $documentCount,
+                'subfolders' => $subfolderCount,
+            ]);
+        }
+
+        DB::transaction(function () use ($folder) {
+            $this->deleteFolderRecursive($folder);
+        });
+
+        return $this->success(null, 'Deleted');
+    }
+
+    private function deleteFolderRecursive(LibraryFolder $folder): void
+    {
+        $docs = LibraryDocument::query()->where('folder_id', $folder->id)->get();
+        foreach ($docs as $document) {
+            LibraryDocumentKeyword::query()->where('document_id', $document->id)->delete();
+
+            if ($document->thumbnail_path) {
+                try {
+                    Storage::disk('public')->delete($document->thumbnail_path);
+                } catch (\Throwable) {
+                }
+            }
+
+            if ($document->file_path) {
+                try {
+                    Storage::disk('public')->delete($document->file_path);
+                } catch (\Throwable) {
+                }
+            }
+
+            $document->delete();
+        }
+
+        $children = LibraryFolder::query()->where('parent_id', $folder->id)->get();
+        foreach ($children as $child) {
+            $this->deleteFolderRecursive($child);
+        }
+
+        $folder->delete();
+    }
+
     public function upload(Request $request)
     {
         $validated = $request->validate([
@@ -107,6 +245,15 @@ class LibraryController extends Controller
             'title' => 'nullable|string|max:255',
             'file' => 'required|file|max:51200|mimes:' . self::UPLOAD_MIMES,
         ]);
+
+        $targetFolder = null;
+        if (!empty($validated['folder_id'])) {
+            $targetFolder = LibraryFolder::query()->find((int) $validated['folder_id']);
+        }
+
+        if (!$this->canUploadToFolder($targetFolder, $request->user())) {
+            return $this->error('Forbidden', 403);
+        }
 
         $file = $request->file('file');
         $originalName = $file?->getClientOriginalName();
@@ -145,6 +292,38 @@ class LibraryController extends Controller
         return $this->success([
             'id' => $doc->id,
         ], 'Uploaded');
+    }
+
+    public function setFolderVisibility(Request $request, LibraryFolder $folder)
+    {
+        $validated = $request->validate([
+            'is_public' => 'required|boolean',
+        ]);
+
+        $folder->forceFill([
+            'is_public' => (bool) $validated['is_public'],
+        ])->save();
+
+        return $this->success([
+            'id' => $folder->id,
+            'is_public' => (bool) $folder->is_public,
+        ], 'Folder updated');
+    }
+
+    public function cancelDocument(Request $request, LibraryDocument $document)
+    {
+        if ((string) $document->status !== LibraryDocument::STATUS_PROCESSING) {
+            return $this->error('Document is not processing', 400);
+        }
+
+        $document->forceFill([
+            'status' => LibraryDocument::STATUS_FAILED,
+            'error_message' => 'Cancelled by user',
+        ])->save();
+
+        return $this->success([
+            'id' => $document->id,
+        ], 'Cancelled');
     }
 
     private function tryGenerateThumbnail(string $publicDiskPath, string $ext, int $docId): ?string

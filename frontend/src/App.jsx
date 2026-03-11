@@ -332,6 +332,16 @@ function App() {
 
       <Route
         element={
+          <ProtectedRoute allowedRoles={['admin', 'consultation', 'dev', 'supervisor', 'responsable', 'hse_manager', 'regional_hse_manager']} enforceAllowedRoles>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/admin/library" element={<Library />} />
+      </Route>
+
+      <Route
+        element={
           <ProtectedRoute adminOnly>
             <DashboardLayout />
           </ProtectedRoute>
@@ -341,14 +351,6 @@ function App() {
         <Route path="/admin/projects" element={<ProjectManagement />} />
         <Route path="/admin/projects/:id" element={<ProjectDetails />} />
         <Route path="/admin/bug-reports" element={<BugReports />} />
-        <Route
-          path="/admin/library"
-          element={
-            <ProtectedRoute allowedRoles={['admin', 'consultation', 'dev']} enforceAllowedRoles>
-              <Library />
-            </ProtectedRoute>
-          }
-        />
         <Route
           path="/admin/effectif"
           element={

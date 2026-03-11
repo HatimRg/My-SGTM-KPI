@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useLanguage } from '../../i18n'
 import { useAuthStore } from '../../store/authStore'
 import { libraryService } from '../../services/api'
@@ -8,6 +9,7 @@ import {
   FileText,
   FileSpreadsheet,
   File,
+  ChevronLeft,
   Folder,
   FolderPlus,
   MoreVertical,
@@ -125,9 +127,19 @@ const fileIcon = (ext) => {
   return File
 }
 
+const statusPillClass = (status) => {
+  const s = String(status || '').toLowerCase()
+  if (s === 'indexed') return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-900'
+  if (s === 'failed') return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900'
+  if (s === 'processing') return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900'
+  return 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700'
+}
+
 export default function Library() {
   const { t } = useLanguage()
   const { user, isAdmin } = useAuthStore()
+
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const isAdminUser = isAdmin?.() || user?.role === 'dev'
 
@@ -141,8 +153,38 @@ export default function Library() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
 
+  const [currentFolderMeta, setCurrentFolderMeta] = useState(null)
+
+  const itemsCacheRef = useRef(new Map())
+  const didInitNavFromUrlRef = useRef(false)
+  const lastUrlWriteRef = useRef('')
+  const navPushNextRef = useRef(false)
+
+  const encodeFolderStack = (stack) => {
+    try {
+      return encodeURIComponent(JSON.stringify(stack || []))
+    } catch {
+      return ''
+    }
+  }
+
+  const decodeFolderStack = (raw) => {
+    if (!raw) return []
+    try {
+      const decoded = decodeURIComponent(String(raw))
+      const parsed = JSON.parse(decoded)
+      if (!Array.isArray(parsed)) return []
+      return parsed
+        .filter((x) => x && (x.id !== null && x.id !== undefined) && typeof x.name === 'string')
+        .map((x) => ({ id: x.id, name: x.name }))
+    } catch {
+      return []
+    }
+  }
+
   const [createFolderName, setCreateFolderName] = useState('')
   const [creatingFolder, setCreatingFolder] = useState(false)
+  const [createFolderModalOpen, setCreateFolderModalOpen] = useState(false)
 
   const [viewer, setViewer] = useState({ isOpen: false, item: null })
   const [viewerUrl, setViewerUrl] = useState(null)
@@ -153,6 +195,99 @@ export default function Library() {
   const [actionsOpenId, setActionsOpenId] = useState(null)
 
   const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, item: null })
+
+  const [confirmDeleteFolder, setConfirmDeleteFolder] = useState({ isOpen: false, item: null })
+  const [confirmForceDeleteFolder, setConfirmForceDeleteFolder] = useState({ isOpen: false, item: null, counts: null })
+  const [renameFolderModal, setRenameFolderModal] = useState({ isOpen: false, item: null })
+  const [renameFolderName, setRenameFolderName] = useState('')
+  const [renamingFolder, setRenamingFolder] = useState(false)
+
+  const onDeleteFolder = async (folder) => {
+    try {
+      if (!folder?.id) return
+      await libraryService.deleteFolder(folder.id)
+      await fetchItems()
+      toast.success(t('common.deleted'), { id: 'library:folder:deleted' })
+    } catch (e) {
+      const status = e?.response?.status
+      const msg = e?.response?.data?.message
+      const errors = e?.response?.data?.errors
+      if (status === 400 && msg === 'Folder not empty') {
+        setConfirmForceDeleteFolder({ isOpen: true, item: folder, counts: errors || null })
+        return
+      }
+      toast.error(msg || 'Failed to delete folder', { id: 'library:folder:delete:error' })
+    }
+  }
+
+  const onForceDeleteFolder = async (folder) => {
+    try {
+      if (!folder?.id) return
+      await libraryService.deleteFolder(folder.id, { force: 1 })
+      await fetchItems()
+      toast.success(t('common.deleted'), { id: 'library:folder:deleted' })
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to delete folder', { id: 'library:folder:delete:error' })
+    }
+  }
+
+  const onRenameFolder = async () => {
+    const folder = renameFolderModal?.item
+    const name = String(renameFolderName || '').trim()
+    if (!folder?.id || !name) return
+    try {
+      setRenamingFolder(true)
+      await libraryService.renameFolder({ id: folder.id, name })
+      setRenameFolderModal({ isOpen: false, item: null })
+      setRenameFolderName('')
+      await fetchItems()
+      toast.success(t('common.saved'), { id: 'library:folder:renamed' })
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to rename folder', { id: 'library:folder:rename:error' })
+    } finally {
+      setRenamingFolder(false)
+    }
+  }
+
+  const onToggleFolderVisibility = async (folder) => {
+    try {
+      if (!folder?.id) return
+      await libraryService.setFolderVisibility({ id: folder.id, isPublic: !folder.is_public })
+      await fetchItems()
+      toast.success(t('common.saved'), { id: 'library:folder:visibility' })
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed', { id: 'library:folder:visibility:error' })
+    }
+  }
+
+  const onCancelProcessing = async (item) => {
+    try {
+      if (!item?.id) return
+      await libraryService.cancelDocument(item.id)
+      await fetchItems()
+      toast.success('Cancelled', { id: 'library:cancel:ok' })
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed', { id: 'library:cancel:error' })
+    }
+  }
+
+  const downloadFolderZip = async () => {
+    if (!currentFolder?.id) return
+    try {
+      const res = await libraryService.fetchFolderZipBlob(currentFolder.id)
+      const blob = res?.data
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${currentFolder?.name || 'folder'}.zip`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 2000)
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to download zip', { id: 'library:zip:error' })
+    }
+  }
 
   const replaceInputRef = useRef(null)
   const [replaceTarget, setReplaceTarget] = useState(null)
@@ -196,6 +331,15 @@ export default function Library() {
   }, [breadcrumbs, items, kindFilter, query, sortBy, sortDir])
 
   const isImageFile = (item) => item?.kind === 'file' && ['png', 'jpg', 'jpeg'].includes(String(item.file_type || '').toLowerCase())
+
+  const canUploadToPublicFolder = () => {
+    const role = String(user?.role || '')
+    return ['supervisor', 'responsable', 'hse_manager', 'regional_hse_manager'].includes(role)
+  }
+
+  const canUploadHere = isAdminUser
+    ? true
+    : (!!currentFolderMeta?.is_public && canUploadToPublicFolder())
 
   const ensureThumbUrl = async (item) => {
     if (!item?.id || !isImageFile(item)) return null
@@ -250,7 +394,15 @@ export default function Library() {
         folder_id: currentFolder?.id ?? undefined,
       })
       const list = res.data?.data?.items
-      setItems(Array.isArray(list) ? list : [])
+      setCurrentFolderMeta(res.data?.data?.folder ?? null)
+      const nextItems = Array.isArray(list) ? list : []
+      setItems(nextItems)
+
+      const key = currentFolder?.id ?? 'root'
+      try {
+        itemsCacheRef.current.set(String(key), nextItems)
+      } catch {
+      }
     } catch (e) {
       toast.error(e?.response?.data?.message || 'Failed to load')
       setItems([])
@@ -260,9 +412,91 @@ export default function Library() {
   }
 
   useEffect(() => {
+    if (didInitNavFromUrlRef.current) return
+    didInitNavFromUrlRef.current = true
+
+    const raw = searchParams.get('folder_stack')
+    const stack = decodeFolderStack(raw)
+    if (!stack.length) return
+
+    setBreadcrumbs(stack)
+    const last = stack[stack.length - 1]
+    setCurrentFolder(last ? { id: last.id, name: last.name } : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!didInitNavFromUrlRef.current) return
+    const raw = searchParams.get('folder_stack')
+    const normalizedRaw = raw ? String(raw) : ''
+    if (normalizedRaw && normalizedRaw === lastUrlWriteRef.current) return
+
+    const stack = decodeFolderStack(raw)
+    if (!stack.length) {
+      setBreadcrumbs([])
+      setCurrentFolder(null)
+      return
+    }
+
+    setBreadcrumbs(stack)
+    const last = stack[stack.length - 1]
+    setCurrentFolder(last ? { id: last.id, name: last.name } : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  useEffect(() => {
+    if (!didInitNavFromUrlRef.current) return
+
+    const next = breadcrumbs.map((b) => ({ id: b.id, name: b.name }))
+    const nextRaw = next.length ? encodeFolderStack(next) : ''
+    const currentRaw = searchParams.get('folder_stack') || ''
+    if (currentRaw === nextRaw) return
+
+    lastUrlWriteRef.current = nextRaw
+
+    const sp = new URLSearchParams(searchParams)
+    if (nextRaw) {
+      sp.set('folder_stack', nextRaw)
+    } else {
+      sp.delete('folder_stack')
+    }
+    const replace = !navPushNextRef.current
+    navPushNextRef.current = false
+    setSearchParams(sp, { replace })
+  }, [breadcrumbs, searchParams.toString(), setSearchParams])
+
+  useEffect(() => {
+    const key = currentFolder?.id ?? 'root'
+    try {
+      const cached = itemsCacheRef.current.get(String(key))
+      if (Array.isArray(cached)) {
+        setItems(cached)
+      }
+    } catch {
+    }
     fetchItems()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentFolder?.id])
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      const isBackKey = (e.altKey && e.key === 'ArrowLeft') || e.key === 'Backspace'
+      if (!isBackKey) return
+
+      const tag = String(e.target?.tagName || '').toLowerCase()
+      const isTyping = tag === 'input' || tag === 'textarea' || e.target?.isContentEditable
+      if (isTyping) return
+
+      if (!breadcrumbs.length) return
+
+      e.preventDefault()
+      goToCrumb(breadcrumbs.length - 2)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [breadcrumbs])
 
   const handleDownload = async (item) => {
     if (item?.kind !== 'file') return
@@ -294,7 +528,7 @@ export default function Library() {
     const type = String(item.file_type || '').toLowerCase()
     const canInline = ['pdf', 'png', 'jpg', 'jpeg', 'txt'].includes(type)
     if (!canInline) {
-      window.open(item.view_url, '_blank', 'noopener,noreferrer')
+      handleDownload(item)
       return
     }
 
@@ -388,11 +622,14 @@ export default function Library() {
 
   const enterFolder = (folder) => {
     if (!folder || folder.kind !== 'folder') return
+    if (String(currentFolder?.id || '') === String(folder.id || '')) return
+    navPushNextRef.current = true
     setCurrentFolder({ id: folder.id, name: folder.name })
     setBreadcrumbs((prev) => [...(Array.isArray(prev) ? prev : []), { id: folder.id, name: folder.name }])
   }
 
   const goToCrumb = (idx) => {
+    navPushNextRef.current = true
     if (idx < 0) {
       setBreadcrumbs([])
       setCurrentFolder(null)
@@ -411,6 +648,7 @@ export default function Library() {
       setCreatingFolder(true)
       await libraryService.createFolder({ name, parentId: currentFolder?.id ?? null })
       setCreateFolderName('')
+      setCreateFolderModalOpen(false)
       await fetchItems()
     } catch (e) {
       toast.error(e?.response?.data?.message || 'Failed to create folder')
@@ -441,7 +679,7 @@ export default function Library() {
           <p className="text-gray-500 dark:text-gray-400 mt-1">{t('library.subtitle')}</p>
         </div>
 
-        {isAdminUser && (
+        {canUploadHere && (
           <div className="w-full lg:w-[440px]">
             <div className="card p-4 border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/50">
               <div className="flex items-center justify-between gap-3">
@@ -521,11 +759,30 @@ export default function Library() {
       <div className="card p-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+              <button
+                type="button"
+                className="btn-secondary !px-2 !py-1"
+                onClick={() => {
+                  if (!breadcrumbs.length) {
+                    goToCrumb(-1)
+                    return
+                  }
+                  goToCrumb(breadcrumbs.length - 2)
+                }}
+                disabled={!breadcrumbs.length}
+                aria-label={t('common.back')}
+                title={t('common.back')}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span className="text-[12px]">{t('common.back')}</span>
+              </button>
+
               <button type="button" className="hover:underline" onClick={() => goToCrumb(-1)}>{t('library.root')}</button>
+
               {breadcrumbs.map((c, idx) => (
-                <span key={c.id}>
-                  {' / '}
+                <span key={c.id} className="inline-flex items-center gap-2">
+                  <span className="opacity-60">/</span>
                   <button type="button" className="hover:underline" onClick={() => goToCrumb(idx)}>{c.name}</button>
                 </span>
               ))}
@@ -537,7 +794,7 @@ export default function Library() {
               <button
                 type="button"
                 className="btn-secondary"
-                onClick={() => window.open(libraryService.getFolderZipUrl(currentFolder.id), '_blank', 'noopener,noreferrer')}
+                onClick={downloadFolderZip}
               >
                 <Download className="w-4 h-4" />
                 {t('library.downloadZip')}
@@ -545,26 +802,122 @@ export default function Library() {
             )}
 
             {isAdminUser && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/40 px-3 py-2">
-                  <FolderPlus className="w-4 h-4 text-gray-400" />
-                  <input
-                    value={createFolderName}
-                    onChange={(e) => setCreateFolderName(e.target.value)}
-                    placeholder={t('library.folderName')}
-                    className="bg-transparent text-sm text-gray-900 dark:text-gray-100 border-none focus:ring-0 w-44"
-                  />
-                </div>
-                <button type="button" className="btn-primary" onClick={createFolder} disabled={creatingFolder || !String(createFolderName || '').trim()}>
-                  {t('library.createFolder')}
-                </button>
-              </div>
+              <button type="button" className="btn-primary" onClick={() => setCreateFolderModalOpen(true)} disabled={creatingFolder}>
+                <FolderPlus className="w-4 h-4" />
+                {t('library.createFolder')}
+              </button>
             )}
           </div>
         </div>
       </div>
 
-      <div className="card p-5">
+      <Modal
+        isOpen={createFolderModalOpen}
+        onClose={() => {
+          if (creatingFolder) return
+          setCreateFolderModalOpen(false)
+        }}
+        title={t('library.createFolder')}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/40 px-3 py-2">
+            <FolderPlus className="w-4 h-4 text-gray-400" />
+            <input
+              value={createFolderName}
+              onChange={(e) => setCreateFolderName(e.target.value)}
+              placeholder={t('library.folderName')}
+              className="bg-transparent text-sm text-gray-900 dark:text-gray-100 border-none focus:ring-0 w-full"
+              autoFocus
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setCreateFolderModalOpen(false)}
+              disabled={creatingFolder}
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={createFolder}
+              disabled={creatingFolder || !String(createFolderName || '').trim()}
+            >
+              {t('library.createFolder')}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={!!confirmDeleteFolder?.isOpen}
+        title={t('common.confirm')}
+        message={t('common.confirmDelete')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        variant="danger"
+        onCancel={() => setConfirmDeleteFolder({ isOpen: false, item: null })}
+        onConfirm={async () => {
+          const target = confirmDeleteFolder?.item
+          setConfirmDeleteFolder({ isOpen: false, item: null })
+          await onDeleteFolder(target)
+        }}
+      />
+
+      <ConfirmDialog
+        isOpen={!!confirmForceDeleteFolder?.isOpen}
+        title={t('common.confirm')}
+        message={(() => {
+          const docs = Number(confirmForceDeleteFolder?.counts?.documents ?? 0)
+          const subs = Number(confirmForceDeleteFolder?.counts?.subfolders ?? 0)
+          if (Number.isFinite(docs) && Number.isFinite(subs)) {
+            return `Folder not empty (${docs} documents, ${subs} subfolders). Delete everything inside?`
+          }
+          return 'Folder not empty. Delete everything inside?'
+        })()}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        variant="danger"
+        onCancel={() => setConfirmForceDeleteFolder({ isOpen: false, item: null, counts: null })}
+        onConfirm={async () => {
+          const target = confirmForceDeleteFolder?.item
+          setConfirmForceDeleteFolder({ isOpen: false, item: null, counts: null })
+          await onForceDeleteFolder(target)
+        }}
+      />
+
+      <Modal
+        isOpen={!!renameFolderModal?.isOpen}
+        onClose={() => {
+          if (renamingFolder) return
+          setRenameFolderModal({ isOpen: false, item: null })
+        }}
+        title={t('common.update')}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/40 px-3 py-2">
+            <Folder className="w-4 h-4 text-gray-400" />
+            <input
+              value={renameFolderName}
+              onChange={(e) => setRenameFolderName(e.target.value)}
+              className="bg-transparent text-sm text-gray-900 dark:text-gray-100 border-none focus:ring-0 w-full"
+              autoFocus
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-secondary" onClick={() => setRenameFolderModal({ isOpen: false, item: null })} disabled={renamingFolder}>
+              {t('common.cancel')}
+            </button>
+            <button type="button" className="btn-primary" onClick={onRenameFolder} disabled={renamingFolder || !String(renameFolderName || '').trim()}>
+              {t('common.update')}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <div className="card p-5 overflow-visible">
         <div className="flex flex-col lg:flex-row lg:items-center gap-3">
           <div className="flex-1">
             <div className="relative">
@@ -598,7 +951,7 @@ export default function Library() {
               <select
                 value={kindFilter}
                 onChange={(e) => setKindFilter(e.target.value)}
-                className="bg-transparent text-sm text-gray-900 dark:text-gray-100 border-none focus:ring-0"
+                className="bg-transparent text-sm text-gray-900 dark:text-gray-100 border-none focus:ring-0 [&>option]:bg-white dark:[&>option]:bg-gray-900 [&>option]:text-gray-900 dark:[&>option]:text-gray-100"
               >
                 <option value="all">{t('common.all')}</option>
                 <option value="folder">{t('library.folders')}</option>
@@ -615,7 +968,7 @@ export default function Library() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="bg-transparent text-sm text-gray-900 dark:text-gray-100 border-none focus:ring-0"
+                className="bg-transparent text-sm text-gray-900 dark:text-gray-100 border-none focus:ring-0 [&>option]:bg-white dark:[&>option]:bg-gray-900 [&>option]:text-gray-900 dark:[&>option]:text-gray-100"
               >
                 <option value="updated_at">{t('library.sort.updated')}</option>
                 <option value="name">{t('library.sort.name')}</option>
@@ -647,7 +1000,7 @@ export default function Library() {
               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('library.noResultsHint')}</div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {results.map((item) => {
                 const Icon = item.kind === 'folder' ? Folder : fileIcon(item.file_type)
                 const displayName = item.kind === 'folder' ? item.name : (item.title || item.original_name)
@@ -666,10 +1019,11 @@ export default function Library() {
                         handleOpen(item)
                       }
                     }}
-                    className="group cursor-pointer rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 hover:shadow-sm hover:border-gray-300 dark:hover:border-gray-600 transition"
+                    className="group cursor-pointer rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 hover:shadow-sm hover:border-gray-300 dark:hover:border-gray-600 transition h-full relative overflow-visible"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3 min-w-0">
+                    <div className="flex flex-col h-full">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 min-w-0">
                         {isImage && item.thumbnail_url ? (
                           <div
                             className="w-14 h-14 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-shrink-0"
@@ -687,13 +1041,15 @@ export default function Library() {
                             <Icon className="w-5 h-5 text-hse-primary" />
                           </div>
                         )}
-                        <div className="min-w-0">
-                          <div className="font-semibold text-gray-900 dark:text-gray-100 leading-snug break-words whitespace-normal pr-12">
+                        <div className="min-w-0 pt-0.5">
+                          <div className="font-semibold text-gray-900 dark:text-gray-100 leading-snug break-words whitespace-normal pr-2">
                             {displayName}
                           </div>
                           {item.kind === 'file' && item.status && (
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {String(item.status)}
+                            <div className="mt-2">
+                              <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${statusPillClass(item.status)}`}>
+                                {String(item.status)}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -717,7 +1073,22 @@ export default function Library() {
                             </button>
 
                             {actionsOpenId === item.id && (
-                              <div className="absolute right-0 top-10 z-20 w-56 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg p-1">
+                              <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg p-1">
+                                {isAdminUser && item.kind === 'folder' && (
+                                  <button
+                                    type="button"
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                                    onClick={() => {
+                                      setActionsOpenId(null)
+                                      onToggleFolderVisibility(item)
+                                    }}
+                                  >
+                                    <span className="text-xs font-semibold">
+                                      {item.is_public ? 'Make private' : 'Make public'}
+                                    </span>
+                                  </button>
+                                )}
+
                                 <button
                                   type="button"
                                   className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -730,8 +1101,22 @@ export default function Library() {
                                   {t('library.download')}
                                 </button>
 
-                                {isAdminUser && (
+                                {isAdminUser && item.kind === 'file' && (
                                   <>
+                                    {String(item.status) === 'processing' && (
+                                      <button
+                                        type="button"
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                                        onClick={() => {
+                                          setActionsOpenId(null)
+                                          onCancelProcessing(item)
+                                        }}
+                                      >
+                                        <X className="w-4 h-4" />
+                                        Stop processing
+                                      </button>
+                                    )}
+
                                     <button
                                       type="button"
                                       className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -775,16 +1160,69 @@ export default function Library() {
                             )}
                           </>
                         )}
-                      </div>
-                    </div>
 
-                    <div className="mt-3 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                      <div>
-                        {item.kind === 'folder'
-                          ? `${item.count ?? 0} ${t('library.items')}`
-                          : `${String(item.file_type || '').toUpperCase()} · ${bytesLabel(item.size_bytes)}`}
+                        {item.kind === 'folder' && isAdminUser && (
+                          <>
+                            <button
+                              type="button"
+                              className="h-9 w-9 inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                              onClick={() => setActionsOpenId((v) => (v === item.id ? null : item.id))}
+                              aria-label="Actions"
+                              title="Actions"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+
+                            {actionsOpenId === item.id && (
+                              <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg p-1">
+                                <button
+                                  type="button"
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                                  onClick={() => {
+                                    setActionsOpenId(null)
+                                    setRenameFolderName(String(item.name || ''))
+                                    setRenameFolderModal({ isOpen: true, item })
+                                  }}
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                  {t('common.update')}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-red-600"
+                                  onClick={() => {
+                                    setActionsOpenId(null)
+                                    setConfirmDeleteFolder({ isOpen: true, item })
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  {t('common.delete')}
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        </div>
                       </div>
-                      <div>{String(item.updated_at || '').slice(0, 10)}</div>
+
+                      <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                        <div className="truncate inline-flex items-center gap-2">
+                          {item.kind === 'folder'
+                            ? (
+                              <>
+                                <span>{`${item.count ?? 0} ${t('library.items')}`}</span>
+                                {item.is_public ? (
+                                  <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[11px] font-semibold">
+                                    Public
+                                  </span>
+                                ) : null}
+                              </>
+                            )
+                            : `${String(item.file_type || '').toUpperCase()} · ${bytesLabel(item.size_bytes)}`}
+                        </div>
+                        <div className="flex-shrink-0 pl-3">{String(item.updated_at || '').slice(0, 10)}</div>
+                      </div>
                     </div>
                   </div>
                 )

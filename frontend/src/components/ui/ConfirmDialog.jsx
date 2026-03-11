@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Modal from './Modal'
 
 export default function ConfirmDialog({
@@ -11,6 +12,8 @@ export default function ConfirmDialog({
   onCancel,
 }) {
   if (!isOpen) return null
+
+  const [pending, setPending] = useState(false)
 
   const confirmClass = variant === 'danger' ? 'btn-danger' : 'btn-primary'
 
@@ -27,13 +30,23 @@ export default function ConfirmDialog({
             type="button"
             onClick={onCancel}
             className="btn-outline"
+            disabled={pending}
           >
             {cancelLabel}
           </button>
           <button
             type="button"
-            onClick={onConfirm}
+            onClick={async () => {
+              if (pending) return
+              try {
+                setPending(true)
+                await onConfirm?.()
+              } finally {
+                setPending(false)
+              }
+            }}
             className={confirmClass}
+            disabled={pending}
           >
             {confirmLabel}
           </button>

@@ -13,6 +13,7 @@ class LibraryFolder extends Model
         'name',
         'parent_id',
         'created_by',
+        'is_public',
     ];
 
     public function parent()

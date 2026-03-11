@@ -32,13 +32,17 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all') // all | unread | reminders
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(20)
+  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, per_page: 20, total: 0 })
 
   useEffect(() => {
     const fetchAll = async () => {
       try {
         setLoading(true)
-        const res = await notificationService.getAll({ per_page: 50 })
-        setNotifications(res.data.data || [])
+        const res = await notificationService.getAll({ page, per_page: perPage })
+        setNotifications(res.data?.data || [])
+        setMeta(res.data?.meta || { current_page: page, last_page: 1, per_page: perPage, total: 0 })
       } catch (error) {
         console.error('Failed to load notifications', error)
       } finally {
@@ -47,7 +51,7 @@ export default function Notifications() {
     }
 
     fetchAll()
-  }, [])
+  }, [page, perPage])
 
   const handleMarkAsRead = async (notif) => {
     if (notif.read_at) return
@@ -104,7 +108,7 @@ export default function Notifications() {
           <div className="flex items-center gap-2">
             <Bell className="w-5 h-5 text-hse-primary" />
             <span className="font-semibold text-gray-900 dark:text-gray-100">{t('notifications.title')}</span>
-            <span className="badge badge-info">{notifications.length}</span>
+            <span className="badge badge-info">{meta?.total ?? notifications.length}</span>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <button
@@ -170,60 +174,102 @@ export default function Notifications() {
             <p className="text-sm">{t('notifications.noNotifications')}</p>
           </div>
         ) : (
-          <div className="max-h-[70vh] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
-            {filteredNotifications.map((notif) => {
-              const style = getNotificationStyle(notif.type)
-              const IconComponent = style.icon
-              const isUnread = !notif.read_at
+          <div>
+            <div className="max-h-[70vh] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
+              {filteredNotifications.map((notif) => {
+                const style = getNotificationStyle(notif.type)
+                const IconComponent = style.icon
+                const isUnread = !notif.read_at
 
-              return (
-                <div
-                  key={notif.id}
-                  className={`px-4 py-3 flex gap-3 items-start ${
-                    isUnread ? 'bg-blue-50/40 dark:bg-blue-900/10' : 'bg-white dark:bg-gray-800'
-                  }`}
-                >
-                  <div className={`w-9 h-9 rounded-full ${style.bg} flex items-center justify-center flex-shrink-0`}>
-                    <IconComponent className={`w-4 h-4 ${style.color}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className={`text-sm ${isUnread ? 'font-semibold' : 'font-medium'} text-gray-900 dark:text-gray-100`}>
-                        {notif.title}
+                return (
+                  <div
+                    key={notif.id}
+                    className={`px-4 py-3 flex gap-3 items-start ${
+                      isUnread ? 'bg-blue-50/40 dark:bg-blue-900/10' : 'bg-white dark:bg-gray-800'
+                    }`}
+                  >
+                    <div className={`w-9 h-9 rounded-full ${style.bg} flex items-center justify-center flex-shrink-0`}>
+                      <IconComponent className={`w-4 h-4 ${style.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className={`text-sm ${isUnread ? 'font-semibold' : 'font-medium'} text-gray-900 dark:text-gray-100`}>
+                          {notif.title}
+                        </p>
+                        {isUnread && (
+                          <button
+                            type="button"
+                            onClick={() => handleMarkAsRead(notif)}
+                            className="text-xs text-hse-primary hover:underline flex-shrink-0"
+                          >
+                            {t('notifications.markRead')}
+                          </button>
+                        )}
+                      </div>
+                      {notif.message && (
+                        <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                          {notif.message}
+                        </p>
+                      )}
+                      {notif.project && (
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 flex items-center gap-1">
+                          <FolderKanban className="w-3 h-3" />
+                          {notif.project.name}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        {new Date(notif.created_at).toLocaleDateString()} {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
-                      {isUnread && (
-                        <button
-                          type="button"
-                          onClick={() => handleMarkAsRead(notif)}
-                          className="text-xs text-hse-primary hover:underline flex-shrink-0"
-                        >
-                          {t('notifications.markRead')}
-                        </button>
+                      {notif.type === 'reminder' && (
+                        <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-1">
+                          {TYPE_LABELS.reminder}: pending KPI or SOR action.
+                        </p>
                       )}
                     </div>
-                    {notif.message && (
-                      <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                        {notif.message}
-                      </p>
-                    )}
-                    {notif.project && (
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 flex items-center gap-1">
-                        <FolderKanban className="w-3 h-3" />
-                        {notif.project.name}
-                      </p>
-                    )}
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                      {new Date(notif.created_at).toLocaleDateString()} {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                    {notif.type === 'reminder' && (
-                      <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-1">
-                        {TYPE_LABELS.reminder}: pending KPI or SOR action.
-                      </p>
-                    )}
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
+
+            <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
+              <div className="text-gray-500 dark:text-gray-400">
+                Page {meta?.current_page ?? page} / {meta?.last_page ?? 1}
+                {typeof meta?.total === 'number' ? ` · ${meta.total} total` : ''}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 justify-end">
+                <select
+                  value={perPage}
+                  onChange={(e) => {
+                    const next = Number(e.target.value)
+                    setPerPage(Number.isFinite(next) && next > 0 ? next : 20)
+                    setPage(1)
+                  }}
+                  className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={(meta?.current_page ?? page) <= 1}
+                >
+                  Prev
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={(meta?.current_page ?? page) >= (meta?.last_page ?? 1)}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -101,13 +101,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/documents/{document}/thumbnail', [LibraryController::class, 'thumbnail']);
         Route::get('/folders/{folder}/download-zip', [LibraryController::class, 'downloadFolderZip']);
 
+        Route::post('/documents', [LibraryController::class, 'upload']);
+
         // Admin-like only: create folders, upload documents
         Route::middleware('admin')->group(function () {
             Route::post('/folders', [LibraryController::class, 'createFolder']);
-            Route::post('/documents', [LibraryController::class, 'upload']);
+            Route::patch('/folders/{folder}', [LibraryController::class, 'renameFolder']);
+            Route::patch('/folders/{folder}/visibility', [LibraryController::class, 'setFolderVisibility']);
+            Route::delete('/folders/{folder}', [LibraryController::class, 'destroyFolder']);
             Route::delete('/documents/{document}', [LibraryController::class, 'destroyDocument']);
             Route::post('/documents/{document}/replace', [LibraryController::class, 'replaceDocument']);
             Route::post('/documents/{document}/reindex', [LibraryController::class, 'reindexDocument']);
+            Route::post('/documents/{document}/cancel', [LibraryController::class, 'cancelDocument']);
         });
     });
 

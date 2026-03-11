@@ -12,6 +12,8 @@ class LibraryDocumentKeyword extends Model
     protected $fillable = [
         'document_id',
         'keyword',
+        'keyword_normalized',
+        'weight',
     ];
 
     public function document()

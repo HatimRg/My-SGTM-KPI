@@ -452,6 +452,7 @@ export default function DashboardLayout() {
     { to: '/my-projects', icon: FolderHeart, label: t('nav.myProjects') },
     { to: '/kpi/submit', icon: FilePlus2, label: t('kpi.submission') },
     { to: '/kpi/history', icon: History, label: t('kpi.history') },
+    { to: '/admin/library', icon: BookOpen, label: t('nav.library') },
     { to: '/deviations', icon: FileWarning, label: t('dashboard.themes.deviations') },
     { to: '/training', icon: GraduationCap, label: t('training.navLabel') },
     { to: '/awareness', icon: Megaphone, label: t('awareness.navLabel') },
@@ -477,6 +478,7 @@ export default function DashboardLayout() {
   const supervisorNavItems = [
     { to: '/supervisor', icon: ShieldAlert, label: t('sor.title') },
     { to: '/supervisor/projects', icon: FolderHeart, label: t('nav.myProjects') },
+    { to: '/admin/library', icon: BookOpen, label: t('nav.library') },
     { to: '/supervisor/awareness', icon: Megaphone, label: t('awareness.navLabel') },
     { to: '/supervisor/training', icon: GraduationCap, label: t('training.navLabel') },
     { to: '/supervisor/work-permits', icon: ClipboardSignature, label: t('workPermits.title') },
