@@ -7,6 +7,7 @@ export default {
     comingSoon: 'Coming soon',
     other: 'Other',
     showMore: 'Show more',
+    retry: 'Retry',
     results: {
       showing: 'Showing {{shown}} of {{total}} results',
       showMore: 'Show more',

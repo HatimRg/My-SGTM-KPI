@@ -1006,6 +1006,7 @@ export default function Library() {
                 const displayName = item.kind === 'folder' ? item.name : (item.title || item.original_name)
                 const isImage = isImageFile(item)
                 const thumbUrl = isImage ? thumbUrlsById[item.id] : null
+                const actionsKey = `${item.kind}:${item.id}`
 
                 return (
                   <div
@@ -1057,7 +1058,7 @@ export default function Library() {
 
                       <div
                         className="relative flex items-center gap-2"
-                        data-actions-root={item.id}
+                        data-actions-root={actionsKey}
                         onClick={(e) => e.stopPropagation()}
                       >
                         {item.kind === 'file' && (
@@ -1065,30 +1066,15 @@ export default function Library() {
                             <button
                               type="button"
                               className="h-9 w-9 inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-                              onClick={() => setActionsOpenId((v) => (v === item.id ? null : item.id))}
+                              onClick={() => setActionsOpenId((v) => (v === actionsKey ? null : actionsKey))}
                               aria-label="Actions"
                               title="Actions"
                             >
                               <MoreVertical className="w-4 h-4" />
                             </button>
 
-                            {actionsOpenId === item.id && (
+                            {actionsOpenId === actionsKey && (
                               <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg p-1">
-                                {isAdminUser && item.kind === 'folder' && (
-                                  <button
-                                    type="button"
-                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                                    onClick={() => {
-                                      setActionsOpenId(null)
-                                      onToggleFolderVisibility(item)
-                                    }}
-                                  >
-                                    <span className="text-xs font-semibold">
-                                      {item.is_public ? 'Make private' : 'Make public'}
-                                    </span>
-                                  </button>
-                                )}
-
                                 <button
                                   type="button"
                                   className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -1166,15 +1152,28 @@ export default function Library() {
                             <button
                               type="button"
                               className="h-9 w-9 inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-                              onClick={() => setActionsOpenId((v) => (v === item.id ? null : item.id))}
+                              onClick={() => setActionsOpenId((v) => (v === actionsKey ? null : actionsKey))}
                               aria-label="Actions"
                               title="Actions"
                             >
                               <MoreVertical className="w-4 h-4" />
                             </button>
 
-                            {actionsOpenId === item.id && (
+                            {actionsOpenId === actionsKey && (
                               <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg p-1">
+                                <button
+                                  type="button"
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                                  onClick={() => {
+                                    setActionsOpenId(null)
+                                    onToggleFolderVisibility(item)
+                                  }}
+                                >
+                                  <span className="text-xs font-semibold">
+                                    {item.is_public ? 'Make private' : 'Make public'}
+                                  </span>
+                                </button>
+
                                 <button
                                   type="button"
                                   className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
