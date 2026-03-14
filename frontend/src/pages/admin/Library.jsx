@@ -9,9 +9,12 @@ import {
   FileText,
   FileSpreadsheet,
   File,
+  BookOpen,
   ChevronLeft,
   Folder,
   FolderPlus,
+  Lock,
+  Unlock,
   MoreVertical,
   Pencil,
   RefreshCw,
@@ -1010,7 +1013,7 @@ export default function Library() {
 
                 return (
                   <div
-                    key={item.id}
+                    key={`${item.kind}:${item.id}`}
                     role="button"
                     tabIndex={0}
                     onClick={() => handleOpen(item)}
@@ -1169,6 +1172,11 @@ export default function Library() {
                                     onToggleFolderVisibility(item)
                                   }}
                                 >
+                                  {item.is_public ? (
+                                    <Lock className="w-4 h-4" />
+                                  ) : (
+                                    <Unlock className="w-4 h-4" />
+                                  )}
                                   <span className="text-xs font-semibold">
                                     {item.is_public ? 'Make private' : 'Make public'}
                                   </span>
