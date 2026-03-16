@@ -102,8 +102,23 @@ export default function SubcontractorOpeningDetails() {
       setPreviewLoading(true)
 
       if (previewUrl) {
-        URL.revokeObjectURL(previewUrl)
+        if (String(previewUrl).startsWith('blob:')) URL.revokeObjectURL(previewUrl)
         setPreviewUrl(null)
+      }
+
+      const type = String(doc?.file_type || 'pdf').toLowerCase()
+      if (type === 'pdf') {
+        const raw = String(doc.file_view_url)
+        const viewPath = raw.startsWith('/') ? raw : `/${raw}`
+
+        let linkPath = viewPath.replace(/\/view(\?.*)?$/, '/view-link$1')
+        linkPath = normalizeApiPath(linkPath)
+
+        const res = await api.get(linkPath)
+        const signed = res?.data?.data?.url
+        if (!signed) throw new Error('Missing signed url')
+        setPreviewUrl(String(signed))
+        return
       }
 
       const path = normalizeApiPath(doc.file_view_url)
@@ -124,7 +139,7 @@ export default function SubcontractorOpeningDetails() {
     setActivePreview(null)
     setPreviewLoading(false)
     if (previewUrl) {
-      URL.revokeObjectURL(previewUrl)
+      if (String(previewUrl).startsWith('blob:')) URL.revokeObjectURL(previewUrl)
       setPreviewUrl(null)
     }
   }
@@ -151,7 +166,7 @@ export default function SubcontractorOpeningDetails() {
 
   useEffect(() => {
     return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
+      if (previewUrl && String(previewUrl).startsWith('blob:')) URL.revokeObjectURL(previewUrl)
     }
   }, [previewUrl])
 

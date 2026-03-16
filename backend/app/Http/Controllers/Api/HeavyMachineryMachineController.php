@@ -17,11 +17,14 @@ use App\Models\Worker;
 use App\Models\WorkerQualification;
 use App\Services\NotificationService;
 use App\Support\MachineTypeCatalog;
+use App\Support\RangeFileResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Excel as ExcelFormat;
@@ -230,33 +233,20 @@ class HeavyMachineryMachineController extends Controller
         }
 
         $filename = basename($path);
+        $abs = Storage::disk('public')->path($path);
+
+        if (strtolower($contentType) === 'application/pdf') {
+            return RangeFileResponse::file(request(), $abs, 'application/pdf', $inline ? 'inline' : 'attachment', (string) $filename);
+        }
 
         if ($inline) {
-            return response()->stream(function () use ($path) {
-                $stream = Storage::disk('public')->readStream($path);
-                if ($stream === false) {
-                    return;
-                }
-                fpassthru($stream);
-                if (is_resource($stream)) {
-                    fclose($stream);
-                }
-            }, 200, [
+            return response()->file($abs, [
                 'Content-Type' => $contentType,
-                'Content-Disposition' => 'inline; filename="' . $filename . '"',
+                'Content-Disposition' => 'inline; filename="' . addslashes((string) $filename) . '"',
             ]);
         }
 
-        return response()->streamDownload(function () use ($path) {
-            $stream = Storage::disk('public')->readStream($path);
-            if ($stream === false) {
-                return;
-            }
-            fpassthru($stream);
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
-        }, $filename, [
+        return response()->download($abs, $filename, [
             'Content-Type' => $contentType,
         ]);
     }
@@ -897,6 +887,33 @@ class HeavyMachineryMachineController extends Controller
         return $this->streamPublicFile($machineDocument->file_path, true, 'application/pdf');
     }
 
+    public function viewDocumentLink(Request $request, Machine $machine, MachineDocument $machineDocument)
+    {
+        $this->ensureAccessToMachine($request, $machine);
+
+        if ((int) $machineDocument->machine_id !== (int) $machine->id) {
+            abort(404);
+        }
+
+        $url = URL::temporarySignedRoute(
+            'signed.heavy_machinery.documents.view',
+            now()->addMinutes(5),
+            ['machine' => $machine->id, 'machineDocument' => $machineDocument->id],
+            false
+        );
+
+        return $this->success(['url' => $url]);
+    }
+
+    public function viewDocumentSigned(Request $request, Machine $machine, MachineDocument $machineDocument)
+    {
+        if ((int) $machineDocument->machine_id !== (int) $machine->id) {
+            abort(404);
+        }
+
+        return $this->streamPublicFile($machineDocument->file_path, true, 'application/pdf');
+    }
+
     public function downloadDocument(Request $request, Machine $machine, MachineDocument $machineDocument)
     {
         $this->ensureAccessToMachine($request, $machine);
@@ -982,6 +999,33 @@ class HeavyMachineryMachineController extends Controller
     {
         $this->ensureAccessToMachine($request, $machine);
 
+        if ((int) $machineInspection->machine_id !== (int) $machine->id) {
+            abort(404);
+        }
+
+        return $this->streamPublicFile($machineInspection->file_path, true, 'application/pdf');
+    }
+
+    public function viewInspectionLink(Request $request, Machine $machine, MachineInspection $machineInspection)
+    {
+        $this->ensureAccessToMachine($request, $machine);
+
+        if ((int) $machineInspection->machine_id !== (int) $machine->id) {
+            abort(404);
+        }
+
+        $url = URL::temporarySignedRoute(
+            'signed.heavy_machinery.inspections.view',
+            now()->addMinutes(5),
+            ['machine' => $machine->id, 'machineInspection' => $machineInspection->id],
+            false
+        );
+
+        return $this->success(['url' => $url]);
+    }
+
+    public function viewInspectionSigned(Request $request, Machine $machine, MachineInspection $machineInspection)
+    {
         if ((int) $machineInspection->machine_id !== (int) $machine->id) {
             abort(404);
         }
@@ -1179,6 +1223,33 @@ class HeavyMachineryMachineController extends Controller
     {
         $this->ensureGlobalSearchCodeMatches($request, $machine);
 
+        if ((int) $machineDocument->machine_id !== (int) $machine->id) {
+            abort(404);
+        }
+
+        return $this->streamPublicFile($machineDocument->file_path, true, 'application/pdf');
+    }
+
+    public function globalViewDocumentLink(Request $request, Machine $machine, MachineDocument $machineDocument)
+    {
+        $this->ensureGlobalSearchCodeMatches($request, $machine);
+
+        if ((int) $machineDocument->machine_id !== (int) $machine->id) {
+            abort(404);
+        }
+
+        $url = URL::temporarySignedRoute(
+            'signed.heavy_machinery.global.documents.view',
+            now()->addMinutes(5),
+            ['machine' => $machine->id, 'machineDocument' => $machineDocument->id],
+            false
+        );
+
+        return $this->success(['url' => $url]);
+    }
+
+    public function globalViewDocumentSigned(Request $request, Machine $machine, MachineDocument $machineDocument)
+    {
         if ((int) $machineDocument->machine_id !== (int) $machine->id) {
             abort(404);
         }

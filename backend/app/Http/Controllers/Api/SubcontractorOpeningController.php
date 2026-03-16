@@ -7,10 +7,12 @@ use App\Models\Project;
 use App\Models\Worker;
 use App\Models\SubcontractorOpening;
 use App\Models\SubcontractorOpeningDocument;
+use App\Support\RangeFileResponse;
 use App\Services\PdfCompressionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class SubcontractorOpeningController extends Controller
 {
@@ -426,22 +428,57 @@ class SubcontractorOpeningController extends Controller
             abort(404, 'File not found');
         }
 
-        $path = $document->file_path;
+        $path = (string) $document->file_path;
+        $abs = Storage::disk('public')->path($path);
         $filename = basename($path);
 
-        return response()->stream(function () use ($path) {
-            $stream = Storage::disk('public')->readStream($path);
-            if ($stream === false) {
-                return;
-            }
-            fpassthru($stream);
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
-        }, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $filename . '"',
-        ]);
+        return RangeFileResponse::file($request, $abs, 'application/pdf', 'inline', (string) $filename);
+    }
+
+    public function viewDocumentLink(
+        Request $request,
+        SubcontractorOpening $subcontractorOpening,
+        SubcontractorOpeningDocument $document
+    ) {
+        $project = Project::findOrFail($subcontractorOpening->project_id);
+        $this->ensureAccessToProject($request, $project);
+
+        if ((int) $document->subcontractor_opening_id !== (int) $subcontractorOpening->id) {
+            abort(404);
+        }
+
+        if (!$document->file_path || !Storage::disk('public')->exists($document->file_path)) {
+            abort(404, 'File not found');
+        }
+
+        $url = URL::temporarySignedRoute(
+            'signed.subcontractor.documents.view',
+            now()->addMinutes(5),
+            ['subcontractorOpening' => $subcontractorOpening->id, 'document' => $document->id],
+            false
+        );
+
+        return $this->success(['url' => $url]);
+    }
+
+    public function viewDocumentSigned(
+        Request $request,
+        SubcontractorOpening $subcontractorOpening,
+        SubcontractorOpeningDocument $document
+    ) {
+        if ((int) $document->subcontractor_opening_id !== (int) $subcontractorOpening->id) {
+            abort(404);
+        }
+
+        if (!$document->file_path || !Storage::disk('public')->exists($document->file_path)) {
+            abort(404, 'File not found');
+        }
+
+        $path = (string) $document->file_path;
+        $abs = Storage::disk('public')->path($path);
+        $filename = basename($path);
+
+        return RangeFileResponse::file($request, $abs, 'application/pdf', 'inline', (string) $filename);
     }
 
     public function downloadDocument(
@@ -460,19 +497,11 @@ class SubcontractorOpeningController extends Controller
             abort(404, 'File not found');
         }
 
-        $path = $document->file_path;
+        $path = (string) $document->file_path;
+        $abs = Storage::disk('public')->path($path);
         $filename = basename($path);
 
-        return response()->streamDownload(function () use ($path) {
-            $stream = Storage::disk('public')->readStream($path);
-            if ($stream === false) {
-                return;
-            }
-            fpassthru($stream);
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
-        }, $filename, [
+        return response()->download($abs, $filename, [
             'Content-Type' => 'application/pdf',
         ]);
     }

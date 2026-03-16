@@ -14,6 +14,11 @@ class LibraryDocument extends Model
     public const STATUS_FAILED = 'failed';
 
     protected $fillable = [
+        'is_sds',
+        'sds_public_token',
+        'sds_pictograms',
+        'sds_qr_pdf_path',
+        'sds_tag_pdf_path',
         'folder_id',
         'title',
         'original_name',

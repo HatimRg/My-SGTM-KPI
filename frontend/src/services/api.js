@@ -456,6 +456,11 @@ api.interceptors.response.use(
         case 401:
           // Unauthorized - redirect to login
           localStorage.removeItem('hse-auth-storage')
+          try {
+            document.cookie = 'auth_token=; Path=/; Max-Age=0; SameSite=Lax'
+          } catch {
+            // ignore
+          }
           window.location.href = '/login'
           break
         case 403:
@@ -781,6 +786,7 @@ export const libraryService = {
 
   fetchThumbnailBlob: (id, config = {}) => api.get(`/library/documents/${id}/thumbnail`, { responseType: 'blob', ...config }),
   fetchViewBlob: (id, config = {}) => api.get(`/library/documents/${id}/view`, { responseType: 'blob', ...config }),
+  getViewLink: (id, config = {}) => api.get(`/library/documents/${id}/view-link`, { ...config }),
   fetchDownloadBlob: (id, config = {}) => api.get(`/library/documents/${id}/download`, { responseType: 'blob', ...config }),
   fetchFolderZipBlob: (folderId, config = {}) => api.get(`/library/folders/${folderId}/download-zip`, { responseType: 'blob', ...config }),
 

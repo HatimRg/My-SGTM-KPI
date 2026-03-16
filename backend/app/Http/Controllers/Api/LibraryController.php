@@ -7,15 +7,23 @@ use App\Models\LibraryDocument;
 use App\Models\LibraryDocumentKeyword;
 use App\Models\LibraryFolder;
 use App\Models\User;
+use App\Support\RangeFileResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use ZipArchive;
 
 class LibraryController extends Controller
 {
     private const UPLOAD_MIMES = 'pdf,png,jpg,jpeg,xlsx,pptx,docx,txt';
     private const IMAGE_EXTS = ['png', 'jpg', 'jpeg'];
+    private const SDS_FOLDER_NAME = 'FDS des produits chimique';
+    private const SDS_QR_TEMPLATE = 'Templates/QR template.pptx';
+    private const SDS_TAG_TEMPLATE = 'Templates/Tags template.pptx';
+    private const SDS_PICTO_DIR = 'Templates/Pictograms';
 
     public function index(Request $request)
     {
@@ -153,6 +161,374 @@ class LibraryController extends Controller
         return trim($s);
     }
 
+    private function isSdsFolder(?LibraryFolder $folder): bool
+    {
+        if (!$folder) {
+            return false;
+        }
+        return trim((string) $folder->name) === self::SDS_FOLDER_NAME;
+    }
+
+    private function parseSdsPictogramsFromName(string $baseName): array
+    {
+        $name = trim($baseName);
+        if ($name === '') {
+            return [[], $baseName];
+        }
+
+        $pos = strrpos($name, '-');
+        if ($pos === false) {
+            return [[], $baseName];
+        }
+
+        $suffix = trim(substr($name, $pos + 1));
+        if ($suffix === '') {
+            return [[], $baseName];
+        }
+
+        $digits = preg_replace('/[^0-9]/', '', $suffix);
+        if (!is_string($digits) || $digits === '') {
+            return [[], $baseName];
+        }
+
+        $out = [];
+        foreach (str_split($digits) as $d) {
+            $n = (int) $d;
+            if ($n >= 1 && $n <= 9) {
+                $out[] = $n;
+            }
+        }
+
+        $out = array_values(array_unique($out));
+        sort($out);
+
+        $clean = trim(substr($name, 0, $pos));
+        if ($clean === '') {
+            $clean = $name;
+        }
+
+        return [$out, $clean];
+    }
+
+    private function stripLeadingFds(string $name): string
+    {
+        $s = trim($name);
+        $s = preg_replace('/^FDS\s+/iu', '', $s) ?? $s;
+        return trim($s);
+    }
+
+    private function sdsZipNameForDocument(LibraryDocument $doc): string
+    {
+        $base = $doc->original_name ?: ($doc->title . '.' . $doc->file_type);
+        $base = pathinfo((string) $base, PATHINFO_FILENAME) ?: 'SDS';
+        $base = preg_replace('/[\x00-\x1F\x7F]/', '', (string) $base);
+        $base = preg_replace('/[^a-zA-Z0-9 _.-]/', '_', (string) $base);
+        $base = trim((string) $base);
+        if ($base === '') {
+            $base = 'SDS';
+        }
+        return $base . '.zip';
+    }
+
+    private function ensureSdsGeneratedAssets(LibraryDocument $doc): array
+    {
+        $qrPath = (string) ($doc->sds_qr_pdf_path ?? '');
+        $tagPath = (string) ($doc->sds_tag_pdf_path ?? '');
+
+        if ($qrPath !== '' && $tagPath !== '' && Storage::disk('public')->exists($qrPath) && Storage::disk('public')->exists($tagPath)) {
+            return [$qrPath, $tagPath];
+        }
+
+        $templatesDisk = Storage::disk('local');
+        $qrTpl = $templatesDisk->path(self::SDS_QR_TEMPLATE);
+        $tagTpl = $templatesDisk->path(self::SDS_TAG_TEMPLATE);
+        $pictosDir = $templatesDisk->path(self::SDS_PICTO_DIR);
+
+        if (!is_file($qrTpl) || !is_file($tagTpl) || !is_dir($pictosDir)) {
+            throw new \RuntimeException('SDS templates/pictograms not found in storage/app/Templates');
+        }
+
+        $docPath = Storage::disk('public')->path((string) $doc->file_path);
+        $productName = $this->stripLeadingFds((string) ($doc->title ?: ''));
+        if ($productName === '') {
+            $productName = $this->stripLeadingFds((string) (pathinfo((string) $doc->original_name, PATHINFO_FILENAME) ?: ''));
+        }
+        if ($productName === '') {
+            $productName = 'Produit';
+        }
+
+        $token = (string) ($doc->sds_public_token ?? '');
+        if ($token === '') {
+            $token = Str::random(64);
+            $doc->forceFill(['sds_public_token' => $token])->save();
+        }
+
+        $appUrl = rtrim((string) config('app.url'), '/');
+        $publicUrl = $appUrl . '/api/public/sds/' . $token . '/view';
+
+        $pictos = $doc->sds_pictograms;
+        $pictos = is_array($pictos) ? $pictos : (is_string($pictos) ? json_decode($pictos, true) : []);
+        if (!is_array($pictos)) {
+            $pictos = [];
+        }
+        $pictos = array_values(array_filter(array_map('intval', $pictos), fn ($n) => $n >= 1 && $n <= 9));
+
+        $tmp = storage_path('app/tmp');
+        if (!is_dir($tmp)) {
+            @mkdir($tmp, 0775, true);
+        }
+
+        $outQr = $tmp . DIRECTORY_SEPARATOR . 'sds_qr_' . $doc->id . '_' . Str::random(8) . '.pdf';
+        $outTag = $tmp . DIRECTORY_SEPARATOR . 'sds_tag_' . $doc->id . '_' . Str::random(8) . '.pdf';
+
+        $python = trim((string) env('LIBRARY_INDEXER_PYTHON', 'python'));
+        $script = trim((string) env('SDS_GENERATOR_SCRIPT', base_path('scripts/sds_generator.py')));
+        if ($script === '' || !is_file($script)) {
+            throw new \RuntimeException('SDS generator script not found: ' . $script);
+        }
+
+        $args = [
+            $python,
+            $script,
+            '--qr-template',
+            $qrTpl,
+            '--tag-template',
+            $tagTpl,
+            '--pictograms-dir',
+            $pictosDir,
+            '--product-name',
+            $productName,
+            '--public-url',
+            $publicUrl,
+            '--out-qr-pdf',
+            $outQr,
+            '--out-tag-pdf',
+            $outTag,
+            '--doc-id',
+            (string) $doc->id,
+        ];
+
+        foreach ($pictos as $n) {
+            $args[] = '--picto';
+            $args[] = (string) $n;
+        }
+
+        $cmd = implode(' ', array_map('escapeshellarg', $args));
+
+        $descriptors = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+
+        $env = [];
+        foreach (array_merge($_SERVER ?? [], $_ENV ?? []) as $k => $v) {
+            if (!is_string($k) || $k === '') {
+                continue;
+            }
+            if (is_string($v) || is_numeric($v)) {
+                $env[$k] = (string) $v;
+            }
+        }
+        $env['PYTHONIOENCODING'] = 'utf-8';
+
+        $proc = proc_open($cmd, $descriptors, $pipes, null, $env);
+        if (!is_resource($proc)) {
+            throw new \RuntimeException('Failed to start SDS generator process');
+        }
+
+        fclose($pipes[0]);
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $exit = proc_close($proc);
+
+        if ($exit !== 0) {
+            throw new \RuntimeException('SDS generator failed: ' . trim((string) $stderr) . ' ' . trim((string) $stdout));
+        }
+
+        if (!is_file($outQr) || !is_file($outTag)) {
+            throw new \RuntimeException('SDS generator did not produce expected PDFs');
+        }
+
+        $pubQr = 'sds_generated/' . $doc->id . '/qr.pdf';
+        $pubTag = 'sds_generated/' . $doc->id . '/tag.pdf';
+
+        Storage::disk('public')->put($pubQr, file_get_contents($outQr));
+        Storage::disk('public')->put($pubTag, file_get_contents($outTag));
+
+        @unlink($outQr);
+        @unlink($outTag);
+
+        $doc->forceFill([
+            'sds_qr_pdf_path' => $pubQr,
+            'sds_tag_pdf_path' => $pubTag,
+        ])->save();
+
+        return [$pubQr, $pubTag];
+    }
+
+    public function publicSdsView(Request $request, string $token)
+    {
+        $token = trim((string) $token);
+        if ($token === '') {
+            return $this->error('Not found', 404);
+        }
+
+        $doc = LibraryDocument::query()
+            ->where('is_sds', true)
+            ->where('sds_public_token', $token)
+            ->first();
+
+        if (!$doc) {
+            return $this->error('Not found', 404);
+        }
+
+        $path = (string) ($doc->file_path ?? '');
+        if ($path === '' || !Storage::disk('public')->exists($path)) {
+            return $this->error('File not found', 404);
+        }
+
+        return view('sds-public', [
+            'document' => $doc,
+            'token' => $token
+        ]);
+    }
+
+    public function publicSdsRaw(Request $request, string $token)
+    {
+        $token = trim((string) $token);
+        if ($token === '') {
+            return $this->error('Not found', 404);
+        }
+
+        $doc = LibraryDocument::query()
+            ->where('is_sds', true)
+            ->where('sds_public_token', $token)
+            ->first();
+
+        if (!$doc) {
+            return $this->error('Not found', 404);
+        }
+
+        $path = (string) ($doc->file_path ?? '');
+        if ($path === '' || !Storage::disk('public')->exists($path)) {
+            return $this->error('File not found', 404);
+        }
+
+        $filename = $doc->original_name ?: ($doc->title . '.' . $doc->file_type);
+        if (!$filename) {
+            $filename = 'SDS.pdf';
+        }
+
+        $abs = Storage::disk('public')->path($path);
+
+        return RangeFileResponse::file($request, $abs, 'application/pdf', 'inline', (string) $filename);
+    }
+
+    public function publicSdsDownload(Request $request, string $token)
+    {
+        $token = trim((string) $token);
+        if ($token === '') {
+            return $this->error('Not found', 404);
+        }
+
+        $doc = LibraryDocument::query()
+            ->where('is_sds', true)
+            ->where('sds_public_token', $token)
+            ->first();
+
+        if (!$doc) {
+            return $this->error('Not found', 404);
+        }
+
+        $path = (string) ($doc->file_path ?? '');
+        if ($path === '' || !Storage::disk('public')->exists($path)) {
+            return $this->error('File not found', 404);
+        }
+
+        $fallbackPdfDownload = function () use ($doc, $path) {
+            $filename = $doc->original_name ?: ($doc->title . '.' . $doc->file_type);
+            if (!$filename) {
+                $filename = 'SDS.pdf';
+            }
+
+            $abs = Storage::disk('public')->path($path);
+            return response()->download($abs, $filename, [
+                'Content-Type' => 'application/pdf',
+            ]);
+        };
+
+        $wantPackage = (bool) $request->boolean('package', false);
+        if (!$wantPackage) {
+            return $fallbackPdfDownload();
+        }
+
+        if ((bool) ($doc->is_sds ?? false)) {
+            try {
+                if (!class_exists(\ZipArchive::class)) {
+                    return $fallbackPdfDownload();
+                }
+
+                [$qrPdfPath, $tagPdfPath] = $this->ensureSdsGeneratedAssets($doc);
+
+                $tmp = storage_path('app/tmp');
+                if (!is_dir($tmp)) {
+                    @mkdir($tmp, 0775, true);
+                }
+
+                $zipName = $this->sdsZipNameForDocument($doc);
+                $zipPath = $tmp . DIRECTORY_SEPARATOR . 'sds_pkg_' . $doc->id . '_' . Str::random(8) . '.zip';
+
+                if (file_exists($zipPath)) {
+                    @unlink($zipPath);
+                }
+
+                $zip = new ZipArchive();
+                if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                    return $fallbackPdfDownload();
+                }
+
+                // Add original SDS file
+                $originalPath = Storage::disk('public')->path($path);
+                if (file_exists($originalPath)) {
+                    $zip->addFile($originalPath, $doc->original_name ?: ($doc->title . '.' . $doc->file_type));
+                }
+
+                // Add QR PDF if available
+                $qrFullPath = Storage::disk('public')->path($qrPdfPath);
+                if (file_exists($qrFullPath)) {
+                    $zip->addFile($qrFullPath, 'QR_Code.pdf');
+                }
+
+                // Add Tag PDF if available
+                $tagFullPath = Storage::disk('public')->path($tagPdfPath);
+                if (file_exists($tagFullPath)) {
+                    $zip->addFile($tagFullPath, 'Tags.pdf');
+                }
+
+                $zip->close();
+
+                $response = response()->download($zipPath, $zipName);
+                $response->headers->set('Content-Type', 'application/zip');
+                
+                // Delete the zip file after download
+                register_shutdown_function(function() use ($zipPath) {
+                    if (file_exists($zipPath)) {
+                        @unlink($zipPath);
+                    }
+                });
+
+                return $response;
+            } catch (\Throwable $e) {
+                return $fallbackPdfDownload();
+            }
+        }
+
+        return $fallbackPdfDownload();
+    }
+
     public function createFolder(Request $request)
     {
         $validated = $request->validate([
@@ -255,21 +631,41 @@ class LibraryController extends Controller
             return $this->error('Forbidden', 403);
         }
 
+        $isSds = $this->isSdsFolder($targetFolder);
+        if ($isSds && !$request->user()?->isAdminLike()) {
+            return $this->error('Forbidden', 403);
+        }
+
         $file = $request->file('file');
         $originalName = $file?->getClientOriginalName();
         $ext = strtolower((string) $file?->getClientOriginalExtension());
 
+        $baseName = pathinfo((string) $originalName, PATHINFO_FILENAME) ?: (string) $originalName;
+        $pictos = [];
+        $cleanBase = $baseName;
+        if ($isSds) {
+            [$pictos, $cleanBase] = $this->parseSdsPictogramsFromName($baseName);
+        }
+
+        $cleanOriginalName = $originalName;
+        if ($isSds && is_string($originalName) && $originalName !== '') {
+            $cleanOriginalName = $cleanBase . ($ext !== '' ? ('.' . $ext) : '');
+        }
+
         $title = trim((string) ($validated['title'] ?? ''));
         if ($title === '') {
-            $title = pathinfo((string) $originalName, PATHINFO_FILENAME) ?: (string) $originalName;
+            $title = $cleanBase ?: (pathinfo((string) $originalName, PATHINFO_FILENAME) ?: (string) $originalName);
         }
 
         $path = $file->store('library', 'public');
 
         $doc = LibraryDocument::create([
             'folder_id' => $validated['folder_id'] ?? null,
+            'is_sds' => $isSds,
+            'sds_public_token' => $isSds ? Str::random(64) : null,
+            'sds_pictograms' => $isSds ? json_encode($pictos) : null,
             'title' => $title,
-            'original_name' => $originalName,
+            'original_name' => $cleanOriginalName,
             'file_path' => $path,
             'file_type' => $ext,
             'mime_type' => $file->getMimeType(),
@@ -400,8 +796,56 @@ class LibraryController extends Controller
 
         $filename = $document->original_name ?: ($document->title . '.' . $document->file_type);
 
-        return Storage::disk('public')->response($path, $filename, [
-            'Content-Disposition' => 'inline; filename="' . addslashes($filename) . '"',
+        $abs = Storage::disk('public')->path($path);
+        $type = (string) ($document->file_type ?: pathinfo((string) $filename, PATHINFO_EXTENSION));
+        $isPdf = strtolower($type) === 'pdf';
+
+        if ($isPdf) {
+            return RangeFileResponse::file($request, $abs, 'application/pdf', 'inline', (string) $filename);
+        }
+
+        return response()->file($abs, [
+            'Content-Type' => $isPdf ? 'application/pdf' : 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="' . addslashes((string) $filename) . '"',
+        ]);
+    }
+
+    public function viewLink(Request $request, LibraryDocument $document)
+    {
+        $path = $document->file_path;
+        if (!$path || !Storage::disk('public')->exists($path)) {
+            return $this->error('File not found', 404);
+        }
+
+        $url = URL::temporarySignedRoute(
+            'signed.library.documents.view',
+            now()->addMinutes(5),
+            ['document' => $document->id],
+            false
+        );
+
+        return $this->success(['url' => $url]);
+    }
+
+    public function viewSigned(Request $request, LibraryDocument $document)
+    {
+        $path = $document->file_path;
+        if (!$path || !Storage::disk('public')->exists($path)) {
+            abort(404, 'File not found');
+        }
+
+        $filename = $document->original_name ?: ($document->title . '.' . $document->file_type);
+        $abs = Storage::disk('public')->path($path);
+        $type = (string) ($document->file_type ?: pathinfo((string) $filename, PATHINFO_EXTENSION));
+        $isPdf = strtolower($type) === 'pdf';
+
+        if ($isPdf) {
+            return RangeFileResponse::file($request, $abs, 'application/pdf', 'inline', (string) $filename);
+        }
+
+        return response()->file($abs, [
+            'Content-Type' => $isPdf ? 'application/pdf' : 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="' . addslashes((string) $filename) . '"',
         ]);
     }
 
@@ -410,6 +854,58 @@ class LibraryController extends Controller
         $path = $document->file_path;
         if (!$path || !Storage::disk('public')->exists($path)) {
             return $this->error('File not found', 404);
+        }
+
+        if ((bool) ($document->is_sds ?? false)) {
+            try {
+                [$qrPdfPath, $tagPdfPath] = $this->ensureSdsGeneratedAssets($document);
+
+                $tmp = storage_path('app/tmp');
+                if (!is_dir($tmp)) {
+                    @mkdir($tmp, 0775, true);
+                }
+
+                $zipName = $this->sdsZipNameForDocument($document);
+                $zipPath = $tmp . DIRECTORY_SEPARATOR . 'sds_pkg_' . $document->id . '_' . Str::random(8) . '.zip';
+
+                if (file_exists($zipPath)) {
+                    @unlink($zipPath);
+                }
+
+                $zip = new ZipArchive();
+                if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
+                    return $this->error('Failed to create zip', 500);
+                }
+
+                $origFilename = $document->original_name ?: ($document->title . '.' . $document->file_type);
+                $origFilename = preg_replace('/[\x00-\x1F\x7F]/', '', (string) $origFilename);
+                if ($origFilename === '') {
+                    $origFilename = 'SDS.' . ($document->file_type ?: 'pdf');
+                }
+                $zip->addFromString($origFilename, Storage::disk('public')->get($path));
+
+                $productName = $this->stripLeadingFds((string) ($document->title ?: ''));
+                if ($productName === '') {
+                    $productName = $this->stripLeadingFds((string) (pathinfo((string) $document->original_name, PATHINFO_FILENAME) ?: ''));
+                }
+                if ($productName === '') {
+                    $productName = 'Produit';
+                }
+
+                $qrFilename = 'QR ' . $productName . '.pdf';
+                $tagFilename = "Tag d'identification " . $productName . '.pdf';
+
+                $zip->addFromString($qrFilename, Storage::disk('public')->get($qrPdfPath));
+                $zip->addFromString($tagFilename, Storage::disk('public')->get($tagPdfPath));
+
+                $zip->close();
+
+                return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
+            } catch (\Throwable $e) {
+                return $this->error('Failed to generate SDS package', 500, [
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         $filename = $document->original_name ?: ($document->title . '.' . $document->file_type);

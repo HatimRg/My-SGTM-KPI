@@ -62,6 +62,20 @@ Route::get('/public-stats', [DashboardController::class, 'publicStats']);
 // Public community feed assets (needed for <img> tags)
 Route::get('/community-feed/images/{image}', [CommunityFeedController::class, 'showImage']);
 
+// Public SDS (no auth required; token-based)
+Route::get('/public/sds/{token}/view', [LibraryController::class, 'publicSdsView']);
+Route::get('/public/sds/{token}/download', [LibraryController::class, 'publicSdsDownload']);
+Route::get('/public/sds/{token}/raw', [LibraryController::class, 'publicSdsRaw']);
+
+// Public signed PDF views (no auth; short-lived signed URLs returned by authenticated endpoints)
+Route::middleware('signed:relative')->group(function () {
+    Route::get('/library/documents/{document}/view-signed', [LibraryController::class, 'viewSigned'])->name('signed.library.documents.view');
+    Route::get('/subcontractor-openings/{subcontractorOpening}/documents/{document}/view-signed', [SubcontractorOpeningController::class, 'viewDocumentSigned'])->name('signed.subcontractor.documents.view');
+    Route::get('/heavy-machinery/machines/{machine}/documents/{machineDocument}/view-signed', [HeavyMachineryMachineController::class, 'viewDocumentSigned'])->name('signed.heavy_machinery.documents.view');
+    Route::get('/heavy-machinery/machines/{machine}/inspections/{machineInspection}/view-signed', [HeavyMachineryMachineController::class, 'viewInspectionSigned'])->name('signed.heavy_machinery.inspections.view');
+    Route::get('/heavy-machinery/global/machines/{machine}/documents/{machineDocument}/view-signed', [HeavyMachineryMachineController::class, 'globalViewDocumentSigned'])->name('signed.heavy_machinery.global.documents.view');
+});
+
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -97,6 +111,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('library')->group(function () {
         Route::get('/items', [LibraryController::class, 'index']);
         Route::get('/documents/{document}/view', [LibraryController::class, 'view']);
+        Route::get('/documents/{document}/view-link', [LibraryController::class, 'viewLink']);
         Route::get('/documents/{document}/download', [LibraryController::class, 'download']);
         Route::get('/documents/{document}/thumbnail', [LibraryController::class, 'thumbnail']);
         Route::get('/folders/{folder}/download-zip', [LibraryController::class, 'downloadFolderZip']);
@@ -529,6 +544,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{subcontractorOpening}', [SubcontractorOpeningController::class, 'destroy']);
         Route::post('/{subcontractorOpening}/documents', [SubcontractorOpeningController::class, 'uploadDocument']);
         Route::get('/{subcontractorOpening}/documents/{document}/view', [SubcontractorOpeningController::class, 'viewDocument']);
+        Route::get('/{subcontractorOpening}/documents/{document}/view-link', [SubcontractorOpeningController::class, 'viewDocumentLink']);
         Route::get('/{subcontractorOpening}/documents/{document}/download', [SubcontractorOpeningController::class, 'downloadDocument']);
     });
 
@@ -552,11 +568,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/machines/{machine}/documents/{machineDocument}', [HeavyMachineryMachineController::class, 'updateDocument']);
         Route::delete('/machines/{machine}/documents/{machineDocument}', [HeavyMachineryMachineController::class, 'deleteDocument']);
         Route::get('/machines/{machine}/documents/{machineDocument}/view', [HeavyMachineryMachineController::class, 'viewDocument']);
+        Route::get('/machines/{machine}/documents/{machineDocument}/view-link', [HeavyMachineryMachineController::class, 'viewDocumentLink']);
         Route::get('/machines/{machine}/documents/{machineDocument}/download', [HeavyMachineryMachineController::class, 'downloadDocument']);
 
         Route::post('/machines/{machine}/inspections', [HeavyMachineryMachineController::class, 'upsertInspection']);
         Route::delete('/machines/{machine}/inspections/{machineInspection}', [HeavyMachineryMachineController::class, 'deleteInspection']);
         Route::get('/machines/{machine}/inspections/{machineInspection}/view', [HeavyMachineryMachineController::class, 'viewInspection']);
+        Route::get('/machines/{machine}/inspections/{machineInspection}/view-link', [HeavyMachineryMachineController::class, 'viewInspectionLink']);
         Route::get('/machines/{machine}/inspections/{machineInspection}/download', [HeavyMachineryMachineController::class, 'downloadInspection']);
 
         Route::get('/workers/search', [HeavyMachineryMachineController::class, 'searchWorkers']);
@@ -565,6 +583,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/global-search', [HeavyMachineryMachineController::class, 'globalSearch']);
         Route::get('/global/machines/{machine}/documents/{machineDocument}/view', [HeavyMachineryMachineController::class, 'globalViewDocument']);
+        Route::get('/global/machines/{machine}/documents/{machineDocument}/view-link', [HeavyMachineryMachineController::class, 'globalViewDocumentLink']);
         Route::get('/global/machines/{machine}/documents/{machineDocument}/download', [HeavyMachineryMachineController::class, 'globalDownloadDocument']);
 
         Route::get('/reports/expired-documentation', [HeavyMachineryReportController::class, 'expiredDocumentation']);

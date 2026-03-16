@@ -191,6 +191,7 @@ export default function Library() {
 
   const [viewer, setViewer] = useState({ isOpen: false, item: null })
   const [viewerUrl, setViewerUrl] = useState(null)
+  const viewerUrlIsObjectUrlRef = useRef(false)
 
   const [thumbUrlsById, setThumbUrlsById] = useState({})
   const thumbAbortRef = useRef({})
@@ -510,7 +511,10 @@ export default function Library() {
       const url = URL.createObjectURL(res.data)
       const a = document.createElement('a')
       a.href = url
-      a.download = item?.original_name || item?.title || `document-${item.id}`
+      const cd = res?.headers?.['content-disposition'] || res?.headers?.['Content-Disposition']
+      const match = typeof cd === 'string' ? cd.match(/filename\*?=(?:UTF-8''|\")?([^";\n\r]+)\"?/i) : null
+      const serverName = match?.[1] ? decodeURIComponent(String(match[1]).trim()) : null
+      a.download = serverName || item?.original_name || item?.title || `document-${item.id}`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -540,11 +544,12 @@ export default function Library() {
 
   const closeViewer = () => {
     try {
-      if (viewerUrl) URL.revokeObjectURL(viewerUrl)
+      if (viewerUrl && viewerUrlIsObjectUrlRef.current) URL.revokeObjectURL(viewerUrl)
     } catch {
       // ignore
     }
     setViewerUrl(null)
+    viewerUrlIsObjectUrlRef.current = false
     setViewer({ isOpen: false, item: null })
   }
 
@@ -553,11 +558,31 @@ export default function Library() {
       if (!viewer?.isOpen || !viewer?.item?.id) return
       try {
         if (viewerUrl) {
-          try { URL.revokeObjectURL(viewerUrl) } catch {}
+          try {
+            if (viewerUrlIsObjectUrlRef.current) URL.revokeObjectURL(viewerUrl)
+          } catch {}
           setViewerUrl(null)
         }
+        viewerUrlIsObjectUrlRef.current = false
+
+        const type = String(viewer?.item?.file_type || '').toLowerCase()
+        if (type === 'pdf' && viewer?.item?.view_url) {
+          const raw = String(viewer.item.view_url)
+          const viewPath = raw.startsWith('/') ? raw : `/${raw}`
+
+          let linkPath = viewPath.replace(/\/view(\?.*)?$/, '/view-link$1')
+          linkPath = linkPath.replace(/^\/?api\//, '/api/')
+
+          const res = await libraryService.getViewLink(viewer.item.id)
+          const signed = res?.data?.data?.url
+          if (!signed) throw new Error('Missing signed url')
+          setViewerUrl(String(signed))
+          return
+        }
+
         const res = await libraryService.fetchViewBlob(viewer.item.id)
         const url = URL.createObjectURL(res.data)
+        viewerUrlIsObjectUrlRef.current = true
         setViewerUrl(url)
       } catch (e) {
         toast.error(e?.response?.data?.message || 'Failed to open')

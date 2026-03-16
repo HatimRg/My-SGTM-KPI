@@ -13,8 +13,15 @@ class SecurityHeaders
         /** @var Response $response */
         $response = $next($request);
 
+        $allowSameOriginFrame =
+            $request->is('api/public/sds/*') ||
+            $request->is('api/library/documents/*/view') ||
+            $request->is('api/subcontractor-openings/*/documents/*/view') ||
+            $request->is('api/heavy-machinery/machines/*/documents/*/view') ||
+            $request->is('api/heavy-machinery/global/machines/*/documents/*/view');
+
         // Core security headers
-        $response->headers->set('X-Frame-Options', 'DENY');
+        $response->headers->set('X-Frame-Options', $allowSameOriginFrame ? 'SAMEORIGIN' : 'DENY');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('X-XSS-Protection', '0'); // deprecated but explicitly disabled
@@ -35,7 +42,7 @@ class SecurityHeaders
                 "img-src 'self' data: blob:",
                 "connect-src 'self'",
                 "frame-src 'self' blob:",
-                "frame-ancestors 'none'",
+                $allowSameOriginFrame ? "frame-ancestors 'self'" : "frame-ancestors 'none'",
             ];
 
             $response->headers->set('Content-Security-Policy', implode('; ', $csp));

@@ -30,6 +30,13 @@ export const useAuthStore = create(
           // Set token in API defaults
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`
 
+          // Also store token in a cookie for iframe/static resource requests (same-origin)
+          try {
+            document.cookie = `auth_token=${encodeURIComponent(token)}; Path=/; SameSite=Lax`
+          } catch {
+            // ignore
+          }
+
           return { success: true, user }
         } catch (error) {
           set({ isLoading: false })
@@ -51,6 +58,12 @@ export const useAuthStore = create(
             isAuthenticated: false,
           })
           delete api.defaults.headers.common['Authorization']
+
+          try {
+            document.cookie = 'auth_token=; Path=/; Max-Age=0; SameSite=Lax'
+          } catch {
+            // ignore
+          }
         }
       },
 
@@ -102,6 +115,13 @@ export const useAuthStore = create(
         const { token, fetchUser } = get()
         if (token) {
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+
+          try {
+            document.cookie = `auth_token=${encodeURIComponent(token)}; Path=/; SameSite=Lax`
+          } catch {
+            // ignore
+          }
+
           fetchUser()
         }
       },
@@ -117,6 +137,13 @@ export const useAuthStore = create(
         // Called after storage is rehydrated
         if (state?.token) {
           api.defaults.headers.common['Authorization'] = `Bearer ${state.token}`
+
+          try {
+            document.cookie = `auth_token=${encodeURIComponent(state.token)}; Path=/; SameSite=Lax`
+          } catch {
+            // ignore
+          }
+
           state.fetchUser()
         }
       },
