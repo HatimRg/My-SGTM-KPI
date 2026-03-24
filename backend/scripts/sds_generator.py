@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
+import sys
+# Add user site-packages for Apache service (which runs as different user)
+sys.path.insert(0, r'C:\Users\RAGHIB\AppData\Roaming\Python\Python314\site-packages')
+
 import argparse
 import os
 import shutil
 import subprocess
-import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path

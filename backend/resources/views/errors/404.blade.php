@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Page Not Found - HSE KPI Tracker</title>
+    <title>Page Not Found - MySafeKPI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -117,7 +117,7 @@
         <!-- Footer -->
         <div class="text-center text-sm text-gray-500 dark:text-gray-400">
             <p>If you believe this is an error, please contact your system administrator</p>
-            <p class="mt-2">© {{ date('Y') }} SGTM HSE KPI Tracker</p>
+            <p class="mt-2">© {{ date('Y') }} SGTM MySafeKPI</p>
         </div>
     </div>
 

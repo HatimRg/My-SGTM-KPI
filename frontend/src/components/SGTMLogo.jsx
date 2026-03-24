@@ -39,7 +39,7 @@ export default function SGTMLogo({ className = '', size = 'md', showText = true 
             SGTM
           </span>
           <span className="text-xs text-gray-500">
-            HSE KPI Tracker
+            MySafeKPI
           </span>
         </div>
       )}
@@ -70,7 +70,7 @@ export function SGTMLogoCompact({ className = '' }) {
       </div>
       <div className="hidden lg:block">
         <p className="font-bold text-sgtm-gray text-sm">SGTM</p>
-        <p className="text-xs text-gray-500">HSE KPI</p>
+        <p className="text-xs text-gray-500">MySafeKPI</p>
       </div>
     </div>
   )

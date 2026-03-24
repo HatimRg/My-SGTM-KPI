@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#E59A2F">
-    <title>{{ $document->title ?? 'Fiche de Données de Sécurité' }} - HSE KPI Tracker</title>
+    <title>{{ $document->title ?? 'Fiche de Données de Sécurité' }} - MySafeKPI</title>
     <style>
         :root{--bg:#0B1220;--panel:#3D3D3D;--muted:rgba(255,255,255,.72);--text:#FFFFFF;--border:rgba(255,255,255,.14);--accent:#E59A2F;--accent2:#F5B24D}
         html,body{height:100%}

@@ -1,7 +1,7 @@
 export default {
   // Common
   common: {
-    appName: 'HSE KPI Tracker',
+    appName: 'MySafeKPI',
     companyName: 'SGTM',
     loading: 'Loading...',
     comingSoon: 'Coming soon',

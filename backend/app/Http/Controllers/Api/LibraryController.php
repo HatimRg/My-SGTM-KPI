@@ -306,6 +306,8 @@ class LibraryController extends Controller
             $outTag,
             '--doc-id',
             (string) $doc->id,
+            '--soffice',
+            'C:/Program Files/LibreOffice/program/soffice.exe',
         ];
 
         foreach ($pictos as $n) {
@@ -313,7 +315,7 @@ class LibraryController extends Controller
             $args[] = (string) $n;
         }
 
-        $cmd = implode(' ', array_map('escapeshellarg', $args));
+        $cmd = 'set "PYTHONPATH=C:\\Users\\RAGHIB\\AppData\\Roaming\\Python\\Python314\\site-packages" && ' . implode(' ', array_map('escapeshellarg', $args));
 
         $descriptors = [
             0 => ['pipe', 'r'],
@@ -331,6 +333,7 @@ class LibraryController extends Controller
             }
         }
         $env['PYTHONIOENCODING'] = 'utf-8';
+        $env['PYTHONPATH'] = 'C:\\Users\\RAGHIB\\AppData\\Roaming\\Python\\Python314\\site-packages';
 
         $proc = proc_open($cmd, $descriptors, $pipes, null, $env);
         if (!is_resource($proc)) {
@@ -856,6 +859,8 @@ class LibraryController extends Controller
             return $this->error('File not found', 404);
         }
 
+        $fallbackFilename = $document->original_name ?: ($document->title . '.' . $document->file_type);
+
         if ((bool) ($document->is_sds ?? false)) {
             try {
                 [$qrPdfPath, $tagPdfPath] = $this->ensureSdsGeneratedAssets($document);
@@ -902,15 +907,16 @@ class LibraryController extends Controller
 
                 return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
             } catch (\Throwable $e) {
-                return $this->error('Failed to generate SDS package', 500, [
+                Log::error('SDS package generation failed, falling back to original file download', [
+                    'document_id' => $document->id,
                     'error' => $e->getMessage(),
                 ]);
+
+                return Storage::disk('public')->download($path, $fallbackFilename);
             }
         }
 
-        $filename = $document->original_name ?: ($document->title . '.' . $document->file_type);
-
-        return Storage::disk('public')->download($path, $filename);
+        return Storage::disk('public')->download($path, $fallbackFilename);
     }
 
     public function thumbnail(Request $request, LibraryDocument $document)

@@ -25,7 +25,7 @@
  Notes:
  
  - This builds the frontend into `backend/public` (Vite `outDir` is configured accordingly).
- - Then it starts Laravel on `http://localhost:8000`.
+ - Then it starts Laravel on `http://localhost/`.
  - To skip the frontend build step:
    - `start-servers.bat --skip-build`
  
@@ -51,5 +51,5 @@
  
  Optional external URL check:
  
- - `set EXTERNAL_URL=http://your-ip:8000/`
+ - `set EXTERNAL_URL=http://your-ip/`
  - Run `check-status.bat`"# MysafeKPI-SGTM" 
