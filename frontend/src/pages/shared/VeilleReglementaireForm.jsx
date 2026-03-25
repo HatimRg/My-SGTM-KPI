@@ -278,6 +278,11 @@ export default function VeilleReglementaireForm({ mode }) {
   }, [])
 
   useEffect(() => {
+    // Reset skipSeedRef when entering resubmit mode - we always want to copy data from previous submission
+    if (mode === 'resubmit') {
+      skipSeedRef.current = false
+    }
+    
     const seedFromPrevious = async () => {
       if (mode !== 'resubmit') return
       if (skipSeedRef.current) {
@@ -305,12 +310,25 @@ export default function VeilleReglementaireForm({ mode }) {
         }
 
         const prevSections = submission?.answers?.sections ?? []
-        const prevNonApplicable = (Array.isArray(prevSections) ? prevSections : [])
+        const prevArticlesMap = new Map()
+        ;(Array.isArray(prevSections) ? prevSections : [])
           .flatMap((s) => (Array.isArray(s?.articles) ? s.articles : []))
-          .filter((a) => a && a.applicable === false)
-          .map((a) => String(a.article_id))
+          .forEach((a) => {
+            if (a?.article_id) {
+              prevArticlesMap.set(String(a.article_id), {
+                applicable: a.applicable,
+                compliant: a.compliant,
+                corrective_action: a.corrective_action ?? '',
+                comment: a.comment ?? '',
+              })
+            }
+          })
 
-        setAnswers(schema.makeInitialAnswers({ previousNonApplicableArticleIds: prevNonApplicable }))
+        const prevNonApplicable = Array.from(prevArticlesMap.entries())
+          .filter(([, a]) => a.applicable === false)
+          .map(([id]) => id)
+
+        setAnswers(schema.makeInitialAnswers({ previousNonApplicableArticleIds: prevNonApplicable, previousArticlesMap: prevArticlesMap }))
       } catch (e) {
         toast.error(e.response?.data?.message ?? t('errors.somethingWentWrong'))
       } finally {
@@ -322,8 +340,10 @@ export default function VeilleReglementaireForm({ mode }) {
   }, [mode, params?.id, schema, t])
 
   useEffect(() => {
+    // Skip this effect entirely in resubmit mode to avoid conflicts with seedFromPrevious
+    if (mode === 'resubmit') return
+    
     const seedFromLatestProjectSubmission = async () => {
-      if (mode === 'resubmit') return
       if (skipSeedRef.current) {
         setLoadingSeed(false)
         return

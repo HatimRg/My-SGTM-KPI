@@ -521,7 +521,7 @@ def main():
 
         _generate_qr_png(qr_png, args.public_url, center_logo_path if center_logo_path and os.path.isfile(center_logo_path) else None)
         # high-res composition; PowerPoint will scale down into bbox
-        _compose_pictograms(pictos_png, args.pictograms_dir, pictos, 1920, 1248)
+        _compose_pictograms(pictos_png, args.pictograms_dir, pictos, 5760, 1248)
 
         qr_pptx_out = os.path.join(tmpdir, "qr_out.pptx")
         tag_pptx_out = os.path.join(tmpdir, "tag_out.pptx")

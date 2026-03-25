@@ -116,6 +116,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/documents/{document}/thumbnail', [LibraryController::class, 'thumbnail']);
         Route::get('/folders/{folder}/download-zip', [LibraryController::class, 'downloadFolderZip']);
 
+        // SDS document downloads
+        Route::get('/documents/{document}/sds-batch-zip', [LibraryController::class, 'downloadSdsBatchZip']);
+        Route::get('/documents/{document}/sds-qr-badge', [LibraryController::class, 'downloadSdsQrBadge']);
+        Route::get('/documents/{document}/sds-id-tag', [LibraryController::class, 'downloadSdsIdTag']);
+
         Route::post('/documents', [LibraryController::class, 'upload']);
 
         // Admin-like only: create folders, upload documents

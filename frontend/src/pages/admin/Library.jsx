@@ -197,6 +197,7 @@ export default function Library() {
   const thumbAbortRef = useRef({})
 
   const [actionsOpenId, setActionsOpenId] = useState(null)
+  const [downloadDropdownOpen, setDownloadDropdownOpen] = useState(null) // For SDS file download dropdown
 
   const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, item: null })
 
@@ -512,7 +513,7 @@ export default function Library() {
       const a = document.createElement('a')
       a.href = url
       const cd = res?.headers?.['content-disposition'] || res?.headers?.['Content-Disposition']
-      const match = typeof cd === 'string' ? cd.match(/filename\*?=(?:UTF-8''|\")?([^";\n\r]+)\"?/i) : null
+      const match = typeof cd === 'string' ? cd.match(/filename\*?=(?:UTF-8''|\")?([^";\n\r]+)"?/i) : null
       const serverName = match?.[1] ? decodeURIComponent(String(match[1]).trim()) : null
       a.download = serverName || item?.original_name || item?.title || `document-${item.id}`
       document.body.appendChild(a)
@@ -521,6 +522,72 @@ export default function Library() {
       try { URL.revokeObjectURL(url) } catch {}
     } catch (e) {
       toast.error(e?.response?.data?.message || 'Download failed')
+    }
+  }
+
+  // Check if file is an SDS document
+  const isSdsFile = (item) => {
+    if (item?.kind !== 'file') return false
+    if (item?.is_sds === true) return true
+    const docType = String(item?.document_type || '').toLowerCase()
+    const fileType = String(item?.file_type || '').toLowerCase()
+    return docType === 'sds' || docType === 'fds' || fileType === 'sds' || fileType === 'fds'
+  }
+
+  // Download SDS QR Code Badge
+  const handleDownloadSdsQrBadge = async (item) => {
+    if (!item?.id) return
+    try {
+      const res = await libraryService.fetchSdsQrBadge(item.id)
+      const url = URL.createObjectURL(res.data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${item?.title || item?.original_name || 'sds'}-qr-badge.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      try { URL.revokeObjectURL(url) } catch {}
+      toast.success(t('common.success'))
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Download QR badge failed')
+    }
+  }
+
+  // Download SDS Identification Tag
+  const handleDownloadSdsIdTag = async (item) => {
+    if (!item?.id) return
+    try {
+      const res = await libraryService.fetchSdsIdTag(item.id)
+      const url = URL.createObjectURL(res.data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${item?.title || item?.original_name || 'sds'}-id-tag.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      try { URL.revokeObjectURL(url) } catch {}
+      toast.success(t('common.success'))
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Download ID tag failed')
+    }
+  }
+
+  // Download SDS batch ZIP (all 3 files)
+  const handleDownloadSdsBatchZip = async (item) => {
+    if (!item?.id) return
+    try {
+      const res = await libraryService.fetchSdsBatchZip(item.id)
+      const url = URL.createObjectURL(res.data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${item?.title || item?.original_name || 'sds'}-complete.zip`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      try { URL.revokeObjectURL(url) } catch {}
+      toast.success(t('common.success'))
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Download batch ZIP failed')
     }
   }
 
@@ -625,21 +692,23 @@ export default function Library() {
   }, [viewer?.isOpen, viewer?.item?.id])
 
   useEffect(() => {
-    if (!actionsOpenId) return
+    if (!actionsOpenId && !downloadDropdownOpen) return
     const onDocDown = (e) => {
       const root = e.target?.closest?.('[data-actions-root]')
       if (!root) {
         setActionsOpenId(null)
+        setDownloadDropdownOpen(null)
         return
       }
       const rootId = root.getAttribute('data-actions-root')
-      if (String(rootId) !== String(actionsOpenId)) {
+      if (String(rootId) !== String(actionsOpenId) && String(rootId) !== String(downloadDropdownOpen)) {
         setActionsOpenId(null)
+        setDownloadDropdownOpen(null)
       }
     }
     document.addEventListener('mousedown', onDocDown)
     return () => document.removeEventListener('mousedown', onDocDown)
-  }, [actionsOpenId])
+  }, [actionsOpenId, downloadDropdownOpen])
 
   const onDelete = async (item) => {
     try {
@@ -1134,17 +1203,72 @@ export default function Library() {
 
                             {actionsOpenId === actionsKey && (
                               <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg p-1">
-                                <button
-                                  type="button"
-                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                                  onClick={() => {
-                                    setActionsOpenId(null)
-                                    handleDownload(item)
-                                  }}
-                                >
-                                  <Download className="w-4 h-4" />
-                                  {t('library.download')}
-                                </button>
+                                {/* SDS Files - Click to download ZIP, hover for individual options */}
+                                {isSdsFile(item) ? (
+                                  <>
+                                    <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                      {t('library.download')}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                                      onClick={() => {
+                                        setActionsOpenId(null)
+                                        handleDownloadSdsBatchZip(item)
+                                      }}
+                                    >
+                                      <Download className="w-4 h-4" />
+                                      {t('library.downloadAll')}
+                                    </button>
+                                    <div className="my-1 border-t border-gray-200 dark:border-gray-700" />
+                                    <button
+                                      type="button"
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                                      onClick={() => {
+                                        setActionsOpenId(null)
+                                        handleDownload(item)
+                                      }}
+                                    >
+                                      <FileText className="w-4 h-4" />
+                                      {t('library.downloadSds')}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                                      onClick={() => {
+                                        setActionsOpenId(null)
+                                        handleDownloadSdsQrBadge(item)
+                                      }}
+                                    >
+                                      <BookOpen className="w-4 h-4" />
+                                      {t('library.downloadQrBadge')}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                                      onClick={() => {
+                                        setActionsOpenId(null)
+                                        handleDownloadSdsIdTag(item)
+                                      }}
+                                    >
+                                      <FileText className="w-4 h-4" />
+                                      {t('library.downloadIdTag')}
+                                    </button>
+                                  </>
+                                ) : (
+                                  /* Regular files - Single download button */
+                                  <button
+                                    type="button"
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                                    onClick={() => {
+                                      setActionsOpenId(null)
+                                      handleDownload(item)
+                                    }}
+                                  >
+                                    <Download className="w-4 h-4" />
+                                    {t('library.download')}
+                                  </button>
+                                )}
 
                                 {isAdminUser && item.kind === 'file' && (
                                   <>

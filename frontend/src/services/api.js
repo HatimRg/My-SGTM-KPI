@@ -790,6 +790,11 @@ export const libraryService = {
   fetchDownloadBlob: (id, config = {}) => api.get(`/library/documents/${id}/download`, { responseType: 'blob', ...config }),
   fetchFolderZipBlob: (folderId, config = {}) => api.get(`/library/folders/${folderId}/download-zip`, { responseType: 'blob', ...config }),
 
+  // SDS document downloads
+  fetchSdsQrBadge: (id, config = {}) => api.get(`/library/documents/${id}/sds-qr-badge`, { responseType: 'blob', ...config }),
+  fetchSdsIdTag: (id, config = {}) => api.get(`/library/documents/${id}/sds-id-tag`, { responseType: 'blob', ...config }),
+  fetchSdsBatchZip: (id, config = {}) => api.get(`/library/documents/${id}/sds-batch-zip`, { responseType: 'blob', ...config }),
+
   deleteDocument: (id) => api.delete(`/library/documents/${id}`),
   replaceDocument: ({ id, file }) => {
     const formData = new FormData()

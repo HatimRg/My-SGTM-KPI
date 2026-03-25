@@ -93,6 +93,7 @@ class LibraryController extends Controller
                 'language' => $d->language,
                 'error_message' => $d->error_message,
                 'folder_id' => $d->folder_id,
+                'is_sds' => (bool) ($d->is_sds ?? false),
                 'created_at' => $d->created_at,
                 'updated_at' => $d->updated_at,
                 'view_url' => "/api/library/documents/{$d->id}/view",
@@ -1088,5 +1089,164 @@ class LibraryController extends Controller
         ])->save();
 
         return $this->success(['id' => $document->id], 'Reindexed');
+    }
+
+    public function downloadSdsBatchZip(Request $request, LibraryDocument $document)
+    {
+        if (!(bool) ($document->is_sds ?? false)) {
+            return $this->error('Not an SDS document', 400);
+        }
+
+        $path = $document->file_path;
+        if (!$path || !Storage::disk('public')->exists($path)) {
+            return $this->error('File not found', 404);
+        }
+
+        try {
+            [$qrPdfPath, $tagPdfPath] = $this->ensureSdsGeneratedAssets($document);
+
+            $tmp = storage_path('app/tmp');
+            if (!is_dir($tmp)) {
+                @mkdir($tmp, 0775, true);
+            }
+
+            $zipName = $this->sdsZipNameForDocument($document);
+            $zipPath = $tmp . DIRECTORY_SEPARATOR . 'sds_batch_' . $document->id . '_' . Str::random(8) . '.zip';
+
+            if (file_exists($zipPath)) {
+                @unlink($zipPath);
+            }
+
+            $zip = new ZipArchive();
+            if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                return $this->error('Failed to create zip', 500);
+            }
+
+            // Add original SDS file
+            $originalPath = Storage::disk('public')->path($path);
+            if (file_exists($originalPath)) {
+                $origFilename = $document->original_name ?: ($document->title . '.' . $document->file_type);
+                $origFilename = preg_replace('/[\x00-\x1F\x7F]/', '', (string) $origFilename);
+                if ($origFilename === '') {
+                    $origFilename = 'SDS.pdf';
+                }
+                $zip->addFile($originalPath, $origFilename);
+            }
+
+            // Add QR PDF
+            $qrFullPath = Storage::disk('public')->path($qrPdfPath);
+            if (file_exists($qrFullPath)) {
+                $productName = $this->stripLeadingFds((string) ($document->title ?: ''));
+                if ($productName === '') {
+                    $productName = $this->stripLeadingFds((string) (pathinfo((string) $document->original_name, PATHINFO_FILENAME) ?: ''));
+                }
+                if ($productName === '') {
+                    $productName = 'Produit';
+                }
+                $zip->addFile($qrFullPath, 'QR ' . $productName . '.pdf');
+            }
+
+            // Add Tag PDF
+            $tagFullPath = Storage::disk('public')->path($tagPdfPath);
+            if (file_exists($tagFullPath)) {
+                $productName = $this->stripLeadingFds((string) ($document->title ?: ''));
+                if ($productName === '') {
+                    $productName = $this->stripLeadingFds((string) (pathinfo((string) $document->original_name, PATHINFO_FILENAME) ?: ''));
+                }
+                if ($productName === '') {
+                    $productName = 'Produit';
+                }
+                $zip->addFile($tagFullPath, "Tag d'identification " . $productName . '.pdf');
+            }
+
+            $zip->close();
+
+            $response = response()->download($zipPath, $zipName);
+            $response->headers->set('Content-Type', 'application/zip');
+
+            register_shutdown_function(function() use ($zipPath) {
+                if (file_exists($zipPath)) {
+                    @unlink($zipPath);
+                }
+            });
+
+            return $response;
+        } catch (\Throwable $e) {
+            Log::error('SDS batch ZIP generation failed', [
+                'document_id' => $document->id,
+                'error' => $e->getMessage(),
+            ]);
+            return $this->error('Failed to generate SDS package: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function downloadSdsQrBadge(Request $request, LibraryDocument $document)
+    {
+        if (!(bool) ($document->is_sds ?? false)) {
+            return $this->error('Not an SDS document', 400);
+        }
+
+        try {
+            [$qrPdfPath, $tagPdfPath] = $this->ensureSdsGeneratedAssets($document);
+
+            $qrFullPath = Storage::disk('public')->path($qrPdfPath);
+            if (!file_exists($qrFullPath)) {
+                return $this->error('QR badge not found', 404);
+            }
+
+            $productName = $this->stripLeadingFds((string) ($document->title ?: ''));
+            if ($productName === '') {
+                $productName = $this->stripLeadingFds((string) (pathinfo((string) $document->original_name, PATHINFO_FILENAME) ?: ''));
+            }
+            if ($productName === '') {
+                $productName = 'Produit';
+            }
+            $filename = 'QR ' . $productName . '.pdf';
+
+            return response()->download($qrFullPath, $filename, [
+                'Content-Type' => 'application/pdf',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('SDS QR badge download failed', [
+                'document_id' => $document->id,
+                'error' => $e->getMessage(),
+            ]);
+            return $this->error('Failed to generate QR badge: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function downloadSdsIdTag(Request $request, LibraryDocument $document)
+    {
+        if (!(bool) ($document->is_sds ?? false)) {
+            return $this->error('Not an SDS document', 400);
+        }
+
+        try {
+            [$qrPdfPath, $tagPdfPath] = $this->ensureSdsGeneratedAssets($document);
+
+            $tagFullPath = Storage::disk('public')->path($tagPdfPath);
+            if (!file_exists($tagFullPath)) {
+                return $this->error('ID tag not found', 404);
+            }
+
+            $productName = $this->stripLeadingFds((string) ($document->title ?: ''));
+            if ($productName === '') {
+                $productName = $this->stripLeadingFds((string) (pathinfo((string) $document->original_name, PATHINFO_FILENAME) ?: ''));
+            }
+            if ($productName === '') {
+                $productName = 'Produit';
+            }
+            $filename = "Tag d'identification " . $productName . '.pdf';
+
+            return response()->download($tagFullPath, $filename, [
+                'Content-Type' => 'application/pdf',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('SDS ID tag download failed', [
+                'document_id' => $document->id,
+                'error' => $e->getMessage(),
+            ]);
+            return $this->error('Failed to generate ID tag: ' . $e->getMessage(), 500);
+        }
     }
 }

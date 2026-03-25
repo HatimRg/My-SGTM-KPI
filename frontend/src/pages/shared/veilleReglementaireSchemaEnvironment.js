@@ -522,7 +522,7 @@ export const FLAT_ARTICLES = SECTIONS.flatMap((section) =>
   )
 )
 
-export const makeInitialAnswers = ({ previousNonApplicableArticleIds = [] } = {}) => {
+export const makeInitialAnswers = ({ previousNonApplicableArticleIds = [], previousArticlesMap = new Map() } = {}) => {
   const previousSet = new Set(previousNonApplicableArticleIds)
 
   return {
@@ -531,14 +531,18 @@ export const makeInitialAnswers = ({ previousNonApplicableArticleIds = [] } = {}
         const flat = FLAT_ARTICLES.filter((a) => a.section_id === section.section_id)
         return {
           section_id: section.section_id,
-          articles: flat.map((a) => ({
-            article_id: a.article_id,
-            chapter_id: a.chapter_id,
-            applicable: !previousSet.has(a.article_id),
-            compliant: true,
-            corrective_action: '',
-            comment: '',
-          })),
+          articles: flat.map((a) => {
+            const prev = previousArticlesMap.get(a.article_id)
+            const isNonApplicable = previousSet.has(a.article_id)
+            return {
+              article_id: a.article_id,
+              chapter_id: a.chapter_id,
+              applicable: prev ? Boolean(prev.applicable) : !isNonApplicable,
+              compliant: prev ? Boolean(prev.compliant) : true,
+              corrective_action: prev?.corrective_action ?? '',
+              comment: prev?.comment ?? '',
+            }
+          }),
         }
       }),
     ],
