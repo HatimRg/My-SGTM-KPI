@@ -1,24 +1,11 @@
-.env
-backend/.env
-frontend/.env
-
+# Only exclude dependency directories (installed via composer install / npm install)
+backend/vendor/
 frontend/node_modules/
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
 
-backend/bootstrap/cache/
+# Keep environment files private
+.env
+.env.local
 
-*.backup
-*.restore_tmp
-
-*.log
-*.tmp
-
-!backend/storage/**
-
+# Operating system files
 .DS_Store
 Thumbs.db
-
-.idea/
-.vscode/

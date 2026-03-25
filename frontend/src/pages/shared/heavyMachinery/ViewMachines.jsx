@@ -711,6 +711,12 @@ export default function ViewMachines() {
     setDetailsTab('documents')
   }
 
+  // Detect mobile device
+  const isMobile = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (window.innerWidth <= 768)
+  }
+
   const openPreview = async (item) => {
     if (!item?.file_view_url) return
 
@@ -724,6 +730,37 @@ export default function ViewMachines() {
       }
 
       const type = String(item?.file_type || 'pdf').toLowerCase()
+      
+      // For PDFs on mobile: open in new tab instead of iframe
+      if (type === 'pdf' && isMobile()) {
+        const raw = String(item.file_view_url)
+        const viewPath = raw.startsWith('/') ? raw : `/${raw}`
+
+        let linkPath = viewPath.replace(/\/view(\?.*)?$/, '/view-link$1')
+        linkPath = normalizeApiPath(linkPath)
+
+        // Open blank window immediately (synchronously) to avoid popup blocker
+        const newWindow = window.open('about:blank', '_blank')
+        if (!newWindow) {
+          toast.error('Popup blocked. Please allow popups for this site.')
+          setActivePreview(null)
+          setPreviewLoading(false)
+          return
+        }
+
+        const res = await api.get(linkPath)
+        const signed = res?.data?.data?.url
+        if (!signed) throw new Error('Missing signed url')
+        
+        newWindow.location.href = String(signed)
+        
+        // Close the modal since we opened in new tab
+        setActivePreview(null)
+        setPreviewLoading(false)
+        return
+      }
+
+      // For non-PDFs or PDFs on PC: use iframe modal (original behavior)
       if (type === 'pdf') {
         const raw = String(item.file_view_url)
         const viewPath = raw.startsWith('/') ? raw : `/${raw}`

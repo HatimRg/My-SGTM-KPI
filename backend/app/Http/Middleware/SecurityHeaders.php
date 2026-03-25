@@ -41,7 +41,7 @@ class SecurityHeaders
                 "font-src 'self' https://fonts.gstatic.com data:",
                 "img-src 'self' data: blob:",
                 "connect-src 'self'",
-                "frame-src 'self' blob:",
+                "frame-src 'self' blob: data:",
                 $allowSameOriginFrame ? "frame-ancestors 'self'" : "frame-ancestors 'none'",
             ];
 

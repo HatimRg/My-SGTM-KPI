@@ -524,7 +524,7 @@ export default function Library() {
     }
   }
 
-  const handleOpen = (item) => {
+  const handleOpen = async (item) => {
     if (item?.kind === 'folder') {
       enterFolder(item)
       return
@@ -533,7 +533,34 @@ export default function Library() {
     if (!item?.view_url) return
 
     const type = String(item.file_type || '').toLowerCase()
-    const canInline = ['pdf', 'png', 'jpg', 'jpeg', 'txt'].includes(type)
+    
+    // For PDFs, open in new tab instead of modal to avoid toolbar issues
+    if (type === 'pdf') {
+      // Open blank window immediately (synchronously) to avoid popup blocker
+      const newWindow = window.open('about:blank', '_blank')
+      if (!newWindow) {
+        // Popup blocked - fall back to download
+        handleDownload(item)
+        return
+      }
+      
+      try {
+        const res = await libraryService.getViewLink(item.id)
+        const signed = res?.data?.data?.url
+        if (signed) {
+          newWindow.location.href = String(signed)
+        } else {
+          newWindow.close()
+          handleDownload(item)
+        }
+      } catch {
+        newWindow.close()
+        handleDownload(item)
+      }
+      return
+    }
+    
+    const canInline = ['png', 'jpg', 'jpeg', 'txt'].includes(type)
     if (!canInline) {
       handleDownload(item)
       return
@@ -576,14 +603,18 @@ export default function Library() {
           const res = await libraryService.getViewLink(viewer.item.id)
           const signed = res?.data?.data?.url
           if (!signed) throw new Error('Missing signed url')
-          setViewerUrl(String(signed))
+          // Hide PDF toolbar (Open button) by appending #toolbar=0
+          const signedWithToolbar = String(signed).includes('#') ? String(signed) : String(signed) + '#toolbar=0'
+          setViewerUrl(signedWithToolbar)
           return
         }
 
         const res = await libraryService.fetchViewBlob(viewer.item.id)
         const url = URL.createObjectURL(res.data)
         viewerUrlIsObjectUrlRef.current = true
-        setViewerUrl(url)
+        // For blob URLs, append toolbar=0 to hide Open button
+        const urlWithToolbar = url + '#toolbar=0'
+        setViewerUrl(urlWithToolbar)
       } catch (e) {
         toast.error(e?.response?.data?.message || 'Failed to open')
       }
@@ -1282,7 +1313,7 @@ export default function Library() {
                 ['png', 'jpg', 'jpeg'].includes(String(viewer.item.file_type || '').toLowerCase()) ? (
                   <img src={viewerUrl} alt={viewer.item.title || viewer.item.original_name} className="w-full max-h-[75vh] object-contain" />
                 ) : (
-                  <iframe title="preview" src={viewerUrl} className="w-full h-[75vh]" />
+                  <iframe title="preview" src={viewerUrl + '#toolbar=0'} className="w-full h-[75vh]" />
                 )
               ) : (
                 <div className="p-6 text-sm text-gray-500">{t('common.loading')}</div>

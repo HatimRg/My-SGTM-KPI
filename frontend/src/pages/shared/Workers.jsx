@@ -1384,6 +1384,12 @@ export default function Workers() {
     setPreviewUrl(null)
   }
 
+  // Detect mobile device
+  const isMobile = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (window.innerWidth <= 768)
+  }
+
   const openPreviewFromUrl = async (url, meta) => {
     if (!url) return
     try {
@@ -1395,6 +1401,47 @@ export default function Workers() {
       previewIsObjectUrl.current = false
       setPreviewUrl(null)
 
+      // Check if it's a PDF based on URL or meta
+      const isPdf = typeof url === 'string' && (
+        url.toLowerCase().endsWith('.pdf') || 
+        (meta?.file_type || '').toLowerCase() === 'pdf' ||
+        (meta?.document_type || '').toLowerCase() === 'pdf'
+      )
+
+      // For PDFs on mobile: open in new tab instead of iframe
+      if (isPdf && isMobile()) {
+        const newWindow = window.open('about:blank', '_blank')
+        if (!newWindow) {
+          toast.error('Popup blocked. Please allow popups for this site.')
+          setActivePreview(null)
+          setPreviewLoading(false)
+          return
+        }
+
+        const path = normalizeApiPath(url)
+        let blob
+        if (typeof path === 'string' && path.startsWith('/storage/')) {
+          const resp = await fetch(path)
+          if (!resp.ok) {
+            throw new Error(`Failed to fetch: ${resp.status}`)
+          }
+          blob = await resp.blob()
+        } else {
+          const res = await api.get(path, { responseType: 'blob' })
+          blob = res.data
+        }
+        
+        // Create object URL and open in new tab
+        const objectUrl = URL.createObjectURL(blob)
+        newWindow.location.href = objectUrl
+        
+        // Close the modal since we opened in new tab
+        setActivePreview(null)
+        setPreviewLoading(false)
+        return
+      }
+
+      // For non-PDFs or PDFs on PC: use iframe modal (original behavior)
       if (typeof url === 'string' && url.startsWith('blob:')) {
         setPreviewUrl(url)
         return

@@ -71,7 +71,7 @@
 
         <main class="content">
             <div class="viewer-wrap">
-                <iframe class="viewer" title="SDS PDF" src="/api/public/sds/{{ $token }}/raw#toolbar=1&navpanes=0&view=FitH"></iframe>
+                <iframe class="viewer" title="SDS PDF" src="/api/public/sds/{{ $token }}/raw#toolbar=0&navpanes=0&view=FitH"></iframe>
             </div>
         </main>
 
