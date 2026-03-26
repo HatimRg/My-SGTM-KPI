@@ -673,6 +673,9 @@ export default {
       ppeTooltipTitle: 'PPE consumption by project',
       machineryTooltipTitle: 'Machinery by project',
       inspectionsTooltipTitle: 'Inspections by project',
+      monthStart: 'Start month',
+      monthEnd: 'End month',
+      useMonthRange: 'Use month range',
     },
 
     deviations: {

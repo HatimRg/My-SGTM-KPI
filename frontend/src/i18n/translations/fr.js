@@ -673,6 +673,9 @@ export default {
       ppeTooltipTitle: 'Consommation EPI par projet',
       machineryTooltipTitle: 'Engins par projet',
       inspectionsTooltipTitle: 'Inspections par projet',
+      monthStart: 'Mois début',
+      monthEnd: 'Mois fin',
+      useMonthRange: 'Utiliser plage de mois',
     },
 
     deviations: {

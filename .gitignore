@@ -2,6 +2,9 @@
 backend/vendor/
 frontend/node_modules/
 
+# Windsurf workspace files
+.windsurf/
+
 # Keep environment files private
 .env
 .env.local

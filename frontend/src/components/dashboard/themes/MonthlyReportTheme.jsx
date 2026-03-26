@@ -1,7 +1,7 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from '../../../i18n'
-import { MonthPicker, WeekPicker } from '../../../components/ui'
+import { MonthPicker, MonthRangePicker, WeekPicker } from '../../../components/ui'
 import { dashboardService } from '../../../services/api'
 import toast from 'react-hot-toast'
 import {
@@ -831,7 +831,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
   }, [])
 
   const trendStroke = isDarkMode ? SGTM_COLORS.white : '#2E2E2E'
-  const filterStorageKey = 'monthly_report_theme_filters_v1'
+  const filterStorageKey = 'monthly_report_theme_filters_v2'
   const [month, setMonth] = useState(() => {
     const now = new Date()
     const m = String(now.getMonth() + 1).padStart(2, '0')
@@ -842,8 +842,16 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
   const [exporting, setExporting] = useState(false)
   const [payload, setPayload] = useState(null)
 
+  // Filter type state: 'month' | 'monthRange' | 'weekRange'
+  const [filterType, setFilterType] = useState('month')
+  
+  // Month range filter state
+  const now = new Date()
+  const defaultMonthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const [monthStart, setMonthStart] = useState(defaultMonthStart)
+  const [monthEnd, setMonthEnd] = useState(defaultMonthStart)
+
   // Week range filter state
-  const [useWeekRange, setUseWeekRange] = useState(false)
   const [weekStart, setWeekStart] = useState(() => {
     return toIsoWeekKey(new Date())
   })
@@ -860,8 +868,12 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
       if (!raw) return
       const parsed = JSON.parse(raw)
 
-      if (typeof parsed?.useWeekRange === 'boolean') setUseWeekRange(parsed.useWeekRange)
+      if (['month', 'monthRange', 'weekRange'].includes(parsed?.filterType)) {
+        setFilterType(parsed.filterType)
+      }
       if (typeof parsed?.month === 'string') setMonth(parsed.month)
+      if (typeof parsed?.monthStart === 'string') setMonthStart(parsed.monthStart)
+      if (typeof parsed?.monthEnd === 'string') setMonthEnd(parsed.monthEnd)
       if (typeof parsed?.weekStart === 'string') setWeekStart(parsed.weekStart)
       if (typeof parsed?.weekEnd === 'string') setWeekEnd(parsed.weekEnd)
       if (typeof parsed?.projectId === 'string') setProjectId(parsed.projectId)
@@ -889,8 +901,10 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     try {
       const lockedPole = String(focusPole || '').trim()
       const payloadToStore = {
-        useWeekRange,
+        filterType,
         month,
+        monthStart,
+        monthEnd,
         weekStart,
         weekEnd,
         projectId,
@@ -899,7 +913,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
       window.localStorage.setItem(filterStorageKey, JSON.stringify(payloadToStore))
     } catch (e) {
     }
-  }, [focusPole, month, projectId, selectedPole, useWeekRange, weekEnd, weekStart])
+  }, [focusPole, month, monthEnd, monthStart, projectId, selectedPole, filterType, weekEnd, weekStart])
 
   const chartRefs = useRef({})
 
@@ -910,9 +924,12 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     setLoading(true)
     try {
       const params = {}
-      if (useWeekRange) {
+      if (filterType === 'weekRange') {
         params.week_start = weekStart
         params.week_end = weekEnd
+      } else if (filterType === 'monthRange') {
+        params.month_start = monthStart
+        params.month_end = monthEnd
       } else {
         params.month = month
       }
@@ -926,7 +943,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     } finally {
       setLoading(false)
     }
-  }, [isAdmin, month, projectId, t, useWeekRange, weekStart, weekEnd])
+  }, [isAdmin, month, monthEnd, monthStart, projectId, t, filterType, weekStart, weekEnd])
 
   useEffect(() => {
     fetchSummary()
@@ -1407,26 +1424,43 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
               <div className="flex flex-col lg:flex-row lg:items-end gap-3">
                 <div className="inline-flex p-1 rounded-2xl bg-gray-100/80 dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700 shadow-sm w-fit">
                   <button
-                    onClick={() => setUseWeekRange(false)}
-                    className={`px-3 py-2 rounded-xl text-sm font-semibold transition ${!useWeekRange ? 'bg-sgtm-orange text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-900/40 hover:text-sgtm-orange-dark dark:hover:text-sgtm-orange-light'}`}
+                    onClick={() => setFilterType('month')}
+                    className={`px-3 py-2 rounded-xl text-sm font-semibold transition ${filterType === 'month' ? 'bg-sgtm-orange text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-900/40 hover:text-sgtm-orange-dark dark:hover:text-sgtm-orange-light'}`}
                   >
                     {t('dashboard.monthlyReport.useMonth')}
                   </button>
                   <button
-                    onClick={() => setUseWeekRange(true)}
-                    className={`px-3 py-2 rounded-xl text-sm font-semibold transition ${useWeekRange ? 'bg-sgtm-orange text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-900/40 hover:text-sgtm-orange-dark dark:hover:text-sgtm-orange-light'}`}
+                    onClick={() => setFilterType('monthRange')}
+                    className={`px-3 py-2 rounded-xl text-sm font-semibold transition ${filterType === 'monthRange' ? 'bg-sgtm-orange text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-900/40 hover:text-sgtm-orange-dark dark:hover:text-sgtm-orange-light'}`}
+                  >
+                    {t('dashboard.monthlyReport.useMonthRange')}
+                  </button>
+                  <button
+                    onClick={() => setFilterType('weekRange')}
+                    className={`px-3 py-2 rounded-xl text-sm font-semibold transition ${filterType === 'weekRange' ? 'bg-sgtm-orange text-white shadow' : 'text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-900/40 hover:text-sgtm-orange-dark dark:hover:text-sgtm-orange-light'}`}
                   >
                     {t('dashboard.monthlyReport.useWeekRange')}
                   </button>
                 </div>
 
                 <div className="flex-1">
-                  {!useWeekRange ? (
+                  {filterType === 'month' && (
                     <div className="flex flex-col gap-1">
                       <div className="text-xs font-medium text-gray-600 dark:text-gray-300">{t('dashboard.monthlyReport.month')}</div>
                       <MonthPicker value={month} onChange={setMonth} className="w-full" />
                     </div>
-                  ) : (
+                  )}
+                  {filterType === 'monthRange' && (
+                    <MonthRangePicker
+                      monthStart={monthStart}
+                      monthEnd={monthEnd}
+                      onChangeStart={setMonthStart}
+                      onChangeEnd={setMonthEnd}
+                      labelStart={t('dashboard.monthlyReport.monthStart')}
+                      labelEnd={t('dashboard.monthlyReport.monthEnd')}
+                    />
+                  )}
+                  {filterType === 'weekRange' && (
                     <WeekRangePicker
                       weekStart={weekStart}
                       weekEnd={weekEnd}
