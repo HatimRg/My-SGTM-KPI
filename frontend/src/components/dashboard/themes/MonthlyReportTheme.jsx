@@ -935,9 +935,33 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
       }
       if (String(projectId || '').trim() !== '') params.project_id = projectId
       params.refresh = 1
+      
+      // DEBUG: Log request params
+      console.log('[DEBUG] fetchSummary called with:', { filterType, params, monthStart, monthEnd })
+      
       const res = await dashboardService.getMonthlyReportSummary(params)
-      setPayload(res.data?.data ?? null)
+      const data = res.data?.data ?? null
+      
+      // DEBUG: Log response structure
+      console.log('[DEBUG] Response data:', {
+        hasData: !!data,
+        labels: data?.labels,
+        labelCount: data?.labels?.length,
+        sections: Object.keys(data?.sections || {}),
+        filterType,
+        monthRange: filterType === 'monthRange' ? { monthStart, monthEnd } : null
+      })
+      
+      // DEBUG: Detailed section data for month range
+      if (filterType === 'monthRange' && data?.sections) {
+        console.log('[DEBUG] Month Range - Veille datasets:', data.sections.veille?.datasets?.length)
+        console.log('[DEBUG] Month Range - Veille by_month:', data.sections.veille?.by_month)
+        console.log('[DEBUG] Month Range - labels:', data.labels)
+      }
+      
+      setPayload(data)
     } catch (e) {
+      console.error('[DEBUG] fetchSummary error:', e)
       setPayload(null)
       toast.error(t('dashboard.monthlyReport.loadFailed') || t('errors.failedToLoad'))
     } finally {
@@ -983,6 +1007,18 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     const dsEnv = sections?.veille?.datasets?.[1]
     const valuesSst = Array.isArray(dsSst?.data) ? dsSst.data : []
     const valuesEnv = Array.isArray(dsEnv?.data) ? dsEnv.data : []
+    
+    // DEBUG: Log veille data processing
+    console.log('[DEBUG] veilleRows processing:', {
+      filterType,
+      displayedPoles,
+      labels,
+      valuesSst,
+      valuesEnv,
+      dsSstData: dsSst?.data,
+      dsEnvData: dsEnv?.data
+    })
+    
     return displayedPoles.map((pole) => {
       const idx = labels.indexOf(pole)
       return {
@@ -991,7 +1027,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
         score_environment: safeNumber(valuesEnv[idx]),
       }
     })
-  }, [displayedPoles, labels, sections?.veille])
+  }, [displayedPoles, labels, sections?.veille, filterType])
 
   const sorRows = useMemo(() => {
     const d0 = sections?.sor?.datasets?.[0]
