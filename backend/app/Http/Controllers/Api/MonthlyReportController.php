@@ -32,6 +32,8 @@ class MonthlyReportController extends Controller
     {
         $request->validate([
             'month' => 'nullable|string',
+            'month_start' => 'nullable|string', // Format: YYYY-MM
+            'month_end' => 'nullable|string',   // Format: YYYY-MM
             'project_id' => 'nullable|integer',
             'all_months' => 'nullable|boolean',
             'week_start' => 'nullable|string', // Format: YYYY-WXX (e.g., 2026-W05)
@@ -40,12 +42,25 @@ class MonthlyReportController extends Controller
             'refresh' => 'nullable|boolean',
         ]);
 
-        // Determine date range: either by month or by week range
+        // Determine date range: by month range, single month, or week range
+        $monthStart = $request->get('month_start');
+        $monthEnd = $request->get('month_end');
+        $useMonthRange = $monthStart && $monthEnd;
+
         $weekStart = $request->get('week_start');
         $weekEnd = $request->get('week_end');
         $useWeekRange = $weekStart && $weekEnd;
 
-        if ($useWeekRange) {
+        if ($useMonthRange) {
+            // Parse month range format YYYY-MM
+            if (!preg_match('/^\d{4}-\d{2}$/', $monthStart) || !preg_match('/^\d{4}-\d{2}$/', $monthEnd)) {
+                return $this->error('Invalid month format. Expected YYYY-MM', 422);
+            }
+            $rangeStart = Carbon::createFromFormat('Y-m', $monthStart)->startOfMonth()->startOfDay();
+            $rangeEnd = Carbon::createFromFormat('Y-m', $monthEnd)->endOfMonth()->endOfDay();
+            $monthKey = $monthStart . '_to_' . $monthEnd;
+            $targetYear = (int) substr($monthStart, 0, 4);
+        } elseif ($useWeekRange) {
             // Parse week range format YYYY-WXX
             if (!preg_match('/^(\d{4})-W(\d{1,2})$/', $weekStart, $startMatch) ||
                 !preg_match('/^(\d{4})-W(\d{1,2})$/', $weekEnd, $endMatch)) {
@@ -75,7 +90,7 @@ class MonthlyReportController extends Controller
         $projectId = $request->get('project_id');
         $projectId = $projectId !== null && $projectId !== '' ? (int) $projectId : null;
 
-        $cacheKey = 'monthly_report:summary:' . $monthKey . ':project:' . ($projectId ?: 'all');
+        $cacheKey = 'monthly_report:summary:' . $monthKey . ':project:' . ($projectId ?: 'all') . ':type:' . ($useMonthRange ? 'monthrange' : ($useWeekRange ? 'weekrange' : 'month'));
 
         if ($request->boolean('no_cache', false) || $request->boolean('refresh', false)) {
             Cache::forget($cacheKey);
@@ -83,7 +98,7 @@ class MonthlyReportController extends Controller
 
         $shouldBypassCache = (bool) $request->boolean('no_cache', false);
         if (false && $shouldBypassCache) {
-            return (function () use ($monthKey, $projectId, $rangeStart, $rangeEnd, $targetYear, $useWeekRange) {
+            return (function () use ($monthKey, $projectId, $rangeStart, $rangeEnd, $targetYear, $useWeekRange, $useMonthRange) {
                 $monthStart = $rangeStart;
                 $monthEnd = $rangeEnd;
 
@@ -219,7 +234,7 @@ class MonthlyReportController extends Controller
             })();
         }
 
-        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($monthKey, $projectId, $rangeStart, $rangeEnd, $targetYear, $useWeekRange) {
+        return Cache::remember($cacheKey, now()->addMinutes(15), function () use ($monthKey, $projectId, $rangeStart, $rangeEnd, $targetYear, $useWeekRange, $useMonthRange) {
             $monthStart = $rangeStart;
             $monthEnd = $rangeEnd;
 
@@ -236,6 +251,37 @@ class MonthlyReportController extends Controller
 
             $poles = $projectsByPole->keys()->filter(fn ($p) => $p !== '')->values()->all();
             sort($poles);
+
+            // For month range, generate time-series labels (Pole + Month)
+            $monthRangeLabels = [];
+            $monthRangeData = [];
+            if ($useMonthRange) {
+                $currentMonth = Carbon::createFromFormat('Y-m', $monthStart->format('Y-m'));
+                $endMonth = Carbon::createFromFormat('Y-m', $monthEnd->format('Y-m'));
+                
+                $monthNames = [
+                    '01' => 'Jan', '02' => 'Fév', '03' => 'Mar', '04' => 'Avr',
+                    '05' => 'Mai', '06' => 'Juin', '07' => 'Juil', '08' => 'Août',
+                    '09' => 'Sep', '10' => 'Oct', '11' => 'Nov', '12' => 'Déc'
+                ];
+                
+                while ($currentMonth->lte($endMonth)) {
+                    $monthKeyIter = $currentMonth->format('Y-m');
+                    $monthShort = $monthNames[$currentMonth->format('m')] ?? $currentMonth->format('m');
+                    
+                    foreach ($poles as $pole) {
+                        $label = $pole . ' (' . $monthShort . ')';
+                        $monthRangeLabels[] = $label;
+                        $monthRangeData[$monthKeyIter][$pole] = [
+                            'label' => $label,
+                            'month' => $monthKeyIter,
+                            'pole' => $pole,
+                        ];
+                    }
+                    
+                    $currentMonth->addMonth();
+                }
+            }
 
             // Build week map for surrounding years to handle boundary weeks.
             // For week range mode, we check if week falls within range; for month mode, we map to month key.
@@ -267,6 +313,11 @@ class MonthlyReportController extends Controller
                     $mapped = $weekMonthMap[$wkKey] ?? null;
                     return $mapped === $monthKey;
                 }
+            };
+
+            // Helper to get month key from a date (for month range processing)
+            $getMonthKeyFromDate = function ($date) {
+                return Carbon::parse($date)->format('Y-m');
             };
 
             $projectPoleLabel = function ($projectId) use ($projectsById) {
@@ -774,8 +825,8 @@ class MonthlyReportController extends Controller
                 $medicalPoleProjects[$pole] = $items;
             }
 
-            // Prepare chart-friendly payload (labels = poles)
-            $labels = $poles;
+            // Prepare chart-friendly payload (labels = poles for single month/week, time-series for month range)
+            $labels = $useMonthRange ? $monthRangeLabels : $poles;
 
             $projectsList = $projects->map(function ($p) {
                 return [
@@ -1139,11 +1190,17 @@ class MonthlyReportController extends Controller
                         'datasets' => [
                             [
                                 'label' => 'Veille SST %',
-                                'data' => array_map(fn ($pole) => $veillePoleAvgSst[$pole] ?? 0, $labels),
+                                'data' => array_map(function ($label) use ($veillePoleAvgSst, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return $veillePoleAvgSst[$pole] ?? 0;
+                                }, $labels),
                             ],
                             [
                                 'label' => 'Veille Environnement %',
-                                'data' => array_map(fn ($pole) => $veillePoleAvgEnv[$pole] ?? 0, $labels),
+                                'data' => array_map(function ($label) use ($veillePoleAvgEnv, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return $veillePoleAvgEnv[$pole] ?? 0;
+                                }, $labels),
                             ],
                         ],
                         'by_pole_projects' => $veillePoleProjects,
@@ -1154,12 +1211,18 @@ class MonthlyReportController extends Controller
                             [
                                 'type' => 'bar',
                                 'label' => 'Total deviations',
-                                'data' => array_map(fn ($pole) => (int) ($sorPole[$pole] ?? 0), $labels),
+                                'data' => array_map(function ($label) use ($sorPole, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return (int) ($sorPole[$pole] ?? 0);
+                                }, $labels),
                             ],
                             [
                                 'type' => 'line',
                                 'label' => 'Closure %',
-                                'data' => array_map(fn ($pole) => $sorPoleClosureRate[$pole] ?? 0, $labels),
+                                'data' => array_map(function ($label) use ($sorPoleClosureRate, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return $sorPoleClosureRate[$pole] ?? 0;
+                                }, $labels),
                             ],
                         ],
                         'by_pole_projects' => $sorPoleProjectBreakdown,
@@ -1170,12 +1233,18 @@ class MonthlyReportController extends Controller
                             [
                                 'type' => 'bar',
                                 'label' => 'Total deviations (subcontractors)',
-                                'data' => array_map(fn ($pole) => (int) ($sorSubPole[$pole] ?? 0), $labels),
+                                'data' => array_map(function ($label) use ($sorSubPole, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return (int) ($sorSubPole[$pole] ?? 0);
+                                }, $labels),
                             ],
                             [
                                 'type' => 'line',
                                 'label' => 'Closure % (subcontractors)',
-                                'data' => array_map(fn ($pole) => $sorSubPoleClosureRate[$pole] ?? 0, $labels),
+                                'data' => array_map(function ($label) use ($sorSubPoleClosureRate, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return $sorSubPoleClosureRate[$pole] ?? 0;
+                                }, $labels),
                             ],
                         ],
                         'by_pole_projects' => $sorSubPoleProjectBreakdown,
@@ -1185,7 +1254,10 @@ class MonthlyReportController extends Controller
                         'datasets' => [
                             [
                                 'label' => 'Avg closure (hours)',
-                                'data' => array_map(fn ($pole) => $durationPoleAvg[$pole] ?? 0, $labels),
+                                'data' => array_map(function ($label) use ($durationPoleAvg, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return $durationPoleAvg[$pole] ?? 0;
+                                }, $labels),
                             ],
                         ],
                         'records_used' => $durationPoleUsed,
@@ -1196,7 +1268,10 @@ class MonthlyReportController extends Controller
                         'datasets' => [
                             [
                                 'label' => 'Avg closure (hours) (subcontractors)',
-                                'data' => array_map(fn ($pole) => $durationSubPoleAvg[$pole] ?? 0, $labels),
+                                'data' => array_map(function ($label) use ($durationSubPoleAvg, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return $durationSubPoleAvg[$pole] ?? 0;
+                                }, $labels),
                             ],
                         ],
                         'records_used' => $durationSubPoleUsed,
@@ -1207,11 +1282,17 @@ class MonthlyReportController extends Controller
                         'datasets' => [
                             [
                                 'label' => 'Trainings',
-                                'data' => array_map(fn ($pole) => (int) ($trainingPoleCount[$pole] ?? 0), $labels),
+                                'data' => array_map(function ($label) use ($trainingPoleCount, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return (int) ($trainingPoleCount[$pole] ?? 0);
+                                }, $labels),
                             ],
                             [
                                 'label' => 'Hours',
-                                'data' => array_map(fn ($pole) => round((float) ($trainingPoleHours[$pole] ?? 0), 2), $labels),
+                                'data' => array_map(function ($label) use ($trainingPoleHours, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return round((float) ($trainingPoleHours[$pole] ?? 0), 2);
+                                }, $labels),
                             ],
                         ],
                         'by_pole_projects' => $trainingPoleProjectBreakdown,
@@ -1221,11 +1302,17 @@ class MonthlyReportController extends Controller
                         'datasets' => [
                             [
                                 'label' => 'Sessions',
-                                'data' => array_map(fn ($pole) => (int) ($awPoleCount[$pole] ?? 0), $labels),
+                                'data' => array_map(function ($label) use ($awPoleCount, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return (int) ($awPoleCount[$pole] ?? 0);
+                                }, $labels),
                             ],
                             [
                                 'label' => 'Hours',
-                                'data' => array_map(fn ($pole) => round((float) ($awPoleHours[$pole] ?? 0), 2), $labels),
+                                'data' => array_map(function ($label) use ($awPoleHours, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return round((float) ($awPoleHours[$pole] ?? 0), 2);
+                                }, $labels),
                             ],
                         ],
                         'by_pole_projects' => $awPoleProjectBreakdown,
@@ -1240,7 +1327,10 @@ class MonthlyReportController extends Controller
                         'datasets' => [
                             [
                                 'label' => 'Medical conformity %',
-                                'data' => array_map(fn ($pole) => $medicalPolePct[$pole] ?? 0, $labels),
+                                'data' => array_map(function ($label) use ($medicalPolePct, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return $medicalPolePct[$pole] ?? 0;
+                                }, $labels),
                             ],
                         ],
                         'totals' => [
@@ -1254,11 +1344,17 @@ class MonthlyReportController extends Controller
                         'datasets' => [
                             [
                                 'label' => 'TF',
-                                'data' => array_map(fn ($pole) => $tfTgPole[$pole]['tf'] ?? 0, $labels),
+                                'data' => array_map(function ($label) use ($tfTgPole, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return $tfTgPole[$pole]['tf'] ?? 0;
+                                }, $labels),
                             ],
                             [
                                 'label' => 'TG',
-                                'data' => array_map(fn ($pole) => $tfTgPole[$pole]['tg'] ?? 0, $labels),
+                                'data' => array_map(function ($label) use ($tfTgPole, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return $tfTgPole[$pole]['tg'] ?? 0;
+                                }, $labels),
                             ],
                         ],
                         'by_pole' => $tfTgPole,
@@ -1269,11 +1365,17 @@ class MonthlyReportController extends Controller
                         'datasets' => [
                             [
                                 'label' => 'Accidents',
-                                'data' => array_map(fn ($pole) => $accidentsIncidentsPole[$pole]['accidents'] ?? 0, $labels),
+                                'data' => array_map(function ($label) use ($accidentsIncidentsPole, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return $accidentsIncidentsPole[$pole]['accidents'] ?? 0;
+                                }, $labels),
                             ],
                             [
                                 'label' => 'Incidents',
-                                'data' => array_map(fn ($pole) => $accidentsIncidentsPole[$pole]['incidents'] ?? 0, $labels),
+                                'data' => array_map(function ($label) use ($accidentsIncidentsPole, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return $accidentsIncidentsPole[$pole]['incidents'] ?? 0;
+                                }, $labels),
                             ],
                         ],
                         'by_pole' => $accidentsIncidentsPole,
@@ -1292,12 +1394,18 @@ class MonthlyReportController extends Controller
                             [
                                 'type' => 'bar',
                                 'label' => 'Machine count',
-                                'data' => array_map(fn ($pole) => $machineryPole[$pole]['count'] ?? 0, $labels),
+                                'data' => array_map(function ($label) use ($machineryPole, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return $machineryPole[$pole]['count'] ?? 0;
+                                }, $labels),
                             ],
                             [
                                 'type' => 'line',
                                 'label' => 'Avg completion %',
-                                'data' => array_map(fn ($pole) => $machineryPole[$pole]['avg_completion'] ?? 0, $labels),
+                                'data' => array_map(function ($label) use ($machineryPole, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return $machineryPole[$pole]['avg_completion'] ?? 0;
+                                }, $labels),
                             ],
                         ],
                         'by_pole' => $machineryPole,
@@ -1308,7 +1416,10 @@ class MonthlyReportController extends Controller
                         'datasets' => [
                             [
                                 'label' => 'Inspections',
-                                'data' => array_map(fn ($pole) => $inspectionsPole[$pole] ?? 0, $labels),
+                                'data' => array_map(function ($label) use ($inspectionsPole, $useMonthRange) {
+                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
+                                    return $inspectionsPole[$pole] ?? 0;
+                                }, $labels),
                             ],
                         ],
                         'by_pole' => $inspectionsPole,
