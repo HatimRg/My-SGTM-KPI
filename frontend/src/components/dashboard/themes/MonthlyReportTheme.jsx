@@ -1025,25 +1025,19 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     const valuesSst = Array.isArray(dsSst?.data) ? dsSst.data : []
     const valuesEnv = Array.isArray(dsEnv?.data) ? dsEnv.data : []
     
-    // DEBUG: Log veille data processing
-    console.log('[DEBUG] veilleRows processing:', {
-      filterType,
-      displayedPoles,
-      labels,
-      valuesSstLength: valuesSst.length,
-      valuesEnvLength: valuesEnv.length,
-    })
+    // For month range, use displayedPoles to filter which labels to show
+    const sourceLabels = filterType === 'monthRange' ? displayedPoles : displayedPoles
     
-    // For month range, labels are time-series like "AM (Jan)", so we iterate over labels directly
-    const sourceLabels = filterType === 'monthRange' ? labels : displayedPoles
-    
-    return sourceLabels.map((label, idx) => {
-      // For month range, extract pole from "AM (Jan)" format
+    return sourceLabels.map((label) => {
+      // Find the index of this label in the full labels array to get correct data
+      const idx = labels.indexOf(label)
+      // For month range, extract pole from "AM (Jan)" format for tooltip lookups
       const pole = filterType === 'monthRange' ? label.split(' (')[0] : label
       return {
         pole: label, // Use full label for X-axis display
         score_sst: safeNumber(valuesSst[idx]),
         score_environment: safeNumber(valuesEnv[idx]),
+        _poleKey: pole, // Internal key for lookups
       }
     })
   }, [displayedPoles, labels, sections?.veille, filterType])
@@ -1053,71 +1047,78 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     const d1 = sections?.sor?.datasets?.[1]
     const totals = Array.isArray(d0?.data) ? d0.data : []
     const closure = Array.isArray(d1?.data) ? d1.data : []
-    const sourceLabels = filterType === 'monthRange' ? labels : displayedPoles
-    return sourceLabels.map((label, idx) => {
+    const sourceLabels = displayedPoles
+    return sourceLabels.map((label) => {
+      const idx = labels.indexOf(label)
       return { pole: label, total: safeNumber(totals[idx]), closurePct: safeNumber(closure[idx]) }
     })
-  }, [displayedPoles, labels, sections?.sor, filterType])
+  }, [displayedPoles, labels, sections?.sor])
 
   const sorSubRows = useMemo(() => {
     const d0 = sections?.sor_subcontractors?.datasets?.[0]
     const d1 = sections?.sor_subcontractors?.datasets?.[1]
     const totals = Array.isArray(d0?.data) ? d0.data : []
     const closure = Array.isArray(d1?.data) ? d1.data : []
-    const sourceLabels = filterType === 'monthRange' ? labels : displayedPoles
-    return sourceLabels.map((label, idx) => {
+    const sourceLabels = displayedPoles
+    return sourceLabels.map((label) => {
+      const idx = labels.indexOf(label)
       return { pole: label, total: safeNumber(totals[idx]), closurePct: safeNumber(closure[idx]) }
     })
-  }, [displayedPoles, labels, sections?.sor_subcontractors, filterType])
+  }, [displayedPoles, labels, sections?.sor_subcontractors])
 
   const durationRows = useMemo(() => {
     const ds = sections?.closure_duration?.datasets?.[0]
     const values = Array.isArray(ds?.data) ? ds.data : []
-    const sourceLabels = filterType === 'monthRange' ? labels : displayedPoles
-    return sourceLabels.map((label, idx) => {
+    const sourceLabels = displayedPoles
+    return sourceLabels.map((label) => {
+      const idx = labels.indexOf(label)
       return { pole: label, avgHours: safeNumber(values[idx]) }
     })
-  }, [displayedPoles, labels, sections?.closure_duration, filterType])
+  }, [displayedPoles, labels, sections?.closure_duration])
 
   const durationSubRows = useMemo(() => {
     const ds = sections?.closure_duration_subcontractors?.datasets?.[0]
     const values = Array.isArray(ds?.data) ? ds.data : []
-    const sourceLabels = filterType === 'monthRange' ? labels : displayedPoles
-    return sourceLabels.map((label, idx) => {
+    const sourceLabels = displayedPoles
+    return sourceLabels.map((label) => {
+      const idx = labels.indexOf(label)
       return { pole: label, avgHours: safeNumber(values[idx]) }
     })
-  }, [displayedPoles, labels, sections?.closure_duration_subcontractors, filterType])
+  }, [displayedPoles, labels, sections?.closure_duration_subcontractors])
 
   const trainingsRows = useMemo(() => {
     const d0 = sections?.trainings?.datasets?.[0]
     const d1 = sections?.trainings?.datasets?.[1]
     const counts = Array.isArray(d0?.data) ? d0.data : []
     const hours = Array.isArray(d1?.data) ? d1.data : []
-    const sourceLabels = filterType === 'monthRange' ? labels : displayedPoles
-    return sourceLabels.map((label, idx) => {
+    const sourceLabels = displayedPoles
+    return sourceLabels.map((label) => {
+      const idx = labels.indexOf(label)
       return { pole: label, count: safeNumber(counts[idx]), hours: safeNumber(hours[idx]) }
     })
-  }, [displayedPoles, labels, sections?.trainings, filterType])
+  }, [displayedPoles, labels, sections?.trainings])
 
   const awarenessRows = useMemo(() => {
     const d0 = sections?.awareness?.datasets?.[0]
     const d1 = sections?.awareness?.datasets?.[1]
     const counts = Array.isArray(d0?.data) ? d0.data : []
     const hours = Array.isArray(d1?.data) ? d1.data : []
-    const sourceLabels = filterType === 'monthRange' ? labels : displayedPoles
-    return sourceLabels.map((label, idx) => {
+    const sourceLabels = displayedPoles
+    return sourceLabels.map((label) => {
+      const idx = labels.indexOf(label)
       return { pole: label, count: safeNumber(counts[idx]), hours: safeNumber(hours[idx]) }
     })
-  }, [displayedPoles, labels, sections?.awareness, filterType])
+  }, [displayedPoles, labels, sections?.awareness])
 
   const medicalRows = useMemo(() => {
     const ds = sections?.medical?.datasets?.[0]
     const values = Array.isArray(ds?.data) ? ds.data : []
-    const sourceLabels = filterType === 'monthRange' ? labels : displayedPoles
-    return sourceLabels.map((label, idx) => {
+    const sourceLabels = displayedPoles
+    return sourceLabels.map((label) => {
+      const idx = labels.indexOf(label)
       return { pole: label, pct: safeNumber(values[idx]) }
     })
-  }, [displayedPoles, labels, sections?.medical, filterType])
+  }, [displayedPoles, labels, sections?.medical])
 
   // TF/TG comparison data
   const tfTgRows = useMemo(() => {
@@ -1125,8 +1126,9 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     const d1 = sections?.tf_tg?.datasets?.[1]
     const tfValues = Array.isArray(d0?.data) ? d0.data : []
     const tgValues = Array.isArray(d1?.data) ? d1.data : []
-    const sourceLabels = filterType === 'monthRange' ? labels : displayedPoles
-    return sourceLabels.map((label, idx) => {
+    const sourceLabels = displayedPoles
+    return sourceLabels.map((label) => {
+      const idx = labels.indexOf(label)
       const pole = filterType === 'monthRange' ? label.split(' (')[0] : label
       const byPole = sections?.tf_tg?.by_pole?.[pole] || {}
       return {
@@ -1146,15 +1148,16 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     const d1 = sections?.accidents_incidents?.datasets?.[1]
     const accValues = Array.isArray(d0?.data) ? d0.data : []
     const incValues = Array.isArray(d1?.data) ? d1.data : []
-    const sourceLabels = filterType === 'monthRange' ? labels : displayedPoles
-    return sourceLabels.map((label, idx) => {
+    const sourceLabels = displayedPoles
+    return sourceLabels.map((label) => {
+      const idx = labels.indexOf(label)
       return {
         pole: label,
         accidents: safeNumber(accValues[idx]),
         incidents: safeNumber(incValues[idx]),
       }
     })
-  }, [displayedPoles, labels, sections?.accidents_incidents, filterType])
+  }, [displayedPoles, labels, sections?.accidents_incidents])
 
   // PPE consumption data
   const ppeConsumptionData = useMemo(() => {
@@ -1162,7 +1165,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     const itemIds = sections?.ppe_consumption?.item_ids || []
     const byPole = sections?.ppe_consumption?.by_pole || {}
 
-    const sourceLabels = filterType === 'monthRange' ? labels : displayedPoles
+    const sourceLabels = displayedPoles
     const rows = sourceLabels.map((label) => {
       const pole = filterType === 'monthRange' ? label.split(' (')[0] : label
       const poleItems = byPole[pole] || {}
@@ -1182,28 +1185,30 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     const d1 = sections?.machinery?.datasets?.[1]
     const counts = Array.isArray(d0?.data) ? d0.data : []
     const completions = Array.isArray(d1?.data) ? d1.data : []
-    const sourceLabels = filterType === 'monthRange' ? labels : displayedPoles
-    return sourceLabels.map((label, idx) => {
+    const sourceLabels = displayedPoles
+    return sourceLabels.map((label) => {
+      const idx = labels.indexOf(label)
       return {
         pole: label,
         count: safeNumber(counts[idx]),
         avgCompletion: safeNumber(completions[idx]),
       }
     })
-  }, [displayedPoles, labels, sections?.machinery, filterType])
+  }, [displayedPoles, labels, sections?.machinery])
 
   // Inspections data
   const inspectionsRows = useMemo(() => {
     const d0 = sections?.inspections?.datasets?.[0]
     const counts = Array.isArray(d0?.data) ? d0.data : []
-    const sourceLabels = filterType === 'monthRange' ? labels : displayedPoles
-    return sourceLabels.map((label, idx) => {
+    const sourceLabels = displayedPoles
+    return sourceLabels.map((label) => {
+      const idx = labels.indexOf(label)
       return {
         pole: label,
         count: safeNumber(counts[idx]),
       }
     })
-  }, [displayedPoles, labels, sections?.inspections, filterType])
+  }, [displayedPoles, labels, sections?.inspections])
 
   const tooltipDark = {
     contentStyle: { backgroundColor: CHART_THEME.tooltipBg, border: `1px solid ${CHART_THEME.grid}`, borderRadius: 10, maxWidth: 320, padding: 10, lineHeight: 1.2 },
