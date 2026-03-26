@@ -255,9 +255,11 @@ class MonthlyReportController extends Controller
             // For month range, generate time-series labels (Pole + Month)
             $monthRangeLabels = [];
             $monthRangeData = [];
+            $monthRangeYear = $targetYear; // Store year for use in response
             if ($useMonthRange) {
                 $currentMonth = Carbon::createFromFormat('Y-m', $monthStart->format('Y-m'));
                 $endMonth = Carbon::createFromFormat('Y-m', $monthEnd->format('Y-m'));
+                $monthRangeYear = $currentMonth->format('Y'); // Update year from start month
                 
                 $monthNames = [
                     '01' => 'Jan', '02' => 'Fév', '03' => 'Mar', '04' => 'Avr',
@@ -328,7 +330,7 @@ class MonthlyReportController extends Controller
             // SECTION A - Veille réglementaire (SST + Environnement)
             $hasVeilleCategory = Schema::hasColumn('regulatory_watch_submissions', 'category');
 
-            $veilleSelect = ['project_id', 'week_year', 'week_number', 'overall_score'];
+            $veilleSelect = ['project_id', 'week_year', 'week_number', 'overall_score', 'submitted_at'];
             if ($hasVeilleCategory) {
                 $veilleSelect[] = 'category';
             }
@@ -338,66 +340,145 @@ class MonthlyReportController extends Controller
                 ->whereBetween('submitted_at', [$monthStart->copy()->subDays(40), $monthEnd->copy()->addDays(40)])
                 ->get($veilleSelect);
 
-            $veilleByProjectSst = [];
-            $veilleByProjectEnv = [];
+            // Initialize month-pole data structures for time-series
+            $veilleByMonthPoleSst = [];
+            $veilleByMonthPoleEnv = [];
+            
             foreach ($veilleRows as $r) {
                 $wkKey = ((int) $r->week_year) . '-' . ((int) $r->week_number);
                 if (!$isWeekInRange($wkKey)) continue;
+                
+                // Determine which month this record belongs to
+                $submittedDate = Carbon::parse($r->submitted_at);
+                $recordMonth = $submittedDate->format('Y-m');
+                
+                // Only include if within the selected month range
+                if ($useMonthRange) {
+                    $recordMonthStart = Carbon::createFromFormat('Y-m', $recordMonth)->startOfMonth();
+                    if ($recordMonthStart->lt($monthStart) || $recordMonthStart->gt($monthEnd)) {
+                        continue;
+                    }
+                }
+                
                 $pid = (int) $r->project_id;
+                $pole = $projectPoleLabel($pid);
+                if ($pole === '') continue;
 
                 $cat = $hasVeilleCategory ? (string) ($r->category ?? '') : 'sst';
                 if ($cat === '') {
                     $cat = 'sst';
                 }
-
                 $cat = strtolower(trim($cat));
+                
+                $score = (float) ($r->overall_score ?? 0);
 
                 if ($cat === 'sst') {
-                    $veilleByProjectSst[$pid][] = (float) ($r->overall_score ?? 0);
+                    $veilleByMonthPoleSst[$recordMonth][$pole][$pid][] = $score;
                 } elseif ($cat === 'environment' || $cat === 'environnement' || $cat === 'environmental') {
-                    $veilleByProjectEnv[$pid][] = (float) ($r->overall_score ?? 0);
+                    $veilleByMonthPoleEnv[$recordMonth][$pole][$pid][] = $score;
                 }
             }
-
-            $veilleProjectScoreSst = [];
-            $veilleProjectScoreEnv = [];
-            foreach ($projectsById as $pid => $p) {
-                $valsSst = $veilleByProjectSst[$pid] ?? [];
-                $valsEnv = $veilleByProjectEnv[$pid] ?? [];
-                $veilleProjectScoreSst[$pid] = count($valsSst) ? round(array_sum($valsSst) / count($valsSst), 2) : 0.0;
-                $veilleProjectScoreEnv[$pid] = count($valsEnv) ? round(array_sum($valsEnv) / count($valsEnv), 2) : 0.0;
-            }
-
+            
+            // Calculate averages by month-pole (for time-series) and overall by pole (for backward compatibility)
             $veillePoleAvgSst = [];
             $veillePoleAvgEnv = [];
             $veillePoleProjects = [];
-            foreach ($projectsByPole as $pole => $poleProjects) {
-                if ($pole === '') continue;
-
-                $scoresSst = [];
-                $scoresEnv = [];
-                $breakdown = [];
-                foreach ($poleProjects as $p) {
-                    $scoreSst = (float) ($veilleProjectScoreSst[$p->id] ?? 0);
-                    $scoreEnv = (float) ($veilleProjectScoreEnv[$p->id] ?? 0);
-
-                    $scoresSst[] = $scoreSst;
-                    $scoresEnv[] = $scoreEnv;
-
-                    $breakdown[] = [
-                        'project_id' => (int) $p->id,
-                        'project_name' => (string) $p->name,
-                        'project_code' => (string) $p->code,
-                        // Keep 'score' for backward compatibility (SST)
-                        'score' => $scoreSst,
-                        'score_sst' => $scoreSst,
-                        'score_environment' => $scoreEnv,
-                    ];
+            
+            // For month range, we need time-series data
+            if ($useMonthRange) {
+                $currentMonth = Carbon::createFromFormat('Y-m', $monthStart->format('Y-m'));
+                $endMonth = Carbon::createFromFormat('Y-m', $monthEnd->format('Y-m'));
+                
+                while ($currentMonth->lte($endMonth)) {
+                    $monthKeyIter = $currentMonth->format('Y-m');
+                    
+                    foreach ($poles as $pole) {
+                        // SST scores for this month-pole
+                        $sstScores = [];
+                        $envScores = [];
+                        $breakdown = [];
+                        
+                        foreach ($projectsByPole->get($pole, collect()) as $p) {
+                            $pid = $p->id;
+                            $projectSstScores = $veilleByMonthPoleSst[$monthKeyIter][$pole][$pid] ?? [];
+                            $projectEnvScores = $veilleByMonthPoleEnv[$monthKeyIter][$pole][$pid] ?? [];
+                            
+                            $avgSst = count($projectSstScores) ? round(array_sum($projectSstScores) / count($projectSstScores), 2) : 0.0;
+                            $avgEnv = count($projectEnvScores) ? round(array_sum($projectEnvScores) / count($projectEnvScores), 2) : 0.0;
+                            
+                            if ($avgSst > 0 || $avgEnv > 0) {
+                                $sstScores[] = $avgSst;
+                                $envScores[] = $avgEnv;
+                            }
+                            
+                            $breakdown[] = [
+                                'project_id' => (int) $pid,
+                                'project_name' => (string) $p->name,
+                                'project_code' => (string) $p->code,
+                                'score' => $avgSst,
+                                'score_sst' => $avgSst,
+                                'score_environment' => $avgEnv,
+                            ];
+                        }
+                        
+                        // Store time-series value for this month-pole
+                        $veillePoleAvgSst[$monthKeyIter][$pole] = count($sstScores) ? round(array_sum($sstScores) / count($sstScores), 2) : 0.0;
+                        $veillePoleAvgEnv[$monthKeyIter][$pole] = count($envScores) ? round(array_sum($envScores) / count($envScores), 2) : 0.0;
+                        $veillePoleProjects[$monthKeyIter][$pole] = $breakdown;
+                    }
+                    
+                    $currentMonth->addMonth();
                 }
-
-                $veillePoleAvgSst[$pole] = count($scoresSst) ? round(array_sum($scoresSst) / count($scoresSst), 2) : 0.0;
-                $veillePoleAvgEnv[$pole] = count($scoresEnv) ? round(array_sum($scoresEnv) / count($scoresEnv), 2) : 0.0;
-                $veillePoleProjects[$pole] = $breakdown;
+            } else {
+                // Original logic for single month/week
+                $veilleByProjectSst = [];
+                $veilleByProjectEnv = [];
+                
+                foreach ($veilleRows as $r) {
+                    $wkKey = ((int) $r->week_year) . '-' . ((int) $r->week_number);
+                    if (!$isWeekInRange($wkKey)) continue;
+                    $pid = (int) $r->project_id;
+                    
+                    $cat = $hasVeilleCategory ? (string) ($r->category ?? '') : 'sst';
+                    if ($cat === '') $cat = 'sst';
+                    $cat = strtolower(trim($cat));
+                    
+                    if ($cat === 'sst') {
+                        $veilleByProjectSst[$pid][] = (float) ($r->overall_score ?? 0);
+                    } elseif ($cat === 'environment' || $cat === 'environnement' || $cat === 'environmental') {
+                        $veilleByProjectEnv[$pid][] = (float) ($r->overall_score ?? 0);
+                    }
+                }
+                
+                foreach ($projectsByPole as $pole => $poleProjects) {
+                    if ($pole === '') continue;
+                    $scoresSst = [];
+                    $scoresEnv = [];
+                    $breakdown = [];
+                    
+                    foreach ($poleProjects as $p) {
+                        $valsSst = $veilleByProjectSst[$p->id] ?? [];
+                        $valsEnv = $veilleByProjectEnv[$p->id] ?? [];
+                        $scoreSst = count($valsSst) ? round(array_sum($valsSst) / count($valsSst), 2) : 0.0;
+                        $scoreEnv = count($valsEnv) ? round(array_sum($valsEnv) / count($valsEnv), 2) : 0.0;
+                        
+                        $scoresSst[] = $scoreSst;
+                        $scoresEnv[] = $scoreEnv;
+                        
+                        $breakdown[] = [
+                            'project_id' => (int) $p->id,
+                            'project_name' => (string) $p->name,
+                            'project_code' => (string) $p->code,
+                            'score' => $scoreSst,
+                            'score_sst' => $scoreSst,
+                            'score_environment' => $scoreEnv,
+                        ];
+                    }
+                    
+                    $veillePoleAvgSst[$pole] = count($scoresSst) ? round(array_sum($scoresSst) / count($scoresSst), 2) : 0.0;
+                    $veillePoleAvgEnv[$pole] = count($scoresEnv) ? round(array_sum($scoresEnv) / count($scoresEnv), 2) : 0.0;
+                    $veillePoleProjects[$pole] = $breakdown;
+                }
             }
 
             // SECTION B/C - SOR volume + closure % + avg closure duration
@@ -1190,16 +1271,34 @@ class MonthlyReportController extends Controller
                         'datasets' => [
                             [
                                 'label' => 'Veille SST %',
-                                'data' => array_map(function ($label) use ($veillePoleAvgSst, $useMonthRange) {
-                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
-                                    return $veillePoleAvgSst[$pole] ?? 0;
+                                'data' => array_map(function ($label) use ($veillePoleAvgSst, $useMonthRange, $monthRangeYear) {
+                                    if ($useMonthRange) {
+                                        // Extract month key and pole from "AM (Jan)"
+                                        preg_match('/^(.*?) \(([A-Za-zéû]+)\)$/', $label, $matches);
+                                        $pole = $matches[1] ?? $label;
+                                        $monthShort = $matches[2] ?? '';
+                                        // Map French month abbreviations back to month key
+                                        $monthMap = ['Jan' => '01', 'Fév' => '02', 'Mar' => '03', 'Avr' => '04', 'Mai' => '05', 'Juin' => '06', 'Juil' => '07', 'Août' => '08', 'Sep' => '09', 'Oct' => '10', 'Nov' => '11', 'Déc' => '12'];
+                                        $monthNum = $monthMap[$monthShort] ?? '01';
+                                        $monthKey = $monthRangeYear . '-' . $monthNum;
+                                        return $veillePoleAvgSst[$monthKey][$pole] ?? 0;
+                                    }
+                                    return $veillePoleAvgSst[$label] ?? 0;
                                 }, $labels),
                             ],
                             [
                                 'label' => 'Veille Environnement %',
-                                'data' => array_map(function ($label) use ($veillePoleAvgEnv, $useMonthRange) {
-                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
-                                    return $veillePoleAvgEnv[$pole] ?? 0;
+                                'data' => array_map(function ($label) use ($veillePoleAvgEnv, $useMonthRange, $monthRangeYear) {
+                                    if ($useMonthRange) {
+                                        preg_match('/^(.*?) \(([A-Za-zéû]+)\)$/', $label, $matches);
+                                        $pole = $matches[1] ?? $label;
+                                        $monthShort = $matches[2] ?? '';
+                                        $monthMap = ['Jan' => '01', 'Fév' => '02', 'Mar' => '03', 'Avr' => '04', 'Mai' => '05', 'Juin' => '06', 'Juil' => '07', 'Août' => '08', 'Sep' => '09', 'Oct' => '10', 'Nov' => '11', 'Déc' => '12'];
+                                        $monthNum = $monthMap[$monthShort] ?? '01';
+                                        $monthKey = $monthRangeYear . '-' . $monthNum;
+                                        return $veillePoleAvgEnv[$monthKey][$pole] ?? 0;
+                                    }
+                                    return $veillePoleAvgEnv[$label] ?? 0;
                                 }, $labels),
                             ],
                         ],
