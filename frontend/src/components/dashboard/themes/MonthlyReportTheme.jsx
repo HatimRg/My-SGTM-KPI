@@ -984,10 +984,27 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
   }, [labels, normalizedFocusPole])
 
   const displayedPoles = useMemo(() => {
-    if (normalizedFocusPole !== '') return filteredPoles
-    if (normalizedSelectedPole === '') return labels
-    return labels.filter((p) => String(p) === normalizedSelectedPole)
-  }, [filteredPoles, labels, normalizedFocusPole, normalizedSelectedPole])
+    const result = (() => {
+      if (normalizedFocusPole !== '') return filteredPoles
+      if (normalizedSelectedPole === '') return labels
+      // For month range, filter by checking if label starts with selected pole
+      if (filterType === 'monthRange') {
+        return labels.filter((p) => String(p).startsWith(normalizedSelectedPole + ' ('))
+      }
+      return labels.filter((p) => String(p) === normalizedSelectedPole)
+    })()
+    
+    console.log('[DEBUG] displayedPoles computed:', {
+      normalizedFocusPole,
+      normalizedSelectedPole,
+      filterType,
+      labelsCount: labels.length,
+      resultCount: result.length,
+      result
+    })
+    
+    return result
+  }, [filteredPoles, labels, normalizedFocusPole, normalizedSelectedPole, filterType])
 
   const showSinglePole = displayedPoles.length <= 1
   const xAxisAngle = showSinglePole ? 0 : -20
