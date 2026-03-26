@@ -1,6 +1,6 @@
 import { memo } from 'react'
-import { useTranslation } from '../../../i18n'
-import { MonthPicker } from '../../../components/ui'
+import { useTranslation } from '../../i18n'
+import MonthPicker from './MonthPicker'
 
 /**
  * MonthRangePicker component for selecting start and end months
