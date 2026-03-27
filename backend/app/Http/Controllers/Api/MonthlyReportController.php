@@ -515,26 +515,31 @@ class MonthlyReportController extends Controller
                 return true;
             };
 
-            $sorPole = [];
-            $sorPoleClosed = [];
-            $sorProject = [];
-            $durationPoleSum = [];
-            $durationPoleCount = [];
-            $durationProjectSum = [];
-            $durationProjectCount = [];
-
-            // Subcontractors-only SOR (exclude SGTM, ignore unknown)
-            $sorSubPole = [];
-            $sorSubPoleClosed = [];
-            $sorSubProject = [];
-            $durationSubPoleSum = [];
-            $durationSubPoleCount = [];
-            $durationSubProjectSum = [];
-            $durationSubProjectCount = [];
+            // Month-pole data structures for time-series
+            $sorByMonthPole = [];
+            $sorClosedByMonthPole = [];
+            $sorSubByMonthPole = [];
+            $sorSubClosedByMonthPole = [];
+            $durationSumByMonthPole = [];
+            $durationCountByMonthPole = [];
+            $durationSubSumByMonthPole = [];
+            $durationSubCountByMonthPole = [];
 
             foreach ($sorRows as $r) {
                 $obsDate = $r->observation_date ? Carbon::parse($r->observation_date) : null;
                 if (!$obsDate) continue;
+                
+                // Determine which month this record belongs to
+                $recordMonth = $obsDate->format('Y-m');
+                
+                // Only include if within the selected month range
+                if ($useMonthRange) {
+                    $recordMonthStart = Carbon::createFromFormat('Y-m', $recordMonth)->startOfMonth();
+                    if ($recordMonthStart->lt($monthStart) || $recordMonthStart->gt($monthEnd)) {
+                        continue;
+                    }
+                }
+                
                 $week = WeekHelper::getWeekFromDate($obsDate);
                 $wkKey = ((int) $week['year']) . '-' . ((int) $week['week']);
                 if (!$isWeekInRange($wkKey)) continue;
@@ -543,22 +548,18 @@ class MonthlyReportController extends Controller
                 $pole = $projectPoleLabel($pid);
                 if ($pole === '') continue;
 
-                $sorPole[$pole] = ($sorPole[$pole] ?? 0) + 1;
-                $sorProject[$pole] = $sorProject[$pole] ?? [];
-                $sorProject[$pole][$pid] = ($sorProject[$pole][$pid] ?? 0) + 1;
+                $sorByMonthPole[$recordMonth][$pole] = ($sorByMonthPole[$recordMonth][$pole] ?? 0) + 1;
 
                 $isClosed = (string) ($r->status ?? '') === SorReport::STATUS_CLOSED;
                 if ($isClosed) {
-                    $sorPoleClosed[$pole] = ($sorPoleClosed[$pole] ?? 0) + 1;
+                    $sorClosedByMonthPole[$recordMonth][$pole] = ($sorClosedByMonthPole[$recordMonth][$pole] ?? 0) + 1;
                 }
 
                 $isSub = $isSubcontractorCompany($r->company ?? null);
                 if ($isSub) {
-                    $sorSubPole[$pole] = ($sorSubPole[$pole] ?? 0) + 1;
-                    $sorSubProject[$pole] = $sorSubProject[$pole] ?? [];
-                    $sorSubProject[$pole][$pid] = ($sorSubProject[$pole][$pid] ?? 0) + 1;
+                    $sorSubByMonthPole[$recordMonth][$pole] = ($sorSubByMonthPole[$recordMonth][$pole] ?? 0) + 1;
                     if ($isClosed) {
-                        $sorSubPoleClosed[$pole] = ($sorSubPoleClosed[$pole] ?? 0) + 1;
+                        $sorSubClosedByMonthPole[$recordMonth][$pole] = ($sorSubClosedByMonthPole[$recordMonth][$pole] ?? 0) + 1;
                     }
                 }
 
@@ -573,22 +574,90 @@ class MonthlyReportController extends Controller
                         $correction = Carbon::parse($corrDate->toDateString() . ' ' . $corrTime);
                         if ($correction->gte($anomaly)) {
                             $hours = $correction->floatDiffInHours($anomaly);
-                            $durationPoleSum[$pole] = ($durationPoleSum[$pole] ?? 0) + $hours;
-                            $durationPoleCount[$pole] = ($durationPoleCount[$pole] ?? 0) + 1;
-
-                            $durationProjectSum[$pid] = ($durationProjectSum[$pid] ?? 0) + $hours;
-                            $durationProjectCount[$pid] = ($durationProjectCount[$pid] ?? 0) + 1;
+                            $durationSumByMonthPole[$recordMonth][$pole] = ($durationSumByMonthPole[$recordMonth][$pole] ?? 0) + $hours;
+                            $durationCountByMonthPole[$recordMonth][$pole] = ($durationCountByMonthPole[$recordMonth][$pole] ?? 0) + 1;
 
                             if (!empty($isSub)) {
-                                $durationSubPoleSum[$pole] = ($durationSubPoleSum[$pole] ?? 0) + $hours;
-                                $durationSubPoleCount[$pole] = ($durationSubPoleCount[$pole] ?? 0) + 1;
-
-                                $durationSubProjectSum[$pid] = ($durationSubProjectSum[$pid] ?? 0) + $hours;
-                                $durationSubProjectCount[$pid] = ($durationSubProjectCount[$pid] ?? 0) + 1;
+                                $durationSubSumByMonthPole[$recordMonth][$pole] = ($durationSubSumByMonthPole[$recordMonth][$pole] ?? 0) + $hours;
+                                $durationSubCountByMonthPole[$recordMonth][$pole] = ($durationSubCountByMonthPole[$recordMonth][$pole] ?? 0) + 1;
                             }
                         }
                     } catch (\Throwable $e) {
                         // ignore bad timestamps
+                    }
+                }
+            }
+
+            // Calculate final metrics by month-pole
+            $sorPole = [];
+            $sorPoleClosed = [];
+            $sorSubPole = [];
+            $sorSubPoleClosed = [];
+            $durationPoleSum = [];
+            $durationPoleCount = [];
+            $durationSubPoleSum = [];
+            $durationSubPoleCount = [];
+            
+            if ($useMonthRange) {
+                $currentMonth = Carbon::createFromFormat('Y-m', $monthStart->format('Y-m'));
+                $endMonth = Carbon::createFromFormat('Y-m', $monthEnd->format('Y-m'));
+                
+                while ($currentMonth->lte($endMonth)) {
+                    $monthKeyIter = $currentMonth->format('Y-m');
+                    
+                    foreach ($poles as $pole) {
+                        $sorPole[$monthKeyIter][$pole] = $sorByMonthPole[$monthKeyIter][$pole] ?? 0;
+                        $sorPoleClosed[$monthKeyIter][$pole] = $sorClosedByMonthPole[$monthKeyIter][$pole] ?? 0;
+                        $sorSubPole[$monthKeyIter][$pole] = $sorSubByMonthPole[$monthKeyIter][$pole] ?? 0;
+                        $sorSubPoleClosed[$monthKeyIter][$pole] = $sorSubClosedByMonthPole[$monthKeyIter][$pole] ?? 0;
+                        $durationPoleSum[$monthKeyIter][$pole] = $durationSumByMonthPole[$monthKeyIter][$pole] ?? 0;
+                        $durationPoleCount[$monthKeyIter][$pole] = $durationCountByMonthPole[$monthKeyIter][$pole] ?? 0;
+                        $durationSubPoleSum[$monthKeyIter][$pole] = $durationSubSumByMonthPole[$monthKeyIter][$pole] ?? 0;
+                        $durationSubPoleCount[$monthKeyIter][$pole] = $durationSubCountByMonthPole[$monthKeyIter][$pole] ?? 0;
+                    }
+                    
+                    $currentMonth->addMonth();
+                }
+            } else {
+                // Original single-month logic
+                foreach ($sorByMonthPole as $month => $poleData) {
+                    foreach ($poleData as $pole => $count) {
+                        $sorPole[$pole] = ($sorPole[$pole] ?? 0) + $count;
+                    }
+                }
+                foreach ($sorClosedByMonthPole as $month => $poleData) {
+                    foreach ($poleData as $pole => $count) {
+                        $sorPoleClosed[$pole] = ($sorPoleClosed[$pole] ?? 0) + $count;
+                    }
+                }
+                foreach ($sorSubByMonthPole as $month => $poleData) {
+                    foreach ($poleData as $pole => $count) {
+                        $sorSubPole[$pole] = ($sorSubPole[$pole] ?? 0) + $count;
+                    }
+                }
+                foreach ($sorSubClosedByMonthPole as $month => $poleData) {
+                    foreach ($poleData as $pole => $count) {
+                        $sorSubPoleClosed[$pole] = ($sorSubPoleClosed[$pole] ?? 0) + $count;
+                    }
+                }
+                foreach ($durationSumByMonthPole as $month => $poleData) {
+                    foreach ($poleData as $pole => $sum) {
+                        $durationPoleSum[$pole] = ($durationPoleSum[$pole] ?? 0) + $sum;
+                    }
+                }
+                foreach ($durationCountByMonthPole as $month => $poleData) {
+                    foreach ($poleData as $pole => $count) {
+                        $durationPoleCount[$pole] = ($durationPoleCount[$pole] ?? 0) + $count;
+                    }
+                }
+                foreach ($durationSubSumByMonthPole as $month => $poleData) {
+                    foreach ($poleData as $pole => $sum) {
+                        $durationSubPoleSum[$pole] = ($durationSubPoleSum[$pole] ?? 0) + $sum;
+                    }
+                }
+                foreach ($durationSubCountByMonthPole as $month => $poleData) {
+                    foreach ($poleData as $pole => $count) {
+                        $durationSubPoleCount[$pole] = ($durationSubPoleCount[$pole] ?? 0) + $count;
                     }
                 }
             }
@@ -695,52 +764,146 @@ class MonthlyReportController extends Controller
             $trainingRows = Training::query()
                 ->whereIn('project_id', $projectsById->keys())
                 ->whereIn('week_year', [$targetYear - 1, $targetYear, $targetYear + 1])
-                ->get(['project_id', 'week_year', 'week_number', 'training_hours', 'duration_hours']);
+                ->get(['project_id', 'week_year', 'week_number', 'training_hours', 'duration_hours', 'training_date']);
 
-            $trainingPoleCount = [];
-            $trainingPoleHours = [];
-            $trainingPoleProjects = [];
+            // Month-pole data structures for time-series
+            $trainingByMonthPole = [];
+            $trainingHoursByMonthPole = [];
+            
             foreach ($trainingRows as $r) {
                 $wkKey = ((int) $r->week_year) . '-' . ((int) $r->week_number);
                 if (!$isWeekInRange($wkKey)) continue;
+                
+                // Determine which month this record belongs to
+                $trainingDate = $r->training_date ? Carbon::parse($r->training_date) : null;
+                if (!$trainingDate) {
+                    // Fallback to week-based month determination
+                    $weekDates = WeekHelper::getWeekDates($r->week_number, $r->week_year);
+                    $trainingDate = Carbon::parse($weekDates['start']);
+                }
+                $recordMonth = $trainingDate->format('Y-m');
+                
+                // Only include if within the selected month range
+                if ($useMonthRange) {
+                    $recordMonthStart = Carbon::createFromFormat('Y-m', $recordMonth)->startOfMonth();
+                    if ($recordMonthStart->lt($monthStart) || $recordMonthStart->gt($monthEnd)) {
+                        continue;
+                    }
+                }
+                
                 $pid = (int) $r->project_id;
                 $pole = $projectPoleLabel($pid);
                 if ($pole === '') continue;
 
-                $trainingPoleCount[$pole] = ($trainingPoleCount[$pole] ?? 0) + 1;
                 $hours = $r->training_hours !== null ? (float) $r->training_hours : (float) ($r->duration_hours ?? 0);
-                $trainingPoleHours[$pole] = ($trainingPoleHours[$pole] ?? 0) + $hours;
-
-                $trainingPoleProjects[$pole] = $trainingPoleProjects[$pole] ?? [];
-                $trainingPoleProjects[$pole][$pid] = $trainingPoleProjects[$pole][$pid] ?? ['count' => 0, 'hours' => 0.0];
-                $trainingPoleProjects[$pole][$pid]['count'] += 1;
-                $trainingPoleProjects[$pole][$pid]['hours'] += $hours;
+                
+                $trainingByMonthPole[$recordMonth][$pole] = ($trainingByMonthPole[$recordMonth][$pole] ?? 0) + 1;
+                $trainingHoursByMonthPole[$recordMonth][$pole] = ($trainingHoursByMonthPole[$recordMonth][$pole] ?? 0) + $hours;
+            }
+            
+            // Calculate final metrics by month-pole
+            $trainingPoleCount = [];
+            $trainingPoleHours = [];
+            
+            if ($useMonthRange) {
+                $currentMonth = Carbon::createFromFormat('Y-m', $monthStart->format('Y-m'));
+                $endMonth = Carbon::createFromFormat('Y-m', $monthEnd->format('Y-m'));
+                
+                while ($currentMonth->lte($endMonth)) {
+                    $monthKeyIter = $currentMonth->format('Y-m');
+                    
+                    foreach ($poles as $pole) {
+                        $trainingPoleCount[$monthKeyIter][$pole] = $trainingByMonthPole[$monthKeyIter][$pole] ?? 0;
+                        $trainingPoleHours[$monthKeyIter][$pole] = $trainingHoursByMonthPole[$monthKeyIter][$pole] ?? 0;
+                    }
+                    
+                    $currentMonth->addMonth();
+                }
+            } else {
+                // Original single-month logic
+                foreach ($trainingByMonthPole as $month => $poleData) {
+                    foreach ($poleData as $pole => $count) {
+                        $trainingPoleCount[$pole] = ($trainingPoleCount[$pole] ?? 0) + $count;
+                    }
+                }
+                foreach ($trainingHoursByMonthPole as $month => $poleData) {
+                    foreach ($poleData as $pole => $hours) {
+                        $trainingPoleHours[$pole] = ($trainingPoleHours[$pole] ?? 0) + $hours;
+                    }
+                }
             }
 
             // SECTION E - Awareness
             $awRows = AwarenessSession::query()
                 ->whereIn('project_id', $projectsById->keys())
                 ->whereIn('week_year', [$targetYear - 1, $targetYear, $targetYear + 1])
-                ->get(['project_id', 'week_year', 'week_number', 'session_hours']);
+                ->get(['project_id', 'week_year', 'week_number', 'session_hours', 'session_date']);
 
-            $awPoleCount = [];
-            $awPoleHours = [];
-            $awPoleProjects = [];
+            // Month-pole data structures for time-series
+            $awByMonthPole = [];
+            $awHoursByMonthPole = [];
+            
             foreach ($awRows as $r) {
                 $wkKey = ((int) $r->week_year) . '-' . ((int) $r->week_number);
                 if (!$isWeekInRange($wkKey)) continue;
+                
+                // Determine which month this record belongs to
+                $sessionDate = $r->session_date ? Carbon::parse($r->session_date) : null;
+                if (!$sessionDate) {
+                    // Fallback to week-based month determination
+                    $weekDates = WeekHelper::getWeekDates($r->week_number, $r->week_year);
+                    $sessionDate = Carbon::parse($weekDates['start']);
+                }
+                $recordMonth = $sessionDate->format('Y-m');
+                
+                // Only include if within the selected month range
+                if ($useMonthRange) {
+                    $recordMonthStart = Carbon::createFromFormat('Y-m', $recordMonth)->startOfMonth();
+                    if ($recordMonthStart->lt($monthStart) || $recordMonthStart->gt($monthEnd)) {
+                        continue;
+                    }
+                }
+                
                 $pid = (int) $r->project_id;
                 $pole = $projectPoleLabel($pid);
                 if ($pole === '') continue;
 
-                $awPoleCount[$pole] = ($awPoleCount[$pole] ?? 0) + 1;
                 $hours = (float) ($r->session_hours ?? 0);
-                $awPoleHours[$pole] = ($awPoleHours[$pole] ?? 0) + $hours;
-
-                $awPoleProjects[$pole] = $awPoleProjects[$pole] ?? [];
-                $awPoleProjects[$pole][$pid] = $awPoleProjects[$pole][$pid] ?? ['count' => 0, 'hours' => 0.0];
-                $awPoleProjects[$pole][$pid]['count'] += 1;
-                $awPoleProjects[$pole][$pid]['hours'] += $hours;
+                
+                $awByMonthPole[$recordMonth][$pole] = ($awByMonthPole[$recordMonth][$pole] ?? 0) + 1;
+                $awHoursByMonthPole[$recordMonth][$pole] = ($awHoursByMonthPole[$recordMonth][$pole] ?? 0) + $hours;
+            }
+            
+            // Calculate final metrics by month-pole
+            $awPoleCount = [];
+            $awPoleHours = [];
+            
+            if ($useMonthRange) {
+                $currentMonth = Carbon::createFromFormat('Y-m', $monthStart->format('Y-m'));
+                $endMonth = Carbon::createFromFormat('Y-m', $monthEnd->format('Y-m'));
+                
+                while ($currentMonth->lte($endMonth)) {
+                    $monthKeyIter = $currentMonth->format('Y-m');
+                    
+                    foreach ($poles as $pole) {
+                        $awPoleCount[$monthKeyIter][$pole] = $awByMonthPole[$monthKeyIter][$pole] ?? 0;
+                        $awPoleHours[$monthKeyIter][$pole] = $awHoursByMonthPole[$monthKeyIter][$pole] ?? 0;
+                    }
+                    
+                    $currentMonth->addMonth();
+                }
+            } else {
+                // Original single-month logic
+                foreach ($awByMonthPole as $month => $poleData) {
+                    foreach ($poleData as $pole => $count) {
+                        $awPoleCount[$pole] = ($awPoleCount[$pole] ?? 0) + $count;
+                    }
+                }
+                foreach ($awHoursByMonthPole as $month => $poleData) {
+                    foreach ($poleData as $pole => $hours) {
+                        $awPoleHours[$pole] = ($awPoleHours[$pole] ?? 0) + $hours;
+                    }
+                }
             }
 
             // SECTION F - Subcontractor documents completion (snapshot)
@@ -1310,17 +1473,37 @@ class MonthlyReportController extends Controller
                             [
                                 'type' => 'bar',
                                 'label' => 'Total deviations',
-                                'data' => array_map(function ($label) use ($sorPole, $useMonthRange) {
-                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
-                                    return (int) ($sorPole[$pole] ?? 0);
+                                'data' => array_map(function ($label) use ($sorPole, $sorPoleClosureRate, $useMonthRange, $monthRangeYear) {
+                                    if ($useMonthRange) {
+                                        preg_match('/^(.*?) \(([A-Za-zéû]+)\)$/', $label, $matches);
+                                        $pole = $matches[1] ?? $label;
+                                        $monthShort = $matches[2] ?? '';
+                                        $monthMap = ['Jan' => '01', 'Fév' => '02', 'Mar' => '03', 'Avr' => '04', 'Mai' => '05', 'Juin' => '06', 'Juil' => '07', 'Août' => '08', 'Sep' => '09', 'Oct' => '10', 'Nov' => '11', 'Déc' => '12'];
+                                        $monthNum = $monthMap[$monthShort] ?? '01';
+                                        $monthKey = $monthRangeYear . '-' . $monthNum;
+                                        return (int) ($sorPole[$monthKey][$pole] ?? 0);
+                                    }
+                                    return (int) ($sorPole[$label] ?? 0);
                                 }, $labels),
                             ],
                             [
                                 'type' => 'line',
                                 'label' => 'Closure %',
-                                'data' => array_map(function ($label) use ($sorPoleClosureRate, $useMonthRange) {
-                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
-                                    return $sorPoleClosureRate[$pole] ?? 0;
+                                'data' => array_map(function ($label) use ($sorPole, $sorPoleClosed, $useMonthRange, $monthRangeYear) {
+                                    if ($useMonthRange) {
+                                        preg_match('/^(.*?) \(([A-Za-zéû]+)\)$/', $label, $matches);
+                                        $pole = $matches[1] ?? $label;
+                                        $monthShort = $matches[2] ?? '';
+                                        $monthMap = ['Jan' => '01', 'Fév' => '02', 'Mar' => '03', 'Avr' => '04', 'Mai' => '05', 'Juin' => '06', 'Juil' => '07', 'Août' => '08', 'Sep' => '09', 'Oct' => '10', 'Nov' => '11', 'Déc' => '12'];
+                                        $monthNum = $monthMap[$monthShort] ?? '01';
+                                        $monthKey = $monthRangeYear . '-' . $monthNum;
+                                        $total = (int) ($sorPole[$monthKey][$pole] ?? 0);
+                                        $closed = (int) ($sorPoleClosed[$monthKey][$pole] ?? 0);
+                                        return $total > 0 ? round(($closed * 100.0) / $total, 2) : 0.0;
+                                    }
+                                    $total = (int) ($sorPole[$label] ?? 0);
+                                    $closed = (int) ($sorPoleClosed[$label] ?? 0);
+                                    return $total > 0 ? round(($closed * 100.0) / $total, 2) : 0.0;
                                 }, $labels),
                             ],
                         ],
@@ -1332,17 +1515,37 @@ class MonthlyReportController extends Controller
                             [
                                 'type' => 'bar',
                                 'label' => 'Total deviations (subcontractors)',
-                                'data' => array_map(function ($label) use ($sorSubPole, $useMonthRange) {
-                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
-                                    return (int) ($sorSubPole[$pole] ?? 0);
+                                'data' => array_map(function ($label) use ($sorSubPole, $useMonthRange, $monthRangeYear) {
+                                    if ($useMonthRange) {
+                                        preg_match('/^(.*?) \(([A-Za-zéû]+)\)$/', $label, $matches);
+                                        $pole = $matches[1] ?? $label;
+                                        $monthShort = $matches[2] ?? '';
+                                        $monthMap = ['Jan' => '01', 'Fév' => '02', 'Mar' => '03', 'Avr' => '04', 'Mai' => '05', 'Juin' => '06', 'Juil' => '07', 'Août' => '08', 'Sep' => '09', 'Oct' => '10', 'Nov' => '11', 'Déc' => '12'];
+                                        $monthNum = $monthMap[$monthShort] ?? '01';
+                                        $monthKey = $monthRangeYear . '-' . $monthNum;
+                                        return (int) ($sorSubPole[$monthKey][$pole] ?? 0);
+                                    }
+                                    return (int) ($sorSubPole[$label] ?? 0);
                                 }, $labels),
                             ],
                             [
                                 'type' => 'line',
                                 'label' => 'Closure % (subcontractors)',
-                                'data' => array_map(function ($label) use ($sorSubPoleClosureRate, $useMonthRange) {
-                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
-                                    return $sorSubPoleClosureRate[$pole] ?? 0;
+                                'data' => array_map(function ($label) use ($sorSubPole, $sorSubPoleClosed, $useMonthRange, $monthRangeYear) {
+                                    if ($useMonthRange) {
+                                        preg_match('/^(.*?) \(([A-Za-zéû]+)\)$/', $label, $matches);
+                                        $pole = $matches[1] ?? $label;
+                                        $monthShort = $matches[2] ?? '';
+                                        $monthMap = ['Jan' => '01', 'Fév' => '02', 'Mar' => '03', 'Avr' => '04', 'Mai' => '05', 'Juin' => '06', 'Juil' => '07', 'Août' => '08', 'Sep' => '09', 'Oct' => '10', 'Nov' => '11', 'Déc' => '12'];
+                                        $monthNum = $monthMap[$monthShort] ?? '01';
+                                        $monthKey = $monthRangeYear . '-' . $monthNum;
+                                        $total = (int) ($sorSubPole[$monthKey][$pole] ?? 0);
+                                        $closed = (int) ($sorSubPoleClosed[$monthKey][$pole] ?? 0);
+                                        return $total > 0 ? round(($closed * 100.0) / $total, 2) : 0.0;
+                                    }
+                                    $total = (int) ($sorSubPole[$label] ?? 0);
+                                    $closed = (int) ($sorSubPoleClosed[$label] ?? 0);
+                                    return $total > 0 ? round(($closed * 100.0) / $total, 2) : 0.0;
                                 }, $labels),
                             ],
                         ],
@@ -1353,9 +1556,21 @@ class MonthlyReportController extends Controller
                         'datasets' => [
                             [
                                 'label' => 'Avg closure (hours)',
-                                'data' => array_map(function ($label) use ($durationPoleAvg, $useMonthRange) {
-                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
-                                    return $durationPoleAvg[$pole] ?? 0;
+                                'data' => array_map(function ($label) use ($durationPoleSum, $durationPoleCount, $useMonthRange, $monthRangeYear) {
+                                    if ($useMonthRange) {
+                                        preg_match('/^(.*?) \(([A-Za-zéû]+)\)$/', $label, $matches);
+                                        $pole = $matches[1] ?? $label;
+                                        $monthShort = $matches[2] ?? '';
+                                        $monthMap = ['Jan' => '01', 'Fév' => '02', 'Mar' => '03', 'Avr' => '04', 'Mai' => '05', 'Juin' => '06', 'Juil' => '07', 'Août' => '08', 'Sep' => '09', 'Oct' => '10', 'Nov' => '11', 'Déc' => '12'];
+                                        $monthNum = $monthMap[$monthShort] ?? '01';
+                                        $monthKey = $monthRangeYear . '-' . $monthNum;
+                                        $cnt = (int) ($durationPoleCount[$monthKey][$pole] ?? 0);
+                                        $sum = (float) ($durationPoleSum[$monthKey][$pole] ?? 0);
+                                        return $cnt > 0 ? round($sum / $cnt, 2) : 0.0;
+                                    }
+                                    $cnt = (int) ($durationPoleCount[$label] ?? 0);
+                                    $sum = (float) ($durationPoleSum[$label] ?? 0);
+                                    return $cnt > 0 ? round($sum / $cnt, 2) : 0.0;
                                 }, $labels),
                             ],
                         ],
@@ -1367,9 +1582,21 @@ class MonthlyReportController extends Controller
                         'datasets' => [
                             [
                                 'label' => 'Avg closure (hours) (subcontractors)',
-                                'data' => array_map(function ($label) use ($durationSubPoleAvg, $useMonthRange) {
-                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
-                                    return $durationSubPoleAvg[$pole] ?? 0;
+                                'data' => array_map(function ($label) use ($durationSubPoleSum, $durationSubPoleCount, $useMonthRange, $monthRangeYear) {
+                                    if ($useMonthRange) {
+                                        preg_match('/^(.*?) \(([A-Za-zéû]+)\)$/', $label, $matches);
+                                        $pole = $matches[1] ?? $label;
+                                        $monthShort = $matches[2] ?? '';
+                                        $monthMap = ['Jan' => '01', 'Fév' => '02', 'Mar' => '03', 'Avr' => '04', 'Mai' => '05', 'Juin' => '06', 'Juil' => '07', 'Août' => '08', 'Sep' => '09', 'Oct' => '10', 'Nov' => '11', 'Déc' => '12'];
+                                        $monthNum = $monthMap[$monthShort] ?? '01';
+                                        $monthKey = $monthRangeYear . '-' . $monthNum;
+                                        $cnt = (int) ($durationSubPoleCount[$monthKey][$pole] ?? 0);
+                                        $sum = (float) ($durationSubPoleSum[$monthKey][$pole] ?? 0);
+                                        return $cnt > 0 ? round($sum / $cnt, 2) : 0.0;
+                                    }
+                                    $cnt = (int) ($durationSubPoleCount[$label] ?? 0);
+                                    $sum = (float) ($durationSubPoleSum[$label] ?? 0);
+                                    return $cnt > 0 ? round($sum / $cnt, 2) : 0.0;
                                 }, $labels),
                             ],
                         ],
@@ -1381,16 +1608,32 @@ class MonthlyReportController extends Controller
                         'datasets' => [
                             [
                                 'label' => 'Trainings',
-                                'data' => array_map(function ($label) use ($trainingPoleCount, $useMonthRange) {
-                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
-                                    return (int) ($trainingPoleCount[$pole] ?? 0);
+                                'data' => array_map(function ($label) use ($trainingPoleCount, $useMonthRange, $monthRangeYear) {
+                                    if ($useMonthRange) {
+                                        preg_match('/^(.*?) \(([A-Za-zéû]+)\)$/', $label, $matches);
+                                        $pole = $matches[1] ?? $label;
+                                        $monthShort = $matches[2] ?? '';
+                                        $monthMap = ['Jan' => '01', 'Fév' => '02', 'Mar' => '03', 'Avr' => '04', 'Mai' => '05', 'Juin' => '06', 'Juil' => '07', 'Août' => '08', 'Sep' => '09', 'Oct' => '10', 'Nov' => '11', 'Déc' => '12'];
+                                        $monthNum = $monthMap[$monthShort] ?? '01';
+                                        $monthKey = $monthRangeYear . '-' . $monthNum;
+                                        return (int) ($trainingPoleCount[$monthKey][$pole] ?? 0);
+                                    }
+                                    return (int) ($trainingPoleCount[$label] ?? 0);
                                 }, $labels),
                             ],
                             [
                                 'label' => 'Hours',
-                                'data' => array_map(function ($label) use ($trainingPoleHours, $useMonthRange) {
-                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
-                                    return round((float) ($trainingPoleHours[$pole] ?? 0), 2);
+                                'data' => array_map(function ($label) use ($trainingPoleHours, $useMonthRange, $monthRangeYear) {
+                                    if ($useMonthRange) {
+                                        preg_match('/^(.*?) \(([A-Za-zéû]+)\)$/', $label, $matches);
+                                        $pole = $matches[1] ?? $label;
+                                        $monthShort = $matches[2] ?? '';
+                                        $monthMap = ['Jan' => '01', 'Fév' => '02', 'Mar' => '03', 'Avr' => '04', 'Mai' => '05', 'Juin' => '06', 'Juil' => '07', 'Août' => '08', 'Sep' => '09', 'Oct' => '10', 'Nov' => '11', 'Déc' => '12'];
+                                        $monthNum = $monthMap[$monthShort] ?? '01';
+                                        $monthKey = $monthRangeYear . '-' . $monthNum;
+                                        return round((float) ($trainingPoleHours[$monthKey][$pole] ?? 0), 2);
+                                    }
+                                    return round((float) ($trainingPoleHours[$label] ?? 0), 2);
                                 }, $labels),
                             ],
                         ],
@@ -1401,16 +1644,32 @@ class MonthlyReportController extends Controller
                         'datasets' => [
                             [
                                 'label' => 'Sessions',
-                                'data' => array_map(function ($label) use ($awPoleCount, $useMonthRange) {
-                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
-                                    return (int) ($awPoleCount[$pole] ?? 0);
+                                'data' => array_map(function ($label) use ($awPoleCount, $useMonthRange, $monthRangeYear) {
+                                    if ($useMonthRange) {
+                                        preg_match('/^(.*?) \(([A-Za-zéû]+)\)$/', $label, $matches);
+                                        $pole = $matches[1] ?? $label;
+                                        $monthShort = $matches[2] ?? '';
+                                        $monthMap = ['Jan' => '01', 'Fév' => '02', 'Mar' => '03', 'Avr' => '04', 'Mai' => '05', 'Juin' => '06', 'Juil' => '07', 'Août' => '08', 'Sep' => '09', 'Oct' => '10', 'Nov' => '11', 'Déc' => '12'];
+                                        $monthNum = $monthMap[$monthShort] ?? '01';
+                                        $monthKey = $monthRangeYear . '-' . $monthNum;
+                                        return (int) ($awPoleCount[$monthKey][$pole] ?? 0);
+                                    }
+                                    return (int) ($awPoleCount[$label] ?? 0);
                                 }, $labels),
                             ],
                             [
                                 'label' => 'Hours',
-                                'data' => array_map(function ($label) use ($awPoleHours, $useMonthRange) {
-                                    $pole = $useMonthRange ? explode(' (', $label)[0] : $label;
-                                    return round((float) ($awPoleHours[$pole] ?? 0), 2);
+                                'data' => array_map(function ($label) use ($awPoleHours, $useMonthRange, $monthRangeYear) {
+                                    if ($useMonthRange) {
+                                        preg_match('/^(.*?) \(([A-Za-zéû]+)\)$/', $label, $matches);
+                                        $pole = $matches[1] ?? $label;
+                                        $monthShort = $matches[2] ?? '';
+                                        $monthMap = ['Jan' => '01', 'Fév' => '02', 'Mar' => '03', 'Avr' => '04', 'Mai' => '05', 'Juin' => '06', 'Juil' => '07', 'Août' => '08', 'Sep' => '09', 'Oct' => '10', 'Nov' => '11', 'Déc' => '12'];
+                                        $monthNum = $monthMap[$monthShort] ?? '01';
+                                        $monthKey = $monthRangeYear . '-' . $monthNum;
+                                        return round((float) ($awPoleHours[$monthKey][$pole] ?? 0), 2);
+                                    }
+                                    return round((float) ($awPoleHours[$label] ?? 0), 2);
                                 }, $labels),
                             ],
                         ],
