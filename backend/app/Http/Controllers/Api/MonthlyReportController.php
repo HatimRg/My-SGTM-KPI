@@ -764,7 +764,7 @@ class MonthlyReportController extends Controller
             $trainingRows = Training::query()
                 ->whereIn('project_id', $projectsById->keys())
                 ->whereIn('week_year', [$targetYear - 1, $targetYear, $targetYear + 1])
-                ->get(['project_id', 'week_year', 'week_number', 'training_hours', 'duration_hours', 'training_date']);
+                ->get(['project_id', 'week_year', 'week_number', 'training_hours', 'duration_hours']);
 
             // Month-pole data structures for time-series
             $trainingByMonthPole = [];
@@ -774,13 +774,9 @@ class MonthlyReportController extends Controller
                 $wkKey = ((int) $r->week_year) . '-' . ((int) $r->week_number);
                 if (!$isWeekInRange($wkKey)) continue;
                 
-                // Determine which month this record belongs to
-                $trainingDate = $r->training_date ? Carbon::parse($r->training_date) : null;
-                if (!$trainingDate) {
-                    // Fallback to week-based month determination
-                    $weekDates = WeekHelper::getWeekDates($r->week_number, $r->week_year);
-                    $trainingDate = Carbon::parse($weekDates['start']);
-                }
+                // Determine month from week dates
+                $weekDates = WeekHelper::getWeekDates($r->week_number, $r->week_year);
+                $trainingDate = Carbon::parse($weekDates['start']);
                 $recordMonth = $trainingDate->format('Y-m');
                 
                 // Only include if within the selected month range
@@ -837,7 +833,7 @@ class MonthlyReportController extends Controller
             $awRows = AwarenessSession::query()
                 ->whereIn('project_id', $projectsById->keys())
                 ->whereIn('week_year', [$targetYear - 1, $targetYear, $targetYear + 1])
-                ->get(['project_id', 'week_year', 'week_number', 'session_hours', 'session_date']);
+                ->get(['project_id', 'week_year', 'week_number', 'session_hours']);
 
             // Month-pole data structures for time-series
             $awByMonthPole = [];
@@ -847,13 +843,9 @@ class MonthlyReportController extends Controller
                 $wkKey = ((int) $r->week_year) . '-' . ((int) $r->week_number);
                 if (!$isWeekInRange($wkKey)) continue;
                 
-                // Determine which month this record belongs to
-                $sessionDate = $r->session_date ? Carbon::parse($r->session_date) : null;
-                if (!$sessionDate) {
-                    // Fallback to week-based month determination
-                    $weekDates = WeekHelper::getWeekDates($r->week_number, $r->week_year);
-                    $sessionDate = Carbon::parse($weekDates['start']);
-                }
+                // Determine month from week dates
+                $weekDates = WeekHelper::getWeekDates($r->week_number, $r->week_year);
+                $sessionDate = Carbon::parse($weekDates['start']);
                 $recordMonth = $sessionDate->format('Y-m');
                 
                 // Only include if within the selected month range
