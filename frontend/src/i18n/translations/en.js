@@ -637,6 +637,8 @@ export default {
       exportFailed: 'Failed to export graphs',
       noChartsFound: 'No charts found to export',
       noDataToExport: 'No data to export',
+      exportingPoles: 'Exporting pole-specific reports...',
+      exportPolesSuccess: 'Pole-specific exports completed!',
       loadFailed: 'Failed to load monthly report',
       adminOnly: 'This page is available to admins only.',
       sections: {

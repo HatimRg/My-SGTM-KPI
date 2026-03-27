@@ -252,14 +252,17 @@ class MonthlyReportController extends Controller
             $poles = $projectsByPole->keys()->filter(fn ($p) => $p !== '')->values()->all();
             sort($poles);
 
-            // For month range, generate time-series labels (Pole + Month)
+            // For month range, generate time-series labels grouped by pole (not by month)
+            // Order: AM (Jan), AM (Fév), BH (Jan), BH (Fév)... instead of AM (Jan), BH (Jan)... AM (Fév), BH (Fév)
             $monthRangeLabels = [];
             $monthRangeData = [];
-            $monthRangeYear = $targetYear; // Store year for use in response
+            $monthRangeYear = $targetYear;
             if ($useMonthRange) {
+                // First collect all months
+                $monthsList = [];
                 $currentMonth = Carbon::createFromFormat('Y-m', $monthStart->format('Y-m'));
                 $endMonth = Carbon::createFromFormat('Y-m', $monthEnd->format('Y-m'));
-                $monthRangeYear = $currentMonth->format('Y'); // Update year from start month
+                $monthRangeYear = $currentMonth->format('Y');
                 
                 $monthNames = [
                     '01' => 'Jan', '02' => 'Fév', '03' => 'Mar', '04' => 'Avr',
@@ -268,20 +271,24 @@ class MonthlyReportController extends Controller
                 ];
                 
                 while ($currentMonth->lte($endMonth)) {
-                    $monthKeyIter = $currentMonth->format('Y-m');
-                    $monthShort = $monthNames[$currentMonth->format('m')] ?? $currentMonth->format('m');
-                    
-                    foreach ($poles as $pole) {
-                        $label = $pole . ' (' . $monthShort . ')';
+                    $monthsList[] = [
+                        'key' => $currentMonth->format('Y-m'),
+                        'short' => $monthNames[$currentMonth->format('m')] ?? $currentMonth->format('m'),
+                    ];
+                    $currentMonth->addMonth();
+                }
+                
+                // Now generate labels grouped by pole (all months for pole 1, then all months for pole 2...)
+                foreach ($poles as $pole) {
+                    foreach ($monthsList as $monthInfo) {
+                        $label = $pole . ' (' . $monthInfo['short'] . ')';
                         $monthRangeLabels[] = $label;
-                        $monthRangeData[$monthKeyIter][$pole] = [
+                        $monthRangeData[$monthInfo['key']][$pole] = [
                             'label' => $label,
-                            'month' => $monthKeyIter,
+                            'month' => $monthInfo['key'],
                             'pole' => $pole,
                         ];
                     }
-                    
-                    $currentMonth->addMonth();
                 }
             }
 
@@ -305,12 +312,20 @@ class MonthlyReportController extends Controller
             }
 
             // Helper to check if a week key is within the selected range
-            $isWeekInRange = function ($wkKey) use ($useWeekRange, $weekMonthMap, $monthKey, $monthStart, $monthEnd) {
+            $isWeekInRange = function ($wkKey) use ($useWeekRange, $useMonthRange, $weekMonthMap, $monthKey, $monthStart, $monthEnd) {
                 if ($useWeekRange) {
                     $weekDates = $weekMonthMap[$wkKey] ?? null;
                     if (!$weekDates) return false;
                     // Week is in range if it overlaps with the selected range
                     return $weekDates['start']->lte($monthEnd) && $weekDates['end']->gte($monthStart);
+                } elseif ($useMonthRange) {
+                    // For month range, check if week maps to any month in the range
+                    // weekMonthMap stores month key strings (e.g., "2026-01") for month ranges
+                    $mappedMonth = $weekMonthMap[$wkKey] ?? null;
+                    if (!$mappedMonth) return false;
+                    // Check if the mapped month is within our range
+                    $mappedMonthStart = Carbon::createFromFormat('Y-m', $mappedMonth)->startOfMonth();
+                    return $mappedMonthStart->gte($monthStart) && $mappedMonthStart->lte($monthEnd);
                 } else {
                     $mapped = $weekMonthMap[$wkKey] ?? null;
                     return $mapped === $monthKey;
@@ -346,7 +361,9 @@ class MonthlyReportController extends Controller
             
             foreach ($veilleRows as $r) {
                 $wkKey = ((int) $r->week_year) . '-' . ((int) $r->week_number);
-                if (!$isWeekInRange($wkKey)) continue;
+                if (!$isWeekInRange($wkKey)) {
+                    continue;
+                }
                 
                 // Determine which month this record belongs to
                 $submittedDate = Carbon::parse($r->submitted_at);
@@ -1415,8 +1432,10 @@ class MonthlyReportController extends Controller
                 $inspectionsPoleProjects[$pole] = $breakdown;
             }
 
-            return $this->success([
-                'month' => $monthKey,
+            // Prepare response
+            return response()->json([
+                'year' => $targetYear,
+                'month' => $month,
                 'project_id' => $projectId,
                 'projects' => $projectsList,
                 'labels' => $labels,

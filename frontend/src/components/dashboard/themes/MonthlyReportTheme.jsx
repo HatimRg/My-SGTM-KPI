@@ -935,33 +935,12 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
       }
       if (String(projectId || '').trim() !== '') params.project_id = projectId
       params.refresh = 1
-      
-      // DEBUG: Log request params
-      console.log('[DEBUG] fetchSummary called with:', { filterType, params, monthStart, monthEnd })
-      
+
       const res = await dashboardService.getMonthlyReportSummary(params)
       const data = res.data?.data ?? null
-      
-      // DEBUG: Log response structure
-      console.log('[DEBUG] Response data:', {
-        hasData: !!data,
-        labels: data?.labels,
-        labelCount: data?.labels?.length,
-        sections: Object.keys(data?.sections || {}),
-        filterType,
-        monthRange: filterType === 'monthRange' ? { monthStart, monthEnd } : null
-      })
-      
-      // DEBUG: Detailed section data for month range
-      if (filterType === 'monthRange' && data?.sections) {
-        console.log('[DEBUG] Month Range - Veille datasets:', data.sections.veille?.datasets?.length)
-        console.log('[DEBUG] Month Range - Veille by_month:', data.sections.veille?.by_month)
-        console.log('[DEBUG] Month Range - labels:', data.labels)
-      }
-      
+
       setPayload(data)
     } catch (e) {
-      console.error('[DEBUG] fetchSummary error:', e)
       setPayload(null)
       toast.error(t('dashboard.monthlyReport.loadFailed') || t('errors.failedToLoad'))
     } finally {
@@ -975,6 +954,24 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
 
   const labels = payload?.labels ?? []
   const sections = payload?.sections ?? {}
+  
+  // Extract base poles from time-series labels for dropdown
+  const basePoles = useMemo(() => {
+    if (filterType === 'monthRange') {
+      // Extract unique poles from time-series labels like "AM (Jan)"
+      const poles = new Set()
+      labels.forEach(label => {
+        const match = String(label).match(/^(.+?)\s*\(/)
+        if (match) {
+          poles.add(match[1])
+        } else {
+          poles.add(label)
+        }
+      })
+      return Array.from(poles).sort()
+    }
+    return labels
+  }, [labels, filterType])
 
   const normalizedFocusPole = String(focusPole || '').trim()
   const normalizedSelectedPole = String(selectedPole || '').trim()
@@ -993,16 +990,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
       }
       return labels.filter((p) => String(p) === normalizedSelectedPole)
     })()
-    
-    console.log('[DEBUG] displayedPoles computed:', {
-      normalizedFocusPole,
-      normalizedSelectedPole,
-      filterType,
-      labelsCount: labels.length,
-      resultCount: result.length,
-      result
-    })
-    
+
     return result
   }, [filteredPoles, labels, normalizedFocusPole, normalizedSelectedPole, filterType])
 
@@ -1320,9 +1308,158 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
     return label
   }, [t])
 
-  const handleExportZip = useCallback(async () => {
+  // Pole-specific export for Ctrl+Click
+  const handleExportPoles = useCallback(async () => {
+    if (!payload || basePoles.length === 0) {
+      toast.error(t('dashboard.monthlyReport.noDataToExport') || t('common.noData'))
+      return
+    }
+
+    setExporting(true)
+    toast(t('dashboard.monthlyReport.exportingPoles') || 'Exporting pole-specific reports...', { type: 'info' })
+
+    try {
+      const zip = new JSZip()
+      const mainFolder = zip.folder(`monthly_report_${month}_by_pole`)
+
+      const exportTitleByKey = {
+        A_veille_reglementaire: sectionTitle('veille'),
+        B_deviations_closure: sectionTitle('sor'),
+        C_closure_duration: sectionTitle('closure_duration'),
+        D_trainings: sectionTitle('trainings'),
+        E_awareness_sessions: sectionTitle('awareness'),
+        F_subcontractor_documents: sectionTitle('subcontractors'),
+        G_medical_conformity: sectionTitle('medical'),
+        H_deviations_closure_subcontractors: sectionTitle('sor_subcontractors'),
+        I_closure_duration_subcontractors: sectionTitle('closure_duration_subcontractors'),
+        J_tf_tg: sectionTitle('tf_tg'),
+        K_accidents_incidents: sectionTitle('accidents_incidents'),
+        L_ppe_consumption: sectionTitle('ppe_consumption'),
+        M_machinery: sectionTitle('machinery'),
+        N_inspections: sectionTitle('inspections'),
+      }
+
+      // Export for each pole
+      for (const pole of basePoles) {
+        const poleFolder = mainFolder.folder(pole)
+        
+        // Temporarily filter to this pole only
+        const originalSelectedPole = selectedPole
+        setSelectedPole(pole)
+        
+        // Wait for re-render with filtered data
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        const refs = chartRefs.current || {}
+        const entries = [...Object.entries(refs), ['F_subcontractor_documents', null]]
+
+        for (const [key, el] of entries) {
+          if (!el && key !== 'F_subcontractor_documents') continue
+
+          let blob = null
+          const title = `${exportTitleByKey[key] || key} - ${pole}`
+
+          if (key === 'F_subcontractor_documents') {
+            const rows = (sections?.subcontractors?.by_pole?.[pole] || [])
+            if (rows.length === 0) continue
+
+            const items = rows.map((r) => ({
+              pole,
+              contractor: String(r?.contractor_name || ''),
+              project: String(r?.project_name || ''),
+              uploaded: `${fmtInt(r?.uploaded_docs_count)}/${fmtInt(r?.required_docs_count)}`,
+              completion: `${safeNumber(r?.completion_pct).toFixed(1)}%`,
+            }))
+
+            const rowHeight = 28
+            const headerHeight = 70
+            const exportHeight = Math.min(2400, headerHeight + items.length * rowHeight + 40)
+            const exportWidth = 1200
+
+            const escapeHtml = (s) => String(s)
+              .replaceAll('&', '&amp;')
+              .replaceAll('<', '&lt;')
+              .replaceAll('>', '&gt;')
+              .replaceAll('"', '&quot;')
+              .replaceAll("'", '&#39;')
+
+            const html = `
+              <div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; color: #111827; background: #ffffff; padding: 16px;">
+                <div style="font-size: 14px; font-weight: 600; margin-bottom: 16px;">${escapeHtml(title)}</div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                  <thead>
+                    <tr>
+                      <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E5E7EB;">${escapeHtml(t('dashboard.monthlyReport.contractor'))}</th>
+                      <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E5E7EB;">${escapeHtml(t('dashboard.monthlyReport.project'))}</th>
+                      <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E5E7EB;">${escapeHtml(t('dashboard.monthlyReport.uploadedDocs'))}</th>
+                      <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E5E7EB;">${escapeHtml(t('dashboard.monthlyReport.completion'))}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${items.map((r) => `
+                      <tr>
+                        <td style="padding: 7px 10px; border-bottom: 1px solid #F3F4F6;">${escapeHtml(r.contractor)}</td>
+                        <td style="padding: 7px 10px; border-bottom: 1px solid #F3F4F6;">${escapeHtml(r.project)}</td>
+                        <td style="padding: 7px 10px; border-bottom: 1px solid #F3F4F6; font-variant-numeric: tabular-nums;">${escapeHtml(r.uploaded)}</td>
+                        <td style="padding: 7px 10px; border-bottom: 1px solid #F3F4F6; font-variant-numeric: tabular-nums; font-weight: 700;">${escapeHtml(r.completion)}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            `
+
+            blob = await htmlToPngBlob(html, {
+              width: exportWidth,
+              height: exportHeight,
+              scale: 2,
+              background: '#ffffff',
+              maxCanvasSize: 8192,
+              title,
+            })
+          } else {
+            const svg = el?.querySelector('svg')
+            if (!svg) continue
+
+            blob = await svgToPngBlob(svg, {
+              scale: 5,
+              background: '#ffffff',
+              maxCanvasSize: 8192,
+              title,
+            })
+          }
+          
+          if (!blob) continue
+
+          const filename = `${key}.png`
+          poleFolder.file(filename, blob)
+        }
+        
+        // Restore original selection
+        setSelectedPole(originalSelectedPole)
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
+      downloadBlob(zipBlob, `monthly_report_${month}_by_pole.zip`)
+      toast.success(t('dashboard.monthlyReport.exportPolesSuccess') || 'Pole-specific exports completed!')
+    } catch (e) {
+      toast.error(t('dashboard.monthlyReport.exportFailed') || t('common.exportFailed'))
+    } finally {
+      setExporting(false)
+    }
+  }, [basePoles, month, payload, sectionTitle, sections, selectedPole, t])
+
+  const handleExportZip = useCallback(async (e) => {
     if (!payload) {
       toast.error(t('dashboard.monthlyReport.noDataToExport') || t('common.noData'))
+      return
+    }
+
+    // Check if Ctrl key is pressed for pole-specific exports
+    const isCtrlPressed = e?.ctrlKey || e?.metaKey
+    
+    if (isCtrlPressed) {
+      await handleExportPoles()
       return
     }
 
@@ -1546,7 +1683,7 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
                       className="w-full px-3 py-2 rounded-xl border border-gray-200/80 dark:border-gray-700 bg-white/80 dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm shadow-sm hover:bg-white dark:hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="">{t('common.allPoles') || t('common.all') || 'All'}</option>
-                      {labels.map((p) => (
+                      {basePoles.map((p) => (
                         <option key={String(p)} value={String(p)}>
                           {String(p)}
                         </option>
@@ -1926,7 +2063,9 @@ const MonthlyReportTheme = memo(function MonthlyReportTheme({ user, focusPole })
                     </tr>
                   </thead>
                   <tbody>
-                    {displayedPoles.flatMap((pole) => {
+                    {displayedPoles.flatMap((label) => {
+                      // Extract base pole from time-series label like "AM (Jan)" -> "AM"
+                      const pole = filterType === 'monthRange' ? String(label).split(' (')[0] : label
                       const rows = sections?.subcontractors?.by_pole?.[pole] || []
                       if (!Array.isArray(rows) || rows.length === 0) {
                         return [
