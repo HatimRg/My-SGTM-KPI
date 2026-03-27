@@ -915,11 +915,24 @@ class MonthlyReportController extends Controller
                 }
             }
 
-            // SECTION F - Subcontractor documents completion (snapshot)
+            // SECTION F - Subcontractor documents completion (filtered by date range)
             $openings = SubcontractorOpening::query()
                 ->whereIn('project_id', $projectsById->keys())
+                ->whereBetween('contractor_start_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
                 ->with(['documents', 'project'])
                 ->get();
+
+            // DEBUG: Track subcontractor data
+            $debugInfo = [
+                'range_start' => $monthStart->toDateString(),
+                'range_end' => $monthEnd->toDateString(),
+                'project_ids' => $projectsById->keys()->toArray(),
+                'opening_count_before_pole_filter' => $openings->count(),
+                'poles_available' => $poles,
+            ];
+            $openingsWithoutPole = $openings->filter(fn($o) => empty($o->project?->pole));
+            $debugInfo['openings_without_pole'] = $openingsWithoutPole->count();
+            $debugInfo['openings_without_pole_ids'] = $openingsWithoutPole->pluck('id')->toArray();
 
             $requiredKeys = array_values(array_filter(array_map(
                 fn ($d) => is_array($d) ? ($d['key'] ?? null) : null,
@@ -984,6 +997,11 @@ class MonthlyReportController extends Controller
                     'count' => count($rows),
                 ];
             }
+
+            // DEBUG: Final summary
+            $debugInfo['sub_by_pole_keys'] = array_keys($subByPole);
+            $debugInfo['sub_by_pole_counts'] = array_map(fn($rows) => count($rows), $subByPole);
+            $debugInfo['sub_pole_summary_counts'] = array_map(fn($s) => $s['count'], $subPoleSummary);
 
             // SECTION G - Medical conformity
             $workers = Worker::query()
@@ -1435,10 +1453,12 @@ class MonthlyReportController extends Controller
             // Prepare response
             return response()->json([
                 'year' => $targetYear,
-                'month' => $month,
+                'month' => $monthStart->format('Y-m'),
+                'month_end' => $monthEnd->format('Y-m'),
                 'project_id' => $projectId,
                 'projects' => $projectsList,
                 'labels' => $labels,
+                'debug' => $debugInfo,
                 'sections' => [
                     'veille' => [
                         'labels' => $labels,
